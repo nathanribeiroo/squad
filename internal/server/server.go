@@ -138,38 +138,63 @@ func (s *Server) OnTerminalEvent(fn func(terminal.Event)) { s.termListener = fn 
 // URL returns the base URL of the server.
 func (s *Server) URL() string { return fmt.Sprintf("http://127.0.0.1:%d", s.opts.Port) }
 
-// Handler returns the root HTTP handler with security checks applied.
+// Handler returns the root HTTP handler of a single-workspace server, with
+// the security checks applied (the hub mounts APIHandler and TerminalHandler
+// itself to serve several workspaces).
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	// Browser / admin API (session auth).
-	mux.Handle("GET /api/state", s.session(http.HandlerFunc(s.handleState)))
-	mux.Handle("POST /api/nodes", s.session(http.HandlerFunc(s.handleAddNode)))
-	mux.Handle("PATCH /api/nodes/{id}", s.session(http.HandlerFunc(s.handleUpdateNode)))
-	mux.Handle("DELETE /api/nodes/{id}", s.session(http.HandlerFunc(s.handleRemoveNode)))
-	mux.Handle("POST /api/nodes/{id}/{action}", s.session(http.HandlerFunc(s.handleNodeAction)))
-	mux.Handle("POST /api/edges", s.session(http.HandlerFunc(s.handleAddEdge)))
-	mux.Handle("PATCH /api/edges/{id}", s.session(http.HandlerFunc(s.handleUpdateEdge)))
-	mux.Handle("DELETE /api/edges/{id}", s.session(http.HandlerFunc(s.handleRemoveEdge)))
-	mux.Handle("GET /api/dirs", s.session(http.HandlerFunc(s.handleDirs)))
-	mux.Handle("GET /api/shells", s.session(http.HandlerFunc(s.handleShells)))
-	mux.Handle("GET /ws/events", s.session(http.HandlerFunc(s.handleEventsWS)))
-	mux.Handle("GET /ws/term/{id}", s.session(http.HandlerFunc(s.handleTermWS)))
-	for _, r := range s.extraRoutes {
-		mux.Handle(r.pattern, s.session(r.handler))
-	}
-	// Terminal-scoped endpoints (per-terminal token).
-	mux.Handle("POST /cli", s.terminalAuth(http.HandlerFunc(s.handleCLI)))
-	mux.Handle("POST /hooks/{agent}", s.terminalAuth(http.HandlerFunc(s.handleHook)))
-	// UI.
-	mux.Handle("GET /", s.ui(webui.Handler()))
-	return s.guard(mux)
+	api := Session(s.opts.Token, s.APIHandler())
+	mux.Handle("/api/", api)
+	mux.Handle("/ws/", api)
+	term := s.TerminalHandler()
+	mux.Handle("POST /cli", term)
+	mux.Handle("POST /hooks/{agent}", term)
+	mux.Handle("/", UI(s.opts.Token, webui.Handler()))
+	return Guard(s.opts.Port, mux)
 }
 
-// guard rejects requests whose Host isn't this loopback server and
+// APIHandler serves the workspace's browser API (/api/…, /ws/…). It has no
+// session check of its own: wrap it with Session.
+func (s *Server) APIHandler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/state", s.handleState)
+	mux.HandleFunc("POST /api/nodes", s.handleAddNode)
+	mux.HandleFunc("PATCH /api/nodes/{id}", s.handleUpdateNode)
+	mux.HandleFunc("DELETE /api/nodes/{id}", s.handleRemoveNode)
+	mux.HandleFunc("POST /api/nodes/{id}/{action}", s.handleNodeAction)
+	mux.HandleFunc("POST /api/edges", s.handleAddEdge)
+	mux.HandleFunc("PATCH /api/edges/{id}", s.handleUpdateEdge)
+	mux.HandleFunc("DELETE /api/edges/{id}", s.handleRemoveEdge)
+	mux.HandleFunc("GET /api/dirs", s.handleDirs)
+	mux.HandleFunc("GET /api/shells", s.handleShells)
+	mux.HandleFunc("GET /ws/events", s.handleEventsWS)
+	mux.HandleFunc("GET /ws/term/{id}", s.handleTermWS)
+	for _, r := range s.extraRoutes {
+		mux.Handle(r.pattern, r.handler)
+	}
+	return mux
+}
+
+// TerminalHandler serves the endpoints called from inside the workspace's
+// terminals (POST /cli, POST /hooks/{agent}), authenticated per terminal.
+func (s *Server) TerminalHandler() http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("POST /cli", s.terminalAuth(http.HandlerFunc(s.handleCLI)))
+	mux.Handle("POST /hooks/{agent}", s.terminalAuth(http.HandlerFunc(s.handleHook)))
+	return mux
+}
+
+// HasTerminal reports whether id is one of this workspace's terminals.
+func (s *Server) HasTerminal(id string) bool {
+	n, ok := s.store.Node(id)
+	return ok && n.Terminal != nil
+}
+
+// Guard rejects requests whose Host isn't this loopback server on port and
 // cross-origin state-changing requests.
-func (s *Server) guard(next http.Handler) http.Handler {
-	port := strconv.Itoa(s.opts.Port)
-	hosts := map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true, "[::1]:" + port: true}
+func Guard(port int, next http.Handler) http.Handler {
+	p := strconv.Itoa(port)
+	hosts := map[string]bool{"127.0.0.1:" + p: true, "localhost:" + p: true, "[::1]:" + p: true}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !hosts[r.Host] {
 			http.Error(w, "forbidden host", http.StatusForbidden)
@@ -188,7 +213,9 @@ func (s *Server) guard(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) validSession(r *http.Request) bool {
+// ValidSession reports whether r carries the session token (cookie or
+// Authorization: Bearer).
+func ValidSession(r *http.Request, token string) bool {
 	tok := ""
 	if c, err := r.Cookie(SessionCookie); err == nil {
 		tok = c.Value
@@ -196,12 +223,13 @@ func (s *Server) validSession(r *http.Request) bool {
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		tok = strings.TrimPrefix(h, "Bearer ")
 	}
-	return tok != "" && subtle.ConstantTimeCompare([]byte(tok), []byte(s.opts.Token)) == 1
+	return tok != "" && subtle.ConstantTimeCompare([]byte(tok), []byte(token)) == 1
 }
 
-func (s *Server) session(next http.Handler) http.Handler {
+// Session answers 401 to requests without a valid session.
+func Session(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !s.validSession(r) {
+		if !ValidSession(r, token) {
 			writeError(w, http.StatusUnauthorized, "missing or invalid session")
 			return
 		}
@@ -209,23 +237,35 @@ func (s *Server) session(next http.Handler) http.Handler {
 	})
 }
 
-// ui accepts ?token= once, sets the session cookie and redirects to a clean
-// URL; without a session it shows a hint instead of the app.
-func (s *Server) ui(next http.Handler) http.Handler {
+// UI accepts ?token= once, sets the session cookie and redirects to the URL
+// without it (other parameters, like ?ws=, are kept); without a session it
+// shows a hint instead of the app.
+func UI(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if tok := r.URL.Query().Get("token"); tok != "" {
-			if subtle.ConstantTimeCompare([]byte(tok), []byte(s.opts.Token)) != 1 {
+		// Registered as "/" (a "GET /" pattern would clash with "/api/").
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		q := r.URL.Query()
+		if tok := q.Get("token"); tok != "" {
+			if subtle.ConstantTimeCompare([]byte(tok), []byte(token)) != 1 {
 				http.Error(w, "invalid token", http.StatusUnauthorized)
 				return
 			}
 			http.SetCookie(w, &http.Cookie{
-				Name: SessionCookie, Value: s.opts.Token, Path: "/",
+				Name: SessionCookie, Value: token, Path: "/",
 				HttpOnly: true, SameSite: http.SameSiteStrictMode,
 			})
-			http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
+			q.Del("token")
+			dest := r.URL.Path
+			if len(q) > 0 {
+				dest += "?" + q.Encode()
+			}
+			http.Redirect(w, r, dest, http.StatusSeeOther)
 			return
 		}
-		if !s.validSession(r) {
+		if !ValidSession(r, token) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusUnauthorized)
 			fmt.Fprint(w, `<!doctype html><meta charset="utf-8"><title>Squad</title>`+
