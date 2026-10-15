@@ -2,6 +2,22 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, pasta e shell por terminal, fonte de ícones
+
+- **Pasta do terminal:** absoluta, `~/…` ou relativa ao workspace (`ResolveCwd` em `internal/server`). A relativa segue o workspace se a pasta dele mudar. Criar ou editar com uma pasta inexistente dá 400 (`folder not found: …`), em vez de um terminal que não abre.
+- **`GET /api/dirs?path=…`:** subpastas do trecho digitado, escritas do jeito que foram digitadas (relativas continuam relativas). Pastas ocultas só aparecem com `.`; até 50 sugestões.
+- **`GET /api/shells`:** shells instalados com nome amigável (Git Bash, PowerShell 7, Windows PowerShell, cmd; no Unix, os candidatos mais o `/etc/shells`, sem `tmux`/`screen`), o padrão primeiro.
+- **Iniciar e reiniciar** agora remontam o terminal a partir do nó (`StartTerminal`), para valer o que foi editado. O `Manager.Restart` reaproveitava a spec antiga.
+- **Web:**
+  - `TerminalForm` substitui o `NewTerminalForm` e também edita ("Configurar…" no menu do terminal), com "Salvar e reiniciar" quando muda agente, comando, pasta ou shell;
+  - `DirInput` faz as sugestões de pasta;
+  - o rodapé do terminal mostra a pasta resolvida, cortando o começo do caminho e não o fim;
+  - `~` também abrevia `C:\Users\<nome>`.
+- **Ícones:** `web/src/lib/icons.ts` lista os 63 ícones usados (tipo `IconName`). `scripts/subset-icons.py` (fontTools) mantém só as ligaduras deles, fixa peso 400, grade 0 e opsz 20 e mantém o eixo FILL: 4 MB viram 8,8 KB. O binário cai de 13,5 MB para 9,5 MB. `npm run build` falha se a lista e a fonte divergirem (`make icons`).
+- **Testes:** `TestResolveCwd`, `TestTerminalFolder` (pasta relativa, inexistente, edição + reinício), `TestDirSuggestions`, `TestDirsAndShellsEndpoints`, `TestShellOptionsLabels`, `TestEtcShells`. A interface foi conferida com o Chrome headless: sugestões de pasta, Tab, criação, "Configurar…" com reinício e os ícones (incluindo o preenchido).
+
+**Decisão:** a pasta é guardada do jeito que foi digitada (sem a barra final), e não resolvida, para que as relativas acompanhem o workspace.
+
 ## 2026-10-15, Windows: Git Bash como shell padrão
 
 No primeiro teste num Windows real, nenhum terminal abria: `failed to create process: This program is blocked by group policy`. A máquina bloqueia o PowerShell, que era o primeiro da lista.

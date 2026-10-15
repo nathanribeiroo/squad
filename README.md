@@ -8,7 +8,8 @@ Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, 
 
 - Go 1.26+ (para compilar).
 - Node 22+ (só para compilar a interface web).
-- macOS ou Linux testados; Windows compila (ConPTY) mas ainda não foi testado numa máquina Windows.
+- Python com `fonttools` e `brotli` (só para regenerar a fonte de ícones, `make icons`).
+- macOS e Linux testados. No Windows, o básico foi testado numa máquina real (terminais no Git Bash, `squad list`, hooks do Claude Code).
 
 ## Instalação
 
@@ -51,6 +52,8 @@ make web                                      # npm ci + build → internal/webu
 cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor em 7420
 ```
 
+**Ícones:** a fonte Material Symbols é cortada para os ícones listados em `web/src/lib/icons.ts` (cerca de 9 KB em vez de 4 MB). Para usar um ícone novo, acrescente o nome nessa lista e rode `make icons`. O `npm run build` recusa uma fonte desatualizada.
+
 **Atalhos:**
 - canvas: `V` selecionar, `H` mover, `T` novo terminal, `N` nota, `P` portal;
 - globais: `⌥A` gaveta de atividade, `⌥P` pausar conversas, `⌥K` composer.
@@ -58,6 +61,8 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 **Conexões:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó. Um clique no fio o seleciona; para desligar, use Delete ou o botão "Desligar". Duplo clique no fio cria um ponto de curva, que pode ser arrastado; duplo clique no ponto o remove.
 
 **Terminais:**
+- no formulário de criação (`T`), **Pasta** aceita um caminho absoluto, `~/…` ou relativo à pasta do workspace, com sugestões enquanto você digita (↑/↓, Enter, Tab completa). **Shell** lista os shells instalados; "Padrão" segue a ordem descrita em "Shell dos terminais";
+- **Configurar…**, no menu `⋯` do terminal, edita esses campos; mudar o que o inicia (agente, comando, pasta ou shell) salva e reinicia o terminal;
 - clique para digitar ("teclado aqui"); `⌥Esc` devolve o teclado ao canvas;
 - arraste pelo cabeçalho e redimensione pelas alças (o PTY acompanha);
 - com zoom abaixo de 60% vira miniatura, e abaixo de 35%, cartão;
