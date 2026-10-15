@@ -146,6 +146,15 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		writeError(w, storeErrorCode(err), err.Error())
 		return
 	}
+	// The canvas resizes a terminal by patching its cols×rows (with the node
+	// size); a running process follows at once.
+	if n.Terminal != nil && p.Terminal != nil && n.Terminal.Cols > 0 && n.Terminal.Rows > 0 {
+		if t := s.terms.Get(id); t != nil {
+			if c, r := t.Screen().Size(); c != n.Terminal.Cols || r != n.Terminal.Rows {
+				_ = t.Resize(n.Terminal.Cols, n.Terminal.Rows)
+			}
+		}
+	}
 	s.bus.Publish(events.NodeUpdated, n)
 	writeJSON(w, http.StatusOK, n)
 }

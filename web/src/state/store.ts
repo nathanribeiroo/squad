@@ -33,6 +33,17 @@ export interface NoteEdit {
   at: number;
 }
 
+export type ZoomLevel = 'live' | 'mini' | 'card';
+
+/** Zoom level with ±0.03 hysteresis around 0.6 and 0.35 (handoff §2). */
+export function levelFor(z: number, prev: ZoomLevel): ZoomLevel {
+  const h = 0.03;
+  if (prev === 'live' && z >= 0.6 - h) return 'live';
+  if (prev === 'mini' && z >= 0.35 - h && z < 0.6 + h) return 'mini';
+  if (prev === 'card' && z < 0.35 + h) return 'card';
+  return z >= 0.6 ? 'live' : z >= 0.35 ? 'mini' : 'card';
+}
+
 interface SquadState {
   workspace: Workspace | null;
   runtime: Record<string, TerminalRuntime>;
@@ -48,6 +59,10 @@ interface SquadState {
   focusedTerminal: string | null;
   selectedNode: string | null;
   tool: 'select' | 'pan';
+  /** Level from the live zoom (changes during a gesture). */
+  zoomLevel: ZoomLevel;
+  /** Zoom content is laid out for; updated when a gesture ends. */
+  renderZoom: number;
   theme: 'dark' | 'light';
   termTheme: 'noite' | 'papel';
 
@@ -60,6 +75,7 @@ interface SquadState {
   setFocusedTerminal(id: string | null): void;
   setSelectedNode(id: string | null): void;
   setTool(t: SquadState['tool']): void;
+  setZoom(z: number, settled: boolean): void;
   setTheme(t: SquadState['theme']): void;
   setTermTheme(t: SquadState['termTheme']): void;
   moveNodeLocal(id: string, x: number, y: number): void;
@@ -115,6 +131,8 @@ export const useSquad = create<SquadState>((set, get) => ({
   focusedTerminal: null,
   selectedNode: null,
   tool: 'select',
+  zoomLevel: 'live',
+  renderZoom: 1,
   theme: stored<'dark' | 'light'>('squad.theme', prefersDark() ? 'dark' : 'light'),
   termTheme: stored<'noite' | 'papel'>('squad.term', stored('squad.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
 
@@ -233,6 +251,12 @@ export const useSquad = create<SquadState>((set, get) => ({
   setFocusedTerminal: (focusedTerminal) => set({ focusedTerminal }),
   setSelectedNode: (selectedNode) => set({ selectedNode }),
   setTool: (tool) => set({ tool }),
+  setZoom: (z, settled) => {
+    const st = get();
+    const zoomLevel = levelFor(z, st.zoomLevel);
+    if (zoomLevel !== st.zoomLevel) set({ zoomLevel });
+    if (settled && z !== st.renderZoom) set({ renderZoom: z });
+  },
   // The terminal palette follows the UI theme; it can still be overridden afterwards.
   setTheme: (theme) => {
     const termTheme = theme === 'dark' ? 'noite' : 'papel';

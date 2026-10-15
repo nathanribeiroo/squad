@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -19,6 +19,7 @@ import type { WNode } from '../api/types';
 import { MiniMapAndZoom } from '../components/ZoomControls';
 import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
+import { pruneSessions } from '../term/session';
 import { WireEdge } from './edges/WireEdge';
 import { NoteNode } from './nodes/NoteNode';
 import { PortalNode } from './nodes/PortalNode';
@@ -72,7 +73,9 @@ export function Canvas() {
       const byId = new Map(prev.map((n) => [n.id, n]));
       return (ws?.nodes ?? []).map((n) => toFlow(n, byId.get(n.id)));
     });
+    if (ws) pruneSessions(new Set(ws.nodes.filter((n) => n.kind === 'terminal').map((n) => n.id)));
   }, [ws?.nodes]);
+  useEffect(() => useSquad.getState().setZoom(defaultViewport.zoom, true), [defaultViewport]);
   useEffect(() => {
     setEdges((prev) => {
       const byId = new Map(prev.map((e) => [e.id, e]));
@@ -123,7 +126,15 @@ export function Canvas() {
     }
   }, []);
 
+  const onMove = useCallback((_: unknown, v: Viewport) => useSquad.getState().setZoom(v.zoom, false), []);
+  // Content is re-laid out for the new zoom only when the gesture ends
+  // (handoff: freeze during the gesture, redraw on move end).
+  const settle = useRef<number | undefined>(undefined);
   const onMoveEnd = useCallback((_: unknown, v: Viewport) => {
+    // Programmatic zoom (pinch over a terminal) ends on every tick; wait for
+    // the gesture to stop before re-laying out the terminals.
+    window.clearTimeout(settle.current);
+    settle.current = window.setTimeout(() => useSquad.getState().setZoom(v.zoom, true), 120);
     try {
       localStorage.setItem(VIEWPORT_KEY, JSON.stringify(v));
     } catch {
@@ -148,6 +159,7 @@ export function Canvas() {
       onNodeDragStop={onNodeDragStop}
       onSelectionChange={({ nodes: sel }) => setSelected(sel.length === 1 ? sel[0].id : null)}
       onPaneClick={() => setFocused(null)}
+      onMove={onMove}
       onMoveEnd={onMoveEnd}
       connectionMode={ConnectionMode.Loose}
       connectionRadius={28}

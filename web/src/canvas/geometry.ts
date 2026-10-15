@@ -62,7 +62,8 @@ const f = (n: number) => Math.round(n * 10) / 10;
 export function wire(a: Rect, b: Rect, rope: [number, number][] = []): Wire {
   const [s, t] = anchors(a, b);
   const dist = Math.hypot(t.x - s.x, t.y - s.y);
-  const reach = Math.min(200, Math.max(40, dist * 0.4));
+  // Control points reach out from the sides; short wires stay short (no loop).
+  const reach = Math.min(200, Math.max(Math.min(40, dist * 0.5), dist * 0.4));
   const segs: [Pt, Pt, Pt, Pt][] = [];
 
   if (rope.length === 0) {
