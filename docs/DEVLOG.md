@@ -2,6 +2,23 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, B5 notas
+
+- **`internal/notes`:**
+  - cada nota é um `.md` em `~/.squad/workspaces/<id>/notes/`;
+  - **nome estável por padrão**: um slug do título com sufixo `-2`, `-3`… em colisões, sem renomear pela primeira linha como o Maestri faz;
+  - um watcher (`fsnotify`) publica `note.edited` com `author: external` para edições fora do Squad, e as escritas pelo Squad publicam o nome do autor (agente ou `user`).
+- **CLI:** `squad note list|read|write|edit|create|help`.
+  - Só alcança notas ligadas ao terminal, inclusive cadeias nota↔nota.
+  - O `read` sai numerado, com `[N lines total]` e intervalo opcional.
+  - O `edit` exige trecho **único** (409 se ausente ou repetido).
+  - O `create` liga a nota ao criador e a posiciona à esquerda dele.
+  - Uma nota bloqueada dá 423.
+- **API para a interface:** `GET/PUT /api/notes/{id}`; nós de nota criados por `POST /api/nodes` recebem o arquivo automaticamente.
+- **README:** início rápido para testar sem a interface (curl na API).
+
+**Decisão:** apagar o nó de uma nota **não apaga** o arquivo `.md`. É não destrutivo; fica para a interface oferecer "apagar também o arquivo".
+
 ## 2026-10-15, B4 adaptadores de agentes
 
 - **`internal/agents`:**

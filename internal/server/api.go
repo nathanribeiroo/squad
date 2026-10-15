@@ -69,6 +69,12 @@ func (s *Server) handleAddNode(w http.ResponseWriter, r *http.Request) {
 	if n.W == 0 && n.H == 0 {
 		n.W, n.H = defaultSize(n.Kind)
 	}
+	if s.prepareNode != nil {
+		if err := s.prepareNode(&n); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
 	n, err := s.store.AddNode(n)
 	if err != nil {
 		writeError(w, storeErrorCode(err), err.Error())
