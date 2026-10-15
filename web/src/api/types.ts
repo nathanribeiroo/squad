@@ -16,6 +16,12 @@ export interface TerminalData {
   rows?: number;
 }
 
+export interface ShellOption {
+  path: string;
+  label: string;
+  default?: boolean;
+}
+
 export interface NoteData {
   title: string;
   file: string;

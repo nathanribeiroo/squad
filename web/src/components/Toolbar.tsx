@@ -1,6 +1,6 @@
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
-import { NewTerminalForm } from './NewTerminalForm';
+import { TerminalForm } from './TerminalForm';
 import './Toolbar.css';
 
 type Tool = { icon: string; label: string; key: string; action: () => void; active?: boolean; disabled?: boolean };
@@ -10,6 +10,8 @@ export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => 
   const setTool = useSquad((s) => s.setTool);
   const newTerm = useSquad((s) => s.newTermOpen);
   const setNewTerm = useSquad((s) => s.setNewTerm);
+  const setEditTerm = useSquad((s) => s.setEditTerm);
+  const editNode = useSquad((s) => (s.editTermId ? s.workspace?.nodes.find((n) => n.id === s.editTermId && n.terminal) : undefined));
 
   const nav: Tool[] = [
     { icon: 'near_me', label: 'Selecionar', key: 'V', action: () => setTool('select'), active: tool === 'select' },
@@ -45,7 +47,8 @@ export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => 
         <span className="tbx-divider" />
         {create.map(render)}
       </nav>
-      {newTerm && <NewTerminalForm onClose={() => setNewTerm(false)} />}
+      {newTerm && <TerminalForm onClose={() => setNewTerm(false)} />}
+      {editNode && <TerminalForm key={editNode.id} node={editNode} onClose={() => setEditTerm(null)} />}
     </>
   );
 }

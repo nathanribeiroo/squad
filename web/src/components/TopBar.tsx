@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/client';
+import { shortPath } from '../lib/paths';
 import { useNow } from '../lib/useNow';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -17,11 +18,6 @@ function Logo() {
       <span className="tb-wordmark">squad</span>
     </div>
   );
-}
-
-function shortPath(p: string): string {
-  const m = p.match(/^\/(Users|home)\/[^/]+/);
-  return m ? '~' + p.slice(m[0].length) : p;
 }
 
 export function TopBar() {

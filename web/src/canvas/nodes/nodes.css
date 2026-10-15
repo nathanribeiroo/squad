@@ -52,7 +52,9 @@
 }
 .tn-stopped.err { background: var(--stb-err); color: var(--st-err); }
 .tn-foot { height: var(--node-footer-h); flex: none; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-top: 1px solid var(--line); font-weight: 500; font-size: 10px; color: var(--text-3); white-space: nowrap; }
-.tn-cwd { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* rtl puts the ellipsis on the left, so the end of the path stays visible;
+   the <bdi> inside keeps the path itself left-to-right. */
+.tn-cwd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; direction: rtl; }
 
 /* Menu */
 .node-menu { position: relative; flex: none; overflow: visible; }
