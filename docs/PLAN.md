@@ -16,8 +16,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 |---|---|---|
 | B0 Esqueleto | `feat/b0-bootstrap` | concluído |
 | B1 Núcleo de terminal | `feat/b1-terminal-core` | concluído |
-| B2 Servidor (HTTP, WebSocket, persistência) | `feat/b2-server` | em andamento |
-| B3 Conversa entre agentes | `feat/b3-agent-bus` | pendente |
+| B2 Servidor (HTTP, WebSocket, persistência) | `feat/b2-server` | concluído |
+| B3 Conversa entre agentes | `feat/b3-agent-bus` | em andamento |
 | B4 Adaptadores de agentes (hooks) | `feat/b4-agent-adapters` | pendente |
 | B5 Notas | `feat/b5-notes` | pendente |
 | W1 Web: shell e tokens | `feat/w1-web-shell` | pendente |
