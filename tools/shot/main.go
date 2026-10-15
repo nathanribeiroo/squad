@@ -32,7 +32,7 @@ func main() {
 	scale := flag.Float64("scale", 1, "device scale factor")
 	js := flag.String("eval", "", "JavaScript to run before capturing")
 	settle := flag.Duration("settle", 500*time.Millisecond, "wait after -eval")
-	steps := flag.String("steps", "", "real input before capturing, ';'-separated: click X Y | drag X1 Y1 X2 Y2 | type TEXT | key NAME [alt|ctrl|shift|meta] | wheel X Y DY [ctrl] | sleep DUR | eval JS")
+	steps := flag.String("steps", "", "real input before capturing, ';'-separated: click X Y | dblclick X Y | drag X1 Y1 X2 Y2 | type TEXT | key NAME [alt|ctrl|shift|meta] | wheel X Y DY [ctrl] | sleep DUR | eval JS | shot FILE")
 	flag.Parse()
 	if *url == "" {
 		fmt.Fprintln(os.Stderr, "missing -url")
@@ -204,6 +204,20 @@ func runStep(ctx context.Context, t *chromedp.Target, step string) error {
 			return err
 		}
 		return mouse(input.DispatchMouseEventTypeMouseReleased, x, y, 0, 0)
+	case "dblclick":
+		x, y := num(1), num(2)
+		for _, n := range []int64{1, 2} {
+			for _, typ := range []input.DispatchMouseEventType{input.DispatchMouseEventTypeMousePressed, input.DispatchMouseEventTypeMouseReleased} {
+				p := input.DispatchMouseEventParams{Type: typ, X: x, Y: y, Button: input.MouseButtonLeft, ClickCount: n}
+				if typ == input.DispatchMouseEventTypeMousePressed {
+					p.Buttons = 1
+				}
+				if _, err := cdp.Call(ctx, t, input.DispatchMouseEvent, p); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
 	case "drag":
 		x1, y1, x2, y2 := num(1), num(2), num(3), num(4)
 		if err := mouse(input.DispatchMouseEventTypeMouseMoved, x1, y1, 0, 0); err != nil {
@@ -262,6 +276,13 @@ func runStep(ctx context.Context, t *chromedp.Target, step string) error {
 		}
 		time.Sleep(d)
 		return nil
+	case "shot":
+		// An intermediate capture of the viewport: shot FILE
+		res, err := cdp.Call(ctx, t, page.CaptureScreenshot, page.CaptureScreenshotParams{Format: page.CaptureScreenshotFormatPng})
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(f[1], res.Data, 0o644)
 	case "eval":
 		await := true
 		_, err := cdp.Call(ctx, t, runtime.Evaluate, runtime.EvaluateParams{Expression: strings.TrimSpace(strings.TrimPrefix(step, "eval")), AwaitPromise: &await})

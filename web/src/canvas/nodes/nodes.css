@@ -41,6 +41,7 @@
 .state-pill { height: 22px; padding: 0 8px 0 6px; border-radius: 11px; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; white-space: nowrap; flex: none; }
 .state-pill.compact { height: 20px; font-size: 11px; padding: 0 7px 0 5px; }
 .state-time { font-size: 10.5px; font-weight: 500; }
+.tn-strip { height: var(--strip-h); flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tn-body { flex: 1; min-height: 0; background: var(--term-bg); position: relative; cursor: text; }
 .xterm-slot { position: absolute; left: 10px; top: 8px; transform-origin: 0 0; overflow: hidden; }
 .xterm-host, .xterm-host .xterm { width: 100%; height: 100%; }

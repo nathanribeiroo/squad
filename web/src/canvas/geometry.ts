@@ -85,13 +85,38 @@ export function wire(a: Rect, b: Rect, rope: [number, number][] = []): Wire {
   }
 
   let path = `M ${f(s.x)} ${f(s.y)}`;
-  let low: Pt = s;
+  const samples: Pt[] = [];
   for (const [p0, p1, p2, p3] of segs) {
     path += ` C ${f(p1.x)} ${f(p1.y)}, ${f(p2.x)} ${f(p2.y)}, ${f(p3.x)} ${f(p3.y)}`;
-    for (let i = 1; i <= 24; i++) {
-      const p = cubicAt(p0, p1, p2, p3, i / 24);
-      if (p.y > low.y) low = p;
-    }
+    for (let i = 0; i < 24; i++) samples.push(cubicAt(p0, p1, p2, p3, i / 24));
+  }
+  samples.push(t);
+  // Pills sit at the lowest point of a hanging wire; a wire between stacked
+  // nodes has its lowest point on a node, so it uses the middle instead.
+  let low = samples[Math.floor(samples.length / 2)];
+  if (s.ny === 0) {
+    const from = Math.floor(samples.length * 0.15);
+    const to = Math.ceil(samples.length * 0.85);
+    for (let i = from; i < to; i++) if (samples[i].y > low.y) low = samples[i];
   }
   return { path, s, t, low };
+}
+
+/** Inserts a bend point where it lengthens the wire the least. */
+export function insertRopePoint(a: Rect, b: Rect, rope: [number, number][], p: Pt): [number, number][] {
+  const { s, t } = wire(a, b, rope);
+  const pts: Pt[] = [s, ...rope.map(([x, y]) => ({ x, y })), t];
+  const d = (u: Pt, v: Pt) => Math.hypot(u.x - v.x, u.y - v.y);
+  let best = 0;
+  let cost = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const c = d(pts[i], p) + d(p, pts[i + 1]) - d(pts[i], pts[i + 1]);
+    if (c < cost) {
+      cost = c;
+      best = i;
+    }
+  }
+  const next = rope.slice();
+  next.splice(best, 0, [Math.round(p.x), Math.round(p.y)]);
+  return next;
 }

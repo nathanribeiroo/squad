@@ -4,6 +4,7 @@ import {
   BackgroundVariant,
   ConnectionMode,
   ReactFlow,
+  useReactFlow,
   applyEdgeChanges,
   applyNodeChanges,
   type Connection,
@@ -21,6 +22,7 @@ import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
 import { pruneSessions } from '../term/session';
 import { WireEdge } from './edges/WireEdge';
+import { insertRopePoint } from './geometry';
 import { NoteNode } from './nodes/NoteNode';
 import { PortalNode } from './nodes/PortalNode';
 import { TerminalNode } from './nodes/TerminalNode';
@@ -142,6 +144,21 @@ export function Canvas() {
     }
   }, []);
 
+  const rf = useReactFlow();
+  // Double-clicking a wire adds a bend point there.
+  const onEdgeDoubleClick = useCallback(
+    (e: React.MouseEvent, edge: Edge) => {
+      const a = rf.getInternalNode(edge.source);
+      const b = rf.getInternalNode(edge.target);
+      const we = useSquad.getState().workspace?.edges.find((x) => x.id === edge.id);
+      if (!a || !b || !we) return;
+      const rect = (n: typeof a) => ({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: n.measured.width ?? 0, h: n.measured.height ?? 0 });
+      const p = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      api.updateEdge(edge.id, insertRopePoint(rect(a), rect(b), we.ropePoints ?? [], p)).catch((err: Error) => toast(err.message));
+    },
+    [rf],
+  );
+
   const pan = tool === 'pan';
 
   return (
@@ -156,6 +173,8 @@ export function Canvas() {
       isValidConnection={(c) => c.source !== c.target && !linked(c.source, c.target)}
       onBeforeDelete={onBeforeDelete}
       onEdgesDelete={onEdgesDelete}
+      onEdgeDoubleClick={onEdgeDoubleClick}
+      zoomOnDoubleClick={false}
       onNodeDragStop={onNodeDragStop}
       onSelectionChange={({ nodes: sel }) => setSelected(sel.length === 1 ? sel[0].id : null)}
       onPaneClick={() => setFocused(null)}

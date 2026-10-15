@@ -2,6 +2,37 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, W3 web: fios e conversa
+
+- **A conversa no fio, dirigida pelos eventos reais** (`request.sent`, `reply.sent`, `reply.received`, `request.cancelled`):
+  1. **Viajando:** o fio acende em âmbar da origem ao destino (`pathLength` = 100, traço animado em 600 ms) e o envelope "✉ id →" percorre a curva (CSS `offset-path`).
+  2. **Pendente:**
+     - fio tracejado em âmbar; a alça da origem fica cheia e a do destino ganha um anel;
+     - pílula com ampulheta, cronômetro e id no ponto mais baixo da curva.
+  3. **Resposta:** o fio acende em verde do destino à origem, com o envelope "← resposta id".
+     - Uma resposta que vem direto de um hook ou da tela estável chega só como `reply.received` (sem `reply.sent`); a animação de volta dispara pelos dois.
+  4. **Recebida:** o marcador "✓ id · 0:07" some em cerca de 4 s.
+  - Um pedido cancelado mostra "⊘ id cancelado".
+  - Com `prefers-reduced-motion`, as animações vão direto ao estado final.
+- **Faixas de remetente**, acima do terminal e nunca por cima:
+  - "Pedido id de X · a resposta volta para ele", na cor do papel de X;
+  - "Aguardando Y · pedido id · enviado há N s";
+  - "Resposta de Y · id · 7s", que fica 60 s ou até o próximo pedido.
+  - Quando a faixa aparece, a grade do terminal se reajusta (`ResizeObserver` no slot).
+- **Pausa e laço:**
+  - com as conversas pausadas, cada fio mostra um selo ⏸;
+  - ao atingir o limite de saltos, a gaveta registra "Laço: limite de N saltos atingido… Conversas pausadas até você retomar".
+- **Pontos de curva:**
+  - duplo clique no fio adiciona um ponto onde ele menos alonga a curva;
+  - o ponto pode ser arrastado (fio selecionado); duplo clique no ponto o remove;
+  - a curva passa pelos pontos (`PATCH /api/edges/{id}`).
+- **Taxa de pedidos:** "N/30 pedidos por min" agora é uma janela deslizante de 60 s no cliente (antes só subia).
+- **Rótulos no fio:** num fio entre nós empilhados, o ponto mais baixo cai sobre o nó, então as pílulas vão para o meio da curva. O "Desligar" se afasta de pontos de curva próximos.
+- **`tools/shot`:** ganhou os passos `dblclick` e `shot FILE` (capturas intermediárias na mesma página).
+- **Teste:** uma conversa real entre dois agentes falsos (`fakeagent` com o hook do Claude):
+  - o Planejador roda `squad ask Implementador …`, e o Implementador trabalha por 7 s e responde pelo hook `claude-stop`;
+  - as quatro fases, as faixas, os estados (Esperando resposta → Trabalhando/Terminou), a caixa e a gaveta ("Respondido em 0:07") foram capturados quadro a quadro.
+
 ## 2026-10-15, W2 web: nó de terminal
 
 - **Sessão de terminal (`web/src/term/session.ts`):**

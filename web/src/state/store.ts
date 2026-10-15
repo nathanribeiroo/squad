@@ -26,6 +26,17 @@ export interface Flight {
   phase: 'sending' | 'pending' | 'replying' | 'received' | 'cancelled';
   startedAt: number;
   updatedAt: number;
+  /** When the reply started travelling back (reply.sent, or reply.received when it came straight from a hook). */
+  replyAt?: number;
+  elapsedMs?: number;
+}
+
+/** Last reply an origin terminal got (its "reply" strip). */
+export interface LastReply {
+  id: string;
+  fromName: string;
+  elapsedMs: number;
+  at: number;
 }
 
 export interface NoteEdit {
@@ -52,6 +63,9 @@ interface SquadState {
   activity: ActivityItem[];
   flights: Record<string, Flight>;
   noteEdits: Record<string, NoteEdit>;
+  lastReply: Record<string, LastReply>;
+  /** Times of recent requests, for the per-minute rate in the top bar. */
+  sendTimes: number[];
   drawerOpen: boolean;
   composerOpen: boolean;
   composerTarget: string | null;
@@ -124,6 +138,8 @@ export const useSquad = create<SquadState>((set, get) => ({
   activity: [],
   flights: {},
   noteEdits: {},
+  lastReply: {},
+  sendTimes: [],
   drawerOpen: false,
   composerOpen: false,
   composerTarget: null,
@@ -141,7 +157,9 @@ export const useSquad = create<SquadState>((set, get) => ({
     for (const p of s.extra?.pending ?? []) {
       pending[p.id] = { id: p.id, from: p.from, to: p.to, phase: 'pending', startedAt: Date.parse(p.sentAt), updatedAt: Date.now() };
     }
-    set({ workspace: s.workspace, runtime: s.runtime ?? {}, extra: s.extra ?? emptyExtra, flights: pending });
+    // The server only reports a count; spread it as "now" so it decays.
+    const sendTimes = Array.from({ length: s.extra?.rate ?? 0 }, () => Date.now());
+    set({ workspace: s.workspace, runtime: s.runtime ?? {}, extra: s.extra ?? emptyExtra, flights: pending, sendTimes });
   },
 
   apply: (ev) => {
@@ -174,9 +192,13 @@ export const useSquad = create<SquadState>((set, get) => ({
         return;
       case 'request.sent': {
         const now = Date.now();
+        const lastReply = { ...st.lastReply };
+        delete lastReply[d.from];
         const p: PendingRequest = { id: d.id, from: d.from, to: d.to, fromName: d.fromName, toName: d.toName, preview: d.preview, hop: d.hop, sentAt: ev.time };
         set({
-          extra: { ...st.extra, rate: st.extra.rate + 1, pending: [...st.extra.pending.filter((x) => x.id !== p.id), p] },
+          lastReply,
+          sendTimes: [...st.sendTimes.filter((t) => now - t < 60_000), now],
+          extra: { ...st.extra, pending: [...st.extra.pending.filter((x) => x.id !== p.id), p] },
           flights: { ...st.flights, [d.id]: { id: d.id, from: d.from, to: d.to, phase: 'sending', startedAt: now, updatedAt: now } },
           activity: [
             { key: `req-${d.id}`, time: ev.time, id: d.id, from: d.from, to: d.to, fromName: d.fromName, toName: d.toName, text: d.preview ?? '', outcome: 'pending' as const },
@@ -192,7 +214,8 @@ export const useSquad = create<SquadState>((set, get) => ({
       }
       case 'reply.sent': {
         const f = st.flights[d.id];
-        if (f) set({ flights: { ...st.flights, [d.id]: { ...f, phase: 'replying', updatedAt: Date.now() } } });
+        const now = Date.now();
+        if (f) set({ flights: { ...st.flights, [d.id]: { ...f, phase: 'replying', updatedAt: now, replyAt: now } } });
         return;
       }
       case 'reply.received':
@@ -200,9 +223,12 @@ export const useSquad = create<SquadState>((set, get) => ({
         const cancelled = ev.type === 'request.cancelled';
         const f = st.flights[d.id];
         const flights = { ...st.flights };
-        if (f) flights[d.id] = { ...f, phase: cancelled ? 'cancelled' : 'received', updatedAt: Date.now() };
+        const now = Date.now();
+        if (f) flights[d.id] = { ...f, phase: cancelled ? 'cancelled' : 'received', updatedAt: now, replyAt: f.replyAt ?? now, elapsedMs: d.elapsedMs };
+        const lastReply = cancelled ? st.lastReply : { ...st.lastReply, [d.from]: { id: d.id, fromName: d.toName, elapsedMs: d.elapsedMs ?? 0, at: now } };
         set({
           flights,
+          lastReply,
           extra: { ...st.extra, pending: st.extra.pending.filter((x) => x.id !== d.id) },
           activity: st.activity.map((a) =>
             a.id === d.id ? { ...a, outcome: cancelled ? 'cancelled' : 'replied', elapsedMs: d.elapsedMs, source: d.source } : a,
@@ -227,9 +253,20 @@ export const useSquad = create<SquadState>((set, get) => ({
           ].slice(0, 200),
         });
         return;
-      case 'conversations.paused':
-        set({ extra: { ...st.extra, paused: !!d.paused } });
+      case 'conversations.paused': {
+        const reason: string = d.reason ?? '';
+        const loop = d.paused && reason.startsWith('hop limit');
+        set({
+          extra: { ...st.extra, paused: !!d.paused },
+          activity: loop
+            ? [
+                { key: `loop-${ev.time}`, time: ev.time, fromName: 'Squad', toName: 'todos', text: `Laço: limite de ${st.extra.limits.maxHops} saltos atingido ${reason.replace(/^hop limit \d+ reached /, '')}. Conversas pausadas até você retomar.`, outcome: 'held' as const },
+                ...st.activity,
+              ].slice(0, 200)
+            : st.activity,
+        });
         return;
+      }
       case 'note.edited': {
         const author = d.author === 'external' ? 'Edição externa' : d.author === 'user' ? 'Você' : d.author;
         set({

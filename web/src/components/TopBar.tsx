@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/client';
+import { useNow } from '../lib/useNow';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
 import './TopBar.css';
@@ -32,6 +33,9 @@ export function TopBar() {
   const setDrawer = useSquad((s) => s.setDrawer);
   const [menu, setMenu] = useState(false);
 
+  const sendTimes = useSquad((s) => s.sendTimes);
+  const now = useNow(5000, sendTimes.length > 0);
+  const rate = sendTimes.filter((t) => now - t < 60_000).length;
   const active = Object.values(runtime).filter((r) => r.activity === 'work' || r.activity === 'wait').length;
   const pending = extra.pending.length;
 
@@ -68,7 +72,7 @@ export function TopBar() {
       <span className="tb-rate" title="Pedidos entre agentes no último minuto">
         <Icon name="swap_horiz" size={18} />
         <span className="mono">
-          {extra.rate}/{extra.limits.perMinute}
+          {rate}/{extra.limits.perMinute}
         </span>
         <span>pedidos por min</span>
       </span>

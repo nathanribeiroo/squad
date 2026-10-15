@@ -220,9 +220,22 @@ export class TermSession {
 
   // ---- DOM ----
 
+  private slotObserver: ResizeObserver | null = null;
+
   /** Places the terminal in a slot (live zoom level). */
   attach(slot: HTMLElement) {
     slot.appendChild(this.host);
+    // The slot shrinks when a sender strip appears or the node is resized.
+    this.slotObserver?.disconnect();
+    let last = '';
+    this.slotObserver = new ResizeObserver(() => {
+      const size = `${slot.clientWidth}x${slot.clientHeight}`;
+      if (size !== last) {
+        last = size;
+        this.layout();
+      }
+    });
+    this.slotObserver.observe(slot);
     if (this.opened) {
       this.layout();
       return;
@@ -246,6 +259,8 @@ export class TermSession {
   }
 
   detach(slot: HTMLElement) {
+    this.slotObserver?.disconnect();
+    this.slotObserver = null;
     if (this.host.parentElement === slot) slot.removeChild(this.host);
   }
 
@@ -264,6 +279,7 @@ export class TermSession {
 
   dispose() {
     this.disposed = true;
+    this.slotObserver?.disconnect();
     window.clearTimeout(this.timer);
     const ws = this.ws;
     this.ws = null;
