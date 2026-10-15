@@ -3,6 +3,7 @@ package browser
 import (
 	"bytes"
 	"encoding/json"
+	"image/jpeg"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -152,6 +153,45 @@ func TestPageNavigateFramesAndInput(t *testing.T) {
 	waitState(t, p, "navigation error", func(s State) bool { return strings.Contains(s.Error, "ERR_CONNECTION_REFUSED") })
 	_ = p.Navigate(base)
 	waitState(t, p, "error cleared", func(s State) bool { return s.Error == "" && s.Title == "Teste" })
+}
+
+// Frames have the viewport's size even when the first load races the
+// screencast, which Chromium then captures at the headless window's size.
+func TestFramesHaveViewportSize(t *testing.T) {
+	m, site := testManager(t)
+	p, err := m.Page("p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Resize(638, 479); err != nil {
+		t.Fatal(err)
+	}
+	go func() { _ = p.Navigate(site) }()
+	frames, stop := p.Subscribe()
+	defer stop()
+	expect := func(when string) {
+		t.Helper()
+		got := 0
+		timeout := time.After(3 * time.Second)
+		for {
+			select {
+			case f := <-frames:
+				img, err := jpeg.DecodeConfig(bytes.NewReader(f.Data))
+				if err != nil || img.Width != 638 || img.Height != 479 {
+					t.Fatalf("%s: frame %dx%d (%v); want 638x479", when, img.Width, img.Height, err)
+				}
+				got++
+			case <-timeout:
+				if got == 0 {
+					t.Fatalf("%s: no frame", when)
+				}
+				return
+			}
+		}
+	}
+	expect("first load")
+	_ = p.Navigate(strings.Replace(site, "127.0.0.1", "localhost", 1) + "/2") // another site, another renderer
+	expect("other site")
 }
 
 func TestCloseTabsAndIdleBrowser(t *testing.T) {

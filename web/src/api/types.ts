@@ -30,6 +30,8 @@ export interface NoteData {
 
 export interface PortalData {
   url: string;
+  /** How agents refer to it (squad portal "Name" …). */
+  name?: string;
 }
 
 export interface WNode {

@@ -64,7 +64,7 @@ func debugf(w io.Writer, format string, a ...any) {
 // ~/.config/devin/skills/<name>/SKILL.md, same format).
 const skillMD = `---
 name: squad
-description: Talk to other agents and terminals connected to you on the Squad canvas, and read or write connected notes. Use when a message starts with [de: <Name> · pedido <id>], or when the user asks you to ask, tell, delegate to or check on another agent, or to read/update a note.
+description: Talk to other agents and terminals connected to you on the Squad canvas, read or write connected notes, and use connected portals (a live browser page). Use when a message starts with [de: <Name> · pedido <id>], when the user asks you to ask, tell, delegate to or check on another agent, to read/update a note, or to look at, click or test something in the portal / browser.
 ---
 
 # Squad
@@ -82,8 +82,23 @@ The ` + "`squad`" + ` command is on your PATH (if not, use "$SQUAD_CLI").
 - ` + "`squad check \"Name\"`" + `: read a terminal's current screen without sending anything. Text still in someone's input box is not addressed to you.
 - ` + "`squad reply <id> \"message\"`" + `: answer request <id>.
 - ` + "`squad note …`" + `: read and write connected notes (` + "`squad note help`" + `).
+- ` + "`squad portal …`" + `: use a connected portal, a browser page the user also sees live on the canvas (` + "`squad portal help`" + `).
 
 For long messages use a heredoc: ` + "`squad ask \"Name\" <<'EOF'`" + ` … ` + "`EOF`" + `.
+
+## Portals
+
+A portal is a real browser tab on the canvas; the user watches what you do
+in it (your clicks show with your name). Typical loop:
+
+1. ` + "`squad portal snapshot`" + `: the page as a list like ` + "`@e3 button \"Enviar\" [x,y wxh]`" + `.
+2. Act on refs: ` + "`squad portal click @e3`" + `, ` + "`squad portal fill @e2 \"text\"`" + `, ` + "`squad portal key Enter`" + `.
+3. Snapshot again after anything that changes the page; refs expire then.
+
+Also: ` + "`goto URL`" + `, ` + "`back`" + `, ` + "`reload`" + `, ` + "`scroll down`" + `, ` + "`screenshot`" + ` (prints
+a PNG path you can open), ` + "`eval \"js\"`" + ` and ` + "`console`" + ` (errors and logs).
+With several portals connected, name one first: ` + "`squad portal \"Docs\" snapshot`" + `.
+Use it to check your own work in the running app (dev server) after changes.
 
 ## Receiving requests
 

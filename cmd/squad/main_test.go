@@ -54,8 +54,11 @@ func TestInstallSkillDevin(t *testing.T) {
 func TestClientOutsideTerminal(t *testing.T) {
 	t.Setenv("SQUAD_TERMINAL_ID", "")
 	var out, errb bytes.Buffer
-	if code := run([]string{"list"}, &out, &errb); code != 1 || !strings.Contains(errb.String(), "only works inside a Squad terminal") {
-		t.Fatalf("list outside: %d %q", code, errb.String())
+	for _, cmd := range [][]string{{"list"}, {"note", "list"}, {"portal", "snapshot"}} {
+		errb.Reset()
+		if code := run(cmd, &out, &errb); code != 1 || !strings.Contains(errb.String(), "only works inside a Squad terminal") {
+			t.Fatalf("%s outside: %d %q", cmd[0], code, errb.String())
+		}
 	}
 	// Hooks never fail loudly.
 	if code := run([]string{"hook", "claude-stop"}, &out, &errb); code != 0 {

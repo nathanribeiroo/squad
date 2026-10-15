@@ -7,6 +7,7 @@ import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
 import { useNodeName, useSquad, type Flight } from '../../state/store';
 import { wire, type Rect, type Wire } from '../geometry';
+import { actionVerb, usePortalAction } from '../nodes/portalAction';
 import './wire.css';
 
 export type WireData = { rope?: [number, number][] };
@@ -56,6 +57,9 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
     [allFlights, source, target],
   );
   const now = useNow(200, flights.length > 0);
+  // An agent acting on a portal at the other end: "clicando" on this wire.
+  const portalActs = [usePortalAction(source), usePortalAction(target)];
+  const portalAct = portalActs.find((p) => p && (p.act.by === source || p.act.by === target)) ?? null;
   const [dragRope, setDragRope] = useState<[number, number][] | null>(null);
   if (!a || !b) return null;
 
@@ -92,6 +96,15 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
             className={`wire-light ${v.kind === 'out' ? 'wait' : 'done'}`}
           />
         ) : null,
+      )}
+      {portalAct && (
+        <path
+          key={`act-${portalAct.act.seq}`}
+          d={oriented(portalAct.act.by).path}
+          pathLength={100}
+          className="wire-light act"
+          style={{ stroke: `var(--r-${portalAct.role})` }}
+        />
       )}
       <circle className={`wire-end${endClass(originIsSource)}`} cx={w.s.x} cy={w.s.y} r={6} />
       <circle className={`wire-end${endClass(!originIsSource)}`} cx={w.t.x} cy={w.t.y} r={6} />
@@ -149,6 +162,21 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
               );
           }
         })}
+        {portalAct && (
+          <div
+            key={`act-${portalAct.act.seq}`}
+            className="wire-pill act"
+            style={{
+              transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y + visuals.length * 36}px)`,
+              borderColor: `var(--r-${portalAct.role})`,
+              color: `var(--r-${portalAct.role})`,
+            }}
+            title={`${portalAct.act.byName || 'Agente'} ${actionVerb(portalAct.act.kind)}${portalAct.act.label ? ` ${portalAct.act.label}` : ''}`}
+          >
+            <Icon name="ads_click" size={17} />
+            {actionVerb(portalAct.act.kind)}
+          </div>
+        )}
         {paused && visuals.length === 0 && !selected && (
           <div className="wire-paused" style={{ transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y}px)` }} title="Conversas pausadas">
             <Icon name="pause" size={16} />

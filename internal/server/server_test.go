@@ -270,3 +270,25 @@ func TestPatchTerminalSizeResizes(t *testing.T) {
 		t.Fatalf("size = %dx%d, want 100x30", c, r)
 	}
 }
+
+// Agents address a portal by its name: a new address keeps it.
+func TestPatchPortalKeepsName(t *testing.T) {
+	h := newHarness(t)
+	_, data := h.do("POST", "/api/nodes", store.Node{Kind: store.KindPortal, Portal: &store.PortalData{URL: "http://a", Name: "Docs"}}, nil)
+	var n store.Node
+	_ = json.Unmarshal(data, &n)
+	for _, tc := range []struct {
+		patch store.PortalData
+		want  store.PortalData
+	}{
+		{store.PortalData{URL: "http://b"}, store.PortalData{URL: "http://b", Name: "Docs"}},
+		{store.PortalData{URL: "http://b", Name: "  Loja "}, store.PortalData{URL: "http://b", Name: "Loja"}},
+	} {
+		resp, data := h.do("PATCH", "/api/nodes/"+n.ID, map[string]any{"portal": tc.patch}, nil)
+		var got store.Node
+		_ = json.Unmarshal(data, &got)
+		if resp.StatusCode != 200 || got.Portal == nil || *got.Portal != tc.want {
+			t.Fatalf("patch %+v: %d %s", tc.patch, resp.StatusCode, data)
+		}
+	}
+}

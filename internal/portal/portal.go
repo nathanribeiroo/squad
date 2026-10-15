@@ -64,6 +64,7 @@ func New(st *store.Store, bus *events.Bus, br *browser.Manager, port int, log *s
 // Start follows node changes: a new address navigates, a new size resizes,
 // a removed portal closes its tab.
 func (s *Service) Start() {
+	s.nameUnnamed()
 	ch, unsub := s.bus.Subscribe()
 	s.unsub = unsub
 	go func() {

@@ -265,3 +265,20 @@ func TestPortalWithoutBrowser(t *testing.T) {
 		t.Fatal("no error message")
 	}
 }
+
+func TestNormalizeURL(t *testing.T) {
+	for in, want := range map[string]string{
+		"localhost:5173":       "http://localhost:5173",
+		"127.0.0.1:8080/x":     "http://127.0.0.1:8080/x",
+		"example.com":          "https://example.com",
+		"http://example.com":   "http://example.com",
+		"https://a.b/c?d=1":    "https://a.b/c?d=1",
+		"about:blank":          "about:blank",
+		"  docs.squad.dev/a  ": "https://docs.squad.dev/a",
+		"":                     "",
+	} {
+		if got := NormalizeURL(in); got != want {
+			t.Errorf("NormalizeURL(%q) = %q; want %q", in, got, want)
+		}
+	}
+}

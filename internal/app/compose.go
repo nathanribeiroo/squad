@@ -111,10 +111,11 @@ func mentionRef(m store.Node) string {
 	case m.Note != nil:
 		return fmt.Sprintf("@%s = nota ligada %s (squad note read %q)", m.Note.Title, m.Note.File, m.Note.File)
 	case m.Portal != nil:
+		name := m.Label()
 		if m.Portal.URL != "" {
-			return fmt.Sprintf("@Portal = navegador ligado em %s", m.Portal.URL)
+			return fmt.Sprintf("@%s = portal (navegador) ligado em %s (squad portal %q snapshot)", name, m.Portal.URL, name)
 		}
-		return "@Portal = navegador ligado"
+		return fmt.Sprintf("@%s = portal (navegador) ligado (squad portal %q goto URL)", name, name)
 	}
 	return "@" + m.ID
 }

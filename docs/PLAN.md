@@ -114,4 +114,4 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 
 ## Depois (fora desta rodada)
 
-Papéis, andares (git worktree + CoW), comandos do portal para os agentes (`squad portal`), Ombro (resumos) e validação no Windows real. O portal ao vivo via CDP já está pronto (ver DEVLOG).
+Papéis, andares (git worktree + CoW), Ombro (resumos) e validação no Windows real. O portal ao vivo via CDP e os comandos do portal para os agentes (`squad portal`) já estão prontos (ver DEVLOG).

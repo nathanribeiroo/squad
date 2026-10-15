@@ -24,6 +24,7 @@ func commands() []command {
 		{"check", "read a connected terminal's current screen", runClient},
 		{"reply", "answer a pending request by id", runClient},
 		{"note", "read or write connected notes", runClient},
+		{"portal", "use a connected portal (browser): snapshot, click, fill…", runClient},
 		{"hook", "receive an agent hook (used by agent configs)", runHook},
 		{"install-skill", "install the Squad skill for Claude Code (-agent devin: Devin CLI)", runInstallSkill},
 		{"version", "print the version", runVersion},
