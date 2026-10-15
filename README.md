@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown e a gaveta de atividade. Ficam para depois: andares (git worktree), portal com navegador ao vivo, MCP e validação no Windows real. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade e vários workspaces. Ficam para depois: andares (git worktree), portal com navegador ao vivo, MCP e validação no Windows real. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -33,6 +33,11 @@ bin/squad serve -dir ~/meu-projeto
 A mesma skill vem empacotada em [`squad-skill.zip`](squad-skill.zip) (pasta `squad/` com o `SKILL.md`), gerada por `make skill-zip`. Ela só faz sentido onde o comando `squad` existe, ou seja, dentro dos terminais do Squad.
 
 O `serve` mostra uma URL com token e abre o navegador. Os dados ficam em `~/.squad` (troque com `SQUAD_HOME`) e a porta padrão é 7420 (`-port` ou `SQUAD_PORT`).
+
+**Workspaces:** cada pasta de projeto é um workspace, com o seu canvas, terminais e notas (`~/.squad/workspaces/<id>/`).
+- `squad serve -dir <pasta>` abre o workspace da pasta (`.` se omitida) e o cria na primeira vez.
+- Com o servidor já rodando, o mesmo comando abre ou cria o workspace naquele servidor, em vez de subir outro. Assim, `cd outro-projeto && squad serve` funciona a qualquer momento.
+- Todos os workspaces ficam rodando: trocar de workspace na interface só troca o que a tela mostra, e os agentes dos outros continuam trabalhando.
 
 ### Shell dos terminais
 
@@ -74,6 +79,13 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - cole imagens com ⌘V;
 - `⏎` envia.
 
+**Workspaces:**
+- o botão no topo, à esquerda, abre o seletor: cor, nome, pasta, agentes ativos e pedidos pendentes de cada um. Um ponto azul no botão indica atividade em outro workspace;
+- `⌥1`–`⌥9` trocam de workspace, e a URL guarda o workspace aberto (`?ws=<id>`), então dá para abrir dois em abas diferentes;
+- "Novo workspace" pede a pasta (com sugestões), um nome opcional e a cor. O lápis de cada linha edita esses campos; mudar a pasta vale para terminais novos ou reiniciados;
+- "Remover workspace" encerra os terminais dele e move o canvas e as notas para `~/.squad/trash/`. O último workspace não pode ser removido;
+- `squad ask`, `list` e `check` só enxergam terminais do mesmo workspace.
+
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 
 ### Testar a conversa sem a interface (pela API)
@@ -83,16 +95,18 @@ Em outro terminal, com o servidor rodando:
 ```sh
 TOKEN=$(python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.squad/run/server.json')))['token'])")
 API="curl -s -H Authorization:Bearer\ $TOKEN -H Content-Type:application/json"
+# a API de cada workspace fica em /w/<id>/; aqui, o primeiro da lista
+WS=$($API http://127.0.0.1:7420/api/workspaces | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["id"])')
 
 # dois terminais: um shell e um Claude Code
-SHELL_ID=$($API -d '{"kind":"terminal","terminal":{"name":"Shell","agent":"shell"}}' http://127.0.0.1:7420/api/nodes | python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])')
-CLAUDE_ID=$($API -d '{"kind":"terminal","terminal":{"name":"Claude","agent":"claude"}}' http://127.0.0.1:7420/api/nodes | python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])')
+SHELL_ID=$($API -d '{"kind":"terminal","terminal":{"name":"Shell","agent":"shell"}}' http://127.0.0.1:7420/w/$WS/api/nodes | python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])')
+CLAUDE_ID=$($API -d '{"kind":"terminal","terminal":{"name":"Claude","agent":"claude"}}' http://127.0.0.1:7420/w/$WS/api/nodes | python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])')
 
 # ligar os dois
-$API -d "{\"a\":\"$SHELL_ID\",\"b\":\"$CLAUDE_ID\"}" http://127.0.0.1:7420/api/edges
+$API -d "{\"a\":\"$SHELL_ID\",\"b\":\"$CLAUDE_ID\"}" http://127.0.0.1:7420/w/$WS/api/edges
 ```
 
-Para digitar no terminal "Shell", conecte um cliente WebSocket em `/ws/term/<id>`. Até a interface ficar pronta, o jeito mais simples é usar o próprio Claude: peça a ele, no terminal dele, que rode `squad list` e `squad ask "Shell" --raw "ls\n"`.
+Para digitar no terminal "Shell", conecte um cliente WebSocket em `/w/$WS/ws/term/<id>`. Até a interface ficar pronta, o jeito mais simples é usar o próprio Claude: peça a ele, no terminal dele, que rode `squad list` e `squad ask "Shell" --raw "ls\n"`.
 
 ## Como a conversa funciona
 
