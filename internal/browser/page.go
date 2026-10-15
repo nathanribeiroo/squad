@@ -55,6 +55,8 @@ type Page struct {
 	nextID    int
 	casting   bool
 	last      Frame
+	refs      map[string]Element // last snapshot; cleared when the page changes
+	console   []ConsoleEntry
 }
 
 func newPage(id string, ctx context.Context, cancel context.CancelFunc, log *slog.Logger) *Page {
@@ -65,6 +67,7 @@ func newPage(id string, ctx context.Context, cancel context.CancelFunc, log *slo
 	// Headless tabs are never focused; without this, focus and caret don't work.
 	_, _ = chromedp.Call(c, emulation.SetFocusEmulationEnabled, emulation.SetFocusEmulationEnabledParams{Enabled: true})
 	go p.watch()
+	go p.watchConsole(p.ctx)
 	return p
 }
 
@@ -98,6 +101,7 @@ func (p *Page) watch() {
 			}
 			p.mu.Lock()
 			p.mainFrame = ev.Frame.ID
+			p.refs = nil // a new document: old refs point nowhere
 			if !strings.HasPrefix(ev.Frame.URL, "chrome-error:") {
 				p.state.Error = ""
 				p.state.URL = ev.Frame.URL + ev.Frame.URLFragment
@@ -390,6 +394,16 @@ func (p *Page) Mouse(ev MouseEvent) error {
 	}
 	if typ == input.DispatchMouseEventTypeMousePressed {
 		params.Buttons = buttonBits[ev.Button]
+	}
+	if typ == input.DispatchMouseEventTypeMouseWheel {
+		// The protocol requires both deltas, and zero values are left out of
+		// the request.
+		if params.DeltaX == 0 {
+			params.DeltaX = 1e-9
+		}
+		if params.DeltaY == 0 {
+			params.DeltaY = 1e-9
+		}
 	}
 	c, done := p.call()
 	defer done()
