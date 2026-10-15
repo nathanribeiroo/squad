@@ -18,6 +18,8 @@ bin/squad install-skill          # opcional: ensina o Claude Code a usar o Squad
 bin/squad serve -dir ~/meu-projeto
 ```
 
+A mesma skill vem empacotada em [`squad-skill.zip`](squad-skill.zip) (pasta `squad/` com o `SKILL.md`), gerada por `make skill-zip`. Ela só faz sentido onde o comando `squad` existe, ou seja, dentro dos terminais do Squad.
+
 O `serve` mostra uma URL com token e abre o navegador. Os dados ficam em `~/.squad` (troque com `SQUAD_HOME`) e a porta padrão é 7420 (`-port` ou `SQUAD_PORT`).
 
 ### Interface
