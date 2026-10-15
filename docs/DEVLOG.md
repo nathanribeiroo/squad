@@ -2,6 +2,18 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, Windows: Git Bash como shell padrão
+
+No primeiro teste num Windows real, nenhum terminal abria: `failed to create process: This program is blocked by group policy`. A máquina bloqueia o PowerShell, que era o primeiro da lista.
+
+- **Ordem no Windows:** Git Bash, `pwsh`, `powershell`, `cmd`. O Git Bash (`<Git>\bin\bash.exe`) é procurado ao lado do `git.exe` no PATH, em `%ProgramFiles%\Git` e em `%LOCALAPPDATA%\Programs\Git`. Um `bash` sem caminho nunca passa pelo PATH, porque cairia no `System32\bash.exe` do WSL, onde o `squad.exe` e os agentes do Windows não funcionam.
+- **Git Bash** abre com `--login -i`, `CHERE_INVOKING=1` (o profile não troca para `$HOME`) e `MSYS2_PATH_TYPE=inherit` (mantém o PATH do Windows). As duas variáveis só entram se o usuário não as tiver definido.
+- **`SQUAD_SHELL`** (todas as plataformas) passa à frente do padrão. O shell escolhido no nó continua tendo prioridade.
+- **Fallback:** se o processo do shell não puder ser criado, o terminal tenta o próximo candidato. A linha do agente é montada com as aspas do primeiro candidato; o fallback só a quebra se cair até o `cmd` com um caminho entre aspas.
+- **Testes:** `shell_test.go` simula máquinas Windows (Git em `cmd\`, em `mingw64\bin`, instalação por usuário, sem Git, `SQUAD_SHELL`, WSL no PATH); `TestFallsBackWhenShellCannotStart` usa um "shell" que não executa.
+
+**Precisa de você (Windows):** confirmar que o Git Bash abre na pasta do workspace, que `squad list` funciona dentro dele e que o `claude` abre com os hooks (`/hooks`).
+
 ## 2026-10-15, A1 adaptador do Devin CLI
 
 Feito como o Codex: segue a documentação oficial do Devin CLI (docs.devin.ai/cli) e foi testado só com o agente falso.

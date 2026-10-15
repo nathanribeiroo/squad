@@ -257,3 +257,20 @@ func TestQuoteAndLaunchLine(t *testing.T) {
 		}
 	}
 }
+
+func TestFallsBackWhenShellCannotStart(t *testing.T) {
+	// Exists and is executable but can't be exec'd: like a shell blocked by
+	// group policy on Windows. The terminal must start the next candidate.
+	bad := filepath.Join(t.TempDir(), "blocked-shell")
+	if err := os.WriteFile(bad, []byte{0, 1, 2, 3}, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("SQUAD_SHELL", "/bin/sh")
+	_, term := newTerm(t, Spec{Name: "sh", Agent: "shell", Shell: bad})
+	if err := term.Input([]byte("echo fallback-$((1+1))\r")); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "echo output from the fallback shell", 5*time.Second, func() bool {
+		return strings.Contains(term.Snapshot(), "fallback-2")
+	})
+}
