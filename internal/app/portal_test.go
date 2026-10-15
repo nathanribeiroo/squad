@@ -177,7 +177,7 @@ func TestPortalCommands(t *testing.T) {
 	if r := e.run(a, "portal", "snapshot"); r.Code != 400 || !strings.Contains(r.Body, `"Portal", "Portal 2"`) {
 		t.Fatalf("ambiguous: %d %s", r.Code, r.Body)
 	}
-	if r := e.run(a, "portal", "Portal 2", "snapshot"); r.Code != 200 || !strings.Contains(r.Body, "Page: Segunda") {
+	if r := e.run(a, "portal", "portal 2", "snapshot"); r.Code != 200 || !strings.Contains(r.Body, "Page: Segunda") { // any case
 		t.Fatalf("named: %d %s", r.Code, r.Body)
 	}
 	if r := e.run(a, "portal", "Nope", "snapshot"); r.Code != 404 {

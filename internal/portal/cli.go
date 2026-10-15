@@ -88,7 +88,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 	case !commands[rest[0]]:
 		found := false
 		for _, n := range portals {
-			if n.Portal.Name == rest[0] || n.Portal.URL == rest[0] {
+			if strings.EqualFold(n.Portal.Name, rest[0]) || n.Portal.URL == rest[0] {
 				target, found = n, true
 				break
 			}

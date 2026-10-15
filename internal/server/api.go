@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/events"
@@ -148,7 +149,13 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 			*n.Note = *p.Note
 		}
 		if p.Portal != nil && n.Portal != nil {
+			// Agents address a portal by its name: changing the address keeps it.
+			name := strings.TrimSpace(p.Portal.Name)
+			if name == "" {
+				name = n.Portal.Name
+			}
 			*n.Portal = *p.Portal
+			n.Portal.Name = name
 		}
 		return nil
 	})
