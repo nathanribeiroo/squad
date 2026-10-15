@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { IconName } from '../lib/icons';
 import { roleKey, clock, elapsed } from '../lib/model';
 import { useNow } from '../lib/useNow';
 import { useNodes, useSquad, type ActivityItem } from '../state/store';
@@ -10,7 +11,7 @@ function useRoleOf() {
   return (id?: string) => roleKey(nodes.find((n) => n.id === id)?.terminal?.role);
 }
 
-const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: number) => string; icon: string; state: string }> = {
+const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: number) => string; icon: IconName; state: string }> = {
   pending: { label: (a, now) => `Pendente · ${elapsed(a.time, now)}`, icon: 'hourglass_top', state: 'wait' },
   replied: { label: (a) => `Respondido em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`, icon: 'reply', state: 'done' },
   delivered: { label: () => 'Entregue', icon: 'check', state: 'done' },

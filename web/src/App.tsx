@@ -78,6 +78,7 @@ function Stage() {
       }
       if (e.key === 'Escape') {
         if (st.newTermOpen) st.setNewTerm(false);
+        else if (st.editTermId) st.setEditTerm(null);
         else if (st.composerOpen) st.setComposer(false);
         return;
       }

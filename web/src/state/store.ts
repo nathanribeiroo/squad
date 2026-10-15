@@ -70,6 +70,8 @@ interface SquadState {
   composerOpen: boolean;
   composerTarget: string | null;
   newTermOpen: boolean;
+  /** Terminal whose settings form ("Configurar…") is open. */
+  editTermId: string | null;
   focusedTerminal: string | null;
   selectedNode: string | null;
   tool: 'select' | 'pan';
@@ -86,6 +88,7 @@ interface SquadState {
   setDrawer(open: boolean): void;
   setComposer(open: boolean, target?: string | null): void;
   setNewTerm(open: boolean): void;
+  setEditTerm(id: string | null): void;
   setFocusedTerminal(id: string | null): void;
   setSelectedNode(id: string | null): void;
   setTool(t: SquadState['tool']): void;
@@ -144,6 +147,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   composerOpen: false,
   composerTarget: null,
   newTermOpen: false,
+  editTermId: null,
   focusedTerminal: null,
   selectedNode: null,
   tool: 'select',
@@ -292,7 +296,9 @@ export const useSquad = create<SquadState>((set, get) => ({
   setConnection: (connection) => set({ connection }),
   setDrawer: (drawerOpen) => set({ drawerOpen }),
   setComposer: (composerOpen, target) => set({ composerOpen, composerTarget: target === undefined ? get().composerTarget : target }),
-  setNewTerm: (newTermOpen) => set({ newTermOpen }),
+  // One terminal form at a time: new or settings.
+  setNewTerm: (newTermOpen) => set(newTermOpen ? { newTermOpen, editTermId: null } : { newTermOpen }),
+  setEditTerm: (editTermId) => set(editTermId ? { editTermId, newTermOpen: false } : { editTermId }),
   setFocusedTerminal: (focusedTerminal) => set({ focusedTerminal }),
   setSelectedNode: (selectedNode) => set({ selectedNode }),
   setTool: (tool) => set({ tool }),

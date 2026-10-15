@@ -1,5 +1,5 @@
 // REST client. The session cookie (set by /?token=…) authenticates requests.
-import type { StateResponse, WEdge, WNode, StateExtra } from './types';
+import type { ShellOption, StateResponse, WEdge, WNode, StateExtra } from './types';
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -37,6 +37,8 @@ export const api = {
   resume: () => req<StateExtra>('POST', '/api/conversations/resume'),
   note: (id: string) => req<{ id: string; file: string; title: string; locked: boolean; content: string }>('GET', `/api/notes/${id}`),
   saveNote: (id: string, content: string) => req<{ ok: boolean }>('PUT', `/api/notes/${id}`, { content }),
+  dirs: (path: string) => req<{ suggestions: string[] }>('GET', `/api/dirs?path=${encodeURIComponent(path)}`),
+  shells: () => req<{ shells: ShellOption[] }>('GET', '/api/shells'),
 };
 
 export function wsURL(path: string): string {

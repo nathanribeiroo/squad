@@ -150,6 +150,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/edges", s.session(http.HandlerFunc(s.handleAddEdge)))
 	mux.Handle("PATCH /api/edges/{id}", s.session(http.HandlerFunc(s.handleUpdateEdge)))
 	mux.Handle("DELETE /api/edges/{id}", s.session(http.HandlerFunc(s.handleRemoveEdge)))
+	mux.Handle("GET /api/dirs", s.session(http.HandlerFunc(s.handleDirs)))
+	mux.Handle("GET /api/shells", s.session(http.HandlerFunc(s.handleShells)))
 	mux.Handle("GET /ws/events", s.session(http.HandlerFunc(s.handleEventsWS)))
 	mux.Handle("GET /ws/term/{id}", s.session(http.HandlerFunc(s.handleTermWS)))
 	for _, r := range s.extraRoutes {

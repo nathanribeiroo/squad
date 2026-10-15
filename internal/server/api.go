@@ -66,6 +66,10 @@ func (s *Server) handleAddNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	n.ID = "" // ids are assigned by the server
+	if err := checkTerminalDir(n.Terminal, s.store.Snapshot().Cwd); err != nil {
+		writeError(w, storeErrorCode(err), err.Error())
+		return
+	}
 	if n.W == 0 && n.H == 0 {
 		n.W, n.H = defaultSize(n.Kind)
 	}
@@ -115,6 +119,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
+	wsCwd := s.store.Snapshot().Cwd // read before UpdateNode takes the store lock
 	n, err := s.store.UpdateNode(id, func(n *store.Node) error {
 		if p.X != nil {
 			n.X = *p.X
@@ -131,6 +136,11 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		if p.Terminal != nil && n.Terminal != nil {
 			if p.Terminal.Name == "" {
 				return errors.Join(store.ErrInvalid, errors.New("terminal needs a name"))
+			}
+			if p.Terminal.Cwd != n.Terminal.Cwd {
+				if err := checkTerminalDir(p.Terminal, wsCwd); err != nil {
+					return err
+				}
 			}
 			*n.Terminal = *p.Terminal
 		}
@@ -200,26 +210,22 @@ func (s *Server) handleNodeAction(w http.ResponseWriter, r *http.Request) {
 	}
 	var err error
 	switch r.PathValue("action") {
+	// start and restart rebuild the terminal from the node, so edits to its
+	// folder, shell or command take effect.
 	case "start":
 		if t := s.terms.Get(id); t != nil {
 			if st, _ := t.State(); st == terminal.StatusRunning || st == terminal.StatusStarting {
 				writeJSON(w, http.StatusOK, s.runtimeOf(id))
 				return
 			}
-			err = s.terms.Restart(id)
-		} else {
-			err = s.StartTerminal(id)
 		}
+		err = s.StartTerminal(id)
 	case "stop":
 		if t := s.terms.Get(id); t != nil {
 			t.Stop()
 		}
 	case "restart":
-		if s.terms.Get(id) != nil {
-			err = s.terms.Restart(id)
-		} else {
-			err = s.StartTerminal(id)
-		}
+		err = s.StartTerminal(id)
 	default:
 		writeError(w, http.StatusNotFound, "unknown action")
 		return

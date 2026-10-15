@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -102,5 +103,38 @@ func TestFindGitBash(t *testing.T) {
 		if got := findGitBash(c.w.lookPath, c.w.getenv, c.w.isFile); got != c.want {
 			t.Errorf("%s: got %q; want %q", c.name, got, c.want)
 		}
+	}
+}
+
+func TestShellOptionsLabels(t *testing.T) {
+	git := filepath.Join("C:", "Program Files", "Git", "bin", "bash.exe")
+	pwsh := filepath.Join("C:", "Program Files", "PowerShell", "7", "pwsh.exe")
+	ps := filepath.Join("C:", "Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+	got := shellOptions([]Shell{{Argv: []string{git}}, {Argv: []string{pwsh}}, {Argv: []string{ps}}, {Argv: []string{"cmd.exe"}}, {Argv: []string{"/usr/bin/fish"}}})
+	want := []ShellOption{
+		{Path: git, Label: "Git Bash", Default: true},
+		{Path: pwsh, Label: "PowerShell 7"},
+		{Path: ps, Label: "Windows PowerShell"},
+		{Path: "cmd.exe", Label: "cmd"},
+		{Path: "/usr/bin/fish", Label: "fish"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestEtcShells(t *testing.T) {
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "myshell")
+	_ = os.WriteFile(exe, nil, 0o755)
+	list := filepath.Join(dir, "shells")
+	tmux := filepath.Join(dir, "tmux")
+	_ = os.WriteFile(tmux, nil, 0o755)
+	_ = os.WriteFile(list, []byte("# comment\n\n"+exe+"\n"+filepath.Join(dir, "gone")+"\nrelative\n"+tmux+"\n"), 0o644)
+	if got := etcShells(list); !reflect.DeepEqual(got, []string{exe}) {
+		t.Fatalf("got %q", got)
+	}
+	if etcShells(filepath.Join(dir, "none")) != nil {
+		t.Fatal("missing file should give nil")
 	}
 }

@@ -1,7 +1,8 @@
 // Labels, icons and tokens for states and roles (docs/design_handoff_squad §2).
 import type { Role, UIState } from '../api/types';
+import type { IconName } from './icons';
 
-export const STATE_META: Record<UIState, { label: string; icon: string }> = {
+export const STATE_META: Record<UIState, { label: string; icon: IconName }> = {
   boot: { label: 'Iniciando', icon: 'progress_activity' },
   idle: { label: 'Ocioso', icon: 'radio_button_unchecked' },
   work: { label: 'Trabalhando', icon: 'autorenew' },
@@ -11,7 +12,7 @@ export const STATE_META: Record<UIState, { label: string; icon: string }> = {
   off: { label: 'Descarregado', icon: 'bedtime' },
 };
 
-export const ROLE_META: Record<Exclude<Role, ''>, { label: string; icon: string }> = {
+export const ROLE_META: Record<Exclude<Role, ''>, { label: string; icon: IconName }> = {
   plan: { label: 'Planejador', icon: 'account_tree' },
   impl: { label: 'Implementador', icon: 'code' },
   rev: { label: 'Revisor', icon: 'rate_review' },

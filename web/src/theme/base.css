@@ -12,7 +12,16 @@ body {
 button { font: inherit; color: inherit; }
 input, select, textarea { font: inherit; color: inherit; }
 
-/* Material Symbols Outlined, weight 400, opsz 20 (design handoff). */
+/* Material Symbols Outlined, weight 400, opsz 20 (design handoff). The font
+   holds only the icons in src/lib/icons.ts (scripts/subset-icons.py), with
+   those axes pinned and FILL kept. */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../assets/material-symbols-subset.woff2') format('woff2');
+}
 .msi {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;

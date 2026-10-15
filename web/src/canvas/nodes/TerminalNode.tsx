@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import type { Role, TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { Icon } from '../../components/Icon';
 import { ROLE_META, STATE_META, elapsed, roleKey, stateLabel } from '../../lib/model';
+import { shortPath, terminalCwd } from '../../lib/paths';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
 import { useSquad } from '../../state/store';
@@ -19,12 +20,6 @@ export type TerminalFlowNode = Node<{ node: WNode }, 'terminal'>;
 // stripe, header, footer and the body padding around the terminal grid.
 const CHROME_W = 2 + 20;
 const CHROME_H = 2 + 3 + 32 + 22 + 16;
-
-function shortPath(p?: string): string {
-  if (!p) return '';
-  const m = p.match(/^\/(Users|home)\/[^/]+/);
-  return m ? '~' + p.slice(m[0].length) : p;
-}
 
 /** Terminal grid that fits a node of w×h world px. */
 function gridFor(id: string, w: number, h: number): { cols: number; rows: number } | null {
@@ -181,6 +176,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
       ? { icon: 'stop_circle', label: 'Parar', action: () => act('stop') }
       : { icon: 'play_circle', label: 'Iniciar', action: () => act('start') },
     { icon: 'restart_alt', label: 'Reiniciar', action: () => act('restart') },
+    { icon: 'tune', label: 'Configurar…', action: () => useSquad.getState().setEditTerm(id) },
     'divider',
     ...(Object.keys(ROLE_META) as Exclude<Role, ''>[]).map((r) => ({
       icon: ROLE_META[r].icon,
@@ -215,7 +211,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
 }
 
 function LiveFooter({ id, t }: { id: string; t: TerminalData }) {
-  const cwd = useSquad((s) => t.cwd || s.workspace?.cwd);
+  const cwd = useSquad((s) => terminalCwd(t.cwd, s.workspace?.cwd));
   const inbox = useInbox(id);
   return (
     <footer className="tn-foot mono">
@@ -225,7 +221,9 @@ function LiveFooter({ id, t }: { id: string; t: TerminalData }) {
       </span>
       {inbox > 0 && <span style={{ color: 'var(--st-wait)' }}>caixa {inbox}</span>}
       <span className="tn-spacer" />
-      <span className="tn-cwd">{shortPath(cwd)}</span>
+      <span className="tn-cwd" title={cwd}>
+        <bdi>{shortPath(cwd)}</bdi>
+      </span>
     </footer>
   );
 }
