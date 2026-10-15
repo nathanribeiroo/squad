@@ -32,6 +32,23 @@ export interface Flight {
   elapsedMs?: number;
 }
 
+/** An agent acting on a portal (portal.action): drawn as its cursor on the page and a pill on the wire. */
+export interface PortalAction {
+  portal: string;
+  by: string;
+  byName: string;
+  kind: string; // click, fill, type, key, scroll, goto, back, forward, reload
+  label: string;
+  x: number;
+  y: number;
+  hasXY: boolean;
+  at: number;
+  seq: number;
+}
+
+/** How long an agent's portal action stays on screen. */
+export const PORTAL_ACTION_MS = 2500;
+
 /** Last reply an origin terminal got (its "reply" strip). */
 export interface LastReply {
   id: string;
@@ -69,6 +86,8 @@ interface SquadState {
   flights: Record<string, Flight>;
   noteEdits: Record<string, NoteEdit>;
   lastReply: Record<string, LastReply>;
+  /** Latest agent action per portal. */
+  portalActions: Record<string, PortalAction>;
   /** Times of recent requests, for the per-minute rate in the top bar. */
   sendTimes: number[];
   drawerOpen: boolean;
@@ -117,7 +136,7 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 
 function nameOf(ws: Workspace | null, id?: string): string {
   const n = ws?.nodes.find((x) => x.id === id);
-  return n?.terminal?.name ?? n?.note?.title ?? '';
+  return n?.terminal?.name ?? n?.note?.title ?? (n?.portal ? n.portal.name || 'Portal' : '');
 }
 
 function prefersDark(): boolean {
@@ -150,6 +169,7 @@ const perWorkspace = {
   flights: {},
   noteEdits: {},
   lastReply: {},
+  portalActions: {},
   sendTimes: [],
   composerOpen: false,
   composerTarget: null,
@@ -172,6 +192,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   flights: {},
   noteEdits: {},
   lastReply: {},
+  portalActions: {},
   sendTimes: [],
   drawerOpen: false,
   composerOpen: false,
@@ -332,6 +353,11 @@ export const useSquad = create<SquadState>((set, get) => ({
           ].slice(0, 200),
         });
         return;
+      case 'portal.action': {
+        const prev = st.portalActions[d.portal];
+        set({ portalActions: { ...st.portalActions, [d.portal]: { ...(d as PortalAction), at: Date.now(), seq: (prev?.seq ?? 0) + 1 } } });
+        return;
+      }
       case 'workspace.updated':
         if (ws) set({ workspace: { ...ws, name: d.name, cwd: d.cwd, color: d.color } });
         return;

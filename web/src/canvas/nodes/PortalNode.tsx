@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { NodeResizer, useReactFlow, type Node, type NodeProps, type ResizeParams } from '@xyflow/react';
 import { api } from '../../api/client';
-import type { WNode } from '../../api/types';
+import type { PortalData, WNode } from '../../api/types';
 import { Icon } from '../../components/Icon';
 import { toast } from '../../lib/toast';
 import { useSquad } from '../../state/store';
 import { NodeHandles, connectClass, useConnectTarget } from './NodeHandles';
 import { NodeMenu } from './NodeMenu';
+import { actionVerb, usePortalAction } from './portalAction';
 import { BUTTONS, mods, usePortalStream, type PortalStream } from './portalStream';
 
 export type PortalFlowNode = Node<{ node: WNode }, 'portal'>;
@@ -14,15 +15,18 @@ export type PortalFlowNode = Node<{ node: WNode }, 'portal'>;
 /**
  * Browser portal (design handoff §4): the page, rendered by a headless
  * browser on the server, streamed as images. Click the page to use it (the
- * keyboard goes to the page until ⌥Esc); the address bar navigates.
+ * keyboard goes to the page until ⌥Esc); the address bar navigates. Agents
+ * wired to it use it too (squad portal …): their cursor shows on the page.
  */
 export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
-  const url = data.node.portal?.url ?? '';
+  const portal: PortalData = data.node.portal ?? { url: '' };
+  const url = portal.url;
   const target = useConnectTarget(id);
   const level = useSquad((s) => s.zoomLevel);
   // Only stream while readable on screen; smaller zoom keeps the last frame.
   const stream = usePortalStream(id, !!url && level === 'live');
   const [focused, setFocused] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const remove = () => api.removeNode(id).catch((e: Error) => toast(e.message));
 
   const onResizeEnd = (_: unknown, p: ResizeParams) => {
@@ -39,9 +43,17 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
       <div className="node-stripe" style={{ background: 'var(--line-2)' }} />
       <header className="pn-head node-drag">
         <Icon name="public" size={18} style={{ color: 'var(--text-2)' }} />
-        <span className="pn-title" title={stream.state?.title}>
-          Portal
-        </span>
+        {renaming ? (
+          <NameInput id={id} portal={portal} onDone={() => setRenaming(false)} />
+        ) : (
+          <span
+            className="pn-title"
+            title={`${stream.state?.title ? `${stream.state.title}\n` : ''}Os agentes usam este nome: squad portal "${portal.name || 'Portal'}" … (duplo clique para renomear)`}
+            onDoubleClick={() => setRenaming(true)}
+          >
+            {portal.name || 'Portal'}
+          </span>
+        )}
         <span className="pn-nav nodrag">
           <button className="icon-btn" disabled={!stream.state?.canBack} onClick={() => stream.send({ type: 'nav', action: 'back' })} aria-label="Voltar" title="Voltar">
             <Icon name="arrow_back" size={16} />
@@ -53,7 +65,7 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
             <Icon name="refresh" size={16} />
           </button>
         </span>
-        <AddressBar id={id} url={stream.state?.url || url} />
+        <AddressBar id={id} portal={portal} url={stream.state?.url || url} />
         {focused ? (
           <span className="tn-kbd-here" title="⌥Esc devolve o teclado ao canvas">
             <Icon name="keyboard" size={15} />
@@ -67,21 +79,64 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
             <Icon name="open_in_new" size={16} />
           </a>
         )}
-        <NodeMenu items={[{ icon: 'delete', label: 'Remover', action: remove, danger: true }]} />
+        <NodeMenu
+          items={[
+            { icon: 'edit', label: 'Renomear', action: () => setRenaming(true) },
+            { icon: 'delete', label: 'Remover', action: remove, danger: true },
+          ]}
+        />
       </header>
-      <PortalScreen stream={stream} url={url} onFocusChange={setFocused} />
+      <PortalScreen id={id} stream={stream} url={url} onFocusChange={setFocused} />
     </div>
   );
 }
 
-function AddressBar({ id, url }: { id: string; url: string }) {
+/** Renames the portal; names are unique, agents use them to pick a portal. */
+function NameInput({ id, portal, onDone }: { id: string; portal: PortalData; onDone: () => void }) {
+  const cancelled = useRef(false);
+  const commit = (value: string) => {
+    onDone();
+    const name = value.trim();
+    if (cancelled.current || !name || name === portal.name) return;
+    const taken = useSquad
+      .getState()
+      .workspace?.nodes.some((n) => n.id !== id && n.portal?.name?.toLowerCase() === name.toLowerCase());
+    if (taken) {
+      toast(`Já existe um portal chamado "${name}"`);
+      return;
+    }
+    api.updateNode(id, { portal: { ...portal, name } }).catch((e: Error) => toast(e.message));
+  };
+  return (
+    <input
+      className="pn-name nodrag"
+      defaultValue={portal.name || 'Portal'}
+      autoFocus
+      spellCheck={false}
+      maxLength={40}
+      aria-label="Nome do portal"
+      onFocus={(e) => e.target.select()}
+      onBlur={(e) => commit(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          cancelled.current = true;
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
+function AddressBar({ id, portal, url }: { id: string; portal: PortalData; url: string }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(url);
   const commit = () => {
     setEditing(false);
     let next = draft.trim();
     if (next && !/^[a-z]+:\/\//i.test(next)) next = `${/^(localhost|127\.|\[::1\])/.test(next) ? 'http' : 'https'}://${next}`;
-    if (next && next !== url) api.updateNode(id, { portal: { url: next } }).catch((e: Error) => toast(e.message));
+    if (next && next !== url) api.updateNode(id, { portal: { ...portal, url: next } }).catch((e: Error) => toast(e.message));
   };
   return editing ? (
     <input
@@ -153,7 +208,7 @@ function canvasKey(e: React.KeyboardEvent): boolean {
  * zoom) to page pixels; plain wheel scrolls the page, pinch or ⌘/ctrl + wheel
  * zooms the canvas.
  */
-function PortalScreen({ stream, url, onFocusChange }: { stream: PortalStream; url: string; onFocusChange: (f: boolean) => void }) {
+function PortalScreen({ id, stream, url, onFocusChange }: { id: string; stream: PortalStream; url: string; onFocusChange: (f: boolean) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const rf = useReactFlow();
   const moveQueued = useRef<MouseEvent | null>(null);
@@ -281,6 +336,40 @@ function PortalScreen({ stream, url, onFocusChange }: { stream: PortalStream; ur
       {stream.frame && <img src={stream.frame} alt="" draggable={false} />}
       {st?.error && stream.frame && <div className="pn-error mono">Não foi possível abrir: {st.error}</div>}
       {overlay}
+      {stream.frame && <AgentCursor id={id} width={st?.width} height={st?.height} />}
+    </div>
+  );
+}
+
+/**
+ * An agent acting on the page: its cursor and name where it clicks (gliding
+ * from its last spot), or a chip in the corner for keys, typing and navigation.
+ */
+function AgentCursor({ id, width, height }: { id: string; width?: number; height?: number }) {
+  const cur = usePortalAction(id);
+  if (!cur) return null;
+  const { act, role } = cur;
+  const who = act.byName || 'Agente';
+  const color = `var(--r-${role})`;
+  const doing = `${actionVerb(act.kind)}${act.label && !act.hasXY ? ` ${act.label}` : ''}`;
+  if (!act.hasXY || !width || !height) {
+    return (
+      <div key={act.seq} className="pn-agent-chip" style={{ borderColor: color }}>
+        <i style={{ background: color }} />
+        <b style={{ color }}>{who}</b>
+        <span className="mono">{doing}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="pn-cursor" style={{ left: `${(act.x / width) * 100}%`, top: `${(act.y / height) * 100}%`, color }}>
+      <span key={act.seq} className="pn-cursor-body">
+        <span className="pn-ripple" />
+        <Icon name="arrow_selector_tool" size={22} fill />
+        <span className="pn-cursor-name" style={{ background: color }}>
+          {who} · {actionVerb(act.kind)}
+        </span>
+      </span>
     </div>
   );
 }

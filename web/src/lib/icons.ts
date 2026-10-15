@@ -5,9 +5,11 @@
 export const ICONS = [
   'account_tree',
   'add',
+  'ads_click',
   'alternate_email',
   'arrow_back',
   'arrow_forward',
+  'arrow_selector_tool',
   'arrow_upward',
   'autorenew',
   'bedtime',

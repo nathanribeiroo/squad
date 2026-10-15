@@ -19,7 +19,7 @@ interface MenuState {
   index: number;
 }
 
-const nodeName = (n: WNode) => n.terminal?.name ?? n.note?.title ?? 'Portal';
+const nodeName = (n: WNode) => n.terminal?.name ?? n.note?.title ?? n.portal?.name ?? 'Portal';
 
 /** Nodes linked to `id` (edges are undirected). */
 function neighbours(edges: { a: string; b: string }[], id: string): Set<string> {
