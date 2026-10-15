@@ -132,6 +132,13 @@ func New(opts Options) (*Hub, error) {
 			return nil, err
 		}
 	}
+	// Workspaces from before colors (the old "default") get one, oldest first.
+	for _, s := range h.List() {
+		if s.Color == "" {
+			color := h.freeColor()
+			_, _ = h.get(s.ID).app.Server.Store().UpdateMeta(func(m *store.Meta) error { m.Color = color; return nil })
+		}
+	}
 	return h, nil
 }
 

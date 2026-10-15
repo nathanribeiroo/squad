@@ -175,6 +175,20 @@ func TestCreateOpenUpdateRemove(t *testing.T) {
 	}
 }
 
+func TestLegacyWorkspaceGetsAColor(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "workspaces")
+	_ = os.MkdirAll(filepath.Join(root, "default"), 0o700)
+	if _, err := store.Open(filepath.Join(root, "default", "workspace.json"), store.Workspace{ID: "default", Name: "old", Cwd: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	h := newHarness(t, root)
+	b, _ := h.hub.Create("new", t.TempDir(), "")
+	l := h.hub.List()
+	if len(l) != 2 || l[0].ID != "default" || l[0].Color != Colors[0] || b.Color != Colors[1] {
+		t.Fatalf("colors: %+v", l)
+	}
+}
+
 func TestRoutingByWorkspaceAndTerminal(t *testing.T) {
 	h := newHarness(t, "")
 	a, b := h.create("A"), h.create("B")
