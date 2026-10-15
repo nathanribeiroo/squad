@@ -1,0 +1,47 @@
+.ws-menu { left: 0; top: 36px; width: 340px; padding: 6px; }
+.ws-menu-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-3); padding: 6px 8px 4px;
+}
+.ws-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
+.ws-row { display: flex; align-items: center; border-radius: 6px; }
+.ws-row:hover, .ws-row.on { background: var(--surface-2); }
+.ws-row-main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; border: 0; background: transparent; cursor: pointer; text-align: left;
+}
+.ws-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.ws-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ws-row-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-row-sub { display: flex; gap: 8px; font-size: 11.5px; color: var(--text-2); min-width: 0; }
+/* Cut the start of long paths, not the end (see .tn-cwd). */
+.ws-row-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; direction: rtl; text-align: left; }
+.ws-row-sub span:last-child { flex: none; }
+.ws-busy { color: var(--st-work); }
+.ws-row-edit { opacity: 0; margin-right: 4px; }
+.ws-row:hover .ws-row-edit, .ws-row-edit:focus-visible { opacity: 1; }
+.ws-menu-div { display: block; height: 1px; background: var(--line); margin: 6px 2px; }
+.ws-new {
+  width: 100%; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 8px;
+  border: 0; border-radius: 6px; background: transparent; font-size: 12.5px; cursor: pointer;
+}
+.ws-new:hover { background: var(--surface-2); }
+
+.ws-form { display: grid; gap: 10px; padding: 6px; }
+.ws-form-head { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.ws-colors { display: flex; gap: 8px; padding-top: 2px; }
+.ws-swatch {
+  width: 20px; height: 20px; border-radius: 5px; border: 0; cursor: pointer; padding: 0;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+.ws-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
+.ws-note { font-size: 11.5px; color: var(--text-2); }
+.ws-error { font-size: 12px; color: var(--st-err); }
+.ws-remove {
+  display: flex; align-items: center; justify-content: center; gap: 6px; height: 30px;
+  border: 0; border-radius: 6px; background: transparent; color: var(--st-err); font-size: 12.5px; cursor: pointer;
+}
+.ws-remove:hover { background: var(--stb-err); }
+
+/* Activity in workspaces other than the one on screen. */
+.tb-ws-elsewhere { width: 6px; height: 6px; border-radius: 50%; background: var(--st-work); }

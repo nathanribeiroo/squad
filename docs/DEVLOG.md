@@ -2,6 +2,31 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, vários workspaces
+
+- **Uma instância por workspace:** cada workspace é um `app.App` completo (canvas, terminais, `agentbus`, notas, monitor de atividade), como antes. O pacote novo `internal/hub` carrega todos de `~/.squad/workspaces/*` e monta cada um em `/w/<id>/`. Por isso, nada dentro do workspace mudou: pausa, limite por minuto, notas e `squad ask` já ficam separados.
+- **`/cli` e `/hooks`:** o hub descobre o workspace pelo `X-Terminal-ID`, e o token do terminal continua sendo conferido pelo workspace.
+- **API do hub:**
+  - `GET/POST /api/workspaces`, `POST /api/workspaces/open` (acha ou cria pela pasta), `PATCH/DELETE /api/workspaces/{id}`;
+  - `GET /api/dirs` relativo à pasta do usuário;
+  - `/ws/workspaces` com o resumo (terminais, agentes ativos, pedidos pendentes), agrupado a cada 300 ms.
+  - `/api/…` sem `/w/<id>` responde 404 explicando o caminho novo.
+- **Remover:** encerra os terminais e move a pasta do workspace para `~/.squad/trash/<id>-<data>`, com novas tentativas no Windows enquanto o watcher de notas solta a pasta. O último workspace não pode ser removido.
+- **Cores:** chaves (`teal`, `blue`, …) desenhadas com tokens do tema. Um workspace novo recebe a menos usada; os sem cor (o `default` antigo) ganham uma ao carregar.
+- **`server`:** `Handler` foi dividido em `APIHandler` e `TerminalHandler`, com `Guard`, `Session` e `UI` como funções. O redirecionamento do `?token=` mantém os outros parâmetros (`?ws=`). A interface agora é registrada em `/` (um `GET /` conflitava com `/api/` no `ServeMux`) e recusa métodos que não sejam GET e HEAD.
+- **`squad serve -dir`:** abre ou cria o workspace da pasta (`.` por padrão). Com um servidor já rodando, pede o workspace a ele e abre o navegador, em vez de falhar com "already running".
+- **Web:**
+  - prefixo `/w/<id>` em toda a API do workspace;
+  - a lista vem de `/ws/workspaces`, e o workspace na tela é o do `?ws=`, depois o último usado, depois o primeiro;
+  - a troca limpa o estado do workspace anterior, reabre `/ws/events`, fecha os sockets dos terminais (o `term/session` observa `activeWs`, para evitar um ciclo de imports com o store) e restaura o enquadramento salvo daquele canvas;
+  - seletor no topo, `⌥1`–`⌥9` (também com o teclado num terminal), criar, editar e remover.
+- **Testes:**
+  - `internal/hub`: criar, abrir, editar e remover, lixeira, recarga, cor do workspace antigo, roteamento por workspace, `check` de um terminal com o mesmo nome em dois workspaces, credenciais erradas, stream da lista e redirecionamento do token;
+  - todos com `-race`;
+  - interface conferida com o Chrome headless: um terminal trabalhando no p1 enquanto o p2 está na tela, o ponto de atividade, `⌥2`, a volta com o terminal ainda trabalhando, criar, renomear (ao vivo na barra) e remover.
+
+**Decisões (combinadas):** todos os workspaces sobem com o servidor; `serve -dir` com servidor rodando abre o workspace nele; remover manda para a lixeira. A gaveta de atividade é por workspace e recomeça ao trocar (o servidor só guarda os pedidos pendentes).
+
 ## 2026-10-15, pasta e shell por terminal, fonte de ícones
 
 - **Pasta do terminal:** absoluta, `~/…` ou relativa ao workspace (`ResolveCwd` em `internal/server`). A relativa segue o workspace se a pasta dele mudar. Criar ou editar com uma pasta inexistente dá 400 (`folder not found: …`), em vez de um terminal que não abre.

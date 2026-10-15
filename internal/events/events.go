@@ -29,6 +29,7 @@ const (
 	NoteEdited          = "note.edited"
 	MessageSent         = "message.sent" // the user sent a Composer message to a terminal
 	ServerStatus        = "server.status"
+	WorkspaceUpdated    = "workspace.updated" // name, folder or color changed
 )
 
 // Event is one notification.

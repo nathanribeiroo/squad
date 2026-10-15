@@ -7,5 +7,7 @@
 .dir-input-list li {
   padding: 5px 8px; border-radius: 5px; cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Long paths lose their start, not the folder names being picked. */
+  direction: rtl; text-align: left;
 }
 .dir-input-list li:hover, .dir-input-list li.on { background: var(--surface-2); }

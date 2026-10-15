@@ -1,5 +1,19 @@
 // REST client. The session cookie (set by /?token=…) authenticates requests.
-import type { ShellOption, StateResponse, WEdge, WNode, StateExtra } from './types';
+// A workspace's API lives under /w/<id>/ (the one on screen: setWorkspace);
+// the workspace list is at the root.
+import type { ShellOption, StateResponse, WEdge, WNode, StateExtra, WorkspaceSummary } from './types';
+
+let base = '';
+
+/** Points the workspace API (api.*, workspace sockets) at workspace id. */
+export function setWorkspace(id: string) {
+  base = `/w/${encodeURIComponent(id)}`;
+}
+
+/** Path inside the workspace on screen. */
+export function wsPath(p: string): string {
+  return base + p;
+}
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -23,22 +37,33 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 }
 
 export const api = {
-  state: () => req<StateResponse>('GET', '/api/state'),
-  addNode: (n: Partial<WNode>) => req<WNode>('POST', '/api/nodes', n),
-  updateNode: (id: string, patch: Partial<WNode>) => req<WNode>('PATCH', `/api/nodes/${id}`, patch),
-  removeNode: (id: string) => req<void>('DELETE', `/api/nodes/${id}`),
-  nodeAction: (id: string, action: 'start' | 'stop' | 'restart') => req<unknown>('POST', `/api/nodes/${id}/${action}`),
-  addEdge: (a: string, b: string) => req<WEdge>('POST', '/api/edges', { a, b }),
-  updateEdge: (id: string, ropePoints: [number, number][]) => req<WEdge>('PATCH', `/api/edges/${id}`, { ropePoints }),
-  removeEdge: (id: string) => req<void>('DELETE', `/api/edges/${id}`),
+  state: () => req<StateResponse>('GET', wsPath('/api/state')),
+  addNode: (n: Partial<WNode>) => req<WNode>('POST', wsPath('/api/nodes'), n),
+  updateNode: (id: string, patch: Partial<WNode>) => req<WNode>('PATCH', wsPath(`/api/nodes/${id}`), patch),
+  removeNode: (id: string) => req<void>('DELETE', wsPath(`/api/nodes/${id}`)),
+  nodeAction: (id: string, action: 'start' | 'stop' | 'restart') => req<unknown>('POST', wsPath(`/api/nodes/${id}/${action}`)),
+  addEdge: (a: string, b: string) => req<WEdge>('POST', wsPath('/api/edges'), { a, b }),
+  updateEdge: (id: string, ropePoints: [number, number][]) => req<WEdge>('PATCH', wsPath(`/api/edges/${id}`), { ropePoints }),
+  removeEdge: (id: string) => req<void>('DELETE', wsPath(`/api/edges/${id}`)),
   send: (id: string, body: { text: string; mentions: string[]; images: { name: string; data: string }[] }) =>
-    req<{ ok: boolean }>('POST', `/api/nodes/${id}/send`, body),
-  pause: () => req<StateExtra>('POST', '/api/conversations/pause'),
-  resume: () => req<StateExtra>('POST', '/api/conversations/resume'),
-  note: (id: string) => req<{ id: string; file: string; title: string; locked: boolean; content: string }>('GET', `/api/notes/${id}`),
-  saveNote: (id: string, content: string) => req<{ ok: boolean }>('PUT', `/api/notes/${id}`, { content }),
+    req<{ ok: boolean }>('POST', wsPath(`/api/nodes/${id}/send`), body),
+  pause: () => req<StateExtra>('POST', wsPath('/api/conversations/pause')),
+  resume: () => req<StateExtra>('POST', wsPath('/api/conversations/resume')),
+  note: (id: string) => req<{ id: string; file: string; title: string; locked: boolean; content: string }>('GET', wsPath(`/api/notes/${id}`)),
+  saveNote: (id: string, content: string) => req<{ ok: boolean }>('PUT', wsPath(`/api/notes/${id}`), { content }),
+  dirs: (path: string) => req<{ suggestions: string[] }>('GET', wsPath(`/api/dirs?path=${encodeURIComponent(path)}`)),
+  shells: () => req<{ shells: ShellOption[] }>('GET', wsPath('/api/shells')),
+};
+
+/** The workspace list (not tied to the workspace on screen). */
+export const hub = {
+  list: () => req<WorkspaceSummary[]>('GET', '/api/workspaces'),
+  create: (b: { name?: string; cwd: string; color?: string }) => req<WorkspaceSummary>('POST', '/api/workspaces', b),
+  update: (id: string, p: { name?: string; cwd?: string; color?: string }) =>
+    req<WorkspaceSummary>('PATCH', `/api/workspaces/${encodeURIComponent(id)}`, p),
+  remove: (id: string) => req<void>('DELETE', `/api/workspaces/${encodeURIComponent(id)}`),
+  /** Folder suggestions from the home folder (for a new workspace). */
   dirs: (path: string) => req<{ suggestions: string[] }>('GET', `/api/dirs?path=${encodeURIComponent(path)}`),
-  shells: () => req<{ shells: ShellOption[] }>('GET', '/api/shells'),
 };
 
 export function wsURL(path: string): string {

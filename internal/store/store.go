@@ -31,6 +31,7 @@ type Workspace struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Cwd       string    `json:"cwd"`
+	Color     string    `json:"color,omitempty"` // UI color key: teal, blue, purple…
 	Nodes     []Node    `json:"nodes"`
 	Edges     []Edge    `json:"edges"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -180,6 +181,57 @@ func (s *Store) save() error {
 		return err
 	}
 	return config.WriteFileAtomic(s.path, data, 0o600)
+}
+
+// Meta is a workspace without its canvas.
+type Meta struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Cwd       string    `json:"cwd"`
+	Color     string    `json:"color,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func (s *Store) metaLocked() Meta {
+	return Meta{ID: s.ws.ID, Name: s.ws.Name, Cwd: s.ws.Cwd, Color: s.ws.Color, CreatedAt: s.ws.CreatedAt}
+}
+
+// Meta returns the workspace's id, name, folder and color.
+func (s *Store) Meta() Meta {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.metaLocked()
+}
+
+// UpdateMeta changes the workspace's name, folder or color (fn edits a copy;
+// the id and creation time are kept) and saves.
+func (s *Store) UpdateMeta(fn func(*Meta) error) (Meta, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	m := s.metaLocked()
+	if err := fn(&m); err != nil {
+		return Meta{}, err
+	}
+	old := s.ws
+	s.ws.Name, s.ws.Cwd, s.ws.Color = m.Name, m.Cwd, m.Color
+	if err := s.save(); err != nil {
+		s.ws = old
+		return Meta{}, err
+	}
+	return s.metaLocked(), nil
+}
+
+// TerminalIDs returns the ids of the terminal nodes.
+func (s *Store) TerminalIDs() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var out []string
+	for _, n := range s.ws.Nodes {
+		if n.Terminal != nil {
+			out = append(out, n.ID)
+		}
+	}
+	return out
 }
 
 // Snapshot returns a deep copy of the workspace.

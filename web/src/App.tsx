@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import { api } from './api/client';
 import { connectEvents } from './api/events';
+import { connectWorkspaces } from './api/workspaces';
 import type { WNode } from './api/types';
 import { Canvas } from './canvas/Canvas';
 import { ActivityDrawer } from './components/ActivityDrawer';
@@ -22,8 +23,11 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.term = term;
   }, [term]);
-  // The first event on /ws/events ("hello") carries the full state.
-  useEffect(() => connectEvents(), []);
+  // The workspace list picks the workspace on screen; its /ws/events starts
+  // with "hello", the full state, and is reopened when switching.
+  const activeWs = useSquad((s) => s.activeWs);
+  useEffect(() => connectWorkspaces(), []);
+  useEffect(() => (activeWs ? connectEvents() : undefined), [activeWs]);
 
   return (
     <ReactFlowProvider>
@@ -64,6 +68,9 @@ function Stage() {
         const map: Record<string, () => void> = {
           KeyA: () => st.setDrawer(!st.drawerOpen),
           KeyP: () => void (st.extra.paused ? api.resume() : api.pause()).catch((err: Error) => toast(err.message)),
+          ...Object.fromEntries(
+            st.workspaces.slice(0, 9).map((w, i) => [`Digit${i + 1}`, () => st.switchWorkspace(w.id)]),
+          ),
           KeyK: () => {
             const isTerm = (id: string | null) => !!id && !!st.workspace?.nodes.find((n) => n.id === id && n.terminal);
             st.setComposer(!st.composerOpen, [st.focusedTerminal, st.selectedNode, st.composerTarget].find(isTerm) ?? null);

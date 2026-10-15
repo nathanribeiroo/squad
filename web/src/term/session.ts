@@ -10,7 +10,7 @@ import { Terminal } from '@xterm/xterm';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import '@xterm/xterm/css/xterm.css';
-import { wsURL } from '../api/client';
+import { wsPath, wsURL } from '../api/client';
 import { useSquad } from '../state/store';
 import { noite, papel } from '../theme/xterm-themes';
 
@@ -24,7 +24,7 @@ const themeOf = () => (useSquad.getState().termTheme === 'papel' ? papel : noite
 /** Keys the canvas owns even while a terminal has the keyboard. */
 function canvasKey(e: KeyboardEvent): boolean {
   if (!e.altKey || e.ctrlKey || e.metaKey) return false;
-  return e.code === 'KeyA' || e.code === 'KeyP' || e.code === 'KeyK' || e.key === 'Escape';
+  return e.code === 'KeyA' || e.code === 'KeyP' || e.code === 'KeyK' || e.key === 'Escape' || /^Digit[1-9]$/.test(e.code);
 }
 
 let fontsReady: Promise<unknown> | null = null;
@@ -109,7 +109,7 @@ export class TermSession {
 
   private connect() {
     if (this.disposed) return;
-    const ws = new WebSocket(wsURL(`/ws/term/${this.id}`));
+    const ws = new WebSocket(wsURL(wsPath(`/ws/term/${this.id}`)));
     ws.binaryType = 'arraybuffer';
     this.ws = ws;
     ws.onmessage = (m) => {
@@ -312,4 +312,6 @@ export function pruneSessions(keep: Set<string>) {
 
 useSquad.subscribe((st, prev) => {
   if (st.termTheme !== prev.termTheme) for (const s of sessions.values()) s.setTheme();
+  // Another workspace on screen: its terminals get new sessions.
+  if (st.activeWs !== prev.activeWs) pruneSessions(new Set());
 });
