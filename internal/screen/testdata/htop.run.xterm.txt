@@ -1,0 +1,30 @@
+
+    0[||||||       29.3%]   3[|||          11.3%]   5[||             2.7%]  8[|||            6.6%]
+    1[||||||       27.3%]   4[||            6.7%]   6[|||            9.3%]  9[||             7.3%]
+    2[|||          15.4%]                           7[|||            9.9%]
+  Mem[|||||||||||||||||||||||||||||||12.3G/16.0G] Tasks: 758, 3103 thr, 0 kthr; 1 running
+  Swp[|||||||||||||||||||||||||||||||3.00G/4.00G] Load average: 2.51 2.27 2.23
+                                                  Uptime: 9 days, 14:41:24
+
+  [Main]
+  PID USER       PRI  NI  VIRT   RES S  CPU%▽MEM%   TIME+  Command
+61782 nathan      24   0  467G  178M S   0.6  1.1  0:45.29 /Applications/iTerm.app/Contents/MacOS/iT
+39152 nathan      17   0  535G  378M S   0.2  2.3  0:00.19 /System/Library/Frameworks/WebKit.framewo
+35673 nathan      17   0  473G 51936 S   0.2  0.3  0:29.85 /System/Library/Frameworks/WebKit.framewo
+37021 nathan      24   0  471G  414M S   0.1  2.5  0:00.17 claude --permission-mode bypassPermission
+ 2046 nathan      17   0  471G  137M S   0.1  0.8  0:27.02 /System/Volumes/Preboot/Cryptexes/App/Sys
+50573 nathan      17   0  471G  454M S   0.1  2.8  0:05.73 claude --permission-mode bypassPermission
+48452 nathan      17   0 1911G  237M S   0.0  1.5  0:03.26 /Applications/Visual Studio Code.app/Cont
+48449 nathan      17   0  514G 64160 S   0.0  0.4  0:02.70 /Applications/Visual Studio Code.app/Cont
+ 1710 nathan      24   0 1917G  113M S   0.0  0.7  0:01.25 /Applications/Wispr Flow.app/Contents/Fra
+ 1707 nathan      17   0  466G 67760 S   0.0  0.4  0:01.09 /Applications/Wispr Flow.app/Contents/Res
+48475 nathan      17   0 1910G  224M S   0.0  1.4  0:01.27 /Applications/Visual Studio Code.app/Cont
+55309 nathan      24   0 1910G  302M S   0.0  1.8  0:00.85 /Applications/Visual Studio Code.app/Cont
+48474 nathan      17   0 1910G  105M S   0.0  0.6  0:00.84 /Applications/Visual Studio Code.app/Cont
+97750 nathan      17   0  466G 41760 S   0.0  0.2  0:01.21 /Library/Application Support/Logitech.loc
+  947 nathan      17   0  466G 19824 S   0.0  0.1  0:04.71 /System/Library/CoreServices/WindowManage
+ 5333 nathan      17   0  471G  223M S   0.0  1.4  0:00.45 claude
+ 1302 nathan      17   0  466G 40448 S   0.0  0.2  0:17.39 /System/Library/CoreServices/ControlCente
+ 1669 nathan      17   0 1910G  164M S   0.0  1.0  0:00.60 /Applications/Wispr Flow.app/Contents/Mac
+58899 nathan      17   0  466G 15824 S   0.0  0.1  0:02.86 /usr/libexec/spotlightknowledged.updater
+F1Help  F2Setup F3SearchF4FilterF5Tree  F6SortByF7Nice -F8Nice +F9Kill  F10Quit
