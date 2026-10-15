@@ -2,6 +2,10 @@ package server
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -28,11 +32,7 @@ func (s *Server) StartTerminal(id string) error {
 	if !ok || n.Terminal == nil {
 		return errors.New("terminal node not found")
 	}
-	ws := s.store.Snapshot()
-	cwd := n.Terminal.Cwd
-	if cwd == "" {
-		cwd = ws.Cwd
-	}
+	cwd := ResolveCwd(n.Terminal.Cwd, s.store.Snapshot().Cwd)
 	tok := newToken()
 	s.mu.Lock()
 	s.termTokens[id] = tok
@@ -59,6 +59,36 @@ func (s *Server) StartTerminal(id string) error {
 	}
 	_, err := s.terms.Create(spec)
 	return err
+}
+
+// ResolveCwd returns a terminal's working directory: its own folder (absolute,
+// "~/…", or relative to the workspace folder, so it follows the workspace if
+// that moves) or, when empty, the workspace folder.
+func ResolveCwd(cwd, wsCwd string) string {
+	switch {
+	case cwd == "":
+		return wsCwd
+	case cwd == "~" || strings.HasPrefix(cwd, "~/") || strings.HasPrefix(cwd, `~\`):
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, cwd[1:])
+		}
+	case filepath.IsAbs(cwd):
+		return filepath.Clean(cwd)
+	}
+	return filepath.Join(wsCwd, cwd)
+}
+
+// checkTerminalDir reports a terminal folder that doesn't exist, so the
+// mistake shows in the form instead of as a terminal that fails to start.
+func checkTerminalDir(t *store.TerminalData, wsCwd string) error {
+	if t == nil || t.Cwd == "" {
+		return nil
+	}
+	dir := ResolveCwd(t.Cwd, wsCwd)
+	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+		return errors.Join(store.ErrInvalid, fmt.Errorf("folder not found: %s", dir))
+	}
+	return nil
 }
 
 // StartTerminals starts every terminal node of the workspace.

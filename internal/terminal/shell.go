@@ -81,6 +81,81 @@ func ShellCandidates(pref string) []Shell {
 	return out
 }
 
+// ShellOption is a shell offered when creating a terminal.
+type ShellOption struct {
+	Path    string `json:"path"`
+	Label   string `json:"label"`
+	Default bool   `json:"default,omitempty"`
+}
+
+// AvailableShells lists the shells installed on this machine, the default
+// (what a terminal without a shell of its own gets) first.
+func AvailableShells() []ShellOption {
+	cands := ShellCandidates("")
+	if runtime.GOOS != "windows" {
+		for _, p := range etcShells("/etc/shells") {
+			cands = appendShell(cands, Shell{Argv: []string{p}, Family: FamilyOf(p)})
+		}
+	}
+	return shellOptions(cands)
+}
+
+func shellOptions(cands []Shell) []ShellOption {
+	out := make([]ShellOption, 0, len(cands))
+	seen := map[string]bool{}
+	for i, sh := range cands {
+		p := sh.Argv[0]
+		real := p
+		if r, err := filepath.EvalSymlinks(p); err == nil {
+			real = r
+		}
+		if seen[strings.ToLower(real)] {
+			continue // /bin/bash and /usr/bin/bash on merged-/usr systems
+		}
+		seen[strings.ToLower(real)] = true
+		out = append(out, ShellOption{Path: p, Label: shellLabel(p), Default: i == 0})
+	}
+	return out
+}
+
+// shellLabel names a shell for people: "Git Bash", "PowerShell 7", "zsh"…
+func shellLabel(p string) string {
+	name := strings.TrimSuffix(strings.ToLower(filepath.Base(p)), ".exe")
+	if strings.HasSuffix(strings.ToLower(p), ".exe") {
+		switch name {
+		case "bash":
+			return "Git Bash"
+		case "pwsh":
+			return "PowerShell 7"
+		case "powershell":
+			return "Windows PowerShell"
+		case "cmd":
+			return "cmd"
+		}
+	}
+	return name
+}
+
+// etcShells reads the login shells listed in path (/etc/shells), keeping the
+// executables that exist.
+func etcShells(path string) []string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || !filepath.IsAbs(line) {
+			continue
+		}
+		if fi, err := os.Stat(line); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
 // windowsCandidates resolves the Windows shell list. A bare "bash" means Git
 // Bash: looking it up on PATH could find System32\bash.exe, the WSL launcher,
 // where the Windows squad.exe and agents don't work.
