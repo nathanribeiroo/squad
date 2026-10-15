@@ -119,6 +119,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
       <NodeHandles id={id} />
       <div className="node-stripe" style={{ background: `var(--r-${roleKey(t.role)})` }} />
       <LiveHeader id={id} t={t} rt={rt} state={state} focused={focused} />
+      <SenderStrip id={id} />
       <TermBody id={id}>
         <XTermView id={id} zoom={zoom} />
         {(rt?.status === 'failed' || rt?.status === 'exited' || rt?.status === 'stopped') && <StoppedOverlay rt={rt} />}
@@ -227,6 +228,60 @@ function LiveFooter({ id, t }: { id: string; t: TerminalData }) {
       <span className="tn-cwd">{shortPath(cwd)}</span>
     </footer>
   );
+}
+
+const REPLY_STRIP_MS = 60_000;
+
+/**
+ * Strip above the terminal (never over it, handoff §2): an incoming request,
+ * this terminal waiting on one, or the reply it just got.
+ */
+function SenderStrip({ id }: { id: string }) {
+  const pending = useSquad((s) => s.extra.pending);
+  const reply = useSquad((s) => s.lastReply[id]);
+  const nodes = useSquad((s) => s.workspace?.nodes);
+  const incoming = pending.find((p) => p.to === id);
+  const outgoing = pending.find((p) => p.from === id);
+  const now = useNow(1000, !!outgoing || !!reply);
+  const roleOf = (nid: string) => roleKey(nodes?.find((n) => n.id === nid)?.terminal?.role);
+
+  if (incoming) {
+    const r = roleOf(incoming.from);
+    return (
+      <div className="tn-strip" style={{ background: `var(--rb-${r})`, color: `var(--r-${r})` }}>
+        <Icon name="call_received" size={15} />
+        Pedido {incoming.id} de {incoming.fromName} · a resposta volta para ele
+      </div>
+    );
+  }
+  if (outgoing) {
+    return (
+      <div className="tn-strip" style={{ background: 'var(--stb-wait)', color: 'var(--st-wait)' }}>
+        <Icon name="hourglass_top" size={15} />
+        Aguardando {outgoing.toName} · pedido {outgoing.id} · enviado há {secondsAgo(outgoing.sentAt, now)}
+      </div>
+    );
+  }
+  if (reply && now - reply.at < REPLY_STRIP_MS) {
+    return (
+      <div className="tn-strip" style={{ background: 'var(--stb-done)', color: 'var(--st-done)' }}>
+        <Icon name="reply" size={15} />
+        Resposta de {reply.fromName} · {reply.id} · {duration(reply.elapsedMs)}
+      </div>
+    );
+  }
+  return null;
+}
+
+function secondsAgo(t: string, now: number): string {
+  const s = Math.max(0, Math.round((now - Date.parse(t)) / 1000));
+  return s < 60 ? `${s} s` : elapsed(t, now);
+}
+
+/** 2m14s, 42s */
+function duration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`;
 }
 
 function StoppedOverlay({ rt }: { rt: TerminalRuntime }) {
