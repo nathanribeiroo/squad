@@ -29,6 +29,8 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	binDir = dir
+	// Keep generated files (Claude hooks settings) out of the real ~/.squad.
+	os.Setenv("SQUAD_HOME", filepath.Join(dir, "home"))
 	for name, pkg := range map[string]string{
 		"squad":     "github.com/nathanribeiroo/squad/cmd/squad",
 		"fakeagent": "github.com/nathanribeiroo/squad/internal/testutil/fakeagent",
@@ -84,11 +86,16 @@ func newEnv(t *testing.T, limits agentbus.Limits) *env {
 // agent adds a fakeagent terminal; extra are KEY=VALUE settings.
 func (e *env) agent(name string, extra ...string) store.Node {
 	e.t.Helper()
+	return e.agentOfType(name, "custom", extra...)
+}
+
+func (e *env) agentOfType(name, agentType string, extra ...string) store.Node {
+	e.t.Helper()
 	log := filepath.Join(e.dir, name+".log")
 	vars := append([]string{"FAKEAGENT_LOG=" + log, "FAKEAGENT_WORK=0.4"}, extra...)
 	cmd := strings.Join(vars, " ") + " " + filepath.Join(binDir, "fakeagent")
 	n, err := e.app.Server.Store().AddNode(store.Node{Kind: store.KindTerminal,
-		Terminal: &store.TerminalData{Name: name, Agent: "custom", Command: cmd, Shell: "/bin/sh"}})
+		Terminal: &store.TerminalData{Name: name, Agent: agentType, Command: cmd, Shell: "/bin/sh"}})
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -347,4 +354,38 @@ func TestCLIBinaryFromTerminal(t *testing.T) {
 	}
 	_ = fmt.Sprint
 	_ = http.StatusOK
+}
+
+// A Claude-like agent reports its turn end through Squad's hook; the reply
+// is its final message, not the screen.
+func TestHookedAgentRepliesWithFinalMessage(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	a := e.agent("A")
+	b := e.agentOfType("Claude", "claude", "FAKEAGENT_HOOK=claude")
+	e.connect(a, b)
+	r := e.run(a, "ask", "Claude", "diga pong")
+	if r.Code != 200 || r.Source != "claude-stop" || !strings.Contains(r.Body, "[reply from Claude · request ") || !strings.Contains(r.Body, "final: [de: A · pedido ") {
+		t.Fatalf("hooked: code=%d source=%s body=%s", r.Code, r.Source, r.Body)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for !strings.Contains(e.log("Claude"), "HOOK claude-stop err=<nil>") {
+		if time.Now().After(deadline) {
+			t.Fatalf("hook not logged:\n%s", e.log("Claude"))
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// A hooked agent that stays silent longer than the screen fallback must not
+// be answered by the screen: the request waits for the hook.
+func TestHookedAgentIgnoresScreenFallback(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	a := e.agent("A")
+	b := e.agentOfType("Claude", "claude", "FAKEAGENT_HOOK=claude")
+	e.connect(a, b)
+	start := time.Now()
+	r := e.run(a, "ask", "Claude", "SLEEP:2.5")
+	if r.Source != "claude-stop" || time.Since(start) < 2500*time.Millisecond {
+		t.Fatalf("resolved early by %s after %v: %s", r.Source, time.Since(start), r.Body)
+	}
 }

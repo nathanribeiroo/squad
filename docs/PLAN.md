@@ -18,8 +18,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | B1 Núcleo de terminal | `feat/b1-terminal-core` | concluído |
 | B2 Servidor (HTTP, WebSocket, persistência) | `feat/b2-server` | concluído |
 | B3 Conversa entre agentes | `feat/b3-agent-bus` | concluído |
-| B4 Adaptadores de agentes (hooks) | `feat/b4-agent-adapters` | em andamento |
-| B5 Notas | `feat/b5-notes` | pendente |
+| B4 Adaptadores de agentes (hooks) | `feat/b4-agent-adapters` | concluído |
+| B5 Notas | `feat/b5-notes` | em andamento |
 | W1 Web: shell e tokens | `feat/w1-web-shell` | pendente |
 | W2 Web: nó de terminal | `feat/w2-terminal-node` | pendente |
 | W3 Web: fios e conversa | `feat/w3-wires` | pendente |

@@ -9,12 +9,16 @@
 //	SLEEP:<seconds>       stays silent for that long before answering
 //
 // $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
+// $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Squad's hooks:
+// `squad hook claude-prompt` when a turn starts and `squad hook claude-stop`
+// (with last_assistant_message) when it ends.
 //
 // An empty CR (the reinforcement Enter) is ignored. Ctrl-C exits with 130.
 package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -114,7 +118,18 @@ func main() {
 
 var envelopeRe = regexp.MustCompile(`^\[de: (.+?) · pedido ([0-9a-f]+)\]`)
 
+func hook(name string, payload string) {
+	if os.Getenv("FAKEAGENT_HOOK") != "claude" {
+		return
+	}
+	cmd := exec.Command("squad", "hook", name)
+	cmd.Stdin = strings.NewReader(payload)
+	o, err := cmd.CombinedOutput()
+	logf("HOOK %s err=%v out=%q", name, err, o)
+}
+
 func turn(msg string, work float64) {
+	hook("claude-prompt", `{"hook_event_name":"UserPromptSubmit"}`)
 	first, _, _ := strings.Cut(msg, "\n")
 	from, id := "", ""
 	if m := envelopeRe.FindStringSubmatch(msg); m != nil {
@@ -145,8 +160,11 @@ func turn(msg string, work float64) {
 		out(fmt.Sprintf("working %d %s\n", i, strings.Repeat("#", width)))
 		time.Sleep(200 * time.Millisecond)
 	}
-	out("answer: " + strings.ToUpper(first) + "\nDONE\n> ")
+	answer := "answer: " + strings.ToUpper(first)
+	out(answer + "\nDONE\n> ")
 	logf("TURN-END")
+	payload, _ := json.Marshal(map[string]any{"hook_event_name": "Stop", "last_assistant_message": "final: " + first})
+	hook("claude-stop", string(payload))
 }
 
 // lastLine returns the last line of msg (after the [de: …] envelope line).
