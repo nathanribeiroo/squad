@@ -1,9 +1,10 @@
+import type { IconName } from '../lib/icons';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
 import { TerminalForm } from './TerminalForm';
 import './Toolbar.css';
 
-type Tool = { icon: string; label: string; key: string; action: () => void; active?: boolean; disabled?: boolean };
+type Tool = { icon: IconName; label: string; key: string; action: () => void; active?: boolean; disabled?: boolean };
 
 export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => void; onCreatePortal: () => void }) {
   const tool = useSquad((s) => s.tool);

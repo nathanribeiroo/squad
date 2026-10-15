@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon';
+import type { IconName } from '../../lib/icons';
 
 export interface MenuItem {
-  icon: string;
+  icon: IconName;
   label: string;
   action: () => void;
   danger?: boolean;
