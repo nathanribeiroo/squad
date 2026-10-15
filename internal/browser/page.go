@@ -1,10 +1,12 @@
 package browser
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image/jpeg"
 	"log/slog"
 	"math"
 	"strings"
@@ -55,6 +57,8 @@ type Page struct {
 	nextID    int
 	casting   bool
 	last      Frame
+	size      [2]int             // viewport asked for by the last Resize
+	resizing  bool               // a viewport fix is in flight
 	refs      map[string]Element // last snapshot; cleared when the page changes
 	console   []ConsoleEntry
 }
@@ -141,6 +145,9 @@ func (p *Page) watch() {
 		c, done := p.call()
 		_, _ = chromedp.Call(c, page.ScreencastFrameAck, page.ScreencastFrameAckParams{SessionID: ev.SessionID})
 		done()
+		if !p.sized(ev.Data) {
+			continue
+		}
 		f := Frame{Data: ev.Data, Time: time.Now()}
 		if ev.Metadata != nil && ev.Metadata.Timestamp > 0 {
 			sec, frac := math.Modf(float64(ev.Metadata.Timestamp))
@@ -264,12 +271,7 @@ func (p *Page) Subscribe() (<-chan Frame, func()) {
 	p.casting = true
 	p.mu.Unlock()
 	if start {
-		q := int64(70)
-		c, done := p.call()
-		if _, err := chromedp.Call(c, page.StartScreencast, page.StartScreencastParams{Format: "jpeg", Quality: &q}); err != nil {
-			p.log.Warn("portal screencast", "err", err)
-		}
-		done()
+		p.startCast()
 	}
 	return ch, func() {
 		p.mu.Lock()
@@ -338,6 +340,9 @@ func (p *Page) Resize(w, h int) error {
 	if w < 50 || h < 50 {
 		return fmt.Errorf("browser: viewport %dx%d too small", w, h)
 	}
+	p.mu.Lock()
+	p.size = [2]int{w, h}
+	p.mu.Unlock()
 	c, done := p.call()
 	defer done()
 	_, err := chromedp.Call(c, emulation.SetDeviceMetricsOverride, emulation.SetDeviceMetricsOverrideParams{
@@ -347,6 +352,50 @@ func (p *Page) Resize(w, h int) error {
 		p.update(func(s *State) { s.Width, s.Height = w, h })
 	}
 	return err
+}
+
+// sized reports whether a frame has the viewport's size. A document in a new
+// renderer can be captured at the headless window's size instead (its first
+// load racing the screencast), even when the frame's metadata says otherwise:
+// such frames are dropped, and setting the viewport again brings right ones.
+func (p *Page) sized(jpg []byte) bool {
+	cfg, err := jpeg.DecodeConfig(bytes.NewReader(jpg))
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	w, h := p.size[0], p.size[1]
+	if err != nil || w == 0 || (cfg.Width == w && cfg.Height == h) {
+		return true
+	}
+	if !p.resizing {
+		p.resizing = true
+		go func() {
+			// The viewport again, then a new screencast: a still page sends
+			// no frame by itself.
+			_ = p.Resize(w, h)
+			p.mu.Lock()
+			casting := p.casting
+			p.mu.Unlock()
+			if casting {
+				c, done := p.call()
+				_, _ = chromedp.Call(c, page.StopScreencast, cdp.Empty{})
+				done()
+				p.startCast()
+			}
+			p.mu.Lock()
+			p.resizing = false
+			p.mu.Unlock()
+		}()
+	}
+	return false
+}
+
+func (p *Page) startCast() {
+	q := int64(70)
+	c, done := p.call()
+	defer done()
+	if _, err := chromedp.Call(c, page.StartScreencast, page.StartScreencastParams{Format: "jpeg", Quality: &q}); err != nil {
+		p.log.Warn("portal screencast", "err", err)
+	}
 }
 
 // Modifier bits of mouse and key events (DevTools protocol).
