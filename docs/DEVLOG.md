@@ -2,6 +2,33 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, W4 web: Composer, notas e portal
+
+- **Servidor: `POST /api/nodes/{id}/send`** (`internal/app/compose.go`). Entrega uma mensagem do Composer a um terminal como colagem + Enter, igual a digitar.
+  - **Menções:** cada `@Nome` precisa estar ligado ao destino; senão, 400. A mensagem ganha uma linha final que diz ao agente o que é cada menção e como alcançá-la, por exemplo `[menções: @B = terminal ligado (squad ask "B" "…") · @Plano = nota ligada plano.md (squad note read "plano.md")]`.
+  - **Imagens coladas** (data URL PNG, JPEG, GIF ou WebP): são salvas em `~/.squad/workspaces/<id>/attachments/` e o caminho vai no texto. O Claude Code anexa imagens referenciadas por caminho.
+  - **Evento `message.sent`:** a gaveta mostra "Você → Implementador".
+  - **Teste:** `TestComposerSend` confere o texto entregue pelo log do agente falso, os anexos, o evento e as recusas (menção não ligada, mensagem vazia, imagem inválida).
+- **Composer** (⌥K ou clique na pílula; Esc fecha):
+  - **Destinos:** chips "Para" com papel e agente, "+ destino" para enviar a vários ("Enviar a 2"), e aviso do estado do destino ("trabalhando · entra na fila"; "parado · inicie o terminal" bloqueia o envio).
+  - **Texto:** `contentEditable` em que as menções viram chips inline (ícone de nota ou portal, quadrado da cor do papel para terminal).
+  - **Menu @:** acima do Composer, com "Ligados a X" (só nós ligados a todos os destinos), filtro com o trecho sublinhado, nomes que começam com o texto digitado primeiro, ↑↓ e ⏎/Tab. "Não ligados" aparecem desabilitados, com "ligue para mencionar".
+  - **Imagens:** colar (⌘V), soltar ou escolher arquivo; o cartão mostra miniatura e "1440×900 · colada".
+  - **Envio:** ⏎ envia, ⇧⏎ quebra a linha; a colagem só aceita texto puro.
+- **NoteNode:**
+  - prévia em Markdown com renderer próprio, sem HTML injetado: títulos, listas, tarefas clicáveis, código, negrito, itálico e links http/mailto;
+  - modo de edição (Prévia/Editar ou duplo clique), salvo 800 ms depois de parar de digitar e ao sair;
+  - cadeado para travar e destravar (travada, ninguém escreve);
+  - edição de um agente: o trecho alterado fica destacado na cor do papel do autor, com "Implementador escreveu há 4 s", por 30 s. Se o arquivo muda enquanto você edita, aparece "X alterou a nota · Recarregar" em vez de sobrescrever o rascunho.
+- **PortalNode:** endereço editável (`PATCH portal.url`), botão para abrir no navegador e "sem transmissão". A imagem ao vivo via CDP fica para depois.
+- **ComposerPill:** mira só em terminais (foco, seleção ou último destino).
+- **Teste com eventos reais via CDP:**
+  - menu @ com "Ligados a Planejador", chip, envio entregue ao agente falso e toast "Enviado a Planejador";
+  - `squad note edit` vindo de um agente, que destacou a linha;
+  - edição pela UI salva no `.md` e tarefa marcada com clique.
+
+**Decisão:** como o agente recebe as menções. No Maestri elas viram tags próprias; no Squad o texto mantém o `@Nome` legível e ganha uma linha final de contexto com o comando que alcança cada nó. Não há formato novo para o agente aprender, e a skill do Squad já ensina `squad ask` e `squad note`.
+
 ## 2026-10-15, W3 web: fios e conversa
 
 - **A conversa no fio, dirigida pelos eventos reais** (`request.sent`, `reply.sent`, `reply.received`, `request.cancelled`):

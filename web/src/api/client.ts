@@ -31,6 +31,8 @@ export const api = {
   addEdge: (a: string, b: string) => req<WEdge>('POST', '/api/edges', { a, b }),
   updateEdge: (id: string, ropePoints: [number, number][]) => req<WEdge>('PATCH', `/api/edges/${id}`, { ropePoints }),
   removeEdge: (id: string) => req<void>('DELETE', `/api/edges/${id}`),
+  send: (id: string, body: { text: string; mentions: string[]; images: { name: string; data: string }[] }) =>
+    req<{ ok: boolean }>('POST', `/api/nodes/${id}/send`, body),
   pause: () => req<StateExtra>('POST', '/api/conversations/pause'),
   resume: () => req<StateExtra>('POST', '/api/conversations/resume'),
   note: (id: string) => req<{ id: string; file: string; title: string; locked: boolean; content: string }>('GET', `/api/notes/${id}`),

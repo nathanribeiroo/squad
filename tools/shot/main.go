@@ -235,7 +235,9 @@ func runStep(ctx context.Context, t *chromedp.Target, step string) error {
 		}
 		return mouse(input.DispatchMouseEventTypeMouseReleased, x2, y2, 0, 0)
 	case "type":
-		_, err := cdp.Call(ctx, t, input.InsertText, input.InsertTextParams{Text: strings.TrimSpace(strings.TrimPrefix(step, "type"))})
+		// Steps are trimmed, so a significant space is written as {sp}.
+		text := strings.ReplaceAll(strings.TrimSpace(strings.TrimPrefix(step, "type")), "{sp}", " ")
+		_, err := cdp.Call(ctx, t, input.InsertText, input.InsertTextParams{Text: text})
 		return err
 	case "key":
 		name := f[1]
