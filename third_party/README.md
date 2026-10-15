@@ -2,7 +2,7 @@
 
 ## vt
 
-Cópia de `github.com/charmbracelet/x/vt` v0.1.0 (licença MIT, ver `vt/LICENSE`), usada via `replace` no `go.mod` da raiz.
+Cópia de `github.com/charmbracelet/x/vt` v0.1.0 (licença MIT, ver `vt/LICENSE`), incorporada como pacote do próprio módulo (`github.com/nathanribeiroo/squad/third_party/vt`), sem `go.mod` próprio nem `replace`. Assim o `go install` funciona, já que ele recusa módulos com `replace`.
 
 Alteração local (`spikes/go/patches/vt-v0.1.0-squad.patch`):
 
@@ -11,4 +11,4 @@ Alteração local (`spikes/go/patches/vt-v0.1.0-squad.patch`):
 
 Bug conhecido do upstream, contornado fora daqui (`internal/screen`, filtro de OSC): bytes 0x80–0x9F dentro de um OSC (UTF-8 em títulos) são tratados como controles C1.
 
-Quando o upstream aceitar as correções, remova a cópia e o `replace`.
+Quando o upstream aceitar as correções, remova a cópia e volte a importar `github.com/charmbracelet/x/vt`.

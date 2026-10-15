@@ -10,6 +10,16 @@ Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, 
 - Node 22+ (só para compilar a interface web).
 - macOS ou Linux testados; Windows compila (ConPTY) mas ainda não foi testado numa máquina Windows.
 
+## Instalação
+
+Com Go 1.26+:
+
+```sh
+go install github.com/nathanribeiroo/squad/cmd/squad@latest   # ou @v0.1.0
+```
+
+O binário vai para `$(go env GOPATH)/bin` (no Windows, `%USERPROFILE%\go\bin`) e já traz a interface web embutida, sem precisar de Node.
+
 ## Início rápido
 
 ```sh
@@ -103,7 +113,7 @@ go test -tags e2e -run TestRealClaude -v ./internal/app/     # usa o Claude Code
 | `internal/` | `terminal`, `pty`, `screen` (emulador), `activity` (monitor), `agentbus` (conversa), `agents` (hooks), `notes`, `store`, `server`, `app` |
 | `web/` | interface React (React Flow, xterm.js); o build vai para `internal/webui/dist` |
 | `tools/shot` | captura de tela via Chrome headless (módulo Go próprio), usada para comparar a UI com o design |
-| `third_party/vt` | emulador de terminal (charmbracelet/x/vt, MIT) com patches |
+| `third_party/vt` | emulador de terminal (charmbracelet/x/vt, MIT) com patches, como pacote do próprio módulo |
 | `docs/` | investigação do Maestri, propostas de arquitetura, spec da conversa, design (`design_handoff_squad/`), plano e diário |
 | `spikes/` | protótipos e gravações reais de TUIs (base dos testes do emulador) |
 | `research/` | ferramentas usadas na investigação |
