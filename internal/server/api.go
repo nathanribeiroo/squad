@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -17,6 +18,9 @@ type TerminalRuntime struct {
 	ExitCode int    `json:"exitCode"`
 	Title    string `json:"title,omitempty"`
 	Error    string `json:"error,omitempty"`
+	// Activity is the UI state: boot, idle, work, wait, done, err, off.
+	Activity      string    `json:"activity"`
+	ActivitySince time.Time `json:"activitySince"`
 }
 
 // StateResponse is GET /api/state.
@@ -35,6 +39,9 @@ func (s *Server) runtimeOf(id string) TerminalRuntime {
 	s.mu.Lock()
 	rt.Title = s.titles[id]
 	s.mu.Unlock()
+	if s.activityOf != nil {
+		rt.Activity, rt.ActivitySince = s.activityOf(id)
+	}
 	return rt
 }
 
