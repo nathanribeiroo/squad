@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
@@ -58,6 +59,27 @@ type Server struct {
 	termListener func(terminal.Event)
 	launchHook   LaunchHook
 	stateExtra   func() map[string]any
+	activityOf   func(id string) (string, time.Time)
+	extraRoutes  []route
+}
+
+type route struct {
+	pattern string
+	handler http.Handler
+}
+
+// HandleSession registers an extra route behind session auth; call before
+// Handler.
+func (s *Server) HandleSession(pattern string, h http.Handler) {
+	s.extraRoutes = append(s.extraRoutes, route{pattern, h})
+}
+
+// SetActivity installs the function giving a terminal's UI state.
+func (s *Server) SetActivity(fn func(id string) (string, time.Time)) { s.activityOf = fn }
+
+// PublishTerminalState emits terminal.state for id with its current runtime.
+func (s *Server) PublishTerminalState(id string) {
+	s.bus.Publish(events.TerminalState, s.runtimeOf(id))
 }
 
 // New creates a server; call StartTerminals and serve Handler.
@@ -125,6 +147,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("DELETE /api/edges/{id}", s.session(http.HandlerFunc(s.handleRemoveEdge)))
 	mux.Handle("GET /ws/events", s.session(http.HandlerFunc(s.handleEventsWS)))
 	mux.Handle("GET /ws/term/{id}", s.session(http.HandlerFunc(s.handleTermWS)))
+	for _, r := range s.extraRoutes {
+		mux.Handle(r.pattern, s.session(r.handler))
+	}
 	// Terminal-scoped endpoints (per-terminal token).
 	mux.Handle("POST /cli", s.terminalAuth(http.HandlerFunc(s.handleCLI)))
 	mux.Handle("POST /hooks/{agent}", s.terminalAuth(http.HandlerFunc(s.handleHook)))

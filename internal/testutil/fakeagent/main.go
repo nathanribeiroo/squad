@@ -4,8 +4,11 @@
 // "turn": progress lines for $FAKEAGENT_WORK seconds, an answer line, then
 // "DONE". Special messages:
 //
-//	RUN:<shell command>   runs the command (e.g. `squad ask …`) and prints its output
+//	RUN:<shell command>   runs the command (e.g. `squad ask …`) and prints its output;
+//	                      {id} and {from} are replaced from the [de: … · pedido …] envelope
 //	SLEEP:<seconds>       stays silent for that long before answering
+//
+// $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
 //
 // An empty CR (the reinforcement Enter) is ignored. Ctrl-C exits with 130.
 package main
@@ -15,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -108,8 +112,14 @@ func main() {
 	}
 }
 
+var envelopeRe = regexp.MustCompile(`^\[de: (.+?) · pedido ([0-9a-f]+)\]`)
+
 func turn(msg string, work float64) {
 	first, _, _ := strings.Cut(msg, "\n")
+	from, id := "", ""
+	if m := envelopeRe.FindStringSubmatch(msg); m != nil {
+		from, id = m[1], m[2]
+	}
 	out("\nreceived: " + first + "\n")
 	if rest, ok := strings.CutPrefix(lastLine(msg), "SLEEP:"); ok {
 		if s, err := strconv.ParseFloat(rest, 64); err == nil {
@@ -117,6 +127,7 @@ func turn(msg string, work float64) {
 		}
 	}
 	if cmdline, ok := strings.CutPrefix(lastLine(msg), "RUN:"); ok {
+		cmdline = strings.NewReplacer("{id}", id, "{from}", from).Replace(cmdline)
 		shell, flag := "/bin/sh", "-c"
 		if runtime.GOOS == "windows" {
 			shell, flag = "cmd.exe", "/c"
@@ -125,9 +136,13 @@ func turn(msg string, work float64) {
 		logf("RUN %q err=%v out=%q", cmdline, err, o)
 		out(string(o))
 	}
+	width := 60
+	if w, err := strconv.Atoi(os.Getenv("FAKEAGENT_WIDTH")); err == nil && w > 0 {
+		width = w
+	}
 	end := time.Now().Add(time.Duration(work * float64(time.Second)))
 	for i := 1; time.Now().Before(end); i++ {
-		out(fmt.Sprintf("working %d %s\n", i, strings.Repeat("#", 60)))
+		out(fmt.Sprintf("working %d %s\n", i, strings.Repeat("#", width)))
 		time.Sleep(200 * time.Millisecond)
 	}
 	out("answer: " + strings.ToUpper(first) + "\nDONE\n> ")

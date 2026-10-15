@@ -66,11 +66,6 @@ func runVersion(_ []string, stdout, _ io.Writer) int {
 	return 0
 }
 
-func runClient(args []string, _, stderr io.Writer) int {
-	fmt.Fprintf(stderr, "squad %s: not implemented yet\n", args[0])
-	return 1
-}
-
 func runHook(_ []string, _, stderr io.Writer) int {
 	fmt.Fprintln(stderr, "squad hook: not implemented yet")
 	return 1

@@ -16,15 +16,20 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/app"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
 
-// setupHook lets later stages (agent bus, adapters, notes) attach to the
-// server before it starts serving.
-var setupHooks []func(*server.Server) error
+// setupHooks let later stages (adapters, notes) attach to the app before it
+// starts serving; extensions add CLI commands.
+var (
+	setupHooks []func(*app.App) error
+	extensions []agentbus.Extension
+)
 
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
@@ -61,13 +66,17 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		exe = real
 	}
 	token := ids.Token()
-	srv, err := server.New(server.Options{Port: boundPort, Token: token, Store: st, CLIPath: exe, Logger: log})
+	a, err := app.New(app.Options{
+		Server:     server.Options{Port: boundPort, Token: token, Store: st, CLIPath: exe, Logger: log},
+		Extensions: extensions,
+	})
 	if err != nil {
 		fmt.Fprintln(stderr, "squad:", err)
 		return 1
 	}
+	srv := a.Server
 	for _, h := range setupHooks {
-		if err := h(srv); err != nil {
+		if err := h(a); err != nil {
 			fmt.Fprintln(stderr, "squad: setup:", err)
 			return 1
 		}
@@ -85,7 +94,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 			log.Error("http server", "err", err)
 		}
 	}()
-	srv.StartTerminals()
+	a.Start()
 
 	openURL := fmt.Sprintf("%s/?token=%s", srv.URL(), token)
 	fmt.Fprintf(stdout, "Squad rodando em %s\nAbra: %s\nWorkspace: %s\nCtrl-C para sair.\n", srv.URL(), openURL, st.Path())
@@ -100,7 +109,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = httpSrv.Shutdown(ctx)
-	srv.Shutdown()
+	a.Close()
 	return 0
 }
 

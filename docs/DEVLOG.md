@@ -2,6 +2,41 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, B3 conversa entre agentes
+
+- **`internal/activity`, o monitor:**
+  - amostra periódica (1 s): uma amostra é ativa com ≥500 B de saída **e** mudança no hash da tela, ou com título de spinner;
+  - 3 amostras ativas seguidas = "trabalhando"; mais de 3 s sem mudança = fim de turno;
+  - sinais explícitos (hooks) encerram o turno na hora;
+  - estados da interface: boot, idle, work, wait, done, err, off.
+- **`internal/agentbus`, a conversa:**
+  - `list`, `ask` (bloqueante), `ask --raw`, `ask --batch`, `check`, `reply <id>` e `help`, todos via `POST /cli`;
+  - envelope `[de: Nome · pedido id]` (sem envelope para shells);
+  - pendentes com fim de turno, fallback de tela estável (5 s), timeout de 120 s prorrogável e teto de 30 min;
+  - cancelamento quando o cliente desiste ou a conexão ou o nó somem;
+  - limite de saltos (6, com pausa automática), limite de taxa (30/min, pedidos retidos) e pausar/retomar;
+  - eventos `request.*` e `reply.*`.
+- **`internal/app`:** monta servidor, monitor e barramento; rotas `POST /api/conversations/pause|resume`; `terminal.state` passa a levar `activity`.
+- **CLI `squad`:** cliente fino (`SQUAD_URL`, `SQUAD_TERMINAL_ID`, `SQUAD_TOKEN`); mensagem pelo stdin (heredoc); sem timeout no `ask` bloqueante.
+- **Testes de integração com agentes falsos conversando pela CLI real:**
+  - resposta no fim do turno e pelo fallback;
+  - erros 400/403/404/503;
+  - resposta direta, `reply` por id e ciclo A→B→C→A liberado;
+  - `--raw`, `check` e `--batch`;
+  - limite de saltos, pausa e cancelamento por remoção de conexão.
+
+  Passam com `-race`, repetidos.
+
+**Decisões (melhorias sobre o Maestri):**
+- **Resposta direta:** se B manda `ask A` enquanto A espera por B, a mensagem **é a resposta** do pedido de A. Ela chega completa ao comando bloqueado de A, e B recebe "OK" na hora. O Maestri colava como prompt novo em A e deixava B esperando o turno de A.
+- **`squad reply <id>`:** responde explicitamente pelo id do envelope.
+- **Turno com hook:** quando o fim de turno vem com a mensagem final (hooks, na B4), a resposta é essa mensagem, e não a tela.
+- **Fallback desligável:** o fallback de tela estável pode ser desligado por tipo de agente (os que têm hooks), para um agente que pensa em silêncio não liberar a espera antes da hora.
+- **Teto na espera:** o timeout tem teto (30 min), e o pedido é cancelado se o cliente desconecta.
+- **Saída da CLI em inglês:** é lida principalmente pelos agentes. A interface fica em português.
+
+**Observação:** a detecção de "trabalhando" depende de saída contínua entre as amostras. Um agente que imprime em rajadas espaçadas mais que o intervalo de amostragem pode não ser marcado como trabalhando; aí vale o fallback, ou o hook.
+
 ## 2026-10-15, B2 servidor
 
 - **`internal/store`:** workspace com nós (terminal, nota, portal) e arestas não direcionadas (`ropePoints`), em JSON atômico no envelope `{type, schemaVersion, payload}`. Validações: nome único de terminal, sem aresta para si mesmo nem duplicada. Consultas de vizinhos e conexão.
