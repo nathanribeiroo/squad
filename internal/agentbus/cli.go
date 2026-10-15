@@ -166,9 +166,9 @@ func (b *Bus) List(caller string) Result {
 		}
 	}
 	if len(portals) > 0 {
-		sb.WriteString("\nConnected portals:\n")
+		sb.WriteString("\nConnected portals (use squad portal snapshot / click / fill…; squad portal help):\n")
 		for _, n := range portals {
-			fmt.Fprintf(&sb, "  - url: %s\n", n.Portal.URL)
+			fmt.Fprintf(&sb, "  - name: %s, url: %s\n", quote(n.Label()), n.Portal.URL)
 		}
 	}
 	return Result{Code: 200, Body: sb.String()}

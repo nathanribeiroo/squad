@@ -24,8 +24,8 @@ var ErrNoBrowser = errors.New("no Chrome, Edge or Chromium found (install one, o
 
 // Options configure a Manager.
 type Options struct {
-	ExecPath  string        // browser executable; empty = Find()
-	Profile   string        // user data dir: cookies and logins survive restarts
+	ExecPath  string // browser executable; empty = Find()
+	Profile   string // user data dir: cookies and logins survive restarts
 	Logger    *slog.Logger
 	IdleClose time.Duration // close the browser this long after its last tab (30 s)
 }

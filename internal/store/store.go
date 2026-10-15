@@ -58,6 +58,9 @@ func (n Node) Label() string {
 	case n.Note != nil:
 		return n.Note.Title
 	case n.Portal != nil:
+		if n.Portal.Name != "" {
+			return n.Portal.Name
+		}
 		return "Portal"
 	}
 	return n.ID
@@ -84,7 +87,8 @@ type NoteData struct {
 
 // PortalData configures a portal node.
 type PortalData struct {
-	URL string `json:"url"`
+	URL  string `json:"url"`
+	Name string `json:"name,omitempty"` // how agents refer to it: "Portal", "Docs"…
 }
 
 // Edge is an undirected connection between two nodes.

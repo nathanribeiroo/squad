@@ -16,6 +16,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/notes"
 	"github.com/nathanribeiroo/squad/internal/portal"
 	"github.com/nathanribeiroo/squad/internal/server"
+	"github.com/nathanribeiroo/squad/internal/store"
 )
 
 // Options configure the application.
@@ -61,10 +62,15 @@ func New(o Options) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	srv.SetNodePreparer(notesSvc.PrepareNode)
 	portals := portal.New(srv.Store(), srv.Bus(), o.Browser, o.Server.Port, o.Server.Logger)
+	srv.SetNodePreparer(func(n *store.Node) error {
+		if err := notesSvc.PrepareNode(n); err != nil {
+			return err
+		}
+		return portals.PrepareNode(n)
+	})
 	srv.HandleSession("GET /ws/portal/{id}", http.HandlerFunc(portals.HandleWS))
-	exts := append([]agentbus.Extension{notesSvc.Extension}, o.Extensions...)
+	exts := append([]agentbus.Extension{notesSvc.Extension, portals.Extension}, o.Extensions...)
 	srv.SetCLIHandler(bus.Handler(server.CallerID, exts...))
 	srv.HandleSession("GET /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n, ok := srv.Store().Node(r.PathValue("id"))
