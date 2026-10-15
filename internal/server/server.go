@@ -61,7 +61,12 @@ type Server struct {
 	stateExtra   func() map[string]any
 	activityOf   func(id string) (string, time.Time)
 	extraRoutes  []route
+	prepareNode  func(*store.Node) error
 }
+
+// SetNodePreparer installs a function that completes new nodes before they
+// are stored (e.g. the notes service assigns a file to a new note).
+func (s *Server) SetNodePreparer(fn func(*store.Node) error) { s.prepareNode = fn }
 
 type route struct {
 	pattern string

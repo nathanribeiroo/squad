@@ -5,12 +5,14 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 	"github.com/nathanribeiroo/squad/internal/agents"
+	"github.com/nathanribeiroo/squad/internal/notes"
 	"github.com/nathanribeiroo/squad/internal/server"
 )
 
@@ -27,6 +29,10 @@ type App struct {
 	Server  *server.Server
 	Monitor *activity.Monitor
 	Bus     *agentbus.Bus
+	Notes   *notes.Service
+
+	exts   []agentbus.Extension
+	cancel context.CancelFunc
 }
 
 // New builds the app; call Start to begin activity sampling.
@@ -47,7 +53,49 @@ func New(o Options) (*App, error) {
 	srv.SetStateExtra(bus.StateExtra)
 	srv.OnEdgeRemoved(bus.EdgeRemoved)
 	srv.OnNodeRemoved(bus.NodeRemoved)
-	srv.SetCLIHandler(bus.Handler(server.CallerID, o.Extensions...))
+	notesSvc, err := notes.New(srv.Store(), srv.Bus(), o.Server.Logger)
+	if err != nil {
+		return nil, err
+	}
+	srv.SetNodePreparer(notesSvc.PrepareNode)
+	exts := append([]agentbus.Extension{notesSvc.Extension}, o.Extensions...)
+	srv.SetCLIHandler(bus.Handler(server.CallerID, exts...))
+	srv.HandleSession("GET /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n, ok := srv.Store().Node(r.PathValue("id"))
+		if !ok || n.Note == nil {
+			http.Error(w, `{"error":"note not found"}`, http.StatusNotFound)
+			return
+		}
+		content, err := notesSvc.Read(n.Note.File)
+		if err != nil {
+			http.Error(w, `{"error":"read failed"}`, http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]any{"id": n.ID, "file": n.Note.File, "title": n.Note.Title, "locked": n.Note.Locked, "content": content})
+	}))
+	srv.HandleSession("PUT /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n, ok := srv.Store().Node(r.PathValue("id"))
+		if !ok || n.Note == nil {
+			http.Error(w, `{"error":"note not found"}`, http.StatusNotFound)
+			return
+		}
+		var body struct {
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<20)).Decode(&body); err != nil {
+			http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+			return
+		}
+		if err := notesSvc.Write(n, body.Content, "user"); err != nil {
+			code := http.StatusInternalServerError
+			if errors.Is(err, notes.ErrLocked) {
+				code = http.StatusLocked
+			}
+			http.Error(w, `{"error":"`+err.Error()+`"}`, code)
+			return
+		}
+		writeJSON(w, map[string]any{"ok": true})
+	}))
 
 	// Agent adapters: launch flags that install hooks, and the hook receiver.
 	if o.Server.CLIPath != "" {
@@ -68,24 +116,31 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
-	return &App{Server: srv, Monitor: mon, Bus: bus}, nil
+	return &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, exts: exts}, nil
 }
 
-// Start begins activity sampling and starts the workspace's terminals.
+// Start begins activity sampling, watches notes and starts the workspace's
+// terminals.
 func (a *App) Start() {
+	ctx, cancel := context.WithCancel(context.Background())
+	a.cancel = cancel
 	a.Monitor.Start()
+	_ = a.Notes.Watch(ctx)
 	a.Server.StartTerminals()
 }
 
-// Close stops sampling and every terminal.
+// Close stops sampling, the notes watcher and every terminal.
 func (a *App) Close() {
+	if a.cancel != nil {
+		a.cancel()
+	}
 	a.Monitor.Stop()
 	a.Server.Shutdown()
 }
 
-// Ask is a convenience for tests: run a CLI command as a terminal.
+// Run executes a CLI command as a terminal (used by tests).
 func (a *App) Run(ctx context.Context, caller string, args ...string) agentbus.Result {
-	return a.Bus.Dispatch(ctx, caller, args)
+	return a.Bus.Dispatch(ctx, caller, args, a.exts...)
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
