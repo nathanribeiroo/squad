@@ -21,6 +21,7 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 	"github.com/nathanribeiroo/squad/internal/app"
+	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/hub"
 	"github.com/nathanribeiroo/squad/internal/ids"
@@ -85,8 +86,12 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		exe = real
 	}
 	token := ids.Token()
+	// One browser for every portal, started by the first one that is shown.
+	br := browser.New(browser.Options{Profile: filepath.Join(home, "browser"), Logger: log})
+	defer br.Shutdown()
 	h, err := hub.New(hub.Options{
-		Port: boundPort, Token: token, CLIPath: exe, Logger: log,
+		Browser: br,
+		Port:    boundPort, Token: token, CLIPath: exe, Logger: log,
 		Root: root, Trash: filepath.Join(home, "trash"),
 		Extensions: extensions,
 		Setup: func(a *app.App) error {

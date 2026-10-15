@@ -21,6 +21,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 	"github.com/nathanribeiroo/squad/internal/app"
+	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/server"
@@ -63,6 +64,7 @@ type Options struct {
 	Limits     agentbus.Limits
 	Extensions []agentbus.Extension
 	Setup      func(*app.App) error // runs on every workspace's app before it starts
+	Browser    *browser.Manager     // the portals' browser, shared by all workspaces (nil: no portals)
 }
 
 // Summary is a workspace as the selector shows it.
@@ -149,6 +151,7 @@ func (h *Hub) add(st *store.Store) error {
 		Activity:   h.opts.Activity,
 		Limits:     h.opts.Limits,
 		Extensions: h.opts.Extensions,
+		Browser:    h.opts.Browser,
 	})
 	if err != nil {
 		return err
