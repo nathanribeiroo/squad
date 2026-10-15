@@ -3,6 +3,7 @@
 
 # Build outputs
 /bin/
+/fakeagent
 /dist/
 spikes/go/bin/
 web/node_modules/

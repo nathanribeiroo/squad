@@ -2,6 +2,11 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, skill empacotada
+
+- **`squad-skill.zip` na raiz:** a pasta `squad/` com o `SKILL.md`, gerada por `make skill-zip` a partir do próprio binário (`squad install-skill -dir bin/skill`). Assim o zip nunca diverge do texto que o `install-skill` grava. Se o texto da skill mudar em `cmd/squad/hook.go`, rode `make skill-zip` de novo.
+- **Limpeza:** o binário `fakeagent` tinha sido commitado por engano na raiz no B3. Saiu do repositório e entrou no `.gitignore`. Os testes continuam compilando o agente falso a partir de `internal/testutil/fakeagent`.
+
 ## 2026-10-15, W4 web: Composer, notas e portal
 
 - **Servidor: `POST /api/nodes/{id}/send`** (`internal/app/compose.go`). Entrega uma mensagem do Composer a um terminal como colagem + Enter, igual a digitar.
