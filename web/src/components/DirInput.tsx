@@ -7,7 +7,18 @@ import './DirInput.css';
  * Folder input with suggestions from the server (GET /api/dirs): ↑/↓ pick,
  * Enter or Tab accepts (Tab alone completes a single match), Esc closes.
  */
-export function DirInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+export function DirInput({
+  value,
+  onChange,
+  placeholder,
+  suggest = api.dirs,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  /** Source of suggestions: the workspace's folder (default) or the hub's. */
+  suggest?: (path: string) => Promise<{ suggestions: string[] }>;
+}) {
   const [items, setItems] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -18,8 +29,7 @@ export function DirInput({ value, onChange, placeholder }: { value: string; onCh
     if (!open) return;
     const n = ++seq.current;
     const timer = window.setTimeout(() => {
-      api
-        .dirs(value)
+      suggest(value)
         .then((r) => {
           if (n !== seq.current) return;
           setItems(r.suggestions);
@@ -28,7 +38,7 @@ export function DirInput({ value, onChange, placeholder }: { value: string; onCh
         .catch(() => setItems([]));
     }, 120);
     return () => window.clearTimeout(timer);
-  }, [value, open]);
+  }, [value, open, suggest]);
 
   useEffect(() => {
     listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' });
@@ -89,7 +99,7 @@ export function DirInput({ value, onChange, placeholder }: { value: string; onCh
                 accept(s);
               }}
             >
-              {s}
+              <bdi>{s}</bdi>
             </li>
           ))}
         </ul>

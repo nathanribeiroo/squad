@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { shortPath } from '../lib/paths';
 import { useNow } from '../lib/useNow';
+import { wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
+import { WorkspaceMenu } from './WorkspaceMenu';
 import './TopBar.css';
 
 function Logo() {
@@ -28,6 +30,12 @@ export function TopBar() {
   const drawerOpen = useSquad((s) => s.drawerOpen);
   const setDrawer = useSquad((s) => s.setDrawer);
   const [menu, setMenu] = useState(false);
+  const [wsMenu, setWsMenu] = useState(false);
+  const workspaces = useSquad((s) => s.workspaces);
+  const activeWs = useSquad((s) => s.activeWs);
+  const index = workspaces.findIndex((w) => w.id === activeWs);
+  const elsewhere = workspaces.some((w) => w.id !== activeWs && (w.active > 0 || w.pending > 0));
+  useEffect(() => setWsMenu(false), [activeWs]); // switched (⌥1–9 or the list)
 
   const sendTimes = useSquad((s) => s.sendTimes);
   const now = useNow(5000, sendTimes.length > 0);
@@ -43,15 +51,19 @@ export function TopBar() {
     <header className="topbar">
       <Logo />
       <span className="tb-divider" />
-      <button className="tb-workspace" title="Workspace">
-        <span className="tb-ws-color" />
-        <span className="tb-ws-name">{ws?.name ?? '…'}</span>
-        <span className="tb-ws-sub">
-          {active} {active === 1 ? 'agente ativo' : 'agentes ativos'}
-        </span>
-        <span className="kbd">⌥1</span>
-        <Icon name="expand_more" size={18} />
-      </button>
+      <div style={{ position: 'relative' }}>
+        <button className="tb-workspace" title="Workspaces" aria-expanded={wsMenu} onClick={() => setWsMenu(!wsMenu)}>
+          <span className="tb-ws-color" style={{ background: wsColor(ws?.color) }} />
+          <span className="tb-ws-name">{ws?.name ?? '…'}</span>
+          <span className="tb-ws-sub">
+            {active} {active === 1 ? 'agente ativo' : 'agentes ativos'}
+          </span>
+          {elsewhere && <span className="tb-ws-elsewhere" title="Atividade em outro workspace" />}
+          {index >= 0 && index < 9 && <span className="kbd">⌥{index + 1}</span>}
+          <Icon name="expand_more" size={18} />
+        </button>
+        {wsMenu && <WorkspaceMenu onClose={() => setWsMenu(false)} />}
+      </div>
       <Icon name="chevron_right" size={18} style={{ color: 'var(--text-3)' }} />
       <div className="tb-floors" role="tablist" aria-label="Andares">
         <button className="tb-floor active" role="tab" aria-selected="true">

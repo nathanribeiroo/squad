@@ -1,6 +1,7 @@
 // Global client state, fed by /ws/events.
 import { create } from 'zustand';
-import type { PendingRequest, ServerEvent, StateExtra, StateResponse, TerminalRuntime, WEdge, WNode, Workspace } from '../api/types';
+import { setWorkspace } from '../api/client';
+import type { PendingRequest, ServerEvent, StateExtra, StateResponse, TerminalRuntime, WEdge, WNode, Workspace, WorkspaceSummary } from '../api/types';
 
 export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note';
 
@@ -56,6 +57,10 @@ export function levelFor(z: number, prev: ZoomLevel): ZoomLevel {
 }
 
 interface SquadState {
+  /** Every workspace, for the selector (/ws/workspaces). */
+  workspaces: WorkspaceSummary[];
+  /** The workspace on screen. */
+  activeWs: string | null;
   workspace: Workspace | null;
   runtime: Record<string, TerminalRuntime>;
   extra: StateExtra;
@@ -82,6 +87,8 @@ interface SquadState {
   theme: 'dark' | 'light';
   termTheme: 'noite' | 'papel';
 
+  setWorkspaces(list: WorkspaceSummary[]): void;
+  switchWorkspace(id: string): void;
   load(s: StateResponse): void;
   apply(ev: ServerEvent): void;
   setConnection(c: SquadState['connection']): void;
@@ -133,7 +140,30 @@ function persist(key: string, value: string) {
   }
 }
 
+/** State that belongs to the workspace on screen, cleared when switching. */
+const perWorkspace = {
+  workspace: null,
+  runtime: {},
+  extra: emptyExtra,
+  connection: 'connecting',
+  activity: [],
+  flights: {},
+  noteEdits: {},
+  lastReply: {},
+  sendTimes: [],
+  composerOpen: false,
+  composerTarget: null,
+  newTermOpen: false,
+  editTermId: null,
+  focusedTerminal: null,
+  selectedNode: null,
+} satisfies Partial<SquadState>;
+
+const WS_KEY = 'squad.ws';
+
 export const useSquad = create<SquadState>((set, get) => ({
+  workspaces: [],
+  activeWs: null,
   workspace: null,
   runtime: {},
   extra: emptyExtra,
@@ -155,6 +185,29 @@ export const useSquad = create<SquadState>((set, get) => ({
   renderZoom: 1,
   theme: stored<'dark' | 'light'>('squad.theme', prefersDark() ? 'dark' : 'light'),
   termTheme: stored<'noite' | 'papel'>('squad.term', stored('squad.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
+
+  setWorkspaces: (workspaces) => {
+    set({ workspaces });
+    const st = get();
+    if (workspaces.length === 0 || workspaces.some((w) => w.id === st.activeWs)) return;
+    // First list, or the workspace on screen was removed: the one in the
+    // URL, then the last one used here, then the first.
+    const want = [new URLSearchParams(location.search).get('ws'), stored(WS_KEY, '')];
+    const pick = want.find((id) => id && workspaces.some((w) => w.id === id)) ?? workspaces[0].id;
+    st.switchWorkspace(pick);
+  },
+
+  switchWorkspace: (id) => {
+    if (id === get().activeWs) return;
+    // term/session closes the sockets of the workspace left behind (the
+    // server keeps their screens for when we come back).
+    setWorkspace(id);
+    persist(WS_KEY, id);
+    const url = new URL(location.href);
+    url.searchParams.set('ws', id);
+    history.replaceState(null, '', url);
+    set({ ...perWorkspace, activeWs: id });
+  },
 
   load: (s) => {
     const pending: Record<string, Flight> = {};
@@ -278,6 +331,9 @@ export const useSquad = create<SquadState>((set, get) => ({
             ...st.activity,
           ].slice(0, 200),
         });
+        return;
+      case 'workspace.updated':
+        if (ws) set({ workspace: { ...ws, name: d.name, cwd: d.cwd, color: d.color } });
         return;
       case 'note.edited': {
         const author = d.author === 'external' ? 'Edição externa' : d.author === 'user' ? 'Você' : d.author;

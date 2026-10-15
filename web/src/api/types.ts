@@ -56,6 +56,7 @@ export interface Workspace {
   id: string;
   name: string;
   cwd: string;
+  color?: string;
   nodes: WNode[];
   edges: WEdge[];
 }
@@ -98,4 +99,18 @@ export interface ServerEvent<T = any> {
   type: string;
   time: string;
   data: T;
+}
+
+/** A workspace as the selector shows it (GET /api/workspaces, /ws/workspaces). */
+export interface WorkspaceSummary {
+  id: string;
+  name: string;
+  cwd: string;
+  color?: string;
+  createdAt: string;
+  terminals: number;
+  /** Agents working or waiting for a reply. */
+  active: number;
+  /** Requests waiting for a reply. */
+  pending: number;
 }

@@ -32,11 +32,12 @@ import './nodes/nodes.css';
 const nodeTypes = { terminal: TerminalNode, note: NoteNode, portal: PortalNode };
 const edgeTypes = { wire: WireEdge };
 
-const VIEWPORT_KEY = 'squad.viewport';
+// Each workspace keeps its own pan and zoom.
+const viewportKey = (ws: string | null) => `squad.viewport.${ws ?? ''}`;
 
-function savedViewport(): Viewport {
+function savedViewport(ws: string | null): Viewport {
   try {
-    const v = JSON.parse(localStorage.getItem(VIEWPORT_KEY) ?? '') as Viewport;
+    const v = JSON.parse(localStorage.getItem(viewportKey(ws)) ?? localStorage.getItem('squad.viewport') ?? '') as Viewport;
     if (Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.zoom)) return v;
   } catch {
     /* default below */
@@ -66,7 +67,8 @@ export function Canvas() {
   const setFocused = useSquad((s) => s.setFocusedTerminal);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
-  const defaultViewport = useMemo(savedViewport, []);
+  const activeWs = useSquad((s) => s.activeWs);
+  const defaultViewport = useMemo(() => savedViewport(activeWs), [activeWs]);
 
   // The server is the source of truth; local state only adds React Flow's
   // own fields (selection, measured size, drag).
@@ -138,13 +140,21 @@ export function Canvas() {
     window.clearTimeout(settle.current);
     settle.current = window.setTimeout(() => useSquad.getState().setZoom(v.zoom, true), 120);
     try {
-      localStorage.setItem(VIEWPORT_KEY, JSON.stringify(v));
+      localStorage.setItem(viewportKey(useSquad.getState().activeWs), JSON.stringify(v));
     } catch {
       /* storage may be unavailable */
     }
   }, []);
 
   const rf = useReactFlow();
+  // Another workspace on screen: back to where its canvas was left
+  // (defaultViewport only applies on the first render).
+  const shownWs = useRef(activeWs);
+  useEffect(() => {
+    if (shownWs.current === activeWs) return;
+    shownWs.current = activeWs;
+    void rf.setViewport(defaultViewport);
+  }, [activeWs, defaultViewport, rf]);
   // Double-clicking a wire adds a bend point there.
   const onEdgeDoubleClick = useCallback(
     (e: React.MouseEvent, edge: Edge) => {

@@ -1,6 +1,6 @@
 // /ws/events with automatic reconnection; events feed the store.
 import { useSquad } from '../state/store';
-import { wsURL } from './client';
+import { wsPath, wsURL } from './client';
 import type { ServerEvent } from './types';
 
 export function connectEvents(): () => void {
@@ -12,8 +12,9 @@ export function connectEvents(): () => void {
   const open = () => {
     if (stopped) return;
     useSquad.getState().setConnection(retry === 0 ? 'connecting' : 'reconnecting');
-    ws = new WebSocket(wsURL('/ws/events'));
+    ws = new WebSocket(wsURL(wsPath('/ws/events')));
     ws.onmessage = (m) => {
+      if (stopped) return; // a late event of the workspace left behind
       try {
         const ev = JSON.parse(m.data as string) as ServerEvent;
         if (ev.type === 'hello') {
