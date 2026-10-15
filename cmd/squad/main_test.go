@@ -35,6 +35,22 @@ func TestInstallSkill(t *testing.T) {
 	}
 }
 
+func TestInstallSkillDevin(t *testing.T) {
+	cfg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfg)
+	t.Setenv("APPDATA", cfg)
+	var out, errb bytes.Buffer
+	if code := run([]string{"install-skill", "-agent", "devin"}, &out, &errb); code != 0 {
+		t.Fatalf("install-skill devin: %d %s", code, errb.String())
+	}
+	if _, err := os.Stat(filepath.Join(cfg, "devin", "skills", "squad", "SKILL.md")); err != nil {
+		t.Fatalf("devin skill: %v (%s)", err, out.String())
+	}
+	if code := run([]string{"install-skill", "-agent", "gemini"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unknown agent") {
+		t.Fatalf("unknown agent: %d %q", code, errb.String())
+	}
+}
+
 func TestClientOutsideTerminal(t *testing.T) {
 	t.Setenv("SQUAD_TERMINAL_ID", "")
 	var out, errb bytes.Buffer

@@ -17,7 +17,7 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/charmbracelet/x/vt"
+	"github.com/nathanribeiroo/squad/third_party/vt"
 )
 
 // Screen mirrors a terminal's visible state.

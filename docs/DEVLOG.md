@@ -2,6 +2,28 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, A1 adaptador do Devin CLI
+
+Feito como o Codex: segue a documentação oficial do Devin CLI (docs.devin.ai/cli) e foi testado só com o agente falso.
+
+- **Tipo `devin`** em `internal/agents` (`Hooks: true`, comando padrão `devin`).
+- **Hooks:** ao subir, o servidor grava `~/.squad/run/devin-hooks.json` com `{"hooks": {"Stop": …, "UserPromptSubmit": …}}` no formato do Claude Code, chamando `squad hook devin-stop` e `squad hook devin-prompt`. A linha de lançamento vira `devin --config <arquivo>`. O gerador do arquivo do Claude virou `writeHooks`, usado pelos dois.
+- **Parser:** `devin-prompt` abre o turno; `devin-stop` usa o mesmo payload do `claude-stop` (`last_assistant_message`, enviado pelo Devin desde a v3000.5.20). O Devin não tem `StopFailure`.
+- **Skill:** `squad install-skill -agent devin` grava em `~/.config/devin/skills/squad/` (`$XDG_CONFIG_HOME` se definido; `%APPDATA%\devin\skills` no Windows). O Devin não lê `~/.claude/skills`, só o `.claude/skills` do projeto.
+- **Web:** "Devin" no seletor de agente, com nome padrão "Devin".
+- **Testes:** parser e linha de lançamento em `agents_test.go`, `TestDevinHookRepliesWithFinalMessage` (agente falso com `FAKEAGENT_HOOK=devin`) e `TestInstallSkillDevin`.
+
+**Decisão:** hooks injetados por `--config`, porque é o único jeito por terminal sem tocar na config do usuário nem no repositório dele. A documentação só diz "Configuration file path"; não diz se o arquivo **soma** com `~/.config/devin/config.json` ou **substitui** esse arquivo.
+
+**Precisa de você (máquina com Devin):**
+1. Abrir um terminal "Devin" no canvas e rodar `/hooks`: devem aparecer `Stop` e `UserPromptSubmit` vindos de `devin-hooks.json`.
+2. Conferir se as suas configurações (modelo, permissões, tema) continuam valendo dentro do Squad. Se o `--config` **substituir** a config do usuário, o plano B é um plugin local do Devin (`hooks/hooks.json`) instalado uma vez com `devin plugins install`. Fora de um terminal do Squad, o `squad hook` não faz nada.
+3. Ligar um Claude ao Devin e pedir `squad ask "Devin" "diga pong"`: a resposta deve vir como `[reply from Devin · request …]` com a mensagem final, não a tela. Se vier a tela, teste o encaminhamento à mão num terminal do Squad: `SQUAD_DEBUG=1 squad hook devin-stop '{"last_assistant_message":"x"}'` mostra o erro, se houver.
+4. Mensagem com várias linhas: o envelope `[de: … · pedido …]` deve chegar inteiro na caixa do Devin e ser enviado com o Enter.
+5. Provocar um erro (sem rede, por exemplo) e ver se o `Stop` dispara. Se não disparar, o pedido só termina no timeout; a correção seria aceitar o "idle" da tela para o Devin.
+6. Na primeira execução numa pasta, o Devin pergunta se confia no workspace; responder no próprio terminal.
+7. Com `--sandbox`, ver se o `squad ask` alcança `127.0.0.1` (o sandbox filtra rede).
+
 ## 2026-10-15, skill empacotada
 
 - **`squad-skill.zip` na raiz:** a pasta `squad/` com o `SKILL.md`, gerada por `make skill-zip` a partir do próprio binário (`squad install-skill -dir bin/skill`). Assim o zip nunca diverge do texto que o `install-skill` grava. Se o texto da skill mudar em `cmd/squad/hook.go`, rode `make skill-zip` de novo.

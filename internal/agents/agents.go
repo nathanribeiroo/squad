@@ -7,6 +7,10 @@
 //     from settings files are merged, so the user's own hooks keep working.
 //   - Codex: -c notify=[…] runs `squad hook codex-notify <json>` on
 //     agent-turn-complete (not tested against a real Codex account).
+//   - Devin CLI: a config file passed with --config adds Stop and
+//     UserPromptSubmit hooks (Claude Code's format) that run `squad hook
+//     devin-…`; Devin collects hooks from every config source, so the user's
+//     own hooks keep working (not tested against a real Devin account).
 //   - Gemini, shells and custom commands: no hook; screen heuristics only.
 package agents
 
@@ -24,7 +28,7 @@ import (
 
 // Info describes an agent type.
 type Info struct {
-	Type           string // claude | codex | gemini | shell | custom
+	Type           string // claude | codex | devin | gemini | shell | custom
 	DefaultCommand string // used when the node has no command
 	Hooks          bool   // reports turn ends through a native hook
 }
@@ -32,6 +36,7 @@ type Info struct {
 var known = map[string]Info{
 	"claude": {Type: "claude", DefaultCommand: "claude", Hooks: true},
 	"codex":  {Type: "codex", DefaultCommand: "codex", Hooks: true},
+	"devin":  {Type: "devin", DefaultCommand: "devin", Hooks: true},
 	"gemini": {Type: "gemini", DefaultCommand: "gemini"},
 	"shell":  {Type: "shell"},
 	"custom": {Type: "custom"},
@@ -52,20 +57,36 @@ func HasHooks(agent string) bool { return Lookup(agent).Hooks }
 type Launcher struct {
 	SquadPath      string // absolute path of the squad binary
 	ClaudeSettings string // path of the generated Claude settings file
+	DevinConfig    string // path of the generated Devin config file
 }
 
-// NewLauncher writes the Claude hooks settings file under ~/.squad/run.
+// NewLauncher writes the Claude and Devin hooks files under ~/.squad/run.
 func NewLauncher(squadPath string) (*Launcher, error) {
 	dir, err := config.Dir("run")
 	if err != nil {
 		return nil, err
 	}
-	l := &Launcher{SquadPath: squadPath, ClaudeSettings: filepath.Join(dir, "claude-hooks.json")}
-	return l, l.writeClaudeSettings()
+	l := &Launcher{SquadPath: squadPath,
+		ClaudeSettings: filepath.Join(dir, "claude-hooks.json"),
+		DevinConfig:    filepath.Join(dir, "devin-hooks.json")}
+	if err := l.writeHooks(l.ClaudeSettings, map[string]string{
+		"Stop":             "claude-stop",
+		"StopFailure":      "claude-stop-failure",
+		"UserPromptSubmit": "claude-prompt",
+	}); err != nil {
+		return nil, err
+	}
+	if err := l.writeHooks(l.DevinConfig, map[string]string{
+		"Stop":             "devin-stop",
+		"UserPromptSubmit": "devin-prompt",
+	}); err != nil {
+		return nil, err
+	}
+	return l, nil
 }
 
-// hookCommand is the command line Claude Code runs for a hook (through a
-// shell), with the squad path quoted.
+// hookCommand is the command line Claude Code (or Devin) runs for a hook
+// (through a shell), with the squad path quoted.
 func (l *Launcher) hookCommand(name string) string {
 	return fmt.Sprintf(`"%s" hook %s`, l.SquadPath, name)
 }
@@ -80,20 +101,19 @@ type claudeMatcher struct {
 	Hooks []claudeHook `json:"hooks"`
 }
 
-func (l *Launcher) writeClaudeSettings() error {
-	hook := func(name string) []claudeMatcher {
-		return []claudeMatcher{{Hooks: []claudeHook{{Type: "command", Command: l.hookCommand(name), Timeout: 10}}}}
+// writeHooks writes a settings file whose "hooks" key maps each event to
+// `squad hook <name>`. Claude Code (--settings) and Devin (--config) read the
+// same format.
+func (l *Launcher) writeHooks(path string, events map[string]string) error {
+	hooks := map[string][]claudeMatcher{}
+	for event, name := range events {
+		hooks[event] = []claudeMatcher{{Hooks: []claudeHook{{Type: "command", Command: l.hookCommand(name), Timeout: 10}}}}
 	}
-	settings := map[string]any{"hooks": map[string]any{
-		"Stop":             hook("claude-stop"),
-		"StopFailure":      hook("claude-stop-failure"),
-		"UserPromptSubmit": hook("claude-prompt"),
-	}}
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := json.MarshalIndent(map[string]any{"hooks": hooks}, "", "  ")
 	if err != nil {
 		return err
 	}
-	return config.WriteFileAtomic(l.ClaudeSettings, data, 0o600)
+	return config.WriteFileAtomic(path, data, 0o600)
 }
 
 // Prepare rewrites a terminal spec before start: default command for the
@@ -112,6 +132,8 @@ func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 		spec.Command += " --settings " + terminal.Quote(fam, l.ClaudeSettings)
 	case "codex":
 		spec.Command += " -c " + terminal.Quote(fam, l.codexNotify())
+	case "devin":
+		spec.Command += " --config " + terminal.Quote(fam, l.DevinConfig)
 	}
 	return nil
 }

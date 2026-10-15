@@ -64,7 +64,7 @@ func (o *Options) defaults() {
 // TurnEnd describes the end of a turn.
 type TurnEnd struct {
 	ID      string
-	Reason  string // "idle" (screen settled) or a hook name ("claude-stop", "codex-notify")
+	Reason  string // "idle" (screen settled) or a hook name ("claude-stop", "codex-notify", "devin-stop")
 	Message string // final assistant message when a hook provides it
 	At      time.Time
 }

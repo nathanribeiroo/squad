@@ -65,7 +65,7 @@ func (n Node) Label() string {
 // TerminalData configures a terminal node.
 type TerminalData struct {
 	Name    string `json:"name"`
-	Agent   string `json:"agent"`             // claude | codex | gemini | shell | custom
+	Agent   string `json:"agent"`             // claude | codex | devin | gemini | shell | custom
 	Command string `json:"command,omitempty"` // launch line; empty = plain shell
 	Shell   string `json:"shell,omitempty"`
 	Cwd     string `json:"cwd,omitempty"`
