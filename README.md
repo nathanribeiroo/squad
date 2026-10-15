@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces e o portal com a página ao vivo. Ficam para depois: agentes usando o portal (`squad portal`), andares (git worktree), MCP e validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces e o portal com a página ao vivo, que os agentes também usam (`squad portal`). Ficam para depois: andares (git worktree), MCP e validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -91,6 +91,8 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - Clique na página para usá-la: o teclado vai para o site ("teclado aqui") até `⌥Esc`, e a roda do mouse rola a página (pinça ou ⌘/ctrl + roda dão zoom no canvas). Colar digita o texto.
 - Barra de endereço, voltar, avançar e recarregar. Seguir links atualiza o endereço salvo no canvas.
 - O tamanho da página acompanha o nó (redimensione pelas alças). Com o zoom abaixo de 60%, o portal mostra o último quadro e para de transmitir.
+- Cada portal tem um nome ("Portal", "Portal 2"…). Duplo clique no nome (ou ⋯ → Renomear) troca; os agentes usam esse nome para escolher o portal.
+- **Agentes no portal:** um terminal ligado ao portal usa a página com `squad portal` (tabela abaixo). Enquanto ele age, o cursor dele aparece na página com o nome e a cor do papel, e o fio mostra "clicando", "preenchendo", "digitando"…
 
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 
@@ -127,6 +129,12 @@ Dentro de um terminal do Squad, o comando `squad` está no PATH:
 | `squad check "Nome"` | lê a tela de um terminal ligado |
 | `squad reply <id> "…"` | responde o pedido `<id>` |
 | `squad note list\|read\|write\|edit\|create` | notas ligadas a você |
+| `squad portal snapshot` | lê a página de um portal ligado: título, URL e os elementos com referências `@e1`, `@e2`… |
+| `squad portal click @e3` · `fill @e2 "texto"` · `type "texto"` · `key Enter` · `scroll down` | age na página (`click X Y` também vale) |
+| `squad portal goto URL` · `back` · `forward` · `reload` | navega |
+| `squad portal screenshot` · `console` · `eval "js"` | imagem PNG (salva no workspace), console do navegador, JavaScript |
+
+Com mais de um portal ligado, diga qual: `squad portal "Docs" snapshot`. `squad portal help` mostra tudo.
 
 Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do turno** (via hook `Stop` ou `notify`), não a tela. Com outros programas, o Squad espera a tela parar de mudar.
 

@@ -2,6 +2,20 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, portal: agentes (P2)
+
+- **`squad portal`** (extensão do `agentbus`, como `squad note`): `snapshot`, `click`, `fill`, `type`, `key`, `scroll`, `goto`, `back`, `forward`, `reload`, `screenshot`, `eval`, `console` e `list`. O agente só enxerga portais ligados a ele.
+  - **`snapshot`:** a árvore de acessibilidade do Chrome vira uma lista de elementos com referência (`@e3 button "Enviar" [282,218 81x38]`), ordenados pela posição na tela, com valor, marcado/desmarcado e "offscreen". No máximo 300 elementos. As referências valem até a página mudar de documento; uma referência velha pede um snapshot novo.
+  - **Ações:** `click` rola o elemento para a tela e clica no centro; `fill` limpa o campo e digita; `key` aceita nomes e combinações (`Enter`, `Control+a`, `Shift+Tab`…). Depois de cada ação, a resposta diz se a página mudou de endereço ("The page is now … Take a new snapshot").
+  - **`screenshot`** salva um PNG em `attachments/` do workspace e imprime o caminho; `console` mostra as últimas 200 mensagens e erros da página; `eval` roda JavaScript com limite de 10 s.
+  - **Qual portal:** com um só ligado, é ele; com vários, o primeiro argumento é o nome (`squad portal "Docs" click @e2`, sem diferenciar maiúsculas). `squad list` e as @menções do Composer citam os portais pelo nome.
+- **Nome do portal:** "Portal", "Portal 2"… dados na criação (os antigos ganham nome ao abrir). Duplo clique no nome ou ⋯ → Renomear; nomes repetidos são recusados. Trocar o endereço mantém o nome.
+- **Na tela:** cada ação publica `portal.action` (quem, o quê, onde). O portal mostra o cursor do agente na página, com o nome e a cor do papel, deslizando de um ponto ao outro; teclas, digitação e navegação aparecem num selo no canto. O fio entre o agente e o portal acende na cor do papel, com a pílula "clicando", "preenchendo", "digitando"… por 2,5 s.
+- **Correção do P1 (imagem distorcida):** quando a primeira carga da página corria junto com o início do screencast, o Chromium passava a capturar a janela headless (780×441) em vez da página (por exemplo, 638×479). A imagem ficava esticada, e os cliques no canvas caíam fora do lugar. Agora o quadro com tamanho errado é descartado, o tamanho da página é aplicado de novo e o screencast recomeça. Teste novo: `TestFramesHaveViewportSize`, que falha sem a correção.
+- **Correção:** o binário `squad` não repassava o comando `portal` ao servidor ("unknown command").
+- **Skill:** a seção "Portals" explica o ciclo snapshot → ação → snapshot e os comandos (`squad install-skill` atualiza).
+- **Testes:** `internal/browser` (ações dos agentes e tamanho dos quadros) e `internal/app` (`TestPortalCommands`: comandos, nomes, ambiguidade, evento, screenshot, console e endereço gravado), com o Chromium de verdade. Na interface, com o Chrome headless: renomear o portal e um agente "Ana" (Testador) preenchendo, clicando e teclando, com o cursor e a pílula na cor do papel.
+
 ## 2026-10-15, portal ao vivo (P1)
 
 - **Teste prévio:** três abas de um Chromium sem janela transmitiram ao mesmo tempo, cerca de 20 quadros por segundo cada. O navegador abriu em 1,3 s e cada aba em 0,2 s. Daí a escolha de um navegador para o servidor inteiro, com uma aba por portal.
