@@ -128,7 +128,9 @@ func TestEtcShells(t *testing.T) {
 	exe := filepath.Join(dir, "myshell")
 	_ = os.WriteFile(exe, nil, 0o755)
 	list := filepath.Join(dir, "shells")
-	_ = os.WriteFile(list, []byte("# comment\n\n"+exe+"\n"+filepath.Join(dir, "gone")+"\nrelative\n"), 0o644)
+	tmux := filepath.Join(dir, "tmux")
+	_ = os.WriteFile(tmux, nil, 0o755)
+	_ = os.WriteFile(list, []byte("# comment\n\n"+exe+"\n"+filepath.Join(dir, "gone")+"\nrelative\n"+tmux+"\n"), 0o644)
 	if got := etcShells(list); !reflect.DeepEqual(got, []string{exe}) {
 		t.Fatalf("got %q", got)
 	}

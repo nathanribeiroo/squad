@@ -136,6 +136,9 @@ func shellLabel(p string) string {
 	return name
 }
 
+// notShells are multiplexers some distros list in /etc/shells.
+var notShells = map[string]bool{"tmux": true, "screen": true}
+
 // etcShells reads the login shells listed in path (/etc/shells), keeping the
 // executables that exist.
 func etcShells(path string) []string {
@@ -146,7 +149,7 @@ func etcShells(path string) []string {
 	var out []string
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") || !filepath.IsAbs(line) {
+		if line == "" || strings.HasPrefix(line, "#") || !filepath.IsAbs(line) || notShells[filepath.Base(line)] {
 			continue
 		}
 		if fi, err := os.Stat(line); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
