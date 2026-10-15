@@ -53,6 +53,7 @@ export const ICONS = [
   'public_off',
   'radio_button_unchecked',
   'rate_review',
+  'refresh',
   'remove',
   'reply',
   'restart_alt',
