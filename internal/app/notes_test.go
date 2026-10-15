@@ -4,8 +4,10 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -147,4 +149,72 @@ func TestNoteWriteFromRealCLI(t *testing.T) {
 	if string(content) != "escrito pelo B" {
 		t.Fatalf("content %q; B screen:\n%s", content, r.Body)
 	}
+}
+
+func TestComposerSend(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	a := e.agent("A")
+	b := e.agent("B")
+	c := e.agent("C")
+	e.connect(a, b)
+	note, err := e.app.Server.Store().AddNode(store.Node{Kind: store.KindNote, Note: &store.NoteData{Title: "Plano", File: "plano.md"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.connect(a, note)
+
+	ch, cancel := e.app.Server.Bus().Subscribe()
+	defer cancel()
+	png := "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+	err = e.app.Send(a.ID, ComposeRequest{Text: "Revise com @B usando @Plano", Mentions: []string{b.ID, note.ID}, Images: []ComposeImage{{Name: "shot.png", Data: png}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.waitScreen(a.ID, "received: Revise com @B", 5*time.Second)
+	msg := lastSubmit(t, e.log("A"))
+	for _, want := range []string{"Revise com @B usando @Plano\n\n", "/attachments/", `[menções: @B = terminal ligado (squad ask "B" "…") · @Plano = nota ligada plano.md (squad note read "plano.md")]`} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("message lacks %q:\n%s", want, msg)
+		}
+	}
+	files, _ := filepath.Glob(filepath.Join(e.dir, "attachments", "*.png"))
+	if len(files) != 1 {
+		t.Errorf("attachments = %v", files)
+	}
+	deadline := time.After(2 * time.Second)
+	for got := false; !got; {
+		select {
+		case ev := <-ch:
+			got = ev.Type == events.MessageSent
+		case <-deadline:
+			t.Fatal("no message.sent event")
+		}
+	}
+
+	// Only connected nodes can be mentioned; an empty message is refused.
+	if err := e.app.Send(a.ID, ComposeRequest{Text: "oi @C", Mentions: []string{c.ID}}); !errors.Is(err, errNotConnected) {
+		t.Errorf("unconnected mention: %v", err)
+	}
+	if err := e.app.Send(a.ID, ComposeRequest{Text: "  "}); !errors.Is(err, errEmptyMessage) {
+		t.Errorf("empty: %v", err)
+	}
+	if err := e.app.Send(a.ID, ComposeRequest{Text: "x", Images: []ComposeImage{{Data: "data:text/plain;base64,eA=="}}}); !errors.Is(err, errBadAttachment) {
+		t.Errorf("bad image: %v", err)
+	}
+}
+
+// lastSubmit returns the last message the fakeagent submitted (its log
+// records each one as SUBMIT "<quoted>").
+func lastSubmit(t *testing.T, log string) string {
+	t.Helper()
+	i := strings.LastIndex(log, "SUBMIT ")
+	if i < 0 {
+		t.Fatalf("no SUBMIT in log:\n%s", log)
+	}
+	line, _, _ := strings.Cut(log[i+len("SUBMIT "):], "\n")
+	msg, err := strconv.Unquote(line)
+	if err != nil {
+		t.Fatalf("unquote %q: %v", line, err)
+	}
+	return msg
 }

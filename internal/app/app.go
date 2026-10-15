@@ -108,6 +108,9 @@ func New(o Options) (*App, error) {
 	srv.SetHookHandler(agents.HookHandler(mon, server.CallerID))
 	bus.SetHookedAgents(agents.HasHooks)
 
+	var app *App
+	srv.HandleSession("POST /api/nodes/{id}/send", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleSend(w, r) }))
+
 	srv.HandleSession("POST /api/conversations/pause", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		bus.SetPaused(true, "user")
 		writeJSON(w, bus.StateExtra())
@@ -116,7 +119,8 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
-	return &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, exts: exts}, nil
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, exts: exts}
+	return app, nil
 }
 
 // Start begins activity sampling, watches notes and starts the workspace's

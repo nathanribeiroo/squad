@@ -5,6 +5,7 @@ import { connectEvents } from './api/events';
 import type { WNode } from './api/types';
 import { Canvas } from './canvas/Canvas';
 import { ActivityDrawer } from './components/ActivityDrawer';
+import { Composer } from './components/Composer';
 import { ComposerPill } from './components/ComposerPill';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
@@ -63,7 +64,10 @@ function Stage() {
         const map: Record<string, () => void> = {
           KeyA: () => st.setDrawer(!st.drawerOpen),
           KeyP: () => void (st.extra.paused ? api.resume() : api.pause()).catch((err: Error) => toast(err.message)),
-          KeyK: () => st.setComposer(!st.composerOpen),
+          KeyK: () => {
+            const isTerm = (id: string | null) => !!id && !!st.workspace?.nodes.find((n) => n.id === id && n.terminal);
+            st.setComposer(!st.composerOpen, [st.focusedTerminal, st.selectedNode, st.composerTarget].find(isTerm) ?? null);
+          },
         };
         const fn = map[e.code];
         if (fn) {
@@ -101,6 +105,7 @@ function Stage() {
       <Canvas />
       <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
       <ComposerPill />
+      <Composer />
       <ActivityDrawer />
       <Toast />
     </main>

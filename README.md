@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
-> Estado: o backend está pronto (terminais, conversa entre agentes, hooks do Claude Code, notas). A interface web já mostra o canvas, as conexões e a atividade, e os terminais interativos ainda estão em desenvolvimento. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown e a gaveta de atividade. Ficam para depois: andares (git worktree), portal com navegador ao vivo, MCP e validação no Windows real. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -33,7 +33,21 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - canvas: `V` selecionar, `H` mover, `T` novo terminal, `N` nota, `P` portal;
 - globais: `⌥A` gaveta de atividade, `⌥P` pausar conversas, `⌥K` composer.
 
-**Conexões:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó. Um clique no fio o seleciona; para desligar, use Delete ou o botão "Desligar".
+**Conexões:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó. Um clique no fio o seleciona; para desligar, use Delete ou o botão "Desligar". Duplo clique no fio cria um ponto de curva, que pode ser arrastado; duplo clique no ponto o remove.
+
+**Terminais:**
+- clique para digitar ("teclado aqui"); `⌥Esc` devolve o teclado ao canvas;
+- arraste pelo cabeçalho e redimensione pelas alças (o PTY acompanha);
+- com zoom abaixo de 60% vira miniatura, e abaixo de 35%, cartão;
+- a pinça ou ⌘/ctrl + roda sobre o terminal dá zoom no canvas.
+
+**Composer (`⌥K`):**
+- escreva para um ou mais terminais;
+- `@` menciona nós ligados ao destino;
+- cole imagens com ⌘V;
+- `⏎` envia.
+
+**Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 
 ### Testar a conversa sem a interface (pela API)
 

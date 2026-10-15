@@ -267,6 +267,14 @@ export const useSquad = create<SquadState>((set, get) => ({
         });
         return;
       }
+      case 'message.sent':
+        set({
+          activity: [
+            { key: `msg-${ev.time}-${d.to}`, time: ev.time, to: d.to, fromName: 'Você', toName: d.toName, text: d.preview + (d.images ? ` (+${d.images} imagem${d.images > 1 ? 'ns' : ''})` : ''), outcome: 'delivered' as const },
+            ...st.activity,
+          ].slice(0, 200),
+        });
+        return;
       case 'note.edited': {
         const author = d.author === 'external' ? 'Edição externa' : d.author === 'user' ? 'Você' : d.author;
         set({
