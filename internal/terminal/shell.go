@@ -34,28 +34,32 @@ func FamilyOf(shell string) ShellFamily {
 	}
 }
 
+// Shell is a resolved interactive shell: how to start it, its family and the
+// variables it needs on top of the terminal environment.
+type Shell struct {
+	Argv   []string
+	Family ShellFamily
+	Env    map[string]string
+}
+
 // ResolveShell returns the argv used to start an interactive shell: the
-// preferred shell if given, else the platform default ($SHELL login shell on
-// Unix; pwsh, Windows PowerShell or cmd on Windows).
+// first of ShellCandidates.
 func ResolveShell(pref string) ([]string, ShellFamily) {
+	sh := ShellCandidates(pref)[0]
+	return sh.Argv, sh.Family
+}
+
+// ShellCandidates lists the shells to try, best first; the list is never
+// empty. Order: the preferred shell, $SQUAD_SHELL, then the platform default:
+// on Unix the $SHELL login shell, zsh, bash, sh; on Windows Git Bash, pwsh,
+// Windows PowerShell, cmd. A terminal falls back to the next candidate when
+// one cannot start (e.g. PowerShell blocked by group policy).
+func ShellCandidates(pref string) []Shell {
 	if runtime.GOOS == "windows" {
-		candidates := []string{pref, "pwsh.exe", "powershell.exe", "cmd.exe"}
-		for _, c := range candidates {
-			if c == "" {
-				continue
-			}
-			if p, err := exec.LookPath(c); err == nil {
-				fam := FamilyOf(p)
-				if fam == ShellPowerShell {
-					return []string{p, "-NoLogo"}, fam
-				}
-				return []string{p}, fam
-			}
-		}
-		return []string{"cmd.exe"}, ShellCmd
+		return windowsCandidates(pref, os.Getenv("SQUAD_SHELL"), exec.LookPath, os.Getenv, isFile)
 	}
-	candidates := []string{pref, os.Getenv("SHELL"), "/bin/zsh", "/bin/bash", "/bin/sh"}
-	for _, c := range candidates {
+	var out []Shell
+	for _, c := range []string{pref, os.Getenv("SQUAD_SHELL"), os.Getenv("SHELL"), "/bin/zsh", "/bin/bash", "/bin/sh"} {
 		if c == "" {
 			continue
 		}
@@ -68,10 +72,97 @@ func ResolveShell(pref string) ([]string, ShellFamily) {
 			p = lp
 		}
 		if fi, err := os.Stat(p); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
-			return []string{p, "-l"}, FamilyOf(p)
+			out = appendShell(out, Shell{Argv: []string{p, "-l"}, Family: FamilyOf(p)})
 		}
 	}
-	return []string{"/bin/sh", "-l"}, ShellPOSIX
+	if len(out) == 0 {
+		out = append(out, Shell{Argv: []string{"/bin/sh", "-l"}, Family: ShellPOSIX})
+	}
+	return out
+}
+
+// windowsCandidates resolves the Windows shell list. A bare "bash" means Git
+// Bash: looking it up on PATH could find System32\bash.exe, the WSL launcher,
+// where the Windows squad.exe and agents don't work.
+func windowsCandidates(pref, envShell string, lookPath func(string) (string, error), getenv func(string) string, isFile func(string) bool) []Shell {
+	var out []Shell
+	for _, c := range []string{pref, envShell, "bash", "pwsh.exe", "powershell.exe", "cmd.exe"} {
+		if c == "" {
+			continue
+		}
+		var p string
+		if isBash(c) && !filepath.IsAbs(c) {
+			p = findGitBash(lookPath, getenv, isFile)
+		} else if lp, err := lookPath(c); err == nil {
+			p = lp
+		}
+		if p == "" {
+			continue
+		}
+		fam := FamilyOf(p)
+		switch {
+		case fam == ShellPowerShell:
+			out = appendShell(out, Shell{Argv: []string{p, "-NoLogo"}, Family: fam})
+		case fam == ShellPOSIX && isBash(p):
+			// CHERE_INVOKING keeps the login profile from cd-ing to $HOME;
+			// MSYS2_PATH_TYPE keeps the Windows PATH (squad.exe, agents).
+			out = appendShell(out, Shell{Argv: []string{p, "--login", "-i"}, Family: fam,
+				Env: map[string]string{"CHERE_INVOKING": "1", "MSYS2_PATH_TYPE": "inherit"}})
+		default:
+			out = appendShell(out, Shell{Argv: []string{p}, Family: fam})
+		}
+	}
+	if len(out) == 0 {
+		out = append(out, Shell{Argv: []string{"cmd.exe"}, Family: ShellCmd})
+	}
+	return out
+}
+
+// findGitBash returns Git for Windows' bin\bash.exe, found next to git.exe on
+// PATH or in the usual install folders; "" if Git isn't installed.
+func findGitBash(lookPath func(string) (string, error), getenv func(string) string, isFile func(string) bool) string {
+	var roots []string
+	if git, err := lookPath("git.exe"); err == nil {
+		// git.exe lives in <root>\cmd, <root>\bin or <root>\mingw64\bin.
+		d := filepath.Dir(git)
+		for range 3 {
+			roots = append(roots, d)
+			d = filepath.Dir(d)
+		}
+	}
+	for _, v := range []string{"ProgramW6432", "ProgramFiles", "ProgramFiles(x86)"} {
+		if dir := getenv(v); dir != "" {
+			roots = append(roots, filepath.Join(dir, "Git"))
+		}
+	}
+	if dir := getenv("LOCALAPPDATA"); dir != "" {
+		roots = append(roots, filepath.Join(dir, "Programs", "Git"))
+	}
+	for _, r := range roots {
+		if p := filepath.Join(r, "bin", "bash.exe"); isFile(p) {
+			return p
+		}
+	}
+	return ""
+}
+
+func isBash(name string) bool {
+	return strings.TrimSuffix(strings.ToLower(filepath.Base(name)), ".exe") == "bash"
+}
+
+func isFile(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && !fi.IsDir()
+}
+
+// appendShell adds sh unless the same executable is already listed.
+func appendShell(list []Shell, sh Shell) []Shell {
+	for _, s := range list {
+		if strings.EqualFold(s.Argv[0], sh.Argv[0]) {
+			return list
+		}
+	}
+	return append(list, sh)
 }
 
 // Quote quotes one argument for a launch line typed into a shell of family f.

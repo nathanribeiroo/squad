@@ -33,6 +33,15 @@ A mesma skill vem empacotada em [`squad-skill.zip`](squad-skill.zip) (pasta `squ
 
 O `serve` mostra uma URL com token e abre o navegador. Os dados ficam em `~/.squad` (troque com `SQUAD_HOME`) e a porta padrão é 7420 (`-port` ou `SQUAD_PORT`).
 
+### Shell dos terminais
+
+Cada terminal abre um shell, e o agente é digitado dentro dele. A ordem de escolha é:
+
+- **macOS/Linux:** `$SHELL` (login), `zsh`, `bash`, `sh`;
+- **Windows:** **Git Bash** (achado ao lado do `git.exe` ou em `Program Files\Git`; nunca o `bash.exe` do WSL), `pwsh`, `powershell`, `cmd`.
+
+A variável `SQUAD_SHELL` passa à frente dessa lista (ex.: `SQUAD_SHELL=pwsh.exe` ou um caminho completo). Se um shell existir mas não abrir, por exemplo o PowerShell bloqueado por política de grupo, o terminal tenta o próximo da lista.
+
 ### Interface
 
 A interface já vem embutida no binário. Para mexer nela:

@@ -54,7 +54,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
   - fila de escrita serializada;
   - `Paste(texto)` com colagem delimitada e as temporizações da spec;
   - `Manager` para criar, parar e reiniciar terminais e listar o estado.
-- Shell por plataforma: `$SHELL -l` no Unix; `pwsh`, `powershell` ou `cmd` no Windows. A linha de lançamento do agente é digitada no shell.
+- Shell por plataforma: `$SHELL -l` no Unix; Git Bash, `pwsh`, `powershell` ou `cmd` no Windows (`SQUAD_SHELL` passa à frente; se um não abrir, tenta o próximo). A linha de lançamento do agente é digitada no shell.
 
 **Aceite:** os golden tests passam. Um teste de integração abre um shell, digita `echo` e lê a tela. Outro roda um agente falso que liga o modo 2004 e confere que a colagem chega delimitada, seguida dos CRs.
 

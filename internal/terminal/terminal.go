@@ -144,8 +144,6 @@ func (t *Terminal) setStatus(s Status, code int, err string) {
 
 // start launches the shell and, if configured, types the agent launch line.
 func (t *Terminal) start(cliDir string) error {
-	argv, fam := ResolveShell(t.spec.Shell)
-	t.family = fam
 	cols, rows := t.spec.Cols, t.spec.Rows
 	if cols <= 0 {
 		cols = 80
@@ -165,14 +163,27 @@ func (t *Terminal) start(cliDir string) error {
 	t.status = StatusStarting
 	t.mu.Unlock()
 
-	proc, err := pty.Start(pty.Options{
-		Argv: argv, Dir: cwd, Cols: cols, Rows: rows,
-		Env: BuildEnv(os.Environ(), t.spec.Env, cliDir),
-	})
-	if err != nil {
+	// Try each candidate shell: one may exist but be blocked from starting
+	// (e.g. PowerShell disabled by group policy on Windows).
+	var proc *pty.Process
+	var firstErr error
+	for _, sh := range ShellCandidates(t.spec.Shell) {
+		p, err := pty.Start(pty.Options{
+			Argv: sh.Argv, Dir: cwd, Cols: cols, Rows: rows,
+			Env: BuildEnv(os.Environ(), shellOverrides(sh.Env, t.spec.Env), cliDir),
+		})
+		if err == nil {
+			proc, t.family = p, sh.Family
+			break
+		}
+		if firstErr == nil {
+			firstErr = fmt.Errorf("start %s: %w", sh.Argv[0], err)
+		}
+	}
+	if proc == nil {
 		_ = scr.Close()
-		t.setStatus(StatusFailed, -1, err.Error())
-		return fmt.Errorf("start %s: %w", argv[0], err)
+		t.setStatus(StatusFailed, -1, firstErr.Error())
+		return firstErr
 	}
 	t.mu.Lock()
 	t.proc = proc
@@ -192,6 +203,24 @@ func (t *Terminal) start(cliDir string) error {
 		}, false)
 	}
 	return nil
+}
+
+// shellOverrides merges the variables a shell needs (unless the user already
+// set them) under the terminal's own overrides.
+func shellOverrides(shellEnv, spec map[string]string) map[string]string {
+	if len(shellEnv) == 0 {
+		return spec
+	}
+	out := map[string]string{}
+	for k, v := range shellEnv {
+		if _, set := os.LookupEnv(k); !set {
+			out[k] = v
+		}
+	}
+	for k, v := range spec {
+		out[k] = v
+	}
+	return out
 }
 
 func (t *Terminal) readLoop(proc *pty.Process, scr screen.Screen) {
