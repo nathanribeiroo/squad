@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,10 +85,17 @@ func checkTerminalDir(t *store.TerminalData, wsCwd string) error {
 	}
 	dir := ResolveCwd(t.Cwd, wsCwd)
 	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
-		return errors.Join(store.ErrInvalid, fmt.Errorf("folder not found: %s", dir))
+		return invalidError("folder not found: " + dir)
 	}
 	return nil
 }
+
+// invalidError is a 400 (it matches store.ErrInvalid) whose message is shown
+// as is, without the "invalid" prefix errors.Join would add.
+type invalidError string
+
+func (e invalidError) Error() string        { return string(e) }
+func (e invalidError) Is(target error) bool { return target == store.ErrInvalid }
 
 // StartTerminals starts every terminal node of the workspace.
 func (s *Server) StartTerminals() {

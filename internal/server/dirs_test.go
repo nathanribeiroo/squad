@@ -57,8 +57,8 @@ func TestTerminalFolder(t *testing.T) {
 		resp, data := h.do("POST", "/api/nodes", store.Node{Kind: store.KindTerminal, Terminal: &store.TerminalData{Name: "T-" + cwd, Agent: "shell", Shell: "/bin/sh", Cwd: cwd}}, nil)
 		var n store.Node
 		_ = json.Unmarshal(data, &n)
-		if resp.StatusCode >= 400 && !strings.Contains(string(data), "folder not found") {
-			t.Fatalf("error without the folder: %s", data)
+		if resp.StatusCode >= 400 && !strings.HasPrefix(string(data), `{"error":"folder not found: `) {
+			t.Fatalf("error message: %s", data)
 		}
 		return resp, n
 	}
