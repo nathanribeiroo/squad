@@ -2,6 +2,32 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, portal ao vivo (P1)
+
+- **Teste prévio:** três abas de um Chromium sem janela transmitiram ao mesmo tempo, cerca de 20 quadros por segundo cada. O navegador abriu em 1,3 s e cada aba em 0,2 s. Daí a escolha de um navegador para o servidor inteiro, com uma aba por portal.
+- **`internal/browser`:**
+  - procura Chrome, Edge, Chromium ou Brave (`SQUAD_BROWSER` força um executável) e abre o navegador só quando um portal precisa, com o perfil em `~/.squad/browser`;
+  - fecha 30 s depois da última aba e reabre sob demanda;
+  - `Page`: navegar, voltar e avançar (a página em branco inicial não conta), recarregar, tamanho da página, estado (URL, título, carregando, erro, histórico), mouse e teclado com eventos confiáveis, colar e `Evaluate`;
+  - o screencast (JPEG) só roda enquanto alguém assiste, e um espectador lento pula quadros em vez de acumular atraso.
+- **`internal/portal`** (um por workspace):
+  - `GET /w/<id>/ws/portal/{nó}` envia o estado em JSON e os quadros em binário (8 bytes com a hora da pintura, em ms, e depois o JPEG); recebe mouse, teclado, colar e voltar/avançar/recarregar;
+  - editar o endereço navega; navegar dentro da página grava o endereço novo no canvas, sem navegar de novo (a última URL aplicada fica guardada por aba, para que mover o nó não recarregue a página);
+  - redimensionar o nó redimensiona a página;
+  - remover o portal ou o workspace fecha a aba.
+- **Web:**
+  - transmite só no zoom "ao vivo"; abaixo disso, mostra o último quadro ("pausado");
+  - "● ao vivo · N ms" fica âmbar acima de 400 ms. O primeiro quadro de cada conexão é o último guardado e não entra na conta, porque o Chrome só pinta quando a página muda;
+  - as posições do mouse são convertidas da imagem na tela para a página em qualquer zoom; o teclado segue as regras dos terminais (`⌥Esc`);
+  - o nó do portal ganhou alças de redimensionar;
+  - sem navegador, aparece a mensagem com a solução.
+- **Testes:**
+  - `internal/browser` e `internal/portal` rodam contra um navegador de verdade quando há um (`SQUAD_BROWSER`; sem navegador, são pulados). Cobrem quadros, cliques e teclas, colar, histórico, erro de conexão, tamanho, URL gravada, mover sem recarregar, fechar a aba e o navegador ocioso. Também com `-race`;
+  - na interface, com o Chrome headless: contador clicado três vezes, nome digitado, "Enviar", rolagem, link para outra página com a URL salva, voltar, sem navegador e zoom reduzido.
+- **Binário:** cerca de 2,6 MB a mais por causa do `chromedp`.
+
+**Precisa de você (Windows):** abrir um portal com um site e ver se o Edge (ou o Chrome) sobe sem janela. Se a política da empresa bloquear o `msedge.exe` nesse modo, o portal mostra o erro; aí vale testar com `SQUAD_BROWSER` apontando para o Chrome.
+
 ## 2026-10-15, vários workspaces
 
 - **Uma instância por workspace:** cada workspace é um `app.App` completo (canvas, terminais, `agentbus`, notas, monitor de atividade), como antes. O pacote novo `internal/hub` carrega todos de `~/.squad/workspaces/*` e monta cada um em `/w/<id>/`. Por isso, nada dentro do workspace mudou: pausa, limite por minuto, notas e `squad ask` já ficam separados.
