@@ -15,6 +15,7 @@ import (
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/emulation"
+	"github.com/chromedp/cdproto/input"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
@@ -31,6 +32,7 @@ func main() {
 	scale := flag.Float64("scale", 1, "device scale factor")
 	js := flag.String("eval", "", "JavaScript to run before capturing")
 	settle := flag.Duration("settle", 500*time.Millisecond, "wait after -eval")
+	steps := flag.String("steps", "", "real input before capturing, ';'-separated: click X Y | drag X1 Y1 X2 Y2 | type TEXT | key NAME [alt|ctrl|shift|meta] | wheel X Y DY [ctrl] | sleep DUR | eval JS")
 	flag.Parse()
 	if *url == "" {
 		fmt.Fprintln(os.Stderr, "missing -url")
@@ -110,6 +112,17 @@ func main() {
 		}
 		time.Sleep(*settle)
 	}
+	if *steps != "" {
+		for _, st := range strings.Split(*steps, ";") {
+			if st = strings.TrimSpace(st); st == "" {
+				continue
+			}
+			if err := chromedp.Do(ctx, chromedp.Func(func(ctx context.Context, t *chromedp.Target) error { return runStep(ctx, t, st) })); err != nil {
+				fmt.Fprintf(os.Stderr, "step %q: %v\n", st, err)
+			}
+		}
+		time.Sleep(*settle)
+	}
 	var png []byte
 	err = chromedp.Do(ctx, chromedp.Func(func(ctx context.Context, t *chromedp.Target) error {
 		params := page.CaptureScreenshotParams{Format: page.CaptureScreenshotFormatPng}
@@ -135,4 +148,124 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("wrote", *out, len(png), "bytes")
+}
+
+var keys = map[string]struct {
+	key  string
+	code int64
+	text string
+}{
+	"Enter": {"Enter", 13, "\r"}, "Escape": {"Escape", 27, ""}, "Backspace": {"Backspace", 8, ""},
+	"Delete": {"Delete", 46, ""}, "Tab": {"Tab", 9, ""},
+}
+
+// runStep sends one real input event over CDP (see -steps).
+func runStep(ctx context.Context, t *chromedp.Target, step string) error {
+	f := strings.Fields(step)
+	num := func(i int) float64 {
+		var v float64
+		if i < len(f) {
+			fmt.Sscan(f[i], &v)
+		}
+		return v
+	}
+	mouse := func(typ input.DispatchMouseEventType, x, y float64, buttons int64, mods int64) error {
+		p := input.DispatchMouseEventParams{Type: typ, X: x, Y: y, Modifiers: mods}
+		if typ == input.DispatchMouseEventTypeMousePressed || typ == input.DispatchMouseEventTypeMouseReleased {
+			p.Button, p.ClickCount = input.MouseButtonLeft, 1
+		}
+		p.Buttons = buttons
+		_, err := cdp.Call(ctx, t, input.DispatchMouseEvent, p)
+		return err
+	}
+	mods := func(words []string) int64 {
+		var m int64
+		for _, w := range words {
+			switch w {
+			case "alt":
+				m |= 1
+			case "ctrl":
+				m |= 2
+			case "meta":
+				m |= 4
+			case "shift":
+				m |= 8
+			}
+		}
+		return m
+	}
+	switch f[0] {
+	case "click":
+		x, y := num(1), num(2)
+		if err := mouse(input.DispatchMouseEventTypeMouseMoved, x, y, 0, 0); err != nil {
+			return err
+		}
+		if err := mouse(input.DispatchMouseEventTypeMousePressed, x, y, 1, 0); err != nil {
+			return err
+		}
+		return mouse(input.DispatchMouseEventTypeMouseReleased, x, y, 0, 0)
+	case "drag":
+		x1, y1, x2, y2 := num(1), num(2), num(3), num(4)
+		if err := mouse(input.DispatchMouseEventTypeMouseMoved, x1, y1, 0, 0); err != nil {
+			return err
+		}
+		if err := mouse(input.DispatchMouseEventTypeMousePressed, x1, y1, 1, 0); err != nil {
+			return err
+		}
+		for i := 1; i <= 12; i++ {
+			k := float64(i) / 12
+			if err := mouse(input.DispatchMouseEventTypeMouseMoved, x1+(x2-x1)*k, y1+(y2-y1)*k, 1, 0); err != nil {
+				return err
+			}
+			time.Sleep(16 * time.Millisecond)
+		}
+		return mouse(input.DispatchMouseEventTypeMouseReleased, x2, y2, 0, 0)
+	case "type":
+		_, err := cdp.Call(ctx, t, input.InsertText, input.InsertTextParams{Text: strings.TrimSpace(strings.TrimPrefix(step, "type"))})
+		return err
+	case "key":
+		name := f[1]
+		m := mods(f[2:])
+		k, ok := keys[name]
+		code := name
+		if !ok && strings.HasPrefix(name, "Key") && len(name) == 4 {
+			c := strings.ToLower(name[3:])
+			k = struct {
+				key  string
+				code int64
+				text string
+			}{c, int64(name[3]), c}
+		} else {
+			code = k.key
+		}
+		down := input.DispatchKeyEventParams{Type: input.DispatchKeyEventTypeKeyDown, Key: k.key, Code: code, WindowsVirtualKeyCode: k.code, Modifiers: m}
+		if m == 0 || m == 8 {
+			down.Text = k.text
+		}
+		if down.Text == "" {
+			down.Type = input.DispatchKeyEventTypeRawKeyDown
+		}
+		if _, err := cdp.Call(ctx, t, input.DispatchKeyEvent, down); err != nil {
+			return err
+		}
+		_, err := cdp.Call(ctx, t, input.DispatchKeyEvent, input.DispatchKeyEventParams{Type: input.DispatchKeyEventTypeKeyUp, Key: k.key, Code: code, WindowsVirtualKeyCode: k.code, Modifiers: m})
+		return err
+	case "wheel":
+		// CDP requires deltaX, and the generated params omit zero values.
+		p := input.DispatchMouseEventParams{Type: input.DispatchMouseEventTypeMouseWheel, X: num(1), Y: num(2), DeltaX: 1e-9, DeltaY: num(3), Modifiers: mods(f[4:])}
+		_, err := cdp.Call(ctx, t, input.DispatchMouseEvent, p)
+		return err
+	case "sleep":
+		d, err := time.ParseDuration(f[1])
+		if err != nil {
+			return err
+		}
+		time.Sleep(d)
+		return nil
+	case "eval":
+		await := true
+		_, err := cdp.Call(ctx, t, runtime.Evaluate, runtime.EvaluateParams{Expression: strings.TrimSpace(strings.TrimPrefix(step, "eval")), AwaitPromise: &await})
+		return err
+	}
+	return fmt.Errorf("unknown step %q", f[0])
 }

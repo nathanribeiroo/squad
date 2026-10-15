@@ -21,8 +21,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | B4 Adaptadores de agentes (hooks) | `feat/b4-agent-adapters` | concluído |
 | B5 Notas | `feat/b5-notes` | concluído |
 | W1 Web: shell e tokens | `feat/w1-web-shell` | concluído |
-| W2 Web: nó de terminal | `feat/w2-terminal-node` | em andamento |
-| W3 Web: fios e conversa | `feat/w3-wires` | pendente |
+| W2 Web: nó de terminal | `feat/w2-terminal-node` | concluído |
+| W3 Web: fios e conversa | `feat/w3-wires` | em andamento |
 | W4 Web: Composer, notas e portal | `feat/w4-composer` | pendente |
 
 ## B0, esqueleto

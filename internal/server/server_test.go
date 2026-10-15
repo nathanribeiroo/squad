@@ -253,3 +253,20 @@ func TestCLIAuth(t *testing.T) {
 		t.Fatalf("env not set:\n%s", term.Snapshot())
 	}
 }
+
+func TestPatchTerminalSizeResizes(t *testing.T) {
+	h := newHarness(t)
+	n := h.addTerminal("sh")
+	td := *n.Terminal
+	td.Cols, td.Rows = 100, 30
+	if resp, data := h.do("PATCH", "/api/nodes/"+n.ID, map[string]any{"w": 700, "h": 520, "terminal": td}, nil); resp.StatusCode != 200 {
+		t.Fatalf("patch: %d %s", resp.StatusCode, data)
+	}
+	term := h.srv.terms.Get(n.ID)
+	if term == nil {
+		t.Fatal("terminal not running")
+	}
+	if c, r := term.Screen().Size(); c != 100 || r != 30 {
+		t.Fatalf("size = %dx%d, want 100x30", c, r)
+	}
+}

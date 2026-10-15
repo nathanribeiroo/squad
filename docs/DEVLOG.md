@@ -2,6 +2,51 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, W2 web: nó de terminal
+
+- **Sessão de terminal (`web/src/term/session.ts`):**
+  - cada terminal tem uma instância do xterm.js e um WebSocket `/ws/term/{id}`, guardados num registro fora do React; trocar o nível de zoom não derruba o buffer nem a conexão;
+  - na mensagem `init`, a tela é limpa e redimensionada para o tamanho do PTY; a tela atual chega em seguida;
+  - a reconexão é automática e fica imediata quando o terminal volta a rodar (iniciar ou reiniciar);
+  - a entrada vai em binário;
+  - a sessão é descartada quando o nó sai do workspace.
+- **Texto nítido e mouse correto em qualquer zoom (counter-scale):**
+  - o xterm não aceita ancestrais com `transform: scale` (o mouse cai na célula errada), e o React Flow aplica o zoom com um `scale`;
+  - por isso, o slot do terminal é dimensionado `zoom` vezes maior e reduzido com `scale(1/zoom)`, com fonte 11 × zoom. A escala efetiva fica 1;
+  - a métrica é ajustada pela grade medida: linha de 15 × zoom (handoff 11/15), sem estourar o slot;
+  - o layout é refeito quando o gesto de zoom termina; durante o gesto, o conteúdo fica congelado, como pede o handoff.
+- **Três níveis de zoom, com histerese de ±0,03:**
+  - vivo (≥ 0,6), com o xterm;
+  - miniatura (0,35–0,6), com um snapshot em HTML colorido (`serializeAsHTML`) a cada 3 s e as legendas em pixels de tela;
+  - cartão (< 0,35), com nome, agente, papel, caixa e a banda de estado, em 240 px de design reduzidos ao espaço do nó.
+- **Foco:**
+  - um clique dá o teclado ao terminal, com anel e "teclado aqui";
+  - ⌥Esc devolve o teclado ao canvas;
+  - ⌥A, ⌥P e ⌥K continuam globais mesmo com o terminal focado.
+- **Roda e pinça:**
+  - a roda simples rola o terminal sem mover o canvas;
+  - pinça ou ⌘/ctrl + roda sobre o terminal dão zoom no canvas em torno do ponteiro (antes, o navegador dava zoom na página).
+- **Tamanho:**
+  - o nó tem alças de redimensionar quando está selecionado;
+  - ao soltar, o cliente calcula cols×rows pela métrica exata da fonte e envia `PATCH` com `w`, `h` e `terminal.cols/rows`;
+  - um terminal sem tamanho salvo recebe a grade que cabe no nó: 81×24 em 560×440.
+- **Servidor:** um `PATCH` que muda `terminal.cols/rows` redimensiona o PTY em execução. Todos os clientes seguem pelo `node.updated` (teste `TestPatchTerminalSizeResizes`).
+- **Também no nó:**
+  - caixa de pedidos pendentes no rodapé e no cartão;
+  - aviso de processo encerrado ou com erro sobre o terminal;
+  - menu com iniciar/parar, reiniciar, papel e remover.
+- **`tools/shot`:** ganhou `-steps`, com eventos reais via CDP (clique, arraste, texto, teclas, roda com modificadores, eval). Os testes usaram esses eventos:
+  - digitação no shell, com acentos, CJK e cores;
+  - seleção com o mouse a 80% em DPR 1 e 2;
+  - zoom por pinça sobre o terminal;
+  - miniatura e cartão;
+  - redimensionamento até 104×31, confirmado com `tput cols/lines` dentro do PTY.
+
+**Decisões:**
+- **Renderer DOM do xterm, não WebGL.** O addon WebGL mede o próprio canvas com um `ResizeObserver` (`device-pixel-content-box`), e o Chrome informa esse tamanho errado quando há um ancestral com `scale`. Em DPR 2, o canvas saiu com metade da resolução e o terminal aparecia com o dobro do tamanho, cortado. O renderer DOM não tem esse problema e, com o counter-scale, fica nítido. Se o desempenho com muitos terminais pedir WebGL, o caminho é uma camada sobreposta sem `transform`, posicionada sobre os nós. A dependência `@xterm/addon-webgl` foi removida.
+- **⌥Esc, e não Esc duas vezes, para sair do terminal.** O Claude Code usa Esc Esc (voltar a uma mensagem anterior), então o atalho do handoff tomaria a tecla do agente.
+- **O tamanho do PTY é dado pelo nó:** quem define cols×rows é o cliente que redimensiona, e o servidor só aplica. Vários navegadores abertos seguem o mesmo valor pelo evento, sem disputa.
+
 ## 2026-10-15, W1 web: shell e canvas
 
 - **Projeto `web/`:**
