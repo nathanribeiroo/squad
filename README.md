@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade e vários workspaces. Ficam para depois: andares (git worktree), portal com navegador ao vivo, MCP e validação no Windows real. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces e o portal com a página ao vivo. Ficam para depois: agentes usando o portal (`squad portal`), andares (git worktree), MCP e validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -85,6 +85,12 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - "Novo workspace" pede a pasta (com sugestões), um nome opcional e a cor. O lápis de cada linha edita esses campos; mudar a pasta vale para terminais novos ou reiniciados;
 - "Remover workspace" encerra os terminais dele e move o canvas e as notas para `~/.squad/trash/`. O último workspace não pode ser removido;
 - `squad ask`, `list` e `check` só enxergam terminais do mesmo workspace.
+
+**Portal (`P`):** mostra um site ao vivo, como uma aba de navegador dentro do canvas.
+- A página é aberta por um Chrome, Edge ou Chromium sem janela, controlado pelo Squad (`SQUAD_BROWSER` aponta outro executável). Só abre quando um portal precisa. Os logins e cookies ficam em `~/.squad/browser`, compartilhados entre os workspaces.
+- Clique na página para usá-la: o teclado vai para o site ("teclado aqui") até `⌥Esc`, e a roda do mouse rola a página (pinça ou ⌘/ctrl + roda dão zoom no canvas). Colar digita o texto.
+- Barra de endereço, voltar, avançar e recarregar. Seguir links atualiza o endereço salvo no canvas.
+- O tamanho da página acompanha o nó (redimensione pelas alças). Com o zoom abaixo de 60%, o portal mostra o último quadro e para de transmitir.
 
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 

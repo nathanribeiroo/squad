@@ -112,8 +112,22 @@
 .pn-url { flex: 1; min-width: 0; text-align: left; cursor: text; outline: none; height: 24px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--line); font-size: 11.5px; line-height: 22px; padding: 0 8px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pn-live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--text-3); white-space: nowrap; }
 .pn-live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: block; }
-.pn-body-url { font-size: 11px; color: var(--text-2); }
-.pn-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); font-size: 12.5px; background: var(--surface-2); }
+.pnode.focused { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }
+.pn-nav { display: inline-flex; gap: 0; flex: none; }
+.pn-nav .icon-btn { width: 24px; height: 24px; }
+.pn-nav .icon-btn:disabled { opacity: 0.35; cursor: default; }
+/* The page: the image fills the body, which is the browser's viewport. */
+.pn-screen { flex: 1; position: relative; background: var(--surface-2); outline: none; cursor: default; min-height: 0; }
+.pn-screen img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; pointer-events: none; }
+.pn-msg {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 24px; text-align: center; color: var(--text-3); font-size: 12.5px; background: var(--surface-2);
+}
+.pn-hint { font-size: 11.5px; color: var(--text-2); max-width: 360px; }
+.pn-error {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 8px; border-radius: 6px;
+  background: var(--stb-err); color: var(--st-err); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 /* Handles */
 .react-flow__handle.body-handle {
@@ -153,3 +167,5 @@
 /* Resizer */
 .react-flow__resize-control.handle { width: 9px; height: 9px; border-radius: 2px; background: var(--surface); border: 1.5px solid var(--text-2); }
 .react-flow__resize-control.line { border-color: transparent; }
+.spin { animation: pn-spin 1s linear infinite; }
+@keyframes pn-spin { to { transform: rotate(360deg); } }

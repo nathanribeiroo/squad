@@ -12,7 +12,9 @@ import (
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 	"github.com/nathanribeiroo/squad/internal/agents"
+	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/notes"
+	"github.com/nathanribeiroo/squad/internal/portal"
 	"github.com/nathanribeiroo/squad/internal/server"
 )
 
@@ -22,6 +24,7 @@ type Options struct {
 	Activity   activity.Options
 	Limits     agentbus.Limits
 	Extensions []agentbus.Extension // extra CLI commands (notes, …)
+	Browser    *browser.Manager     // shared by the portals of every workspace; nil disables them
 }
 
 // App is a wired Squad instance.
@@ -30,6 +33,7 @@ type App struct {
 	Monitor *activity.Monitor
 	Bus     *agentbus.Bus
 	Notes   *notes.Service
+	Portals *portal.Service
 
 	exts   []agentbus.Extension
 	cancel context.CancelFunc
@@ -58,6 +62,8 @@ func New(o Options) (*App, error) {
 		return nil, err
 	}
 	srv.SetNodePreparer(notesSvc.PrepareNode)
+	portals := portal.New(srv.Store(), srv.Bus(), o.Browser, o.Server.Port, o.Server.Logger)
+	srv.HandleSession("GET /ws/portal/{id}", http.HandlerFunc(portals.HandleWS))
 	exts := append([]agentbus.Extension{notesSvc.Extension}, o.Extensions...)
 	srv.SetCLIHandler(bus.Handler(server.CallerID, exts...))
 	srv.HandleSession("GET /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +125,7 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, exts: exts}
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, exts: exts}
 	return app, nil
 }
 
@@ -130,6 +136,7 @@ func (a *App) Start() {
 	a.cancel = cancel
 	a.Monitor.Start()
 	_ = a.Notes.Watch(ctx)
+	a.Portals.Start()
 	a.Server.StartTerminals()
 }
 
@@ -139,6 +146,7 @@ func (a *App) Close() {
 		a.cancel()
 	}
 	a.Monitor.Stop()
+	a.Portals.Close()
 	a.Server.Shutdown()
 }
 
