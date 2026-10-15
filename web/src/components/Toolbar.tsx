@@ -1,0 +1,51 @@
+import { useSquad } from '../state/store';
+import { Icon } from './Icon';
+import { NewTerminalForm } from './NewTerminalForm';
+import './Toolbar.css';
+
+type Tool = { icon: string; label: string; key: string; action: () => void; active?: boolean; disabled?: boolean };
+
+export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => void; onCreatePortal: () => void }) {
+  const tool = useSquad((s) => s.tool);
+  const setTool = useSquad((s) => s.setTool);
+  const newTerm = useSquad((s) => s.newTermOpen);
+  const setNewTerm = useSquad((s) => s.setNewTerm);
+
+  const nav: Tool[] = [
+    { icon: 'near_me', label: 'Selecionar', key: 'V', action: () => setTool('select'), active: tool === 'select' },
+    { icon: 'pan_tool', label: 'Mover', key: 'H', action: () => setTool('pan'), active: tool === 'pan' },
+  ];
+  const create: Tool[] = [
+    { icon: 'terminal', label: 'Novo terminal', key: 'T', action: () => setNewTerm(!newTerm), active: newTerm },
+    { icon: 'sticky_note_2', label: 'Nota', key: 'N', action: onCreateNote },
+    { icon: 'public', label: 'Portal', key: 'P', action: onCreatePortal },
+    { icon: 'gesture', label: 'Desenho (em breve)', key: 'D', action: () => {}, disabled: true },
+    { icon: 'select', label: 'Grupo (em breve)', key: 'G', action: () => {}, disabled: true },
+  ];
+
+  const render = (t: Tool) => (
+    <button
+      key={t.icon}
+      className={`tbx-btn${t.active ? ' active' : ''}`}
+      onClick={t.action}
+      disabled={t.disabled}
+      aria-label={t.label}
+    >
+      <Icon name={t.icon} size={19} />
+      <span className="tbx-tip">
+        {t.label} <span className="mono">{t.key}</span>
+      </span>
+    </button>
+  );
+
+  return (
+    <>
+      <nav className="toolbar" aria-label="Ferramentas">
+        {nav.map(render)}
+        <span className="tbx-divider" />
+        {create.map(render)}
+      </nav>
+      {newTerm && <NewTerminalForm onClose={() => setNewTerm(false)} />}
+    </>
+  );
+}

@@ -1,0 +1,2 @@
+.app { height: 100%; display: flex; flex-direction: column; }
+.stage { flex: 1; min-height: 0; position: relative; }

@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
-> Estado: o backend está pronto (terminais, conversa entre agentes, hooks do Claude Code, notas); a interface web está em desenvolvimento. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: o backend está pronto (terminais, conversa entre agentes, hooks do Claude Code, notas). A interface web já mostra o canvas, as conexões e a atividade, e os terminais interativos ainda estão em desenvolvimento. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -19,6 +19,21 @@ bin/squad serve -dir ~/meu-projeto
 ```
 
 O `serve` mostra uma URL com token e abre o navegador. Os dados ficam em `~/.squad` (troque com `SQUAD_HOME`) e a porta padrão é 7420 (`-port` ou `SQUAD_PORT`).
+
+### Interface
+
+A interface já vem embutida no binário. Para mexer nela:
+
+```sh
+make web                                      # npm ci + build → internal/webui/dist (commitado)
+cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor em 7420
+```
+
+**Atalhos:**
+- canvas: `V` selecionar, `H` mover, `T` novo terminal, `N` nota, `P` portal;
+- globais: `⌥A` gaveta de atividade, `⌥P` pausar conversas, `⌥K` composer.
+
+**Conexões:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó. Um clique no fio o seleciona; para desligar, use Delete ou o botão "Desligar".
 
 ### Testar a conversa sem a interface (pela API)
 
@@ -67,6 +82,8 @@ go test -tags e2e -run TestRealClaude -v ./internal/app/     # usa o Claude Code
 |---|---|
 | `cmd/squad` | o binário único: servidor (`serve`), a CLI usada pelos agentes, `hook`, `install-skill` |
 | `internal/` | `terminal`, `pty`, `screen` (emulador), `activity` (monitor), `agentbus` (conversa), `agents` (hooks), `notes`, `store`, `server`, `app` |
+| `web/` | interface React (React Flow, xterm.js); o build vai para `internal/webui/dist` |
+| `tools/shot` | captura de tela via Chrome headless (módulo Go próprio), usada para comparar a UI com o design |
 | `third_party/vt` | emulador de terminal (charmbracelet/x/vt, MIT) com patches |
 | `docs/` | investigação do Maestri, propostas de arquitetura, spec da conversa, design (`design_handoff_squad/`), plano e diário |
 | `spikes/` | protótipos e gravações reais de TUIs (base dos testes do emulador) |

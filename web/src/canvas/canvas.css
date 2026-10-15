@@ -1,0 +1,20 @@
+.react-flow {
+  --xy-background-color: var(--bg);
+  --xy-background-color-default: var(--bg);
+  --xy-edge-stroke: var(--wire);
+  --xy-connectionline-stroke: var(--text-2);
+  --xy-connectionline-stroke-width: 2.5;
+  --xy-selection-background-color: color-mix(in srgb, var(--st-work) 10%, transparent);
+  --xy-selection-border: 1px dashed var(--st-work);
+  --xy-node-boxshadow-selected: none;
+  background: var(--bg);
+}
+/* Our nodes draw their own frame. */
+.react-flow__node-terminal, .react-flow__node-note, .react-flow__node-portal {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: var(--radius-node);
+}
+.react-flow.tool-pan .react-flow__pane { cursor: grab; }
+.react-flow.tool-pan .react-flow__pane.dragging { cursor: grabbing; }

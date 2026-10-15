@@ -2,6 +2,54 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, W1 web: shell e canvas
+
+- **Projeto `web/`:**
+  - React 19, `@xyflow/react` 12, zustand 5 e Vite 8, com versões fixas no `package.json`;
+  - o build vai direto para `internal/webui/dist`, que é embutido no binário;
+  - `make web` refaz a UI.
+- **Tema:**
+  - os tokens do handoff foram copiados, e as fontes Geist, Geist Mono e Material Symbols vão no pacote, sem Google Fonts;
+  - `data-theme` (escuro/claro) e `data-term` (noite/papel) ficam no `<html>`;
+  - trocar o tema também troca a paleta do terminal, que continua ajustável no menu.
+- **Estado (`src/state/store.ts`):**
+  - o primeiro evento de `/ws/events` (`hello`) traz o estado completo;
+  - depois, os eventos atualizam nós, arestas, runtime, pendências, voos (para o W3) e o registro de atividade;
+  - a reconexão é automática, e a TopBar mostra "reconectando…".
+- **Componentes:**
+  - TopBar com workspace, andar "main", taxa, pausar/retomar, atividade, servidor e menu de tema;
+  - Toolbar com as ferramentas Selecionar/Mover e os botões de criar terminal, nota e portal; desenho e grupo ficam desabilitados;
+  - formulário de novo terminal, com nome único automático ("Claude 2");
+  - minimapa com as cores de estado e controles de zoom (os dois se deslocam quando a gaveta abre);
+  - ComposerPill;
+  - ActivityDrawer com filtros por terminal, desfechos e limites, e a aba vertical quando fechada.
+- **Canvas:**
+  - React Flow com grade de pontos de 20 e zoom inicial de 80%; o viewport é lembrado no navegador;
+  - nós arrastáveis pelo cabeçalho, com a posição salva via `PATCH`;
+  - para ligar, arrasta-se a partir de uma alça lateral e solta-se em qualquer ponto do outro nó. Os destinos válidos ganham anel e os inválidos ficam a 40%;
+  - Delete apaga o fio selecionado, que também mostra um botão "Desligar";
+  - um toast avisa "A ↔ B ligados/desligados".
+- **Nós:**
+  - o TerminalNode tem faixa de papel, cabeçalho (nome, agente, papel, "teclado aqui", pílula de estado com cronômetro e menu com iniciar/parar, reiniciar, papel e remover) e rodapé; o corpo ainda é provisório, e o xterm entra no W2;
+  - NoteNode mostra o texto da nota;
+  - PortalNode é uma casca.
+- **WireEdge:** âncoras nos lados que se olham, curva com caimento de 0,35 × distância (máximo de 120) e passagem pelos `ropePoints` (Catmull-Rom).
+- **`tools/shot`:**
+  - virou um módulo Go próprio, e o chromedp saiu do `go.mod` do squad;
+  - agora imprime os erros e o console da página.
+- **Teste:** `squad serve` isolado (com `SQUAD_HOME` no scratchpad) mais a disposição da referência via API. As capturas foram comparadas com o `Squad.dc.html`. Um `squad ask` real entre dois shells apareceu como pendente na gaveta, com o Planejador em "Esperando resposta".
+
+**Decisões:**
+- **Build da UI commitado:** o `dist` vai para o git, para que `go build` e `go install` saiam com o canvas sem Node.
+  - A fonte Material Symbols (4 MB) é commitada uma vez só, porque o nome do arquivo leva o hash.
+  - Dá para reduzir a fonte depois, com um subconjunto dos ícones usados.
+- **Atalhos:** o handoff usa ⌥P tanto para "pausar conversas" quanto para "criar portal". Ficou assim:
+  - ⌥ para os atalhos globais (⌥A gaveta, ⌥P pausar, ⌥K composer);
+  - letras simples para as ferramentas do canvas (V, H, T, N, P), como mostram os tooltips da Toolbar;
+  - as letras simples não agem quando o foco está num campo ou no terminal.
+- **Remover nós:** só pelo menu do nó, com confirmação, porque remover um terminal encerra o processo. A tecla Delete apaga só fios.
+- **Seletores do zustand 5 devem devolver referências estáveis:** um `?? []` dentro do seletor causava um laço infinito de renderização (React #185). A correção foi o `useNodes()`, com uma lista vazia constante.
+
 ## 2026-10-15, B5 notas
 
 - **`internal/notes`:**

@@ -1,0 +1,26 @@
+.react-flow__edge-path.wire {
+  stroke: var(--wire);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  fill: none;
+}
+.react-flow__edge-path.wire.selected { stroke: var(--text-2); }
+.wire-end { fill: var(--surface); stroke: var(--line-2); stroke-width: 2; }
+.wire-rope { fill: var(--surface); stroke: var(--text); stroke-width: 1.5; }
+.wire-unlink {
+  position: absolute;
+  pointer-events: all;
+  height: 26px;
+  border-radius: 13px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 0 10px 0 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wire-unlink:hover { border-color: var(--st-err); color: var(--st-err); }

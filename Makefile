@@ -20,5 +20,10 @@ vet:
 # Everything that must pass before merging a stage into main.
 check: vet test build build-windows
 
+# Rebuilds the embedded UI (web/ → internal/webui/dist). The build output is
+# committed so `go build` and `go install` ship the canvas without Node.
+web:
+	cd web && npm ci && npm run build
+
 clean:
 	rm -rf bin
