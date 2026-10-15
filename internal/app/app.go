@@ -10,6 +10,7 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/agents"
 	"github.com/nathanribeiroo/squad/internal/server"
 )
 
@@ -47,6 +48,17 @@ func New(o Options) (*App, error) {
 	srv.OnEdgeRemoved(bus.EdgeRemoved)
 	srv.OnNodeRemoved(bus.NodeRemoved)
 	srv.SetCLIHandler(bus.Handler(server.CallerID, o.Extensions...))
+
+	// Agent adapters: launch flags that install hooks, and the hook receiver.
+	if o.Server.CLIPath != "" {
+		launcher, err := agents.NewLauncher(o.Server.CLIPath)
+		if err != nil {
+			return nil, err
+		}
+		srv.SetLaunchHook(launcher.Prepare)
+	}
+	srv.SetHookHandler(agents.HookHandler(mon, server.CallerID))
+	bus.SetHookedAgents(agents.HasHooks)
 
 	srv.HandleSession("POST /api/conversations/pause", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		bus.SetPaused(true, "user")

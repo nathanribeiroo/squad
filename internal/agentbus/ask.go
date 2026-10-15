@@ -130,17 +130,36 @@ func replyBody(fromName, id, msg string) string {
 
 func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Terminal, tn store.Node, msg string) Result {
 	shell := tn.Terminal.Agent == "shell"
-	var cancelWaiter func()
+	hooked := b.hasHooks(tn.Terminal.Agent)
 	if b.mon != nil {
 		b.mon.ResetTurn(tn.ID)
-		cancelWaiter = b.mon.OnTurnEnd(tn.ID, func(te activity.TurnEnd) {
-			if te.Message != "" {
-				b.resolve(p, Result{Code: 200, Body: replyBody(p.ToName, p.ID, te.Message), Source: te.Reason})
-				return
-			}
-			b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()), Source: te.Reason})
-		})
-		defer cancelWaiter()
+		var mu sync.Mutex
+		var cancelWaiter func()
+		var register func()
+		register = func() {
+			c := b.mon.OnTurnEnd(tn.ID, func(te activity.TurnEnd) {
+				// Agents with hooks: a turn end guessed from the screen isn't
+				// final (the agent may be thinking quietly); wait for the hook.
+				if hooked && te.Reason == "idle" {
+					register()
+					return
+				}
+				if te.Message != "" {
+					b.resolve(p, Result{Code: 200, Body: replyBody(p.ToName, p.ID, te.Message), Source: te.Reason})
+					return
+				}
+				b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()), Source: te.Reason})
+			})
+			mu.Lock()
+			cancelWaiter = c
+			mu.Unlock()
+		}
+		register()
+		defer func() {
+			mu.Lock()
+			defer mu.Unlock()
+			cancelWaiter()
+		}()
 	}
 	if err := t.Paste(Envelope(p.FromName, p.ID, msg, shell), true); err != nil {
 		b.resolve(p, Result{Code: 500, Body: "squad: delivery failed: " + err.Error(), Source: "cancelled"})
@@ -149,7 +168,7 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 	b.events.Publish(events.RequestDelivered, map[string]any{"id": p.ID, "from": p.From, "to": p.To})
 	b.events.Publish(events.RequestPending, map[string]any{"id": p.ID, "from": p.From, "to": p.To, "sentAt": p.SentAt})
 
-	useFallback := !b.hasHooks(tn.Terminal.Agent)
+	useFallback := !hooked
 	quick := time.NewTimer(b.limits.QuickAfter)
 	defer quick.Stop()
 	timeout := time.NewTimer(b.limits.Timeout)

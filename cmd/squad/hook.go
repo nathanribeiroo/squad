@@ -1,0 +1,122 @@
+package main
+
+import (
+	"bytes"
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"golang.org/x/term"
+)
+
+// runHook forwards an agent hook to the server: `squad hook <name> [json]`.
+// The payload is the last argument (Codex notify) or stdin (Claude Code).
+// It never fails loudly: a hook error must not disturb the agent.
+func runHook(args []string, _, stderr io.Writer) int {
+	if len(args) < 2 {
+		fmt.Fprintln(stderr, "usage: squad hook <name> [payload]")
+		return 0
+	}
+	name := args[1]
+	var payload []byte
+	if len(args) >= 3 {
+		payload = []byte(args[len(args)-1])
+	} else if !term.IsTerminal(int(os.Stdin.Fd())) {
+		payload, _ = io.ReadAll(io.LimitReader(os.Stdin, 16<<20))
+	}
+	env, err := readClientEnv()
+	if err != nil {
+		debugf(stderr, "%v", err)
+		return 0
+	}
+	req, err := http.NewRequest("POST", strings.TrimRight(env.url, "/")+"/hooks/"+name, bytes.NewReader(payload))
+	if err != nil {
+		debugf(stderr, "%v", err)
+		return 0
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Terminal-ID", env.id)
+	req.Header.Set("X-Squad-Token", env.token)
+	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+	if err != nil {
+		debugf(stderr, "%v", err)
+		return 0
+	}
+	resp.Body.Close()
+	return 0
+}
+
+func debugf(w io.Writer, format string, a ...any) {
+	if os.Getenv("SQUAD_DEBUG") != "" {
+		fmt.Fprintf(w, "squad hook: "+format+"\n", a...)
+	}
+}
+
+// skillMD teaches agents the Squad CLI (written for Squad; Claude Code loads
+// skills from ~/.claude/skills/<name>/SKILL.md).
+const skillMD = `---
+name: squad
+description: Talk to other agents and terminals connected to you on the Squad canvas, and read or write connected notes. Use when a message starts with [de: <Name> · pedido <id>], or when the user asks you to ask, tell, delegate to or check on another agent, or to read/update a note.
+---
+
+# Squad
+
+You are running inside a Squad terminal. Squad is a canvas where agents and
+shells are connected by wires; you can only talk to what is connected to you.
+The ` + "`squad`" + ` command is on your PATH (if not, use "$SQUAD_CLI").
+
+## Commands
+
+- ` + "`squad list`" + `: who you are and what is connected to you. Run it first and use names exactly as printed.
+- ` + "`squad ask \"Name\" \"message\"`" + `: send a message and wait for the reply. The reply is the other agent's final answer for that turn (or its screen when it has no hook). Set your shell tool timeout generously (minutes for real tasks).
+- ` + "`squad ask \"Name\" --raw \"keys\"`" + `: type keys into a terminal (escapes: \n Enter, \t Tab, \e ESC, \xNN byte, e.g. \x03 Ctrl-C) and get its screen back. Use for menus or shells.
+- ` + "`squad ask --batch '{\"A\": \"m1\", \"B\": \"m2\"}'`" + `: ask several at once; returns a JSON array of {name, output|error}.
+- ` + "`squad check \"Name\"`" + `: read a terminal's current screen without sending anything. Text still in someone's input box is not addressed to you.
+- ` + "`squad reply <id> \"message\"`" + `: answer request <id>.
+- ` + "`squad note …`" + `: read and write connected notes (` + "`squad note help`" + `).
+
+For long messages use a heredoc: ` + "`squad ask \"Name\" <<'EOF'`" + ` … ` + "`EOF`" + `.
+
+## Receiving requests
+
+A message that starts with ` + "`[de: Planejador · pedido 7f3a]`" + ` comes from the agent
+Planejador, and Planejador is waiting for your answer. Do the work, then
+either finish your turn with a clear final answer (Squad sends it back) or
+run ` + "`squad reply 7f3a \"…\"`" + `. If you need something from the sender while it
+waits, ` + "`squad ask \"Planejador\" \"…\"`" + ` delivers your message as the answer.
+
+## Rules
+
+- If an ask times out, don't resend it: run ` + "`squad check \"Name\"`" + ` and wait again.
+- Don't edit files another agent is changing right now.
+- Conversations can be paused by the user, and chains are limited in depth;
+  when a command says so, stop and tell the user.
+`
+
+// runInstallSkill writes the Squad skill for Claude Code.
+func runInstallSkill(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("install-skill", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	home, _ := os.UserHomeDir()
+	dir := fs.String("dir", filepath.Join(home, ".claude", "skills"), "skills directory")
+	if err := fs.Parse(args[1:]); err != nil {
+		return 2
+	}
+	target := filepath.Join(*dir, "squad")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		fmt.Fprintln(stderr, "squad:", err)
+		return 1
+	}
+	path := filepath.Join(target, "SKILL.md")
+	if err := os.WriteFile(path, []byte(skillMD), 0o644); err != nil {
+		fmt.Fprintln(stderr, "squad:", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, "Skill do Squad instalada em", path)
+	return 0
+}

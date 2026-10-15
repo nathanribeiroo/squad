@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -18,5 +20,29 @@ func TestRunDispatch(t *testing.T) {
 	errb.Reset()
 	if code := run([]string{"bogus"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unknown command") {
 		t.Fatalf("unknown: code=%d err=%q", code, errb.String())
+	}
+}
+
+func TestInstallSkill(t *testing.T) {
+	dir := t.TempDir()
+	var out, errb bytes.Buffer
+	if code := run([]string{"install-skill", "-dir", dir}, &out, &errb); code != 0 {
+		t.Fatalf("install-skill: %d %s", code, errb.String())
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "squad", "SKILL.md"))
+	if err != nil || !strings.Contains(string(data), "name: squad") || !strings.Contains(string(data), "squad reply") {
+		t.Fatalf("skill file: %v\n%s", err, data)
+	}
+}
+
+func TestClientOutsideTerminal(t *testing.T) {
+	t.Setenv("SQUAD_TERMINAL_ID", "")
+	var out, errb bytes.Buffer
+	if code := run([]string{"list"}, &out, &errb); code != 1 || !strings.Contains(errb.String(), "only works inside a Squad terminal") {
+		t.Fatalf("list outside: %d %q", code, errb.String())
+	}
+	// Hooks never fail loudly.
+	if code := run([]string{"hook", "claude-stop"}, &out, &errb); code != 0 {
+		t.Fatalf("hook outside: %d", code)
 	}
 }

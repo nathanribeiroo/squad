@@ -34,6 +34,7 @@ type Options struct {
 	IdleAfter    time.Duration // no meaningful change while working → turn end (3 s)
 	BootGrace    time.Duration // max time shown as Boot without output (30 s)
 	DoneFor      time.Duration // how long Done lasts without new input (10 min)
+	HookTimeout  time.Duration // silence that ends a hook-started turn without its end hook (60 s)
 }
 
 func (o *Options) defaults() {
@@ -54,6 +55,9 @@ func (o *Options) defaults() {
 	}
 	if o.DoneFor == 0 {
 		o.DoneFor = 10 * time.Minute
+	}
+	if o.HookTimeout == 0 {
+		o.HookTimeout = 60 * time.Second
 	}
 }
 
@@ -90,6 +94,7 @@ type track struct {
 	lastChange     time.Time // last hash change (stable-for)
 	firstOutput    bool
 	turnEndedAt    time.Time
+	hookTurn       bool // turn started by a hook: only a hook (or HookTimeout of silence) ends it
 	state          State
 	since          time.Time
 	waiters        map[int]func(TurnEnd)
@@ -209,8 +214,12 @@ func (m *Monitor) Poll() {
 		} else if tr.working && (hashChanged || titleSpin) {
 			tr.lastMeaningful = now
 		}
-		if tr.working && now.Sub(tr.lastMeaningful) > m.opts.IdleAfter {
-			tr.working = false
+		idleLimit := m.opts.IdleAfter
+		if tr.hookTurn {
+			idleLimit = m.opts.HookTimeout
+		}
+		if tr.working && now.Sub(tr.lastMeaningful) > idleLimit {
+			tr.working, tr.hookTurn = false, false
 			tr.turnEndedAt = now
 			te := TurnEnd{ID: id, Reason: "idle", At: now}
 			fires = append(fires, fire{fns: m.takeWaiters(tr), te: te})
@@ -299,9 +308,23 @@ func (m *Monitor) ResetTurn(id string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	tr := m.get(id)
-	tr.working, tr.streak = false, 0
+	tr.working, tr.hookTurn, tr.streak = false, false, 0
 	tr.lastChange = time.Now()
 	tr.turnEndedAt = time.Time{}
+}
+
+// SignalStart marks the start of a turn reported by a hook; the turn then
+// only ends with Signal (or after HookTimeout without screen changes).
+func (m *Monitor) SignalStart(id string) {
+	now := time.Now()
+	m.mu.Lock()
+	tr := m.get(id)
+	tr.working, tr.hookTurn = true, true
+	tr.streak = m.opts.ActiveStreak
+	tr.lastMeaningful = now
+	tr.turnEndedAt = time.Time{}
+	m.mu.Unlock()
+	m.Refresh()
 }
 
 // Signal ends the current turn of a terminal explicitly (agent hooks).
@@ -311,13 +334,14 @@ func (m *Monitor) Signal(te TurnEnd) {
 	}
 	m.mu.Lock()
 	tr := m.get(te.ID)
-	tr.working, tr.streak = false, 0
+	tr.working, tr.hookTurn, tr.streak = false, false, 0
 	tr.turnEndedAt = te.At
 	fns := m.takeWaiters(tr)
 	m.mu.Unlock()
 	for _, fn := range fns {
 		fn(te)
 	}
+	m.Refresh()
 }
 
 // StableFor returns how long the terminal's screen has not changed.

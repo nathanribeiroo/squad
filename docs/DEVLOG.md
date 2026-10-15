@@ -2,6 +2,27 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-15, B4 adaptadores de agentes
+
+- **`internal/agents`:**
+  - **Claude Code:** o Squad gera `~/.squad/run/claude-hooks.json` com os hooks `Stop`, `StopFailure` e `UserPromptSubmit` chamando `squad hook …`, e a linha de lançamento recebe `--settings <arquivo>`. Os hooks de vários arquivos de settings são somados, então os do usuário (por exemplo, o RTK) continuam.
+  - **Codex:** `-c notify=["<squad>","hook","codex-notify"]`, com o evento `agent-turn-complete` e `last-assistant-message`. **Não testado com conta real**, só com payload de exemplo.
+  - **Gemini, shell e comandos próprios:** só a heurística de tela.
+- **Mensagem final:** vem de `last_assistant_message` do hook `Stop`. Em versões antigas, a reserva é a última mensagem do transcript.
+- **Monitor:**
+  - `SignalStart` (o turno começa pelo hook) e `Signal` (o turno termina pelo hook);
+  - um turno iniciado por hook só termina pelo hook, ou depois de 60 s sem mudança na tela;
+  - para agentes com hooks, o barramento ignora o fim de turno detectado pela tela e desliga o fallback de tela estável.
+- **`squad hook <nome> [payload]`:** repassa o payload ao servidor e nunca falha de forma visível, para não atrapalhar o agente.
+- **`squad install-skill`:** instala `~/.claude/skills/squad/SKILL.md` (escrita por mim) com os comandos, o envelope e o `reply`.
+- **Teste real com Claude Code** (`go test -tags e2e -run TestRealClaude ./internal/app/`): o Shell perguntou ao Claude e recebeu `pong` em 6,4 s, pelo hook `claude-stop`, sem lixo de tela.
+
+**Fica para depois:** `squad mcp` (servidor MCP), priorizando a web.
+
+**Precisa de você:**
+- testar com o Codex quando houver conta (`agent: codex`);
+- decidir se a skill deve ser instalada automaticamente no primeiro `serve`. Hoje é manual (`squad install-skill`), para não mexer em `~/.claude` sem pedir.
+
 ## 2026-10-15, B3 conversa entre agentes
 
 - **`internal/activity`, o monitor:**

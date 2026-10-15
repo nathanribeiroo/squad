@@ -25,6 +25,7 @@ func commands() []command {
 		{"reply", "answer a pending request by id", runClient},
 		{"note", "read or write connected notes", runClient},
 		{"hook", "receive an agent hook (used by agent configs)", runHook},
+		{"install-skill", "install the Squad skill for Claude Code (~/.claude/skills/squad)", runInstallSkill},
 		{"version", "print the version", runVersion},
 	}
 }
@@ -53,7 +54,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Commands:")
 	for _, c := range commands() {
-		fmt.Fprintf(w, "  %-8s %s\n", c.name, c.summary)
+		fmt.Fprintf(w, "  %-14s %s\n", c.name, c.summary)
 	}
 }
 
@@ -64,9 +65,4 @@ func runVersion(_ []string, stdout, _ io.Writer) int {
 	}
 	fmt.Fprintln(stdout, "squad", v)
 	return 0
-}
-
-func runHook(_ []string, _, stderr io.Writer) int {
-	fmt.Fprintln(stderr, "squad hook: not implemented yet")
-	return 1
 }
