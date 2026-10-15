@@ -25,7 +25,7 @@ func commands() []command {
 		{"reply", "answer a pending request by id", runClient},
 		{"note", "read or write connected notes", runClient},
 		{"hook", "receive an agent hook (used by agent configs)", runHook},
-		{"install-skill", "install the Squad skill for Claude Code (~/.claude/skills/squad)", runInstallSkill},
+		{"install-skill", "install the Squad skill for Claude Code (-agent devin: Devin CLI)", runInstallSkill},
 		{"version", "print the version", runVersion},
 	}
 }

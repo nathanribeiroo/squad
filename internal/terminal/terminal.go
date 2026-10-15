@@ -22,7 +22,7 @@ import (
 type Spec struct {
 	ID      string
 	Name    string
-	Agent   string // claude | codex | gemini | shell | custom
+	Agent   string // claude | codex | devin | gemini | shell | custom
 	Command string // line typed into the shell after start; empty = plain shell
 	Shell   string // preferred shell executable; empty = platform default
 	Cwd     string

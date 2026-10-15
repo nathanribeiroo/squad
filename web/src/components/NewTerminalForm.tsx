@@ -5,7 +5,7 @@ import { AGENTS, ROLE_META } from '../lib/model';
 import { useNodes } from '../state/store';
 import { Icon } from './Icon';
 
-const DEFAULT_NAMES: Record<string, string> = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini', shell: 'Shell', custom: 'Terminal' };
+const DEFAULT_NAMES: Record<string, string> = { claude: 'Claude', codex: 'Codex', devin: 'Devin', gemini: 'Gemini', shell: 'Shell', custom: 'Terminal' };
 
 /** Terminal names are unique per workspace: Claude, Claude 2, Claude 3… */
 function uniqueName(base: string, taken: Set<string>): string {

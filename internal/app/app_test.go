@@ -376,6 +376,19 @@ func TestHookedAgentRepliesWithFinalMessage(t *testing.T) {
 	}
 }
 
+// A Devin-like agent reports its turn end through Squad's Stop hook (Devin
+// CLI's Claude-style payload) and is answered with its final message.
+func TestDevinHookRepliesWithFinalMessage(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	a := e.agent("A")
+	b := e.agentOfType("Devin", "devin", "FAKEAGENT_HOOK=devin")
+	e.connect(a, b)
+	r := e.run(a, "ask", "Devin", "diga pong")
+	if r.Code != 200 || r.Source != "devin-stop" || !strings.Contains(r.Body, "[reply from Devin · request ") || !strings.Contains(r.Body, "final: [de: A · pedido ") {
+		t.Fatalf("devin: code=%d source=%s body=%s", r.Code, r.Source, r.Body)
+	}
+}
+
 // A hooked agent that stays silent longer than the screen fallback must not
 // be answered by the screen: the request waits for the hook.
 func TestHookedAgentIgnoresScreenFallback(t *testing.T) {

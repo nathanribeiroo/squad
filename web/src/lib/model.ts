@@ -49,6 +49,7 @@ export function clock(t: string | number): string {
 export const AGENTS: { value: string; label: string }[] = [
   { value: 'claude', label: 'Claude Code' },
   { value: 'codex', label: 'Codex' },
+  { value: 'devin', label: 'Devin' },
   { value: 'gemini', label: 'Gemini' },
   { value: 'shell', label: 'Shell' },
   { value: 'custom', label: 'Comando próprio' },

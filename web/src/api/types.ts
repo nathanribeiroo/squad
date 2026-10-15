@@ -1,7 +1,7 @@
 // Mirrors of the Go server types (internal/store, internal/server, agentbus).
 
 export type NodeKind = 'terminal' | 'note' | 'portal';
-export type AgentType = 'claude' | 'codex' | 'gemini' | 'shell' | 'custom';
+export type AgentType = 'claude' | 'codex' | 'devin' | 'gemini' | 'shell' | 'custom';
 export type Role = 'plan' | 'impl' | 'rev' | 'test' | '';
 export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'done' | 'err' | 'off';
 

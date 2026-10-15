@@ -29,6 +29,13 @@ func TestParseHook(t *testing.T) {
 	if _, ok := ParseHook("codex-notify", []byte(`{"type":"other"}`)); ok {
 		t.Fatal("codex non-turn event accepted")
 	}
+	ev, ok = ParseHook("devin-stop", []byte(`{"hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"feito","session_id":"s","prompt_id":"p"}`))
+	if !ok || !ev.TurnEnd || ev.Failure || ev.Message != "feito" {
+		t.Fatalf("devin-stop: %+v %v", ev, ok)
+	}
+	if ev, ok := ParseHook("devin-prompt", []byte(`{"hook_event_name":"UserPromptSubmit","prompt":"oi"}`)); !ok || !ev.TurnStart {
+		t.Fatalf("devin-prompt: %+v", ev)
+	}
 	if _, ok := ParseHook("unknown", nil); ok {
 		t.Fatal("unknown hook accepted")
 	}
@@ -75,12 +82,22 @@ func TestPrepareLaunchLines(t *testing.T) {
 	if spec.Command != want {
 		t.Fatalf("codex command:\n got %s\nwant %s", spec.Command, want)
 	}
+	devinCfg, err := os.ReadFile(l.DevinConfig)
+	if err != nil || !strings.Contains(string(devinCfg), `\"/opt/squad/bin/squad\" hook devin-stop`) ||
+		!strings.Contains(string(devinCfg), `hook devin-prompt`) || strings.Contains(string(devinCfg), "StopFailure") {
+		t.Fatalf("devin config: %v\n%s", err, devinCfg)
+	}
+	spec = terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
+	_ = l.Prepare(store.Node{}, &spec)
+	if want := "devin --config " + terminal.Quote(terminal.ShellPOSIX, l.DevinConfig); spec.Command != want {
+		t.Fatalf("devin command:\n got %s\nwant %s", spec.Command, want)
+	}
 	spec = terminal.Spec{Agent: "shell"}
 	_ = l.Prepare(store.Node{}, &spec)
 	if spec.Command != "" {
 		t.Fatalf("shell command: %q", spec.Command)
 	}
-	if !HasHooks("claude") || HasHooks("gemini") || HasHooks("whatever") {
+	if !HasHooks("claude") || !HasHooks("devin") || HasHooks("gemini") || HasHooks("whatever") {
 		t.Fatal("HasHooks")
 	}
 }

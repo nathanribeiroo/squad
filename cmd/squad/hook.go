@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -15,7 +16,8 @@ import (
 )
 
 // runHook forwards an agent hook to the server: `squad hook <name> [json]`.
-// The payload is the last argument (Codex notify) or stdin (Claude Code).
+// The payload is the last argument (Codex notify) or stdin (Claude Code,
+// Devin CLI).
 // It never fails loudly: a hook error must not disturb the agent.
 func runHook(args []string, _, stderr io.Writer) int {
 	if len(args) < 2 {
@@ -58,7 +60,8 @@ func debugf(w io.Writer, format string, a ...any) {
 }
 
 // skillMD teaches agents the Squad CLI (written for Squad; Claude Code loads
-// skills from ~/.claude/skills/<name>/SKILL.md).
+// skills from ~/.claude/skills/<name>/SKILL.md, Devin CLI from
+// ~/.config/devin/skills/<name>/SKILL.md, same format).
 const skillMD = `---
 name: squad
 description: Talk to other agents and terminals connected to you on the Squad canvas, and read or write connected notes. Use when a message starts with [de: <Name> · pedido <id>], or when the user asks you to ask, tell, delegate to or check on another agent, or to read/update a note.
@@ -98,14 +101,23 @@ waits, ` + "`squad ask \"Planejador\" \"…\"`" + ` delivers your message as the
   when a command says so, stop and tell the user.
 `
 
-// runInstallSkill writes the Squad skill for Claude Code.
+// runInstallSkill writes the Squad skill for Claude Code (default) or Devin
+// CLI, which doesn't read ~/.claude/skills.
 func runInstallSkill(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("install-skill", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	home, _ := os.UserHomeDir()
-	dir := fs.String("dir", filepath.Join(home, ".claude", "skills"), "skills directory")
+	agent := fs.String("agent", "claude", "agent that loads the skill: claude or devin")
+	dir := fs.String("dir", "", "skills directory (default: the agent's global skills directory)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
+	}
+	if *dir == "" {
+		d, err := skillsDir(*agent)
+		if err != nil {
+			fmt.Fprintln(stderr, "squad:", err)
+			return 2
+		}
+		*dir = d
 	}
 	target := filepath.Join(*dir, "squad")
 	if err := os.MkdirAll(target, 0o755); err != nil {
@@ -119,4 +131,28 @@ func runInstallSkill(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintln(stdout, "Skill do Squad instalada em", path)
 	return 0
+}
+
+// skillsDir is where an agent loads global skills from: ~/.claude/skills for
+// Claude Code; for Devin CLI, devin/skills under $XDG_CONFIG_HOME (default
+// ~/.config, also on macOS) or %APPDATA% on Windows.
+func skillsDir(agent string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	switch agent {
+	case "claude":
+		return filepath.Join(home, ".claude", "skills"), nil
+	case "devin":
+		base := os.Getenv("XDG_CONFIG_HOME")
+		if runtime.GOOS == "windows" {
+			base = os.Getenv("APPDATA")
+		}
+		if base == "" {
+			base = filepath.Join(home, ".config")
+		}
+		return filepath.Join(base, "devin", "skills"), nil
+	}
+	return "", fmt.Errorf("unknown agent %q (use claude or devin)", agent)
 }

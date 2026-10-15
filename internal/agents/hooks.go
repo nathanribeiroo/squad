@@ -18,12 +18,15 @@ type HookEvent struct {
 }
 
 // ParseHook interprets the payload of a named hook ("claude-stop",
-// "claude-stop-failure", "claude-prompt", "codex-notify").
+// "claude-stop-failure", "claude-prompt", "codex-notify", "devin-stop",
+// "devin-prompt").
 func ParseHook(name string, body []byte) (HookEvent, bool) {
 	switch name {
-	case "claude-prompt":
+	case "claude-prompt", "devin-prompt":
 		return HookEvent{TurnStart: true}, true
-	case "claude-stop", "claude-stop-failure":
+	case "claude-stop", "claude-stop-failure", "devin-stop":
+		// Devin's Stop payload follows Claude Code's: last_assistant_message
+		// (Devin CLI v3000.5.20+), no transcript_path and no failure event.
 		var p struct {
 			LastAssistantMessage string `json:"last_assistant_message"`
 			TranscriptPath       string `json:"transcript_path"`

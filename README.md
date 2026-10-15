@@ -1,6 +1,6 @@
 # Squad
 
-Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
+Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
 > Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown e a gaveta de atividade. Ficam para depois: andares (git worktree), portal com navegador ao vivo, MCP e validação no Windows real. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
@@ -15,6 +15,7 @@ Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Gemini)
 ```sh
 make build                       # gera bin/squad
 bin/squad install-skill          # opcional: ensina o Claude Code a usar o Squad (~/.claude/skills/squad)
+bin/squad install-skill -agent devin   # idem para o Devin CLI (~/.config/devin/skills/squad)
 bin/squad serve -dir ~/meu-projeto
 ```
 
@@ -83,7 +84,9 @@ Dentro de um terminal do Squad, o comando `squad` está no PATH:
 | `squad reply <id> "…"` | responde o pedido `<id>` |
 | `squad note list\|read\|write\|edit\|create` | notas ligadas a você |
 
-Com o Claude Code, a resposta é a **mensagem final do turno** (via hook `Stop`), não a tela. Com outros programas, o Squad espera a tela parar de mudar.
+Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do turno** (via hook `Stop` ou `notify`), não a tela. Com outros programas, o Squad espera a tela parar de mudar.
+
+O Devin é lançado com `devin --config ~/.squad/run/devin-hooks.json`, um arquivo só com os hooks `Stop` e `UserPromptSubmit` do Squad. A integração segue a documentação oficial e ainda não foi testada com uma conta real (veja `docs/DEVLOG.md`).
 
 ## Testes
 

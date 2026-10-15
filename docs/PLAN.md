@@ -8,6 +8,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 - Ao concluir: `go vet`, testes locais, compilação cruzada para Windows (`GOOS=windows go build ./...`), merge (squash) na `main` e `git push` antes da próxima etapa.
 - Sem CI no GitHub por enquanto; tudo é testado localmente no macOS. O Windows é coberto por compilação cruzada e por código específico de plataforma (ConPTY, Job Objects); a execução no Windows fica para validação manual.
 - O Codex não pode ser testado com conta real; a integração segue a documentação oficial (`notify`) e é testada com agentes falsos.
+- O Devin CLI também não foi testado com conta real; a integração segue a documentação oficial (hooks `Stop`/`UserPromptSubmit` via `--config`) e é testada com agentes falsos.
 - Decisões que a documentação não cobre: escolher a opção reversível, registrar em `DEVLOG.md` e seguir.
 
 ## Etapas e status
@@ -24,6 +25,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | W2 Web: nó de terminal | `feat/w2-terminal-node` | concluído |
 | W3 Web: fios e conversa | `feat/w3-wires` | concluído |
 | W4 Web: Composer, notas e portal | `feat/w4-composer` | concluído |
+| A1 Adaptador do Devin CLI | `feat/devin-agent` | implementado, falta teste com conta real |
 
 ## B0, esqueleto
 
@@ -87,6 +89,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 
 - **Claude Code:** a linha de lançamento passa `--settings <arquivo>` com um hook `Stop` que chama `squad hook claude-stop`. O receptor lê o `transcript_path`, extrai a última mensagem do assistente, encerra o turno e responde o pedido pendente com ela.
 - **Codex:** `-c notify=[...]` chamando `squad hook codex-notify`. O payload `agent-turn-complete` traz `last-assistant-message`. Não testado com conta real.
+- **Devin CLI** (A1, depois do W4): `--config <arquivo>` com hooks no formato do Claude Code (`Stop` → `squad hook devin-stop`, `UserPromptSubmit` → `squad hook devin-prompt`). O `Stop` traz `last_assistant_message` desde a v3000.5.20. Não testado com conta real.
 - **Shell genérico e outros:** só a heurística.
 - Instruções aos agentes: `squad install-skill` grava uma skill do Squad em `~/.claude/skills/squad/` (comandos, envelope, `reply`).
 - `squad mcp`: servidor MCP por stdio, com as ferramentas `list`, `ask`, `check` e `reply`, se der tempo.
