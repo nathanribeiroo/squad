@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="font-family:'Geist',system-ui,sans-serif;color:var(--text)">
+<sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}">
+<div style="width:{{ wpx }};height:{{ hpx }};display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;overflow:hidden;box-shadow:var(--shadow);outline:{{ focusOutline }};outline-offset:3px">
+<sc-if value="{{ va }}" hint-placeholder-val="{{ true }}">
+<div style="flex:none;border-bottom:1px solid var(--line)">
+<div style="height:3px;background:var(--r-{{ role }})"></div>
+<div style="height:32px;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px">
+<span style="font-size:12.5px;font-weight:600;white-space:nowrap">{{ label }}</span>
+<span style="font:500 10.5px/16px 'Geist Mono',monospace;color:var(--text-2);border:1px solid var(--line-2);border-radius:4px;padding:0 5px">{{ agent }}</span>
+<sc-if value="{{ hasRole }}"><span style="display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px 0 5px;border-radius:4px;background:var(--rb-{{ role }});color:var(--r-{{ role }});font-size:11px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:14px">{{ roleIcon }}</span>{{ roleLabel }}</span></sc-if>
+<span style="flex:1"></span>
+<sc-if value="{{ focused }}"><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text);font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:15px">keyboard</span>teclado aqui</span></sc-if>
+<span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px 0 6px;border-radius:11px;background:var(--stb-{{ state }});color:var(--st-{{ state }});font-size:11.5px;font-weight:600;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:15px">{{ stateIcon }}</span>{{ stateLabel }}<sc-if value="{{ hasElapsed }}"><span style="font:500 10.5px 'Geist Mono',monospace;opacity:.9">{{ elapsed }}</span></sc-if></span>
+<span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-3)">more_horiz</span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ vb }}">
+<div style="flex:none;height:34px;display:flex;align-items:stretch;border-bottom:1px solid var(--line)">
+<div style="display:flex;align-items:center;gap:6px;padding:0 12px 0 10px;background:var(--stb-{{ state }});color:var(--st-{{ state }});border-right:1px solid var(--line)"><span style="font-family:'Material Symbols Outlined';font-size:17px">{{ stateIcon }}</span><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">{{ stateLabel }}</span><sc-if value="{{ hasElapsed }}"><span style="font:500 10.5px 'Geist Mono',monospace">{{ elapsed }}</span></sc-if></div>
+<div style="flex:1;display:flex;align-items:center;gap:10px;padding:0 10px;min-width:0">
+<span style="font-size:12.5px;font-weight:600;white-space:nowrap">{{ label }}</span>
+<sc-if value="{{ hasRole }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-2)"><span style="width:8px;height:8px;border-radius:2px;background:var(--r-{{ role }})"></span>{{ roleLabel }}</span></sc-if>
+<span style="flex:1"></span>
+<span style="font:500 10.5px 'Geist Mono',monospace;color:var(--text-3)">{{ agent }}</span>
+<span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-3)">more_horiz</span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ vc }}">
+<div style="flex:none;border-bottom:1px solid var(--line)">
+<div style="height:34px;display:flex;align-items:center;gap:8px;padding:0 8px 0 8px">
+<span style="width:22px;height:22px;border-radius:5px;display:grid;place-items:center;background:var(--rb-{{ role }});color:var(--r-{{ role }});font-family:'Material Symbols Outlined';font-size:15px">{{ roleIcon }}</span>
+<span style="display:flex;flex-direction:column;line-height:1.15"><span style="font-size:12.5px;font-weight:600">{{ label }}</span><span style="font-size:10.5px;color:var(--text-3)">{{ roleLabel }} · <span style="font-family:'Geist Mono',monospace">{{ agent }}</span></span></span>
+<span style="flex:1"></span>
+<span style="display:inline-flex;align-items:center;gap:5px;color:var(--st-{{ state }});font-size:12px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:16px">{{ stateIcon }}</span>{{ stateLabel }}</span>
+<sc-if value="{{ hasElapsed }}"><span style="font:500 10.5px 'Geist Mono',monospace;color:var(--text-2)">{{ elapsed }}</span></sc-if>
+<span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-3)">more_horiz</span>
+</div>
+<div style="height:3px;background:var(--line)"><div style="height:3px;width:{{ barW }};background:var(--st-{{ state }})"></div></div>
+</div>
+</sc-if>
+<sc-if value="{{ hasStrip }}">
+<div style="flex:none;height:24px;display:flex;align-items:center;gap:6px;padding:0 10px;background:{{ stripBg }};color:{{ stripFg }};font-size:11px;font-weight:600;border-bottom:1px solid var(--line)"><span style="font-family:'Material Symbols Outlined';font-size:15px">{{ stripIcon }}</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stripText }}</span></div>
+</sc-if>
+<div style="flex:1;min-height:0;background:var(--term-bg);padding:8px 10px;font:11px/15px 'Geist Mono',monospace;white-space:pre;overflow:hidden;color:var(--a-fg)">
+<sc-for list="{{ lines }}" as="ln" hint-placeholder-count="12"><div style="height:15px"><sc-for list="{{ ln }}" as="s"><span style="color:var(--a-{{ s.k }});background:var(--ab-{{ s.k }}, transparent);font-weight:var(--aw-{{ s.k }}, 400)">{{ s.t }}</span></sc-for></div></sc-for>
+</div>
+<div style="flex:none;height:22px;display:flex;align-items:center;gap:12px;padding:0 10px;border-top:1px solid var(--line);font:500 10px 'Geist Mono',monospace;color:var(--text-3)">
+<span>⎇ {{ andar }}</span><span>{{ grid }}</span><sc-if value="{{ hasInbox }}"><span style="color:var(--st-wait)">caixa {{ inbox }}</span></sc-if><span style="flex:1"></span><span>{{ cwd }}</span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ isMini }}">
+<div style="width:{{ wpx }};height:{{ hpx }};display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line-2);border-radius:7px;overflow:hidden;box-shadow:var(--shadow)">
+<div style="height:3px;background:var(--r-{{ role }})"></div>
+<div style="height:28px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line)">
+<span style="font-size:12px;font-weight:600;white-space:nowrap">{{ label }}</span>
+<span style="font:500 10px 'Geist Mono',monospace;color:var(--text-3)">{{ agent }}</span>
+<span style="flex:1"></span>
+<span style="display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px 0 5px;border-radius:10px;background:var(--stb-{{ state }});color:var(--st-{{ state }});font-size:11px;font-weight:600;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:14px">{{ stateIcon }}</span>{{ stateLabel }}</span>
+</div>
+<div style="flex:1;min-height:0;background:var(--term-bg);padding:6px 7px;font:5.5px/7.5px 'Geist Mono',monospace;white-space:pre;overflow:hidden;color:var(--a-fg)">
+<sc-for list="{{ lines }}" as="ln" hint-placeholder-count="12"><div style="height:7.5px"><sc-for list="{{ ln }}" as="s"><span style="color:var(--a-{{ s.k }});background:var(--ab-{{ s.k }}, transparent)">{{ s.t }}</span></sc-for></div></sc-for>
+</div>
+<div style="height:20px;display:flex;align-items:center;gap:6px;padding:0 8px;border-top:1px solid var(--line);font:500 10px 'Geist Mono',monospace;color:var(--text-3)"><span style="font-family:'Material Symbols Outlined';font-size:12px">photo_camera</span>miniatura · {{ fresh }}<span style="flex:1"></span><sc-if value="{{ hasInbox }}"><span style="color:var(--st-wait)">caixa {{ inbox }}</span></sc-if></div>
+</div>
+</sc-if>
+<sc-if value="{{ isCard }}">
+<div style="width:{{ wpx }};display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;overflow:hidden;box-shadow:var(--shadow);outline:{{ focusOutline }};outline-offset:3px">
+<div style="height:5px;background:var(--r-{{ role }})"></div>
+<div style="padding:10px 12px 10px;display:flex;flex-direction:column;gap:3px">
+<div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ label }}</span><span style="flex:1"></span><sc-if value="{{ hasInbox }}"><span style="min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--st-wait);color:var(--on-signal);font:700 12px/22px 'Geist Mono',monospace;text-align:center">{{ inbox }}</span></sc-if></div>
+<div style="font-size:12.5px;color:var(--text-2);white-space:nowrap"><span style="font-family:'Geist Mono',monospace">{{ agent }}</span><sc-if value="{{ hasRole }}"> · <span style="color:var(--r-{{ role }});font-weight:600">{{ roleLabel }}</span></sc-if></div>
+</div>
+<div style="display:flex;align-items:center;gap:7px;height:36px;padding:0 12px;background:var(--stb-{{ state }});color:var(--st-{{ state }});border-top:1px solid var(--line)"><span style="font-family:'Material Symbols Outlined';font-size:20px">{{ stateIcon }}</span><span style="font-size:14px;font-weight:650;white-space:nowrap">{{ stateLabel }}</span><span style="flex:1"></span><sc-if value="{{ hasElapsed }}"><span style="font:600 12px 'Geist Mono',monospace">{{ elapsed }}</span></sc-if></div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:600,&quot;height&quot;:480},&quot;zoom&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;mini&quot;,&quot;card&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Implementador&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;agent&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;claude&quot;,&quot;codex&quot;,&quot;gemini&quot;,&quot;shell&quot;],&quot;default&quot;:&quot;codex&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;plan&quot;,&quot;impl&quot;,&quot;rev&quot;,&quot;test&quot;,&quot;none&quot;],&quot;default&quot;:&quot;impl&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;boot&quot;,&quot;idle&quot;,&quot;work&quot;,&quot;wait&quot;,&quot;done&quot;,&quot;err&quot;,&quot;off&quot;],&quot;default&quot;:&quot;work&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;],&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;screen&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;impl&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;focused&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  static ST = {
+    boot: { l: 'Iniciando', i: 'progress_activity' },
+    idle: { l: 'Ocioso', i: 'radio_button_unchecked' },
+    work: { l: 'Trabalhando', i: 'autorenew' },
+    wait: { l: 'Esperando resposta', i: 'hourglass_top' },
+    done: { l: 'Terminou', i: 'check_circle' },
+    err: { l: 'Parado · erro', i: 'error' },
+    off: { l: 'Descarregado', i: 'bedtime' }
+  };
+  static RL = {
+    plan: { l: 'Planejador', i: 'account_tree' },
+    impl: { l: 'Implementador', i: 'code' },
+    rev: { l: 'Revisor', i: 'rate_review' },
+    test: { l: 'Testador', i: 'science' }
+  };
+  static SCREENS = {
+    plan: [
+      '[dim]╭─ [bw]claude[dim] · opus 4 · [fg]~/squad-api[dim] ─────────────────────────────────╮',
+      '[dim]╰──────────────────────────────────────────────────────────────────────╯',
+      '[magenta]> [fg]Quebre a feature "exportar CSV" em tarefas e distribua.',
+      '',
+      '[green]● [fg]Read [dim](PLANO.md, src/routes/reports.ts)',
+      '[green]● [fg]Tarefas para a feature:',
+      '[fg]   1. endpoint GET /reports/:id/export   [dim]→ Implementador',
+      '[fg]   2. serializador CSV com streaming     [dim]→ Implementador',
+      '[fg]   3. revisão do diff                    [dim]→ Revisor',
+      '[green]● [fg]Atualizei PLANO.md [dim](+14 linhas)',
+      '[blue]● [fg]squad ask Implementador',
+      '[dim]  ⎿ [fg]"Implemente a tarefa 1 do PLANO.md. Responda com os',
+      '[fg]     arquivos alterados e o resultado dos testes."',
+      '[dim]  ⎿ [yellow]pedido 7f3a enviado · aguardando resposta',
+      '',
+      '[yellow]✻ [fg]Esperando Implementador… [dim](42s · esc para cancelar)',
+      '',
+      '[dim]────────────────────────────────────────────────────────────────────────',
+      '[magenta]> [cur] ',
+      '[dim]  ? atalhos                                       38% do contexto'
+    ],
+    impl: [
+      '[dim]>_ [bw]codex[dim] v0.48 · gpt-5-codex · ~/squad-api',
+      '',
+      '[cyan][de: Planejador · pedido 7f3a]',
+      '[fg]Implemente a tarefa 1 do PLANO.md. Responda com os',
+      '[fg]arquivos alterados e o resultado dos testes.',
+      '',
+      '[dim]• [fg]Explorando [bw]src/routes/reports.ts',
+      '[dim]• [fg]Editando [bw]src/routes/reports.ts [green]+38 [red]−4',
+      "[green]    + router.get('/:id/export', async (req, res) => {",
+      "[green]    +   res.type('text/csv');",
+      '[green]    +   for await (const row of streamRows(req.params.id)) {',
+      '[green]    +     res.write(toCsvLine(row));',
+      '[green]    +   }',
+      '[dim]• [fg]Rodando [bw]npm test -- reports',
+      '[green]    ✓ [fg]12 passaram  [dim]0 falharam · 1.8s',
+      '[dim]• [fg]Criando [bw]src/serializers/csv.ts',
+      '',
+      '[blue]◦ [fg]Trabalhando [dim](1m 58s · esc para interromper)',
+      '',
+      '[dim]▌ [cur] ',
+      '[dim]  ⏎ enviar   ⌃J nova linha   ⌃T transcrição      84% de contexto livre'
+    ],
+    rev: [
+      '[blue]✦ [bw]gemini[dim] · 2.5-pro · ~/squad-api',
+      '',
+      '[cyan][de: Implementador · pedido 2c91]',
+      '[fg]Revise o diff de src/serializers/csv.ts.',
+      '',
+      '[green]✓ [fg]ReadFile [dim]src/serializers/csv.ts',
+      '[green]✓ [fg]ReadFile [dim]test/csv.spec.ts',
+      '[magenta]✦ [bw]Revisão concluída',
+      '[green]  ✓ [fg]escapa aspas, vírgulas e quebras de linha',
+      '[green]  ✓ [fg]streaming sem carregar a tabela inteira',
+      '[yellow]  ⚠ [fg]falta teste para BOM em UTF-8',
+      '[dim]  → [fg]sugestão anotada em [bw]PLANO.md §3',
+      '',
+      '[dim]╭────────────────────────────────────────────────────────────╮',
+      '[dim]│ [fg]> [cur] [dim]                                                       │',
+      '[dim]╰────────────────────────────────────────────────────────────╯',
+      '[dim] ~/squad-api (main*)       sem sandbox       gemini-2.5-pro'
+    ],
+    boot: [
+      '[dim]$ [fg]codex --cd ~/squad-api',
+      '[dim]  carregando papel [bw]Testador[dim] (instruções, 1,2 kB)',
+      '[dim]  conectando ao servidor squad · mcp ok',
+      '[blue]⠋ [fg]iniciando…'
+    ],
+    err: [
+      '[dim]$ [fg]gemini',
+      '[red]✕ Error: [fg]GEMINI_API_KEY não definida.',
+      '[dim]  Defina a variável ou rode [bw]gemini auth[dim].',
+      '',
+      '[red]processo encerrado · código de saída 1',
+      '[dim]  [bw]r[dim] reiniciar   [bw]e[dim] editar comando   [bw]x[dim] fechar'
+    ],
+    off: [
+      '',
+      '[dim]  sessão descarregada para poupar memória',
+      '[dim]  último turno 14:02 · histórico preservado',
+      '',
+      '[fg]  ⏎ carregar de novo'
+    ],
+    idle: [
+      '[dim]>_ [bw]codex[dim] · ~/squad-api',
+      '',
+      '[dim]▌ [cur] '
+    ],
+    reply: [
+      '[cyan][resposta de: Implementador · pedido 7f3a · 2m14s]',
+      '[fg]Feito. Alterei src/routes/reports.ts e criei',
+      '[fg]src/serializers/csv.ts. 12 testes passando.',
+      '',
+      '[green]● [fg]Ótimo. Próximo: pedir revisão do diff.',
+      '[blue]● [fg]squad ask Revisor'
+    ]
+  };
+  parse(line) {
+    const out = []; let k = 'fg';
+    line.split(/(\[[a-z]+\])/).forEach(p => {
+      const m = p.match(/^\[([a-z]+)\]$/);
+      if (m) k = m[1]; else if (p) out.push({ k, t: p });
+    });
+    return out.length ? out : [{ k: 'fg', t: ' ' }];
+  }
+  renderVals() {
+    const p = this.props, C = Component;
+    const zoom = p.zoom || 'live', state = p.state || 'idle', role = p.role || 'none', v = p.variant || 'a';
+    const st = C.ST[state] || C.ST.idle, rl = C.RL[role];
+    const AG = { claude: 'claude', codex: 'codex', gemini: 'gemini', shell: 'zsh' };
+    const dW = zoom === 'card' ? 240 : zoom === 'mini' ? 280 : 560;
+    const dH = zoom === 'mini' ? 210 : 440;
+    const scr = C.SCREENS[p.screen || state] || C.SCREENS.idle;
+    const sk = p.stripKind;
+    const fr = p.fromRole || 'plan';
+    const strip = {
+      from: { bg: `var(--rb-${fr})`, fg: `var(--r-${fr})`, i: 'call_received' },
+      wait: { bg: 'var(--stb-wait)', fg: 'var(--st-wait)', i: 'hourglass_top' },
+      reply: { bg: 'var(--stb-done)', fg: 'var(--st-done)', i: 'reply' }
+    }[sk];
+    const bars = { boot: '20%', idle: '0%', work: '62%', wait: '100%', done: '100%', err: '100%', off: '0%' };
+    return {
+      isLive: zoom === 'live', isMini: zoom === 'mini', isCard: zoom === 'card',
+      va: v === 'a', vb: v === 'b', vc: v === 'c',
+      wpx: (p.w || dW) + 'px', hpx: (p.h || dH) + 'px',
+      label: p.label || 'Terminal', agent: AG[p.agent] || p.agent || 'shell',
+      role, hasRole: !!rl, roleLabel: rl ? rl.l : 'shell', roleIcon: rl ? rl.i : 'terminal',
+      state, stateLabel: p.stateLabel || st.l, stateIcon: st.i,
+      elapsed: p.elapsed || '', hasElapsed: !!p.elapsed,
+      focused: !!p.focused, focusOutline: p.focused ? '2px solid var(--focus)' : 'none',
+      andar: p.andar || 'main', grid: p.grid || '80×24', cwd: p.cwd || '~/squad-api',
+      inbox: p.inbox, hasInbox: !!p.inbox, fresh: p.fresh || 'há 3 s',
+      hasStrip: !!strip, stripBg: strip ? strip.bg : '', stripFg: strip ? strip.fg : '', stripIcon: strip ? strip.i : '', stripText: p.stripText || '',
+      barW: bars[state] || '0%',
+      lines: scr.map(l => this.parse(l))
+    };
+  }
+}
+</script>
+</body>
+</html>

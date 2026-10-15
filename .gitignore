@@ -1,0 +1,19 @@
+# Test leftovers from the Maestri investigation (own .git, node_modules)
+/sandbox/
+
+# Build outputs
+/bin/
+/dist/
+spikes/go/bin/
+web/node_modules/
+web/dist/
+node_modules/
+*.exe
+*.test
+coverage.out
+
+# OS / editors
+.DS_Store
+*.swp
+.idea/
+.vscode/

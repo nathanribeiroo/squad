@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;650;700&amp;family=Geist+Mono:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0,0&amp;display=block">
+<style>
+body{margin:0;background:#e6e6e2;color:#17181a;font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#17181a;text-decoration:underline}a:hover{color:#4f5258}
+[data-theme="dark"]{--bg:#111214;--grid:#2a2c31;--surface:#1a1b1e;--surface-2:#212327;--surface-3:#2b2d32;--line:#2c2e33;--line-2:#3c3f46;--text:#e8e9ec;--text-2:#a9acb3;--text-3:#8a8e96;--focus:#f2f3f5;--wire:#5a5e68;--note-bg:#1d1d1b;--on-signal:#111214;--shadow:0 1px 0 rgba(0,0,0,.35),0 10px 28px rgba(0,0,0,.35);
+--st-boot:oklch(0.80 0.05 250);--st-idle:#a3a6ad;--st-work:oklch(0.77 0.13 245);--st-wait:oklch(0.83 0.14 78);--st-done:oklch(0.79 0.14 152);--st-err:oklch(0.73 0.17 25);--st-off:#8a8e96;
+--stb-boot:oklch(0.27 0.02 250);--stb-idle:#25272b;--stb-work:oklch(0.28 0.05 245);--stb-wait:oklch(0.30 0.06 78);--stb-done:oklch(0.28 0.05 152);--stb-err:oklch(0.29 0.07 25);--stb-off:#202125;
+--r-plan:oklch(0.77 0.13 300);--r-impl:oklch(0.79 0.11 200);--r-rev:oklch(0.77 0.13 350);--r-test:oklch(0.80 0.12 110);--r-none:#a9acb3;
+--rb-plan:oklch(0.29 0.06 300);--rb-impl:oklch(0.29 0.05 200);--rb-rev:oklch(0.29 0.06 350);--rb-test:oklch(0.29 0.05 110);--rb-none:#2b2d32}
+[data-theme="light"]{--bg:#f2f2ef;--grid:#d4d4cf;--surface:#ffffff;--surface-2:#f7f7f5;--surface-3:#ebebe8;--line:#e3e3df;--line-2:#cbcbc6;--text:#17181a;--text-2:#4f5258;--text-3:#666970;--focus:#17181a;--wire:#9c9d99;--note-bg:#fffef8;--on-signal:#ffffff;--shadow:0 1px 0 rgba(0,0,0,.04),0 6px 18px rgba(20,20,15,.08);
+--st-boot:oklch(0.50 0.06 250);--st-idle:#5f626a;--st-work:oklch(0.50 0.15 250);--st-wait:oklch(0.53 0.12 68);--st-done:oklch(0.50 0.12 150);--st-err:oklch(0.52 0.18 25);--st-off:#666970;
+--stb-boot:oklch(0.95 0.015 250);--stb-idle:#f0f0ee;--stb-work:oklch(0.95 0.03 250);--stb-wait:oklch(0.95 0.05 80);--stb-done:oklch(0.95 0.035 150);--stb-err:oklch(0.95 0.035 25);--stb-off:#f0f0ee;
+--r-plan:oklch(0.50 0.16 300);--r-impl:oklch(0.50 0.10 210);--r-rev:oklch(0.52 0.17 355);--r-test:oklch(0.50 0.12 120);--r-none:#4f5258;
+--rb-plan:oklch(0.95 0.03 300);--rb-impl:oklch(0.95 0.025 210);--rb-rev:oklch(0.95 0.03 355);--rb-test:oklch(0.95 0.03 120);--rb-none:#ebebe8}
+[data-term="noite"]{--term-bg:#0d0e10;--a-fg:#d7d9de;--a-dim:#8b9099;--a-black:#1c1e22;--a-red:#f0767a;--a-green:#7fcf8e;--a-yellow:#e6c26a;--a-blue:#7aa7f0;--a-magenta:#c79af0;--a-cyan:#6fcfd6;--a-white:#c9ccd2;--a-bblack:#5d626b;--a-bred:#ff9a9c;--a-bgreen:#a2e3ae;--a-byellow:#f4d68e;--a-bblue:#a0c2ff;--a-bmagenta:#ddbcff;--a-bcyan:#96e3e8;--a-bw:#f4f5f7;--aw-bw:600;--a-cur:#0d0e10;--ab-cur:#f4f5f7;--ab-sel:#2c3a52}
+[data-term="papel"]{--term-bg:#fbfbf9;--a-fg:#2a2c30;--a-dim:#6e7178;--a-black:#2a2c30;--a-red:#c4373d;--a-green:#2f7d43;--a-yellow:#8a6a00;--a-blue:#2f5fc4;--a-magenta:#8b44b8;--a-cyan:#1b7a84;--a-white:#6b6e74;--a-bblack:#80838a;--a-bred:#d9474d;--a-bgreen:#3a9152;--a-byellow:#a07c00;--a-bblue:#3d70d9;--a-bmagenta:#9f55cf;--a-bcyan:#238f9a;--a-bw:#111214;--aw-bw:600;--a-cur:#fbfbf9;--ab-cur:#17181a;--ab-sel:#d6e2f7}
+</style>
+</helmet>
+<section id="t1" style="padding:56px 56px 80px;display:flex;flex-direction:column;gap:72px">
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:48px;align-items:end">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:10px"><span style="display:grid;grid-template-columns:9px 9px;gap:3px"><span style="width:9px;height:9px;background:#17181a"></span><span style="width:9px;height:9px;background:#17181a"></span><span style="width:9px;height:9px;background:#17181a"></span><span style="width:9px;height:9px;border:2px solid #17181a;box-sizing:border-box"></span></span><span style="font:700 22px 'Geist Mono',monospace;letter-spacing:-.03em">squad</span><a href="#t1" style="font:600 10px 'Geist Mono',monospace;padding:3px 7px;background:#17181a;color:#fff;border-radius:4px;text-decoration:none">1</a></div>
+<h1 style="margin:0;font-size:40px;line-height:1.05;letter-spacing:-.03em;font-weight:650;text-wrap:balance">Sistema visual e primeiras telas</h1>
+<p style="margin:0;font-size:15px;line-height:1.55;color:#4f5258;text-wrap:pretty">Ferramenta local para orquestrar agentes de código num canvas. Cinza neutro em volta, cor reservada a dois sinais: estado do turno e papel do agente. O quadrado vazio do logo é a vaga do próximo agente.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;font-size:13px;line-height:1.5;color:#4f5258">
+<div><div style="font-weight:600;color:#17181a;margin-bottom:4px">Decisões tomadas</div>Tema padrão escuro (segue o sistema). Fio com curva física. Atividade em gaveta recolhível. Vocabulário mantido: andar, papel, portal.</div>
+<div><div style="font-weight:600;color:#17181a;margin-bottom:4px">Fontes</div>Geist na interface, Geist Mono nos terminais e em dados (ids, tempos, branches). Ícones Material Symbols, traço fino.</div>
+<div><div style="font-weight:600;color:#17181a;margin-bottom:4px">Sem vidro</div>Superfícies sólidas, bordas de 1 px, sombra curta. Nada translúcido sobre o terminal; faixas de remetente ficam acima da grade, nunca por cima.</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font:600 12px 'Geist Mono',monospace;color:#666970">00</span><h2 style="margin:0;font-size:22px;font-weight:650;letter-spacing:-.02em">Sistema visual</h2></div>
+<div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+<div data-theme="dark" data-term="noite" style="flex:none;width:760px;padding:28px;background:var(--bg);color:var(--text);border-radius:10px;display:flex;flex-direction:column;gap:26px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:650">Escuro</span><span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">data-theme="dark" · terminal Noite</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)">Neutros</span>
+<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"><sc-for list="{{ neutrals }}" as="n" hint-placeholder-count="12"><div style="display:flex;flex-direction:column;gap:5px"><div style="height:40px;border-radius:6px;background:var(--{{ n.k }});border:1px solid var(--line-2)"></div><span style="font:500 10.5px 'Geist Mono',monospace;color:var(--text-2)">--{{ n.k }}</span></div></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)">Estados · cor + ícone + texto</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ states }}" as="s" hint-placeholder-count="7"><span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px 0 7px;border-radius:13px;background:var(--stb-{{ s.k }});color:var(--st-{{ s.k }});font-size:12.5px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:16px">{{ s.i }}</span>{{ s.l }}</span></sc-for></div>
+<span style="font-size:12px;color:var(--text-2);line-height:1.5">Âmbar é exclusivo da espera: o terminal Esperando e o pedido Pendente na conexão usam o mesmo token <span style="font-family:'Geist Mono',monospace">--st-wait</span>.</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)">Papéis · matizes fora da faixa de estados</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ roles }}" as="r" hint-placeholder-count="4"><span style="display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 9px 0 6px;border-radius:4px;background:var(--rb-{{ r.k }});color:var(--r-{{ r.k }});font-size:12px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:15px">{{ r.i }}</span>{{ r.l }}</span></sc-for><sc-for list="{{ agents }}" as="a" hint-placeholder-count="4"><span style="font:500 11.5px/22px 'Geist Mono',monospace;color:var(--text-2);border:1px solid var(--line-2);border-radius:4px;padding:0 6px">{{ a }}</span></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)">Terminal · Noite (16 cores ANSI)</span>
+<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px"><sc-for list="{{ ansi }}" as="c" hint-placeholder-count="16"><div style="display:flex;flex-direction:column;gap:3px"><div style="height:26px;border-radius:4px;background:var(--a-{{ c }});border:1px solid var(--line)"></div><span style="font:500 9.5px 'Geist Mono',monospace;color:var(--text-3)">{{ c }}</span></div></sc-for></div>
+<div style="background:var(--term-bg);border:1px solid var(--line-2);border-radius:6px;padding:10px 12px;font:12px/17px 'Geist Mono',monospace;white-space:pre;color:var(--a-fg)"><span style="color:var(--a-dim)">~/squad-api</span> <span style="color:var(--a-magenta)">(main)</span> <span style="color:var(--a-green)">❯</span> npm test
+<span style="color:var(--a-green)"> ✓</span> reports.export <span style="color:var(--a-dim)">(42 ms)</span>
+<span style="color:var(--a-red)"> ✗</span> csv.bom <span style="color:var(--a-yellow)">esperado "\uFEFF"</span>
+<span style="color:var(--a-blue)">info</span> <span style="background:var(--ab-sel)">2 suites, 13 testes</span><span style="background:var(--ab-cur);color:var(--a-cur)"> </span></div></div>
+</div>
+<div data-theme="light" data-term="papel" style="flex:none;width:760px;padding:28px;background:var(--bg);color:var(--text);border-radius:10px;display:flex;flex-direction:column;gap:26px;border:1px solid #d4d4cf">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:650">Claro</span><span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">data-theme="light" · terminal Papel</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)">Neutros</span>
+<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"><sc-for list="{{ neutrals }}" as="n" hint-placeholder-count="12"><div style="display:flex;flex-direction:column;gap:5px"><div style="height:40px;border-radius:6px;background:var(--{{ n.k }});border:1px solid var(--line-2)"></div><span style="font:500 10.5px 'Geist Mono',monospace;color:var(--text-2)">--{{ n.k }}</span></div></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)">Estados · cor + ícone + texto</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ states }}" as="s" hint-placeholder-count="7"><span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px 0 7px;border-radius:13px;background:var(--stb-{{ s.k }});color:var(--st-{{ s.k }});font-size:12.5px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:16px">{{ s.i }}</span>{{ s.l }}</span></sc-for></div>
+<span style="font-size:12px;color:var(--text-2);line-height:1.5">No claro, os sinais descem para L≈0,50 para passar de 4,5:1 sobre o fundo tingido.</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)">Papéis</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ roles }}" as="r" hint-placeholder-count="4"><span style="display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 9px 0 6px;border-radius:4px;background:var(--rb-{{ r.k }});color:var(--r-{{ r.k }});font-size:12px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:15px">{{ r.i }}</span>{{ r.l }}</span></sc-for><sc-for list="{{ agents }}" as="a" hint-placeholder-count="4"><span style="font:500 11.5px/22px 'Geist Mono',monospace;color:var(--text-2);border:1px solid var(--line-2);border-radius:4px;padding:0 6px">{{ a }}</span></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)">Terminal · Papel (16 cores ANSI)</span>
+<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px"><sc-for list="{{ ansi }}" as="c" hint-placeholder-count="16"><div style="display:flex;flex-direction:column;gap:3px"><div style="height:26px;border-radius:4px;background:var(--a-{{ c }});border:1px solid var(--line)"></div><span style="font:500 9.5px 'Geist Mono',monospace;color:var(--text-3)">{{ c }}</span></div></sc-for></div>
+<div style="background:var(--term-bg);border:1px solid var(--line-2);border-radius:6px;padding:10px 12px;font:12px/17px 'Geist Mono',monospace;white-space:pre;color:var(--a-fg)"><span style="color:var(--a-dim)">~/squad-api</span> <span style="color:var(--a-magenta)">(main)</span> <span style="color:var(--a-green)">❯</span> npm test
+<span style="color:var(--a-green)"> ✓</span> reports.export <span style="color:var(--a-dim)">(42 ms)</span>
+<span style="color:var(--a-red)"> ✗</span> csv.bom <span style="color:var(--a-yellow)">esperado "\uFEFF"</span>
+<span style="color:var(--a-blue)">info</span> <span style="background:var(--ab-sel)">2 suites, 13 testes</span><span style="background:var(--ab-cur);color:var(--a-cur)"> </span></div></div>
+</div>
+<div style="flex:none;width:520px;padding:28px;background:#fff;border-radius:10px;border:1px solid #d4d4cf;display:flex;flex-direction:column;gap:26px">
+<div style="display:flex;flex-direction:column;gap:12px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#666970">Tipografia</span>
+<sc-for list="{{ type }}" as="t" hint-placeholder-count="7"><div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:baseline;border-bottom:1px solid #ebebe8;padding-bottom:8px"><span style="font:500 10.5px 'Geist Mono',monospace;color:#666970">{{ t.n }}</span><span style="font-family:{{ t.f }};font-size:{{ t.s }};font-weight:{{ t.w }};line-height:1.3">{{ t.x }}</span></div></sc-for></div>
+<div style="display:flex;flex-direction:column;gap:12px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#666970">Espaçamento · base 4</span>
+<div style="display:flex;align-items:flex-end;gap:14px"><sc-for list="{{ space }}" as="s" hint-placeholder-count="8"><div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:{{ s.px }};height:{{ s.px }};background:#17181a;border-radius:1px"></div><span style="font:500 10.5px 'Geist Mono',monospace;color:#666970">{{ s.v }}</span></div></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.5;color:#4f5258"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#666970">Forma e foco</span>
+<div>Raios 4 (chips) · 6 (controles) · 8 (nós) · pílula para estado. Bordas de 1 px; sombra curta só em nós e flutuantes.</div>
+<div>Foco do teclado: anel de 2 px na cor do texto, afastado 3 px, mais o rótulo <b style="color:#17181a">teclado aqui</b> no cabeçalho. Nunca usa cor de estado nem de papel.</div>
+<div>Atalhos globais usam <span style="font-family:'Geist Mono',monospace">⌥</span> (Alt): ⌥1–9 workspace, ⌥K Composer, ⌥P pausar. Ctrl fica para o agente.</div>
+<div>Zoom: ≥ 60% terminal vivo · 35–60% miniatura · &lt; 35% cartão. Durante o gesto, conteúdo congelado.</div></div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font:600 12px 'Geist Mono',monospace;color:#666970">01</span><h2 style="margin:0;font-size:22px;font-weight:650;letter-spacing:-.02em">Canvas principal</h2><span style="font-size:13px;color:#4f5258">Escuro com a gaveta fechada; claro com a gaveta de atividade aberta. Zoom 80%, Implementador com o teclado.</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:28px">
+<div data-theme="dark" data-term="noite" data-screen-label="01 Canvas escuro" style="flex:none;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.15)"><dc-import name="SquadCanvas" hint-size="1760px,1040px"></dc-import></div>
+<div data-theme="light" data-term="papel" data-screen-label="01 Canvas claro" style="flex:none;border-radius:10px;overflow:hidden;border:1px solid #cbcbc6"><dc-import name="SquadCanvas" drawer="{{ true }}" hint-size="1760px,1040px"></dc-import></div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font:600 12px 'Geist Mono',monospace;color:#666970">02</span><h2 style="margin:0;font-size:22px;font-weight:650;letter-spacing:-.02em">Nó de terminal · três níveis de zoom</h2><span style="font-size:13px;color:#4f5258">Mostrados no tamanho em tela de cada nível. Quanto mais longe, maior o estado.</span></div>
+<div data-theme="dark" data-term="noite" style="padding:32px;background:var(--bg);border-radius:10px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-end">
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">vivo · ≥ 60% · digitável</span><dc-import name="SquadNode" zoom="live" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:58" screen="impl" focused="{{ true }}" strip-kind="from" from-role="plan" strip-text="Pedido 7f3a de Planejador · a resposta volta para ele" hint-size="560px,440px"></dc-import></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">miniatura · 35–60% · texto atualizado aos poucos</span><dc-import name="SquadNode" zoom="mini" label="Implementador" agent="codex" role="impl" state="work" screen="impl" inbox="1" hint-size="280px,210px"></dc-import></div>
+<div style="display:flex;flex-direction:column;gap:10px"><span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">cartão · &lt; 35% · legível a 25%</span><dc-import name="SquadNode" zoom="card" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:58" inbox="1" hint-size="240px,120px"></dc-import></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:28px">
+<div data-theme="dark" data-term="noite" style="padding:28px;background:var(--bg);border-radius:10px;display:grid;grid-template-columns:repeat(4,240px);gap:20px;flex:none">
+<dc-import name="SquadNode" zoom="card" label="Testador" agent="codex" role="test" state="boot" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Shell" agent="shell" role="none" state="idle" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:58" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Planejador" agent="claude" role="plan" state="wait" elapsed="0:42" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Revisor" agent="gemini" role="rev" state="done" elapsed="1:12" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Pesquisador" agent="gemini" role="rev" state="err" state-label="Parado · saída 1" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Docs" agent="claude" role="plan" state="off" hint-size="240px,120px"></dc-import>
+</div>
+<div data-theme="light" data-term="papel" style="padding:28px;background:var(--bg);border-radius:10px;border:1px solid #d4d4cf;display:grid;grid-template-columns:repeat(4,240px);gap:20px">
+<dc-import name="SquadNode" zoom="card" label="Testador" agent="codex" role="test" state="boot" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Shell" agent="shell" role="none" state="idle" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:58" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Planejador" agent="claude" role="plan" state="wait" elapsed="0:42" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Revisor" agent="gemini" role="rev" state="done" elapsed="1:12" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Pesquisador" agent="gemini" role="rev" state="err" state-label="Parado · saída 1" hint-size="240px,120px"></dc-import>
+<dc-import name="SquadNode" zoom="card" label="Docs" agent="claude" role="plan" state="off" hint-size="240px,120px"></dc-import>
+</div>
+</div>
+<div data-theme="dark" data-term="noite" style="padding:28px;background:var(--bg);border-radius:10px;display:flex;flex-wrap:wrap;gap:20px">
+<dc-import name="SquadNode" zoom="live" label="Testador" agent="codex" role="test" state="boot" screen="boot" h="190" hint-size="560px,190px"></dc-import>
+<dc-import name="SquadNode" zoom="live" label="Pesquisador" agent="gemini" role="rev" state="err" state-label="Parado · saída 1" screen="err" h="190" hint-size="560px,190px"></dc-import>
+<dc-import name="SquadNode" zoom="live" label="Docs" agent="claude" role="plan" state="off" screen="off" h="190" hint-size="560px,190px"></dc-import>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font:600 12px 'Geist Mono',monospace;color:#666970">03</span><h2 style="margin:0;font-size:22px;font-weight:650;letter-spacing:-.02em">Variações do cabeçalho</h2><span style="font-size:13px;color:#4f5258">Mesmo nó, mesmo estado. <a href="#1a" style="font:600 10.5px 'Geist Mono',monospace;padding:2px 6px;background:rgba(0,0,0,.08);border-radius:4px;text-decoration:none">1a</a> é a usada no canvas.</span></div>
+<div data-theme="dark" data-term="noite" style="padding:28px;background:var(--bg);border-radius:10px;display:flex;flex-wrap:wrap;gap:28px">
+<div id="1a" style="flex:none;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--text-2)"><a href="#1a" style="font:600 10.5px 'Geist Mono',monospace;padding:3px 7px;background:var(--text);color:var(--bg);border-radius:5px;text-decoration:none">1a</a>Faixa de papel + pílula de estado à direita <b style="color:var(--st-done)">✓ escolhida</b></div><dc-import name="SquadNode" variant="a" zoom="live" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:58" screen="impl" h="260" hint-size="560px,260px"></dc-import></div>
+<div id="1b" style="flex:none;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--text-2)"><a href="#1b" style="font:600 10.5px 'Geist Mono',monospace;padding:3px 7px;background:var(--surface-3);color:var(--text);border-radius:5px;text-decoration:none">1b</a>Estado primeiro: bloco à esquerda, papel discreto</div><dc-import name="SquadNode" variant="b" zoom="live" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:58" screen="impl" h="260" hint-size="560px,260px"></dc-import></div>
+<div id="1c" style="flex:none;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--text-2)"><a href="#1c" style="font:600 10.5px 'Geist Mono',monospace;padding:3px 7px;background:var(--surface-3);color:var(--text);border-radius:5px;text-decoration:none">1c</a>Ícone de papel + trilho de estado sob o cabeçalho</div><dc-import name="SquadNode" variant="c" zoom="live" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:58" screen="impl" h="260" hint-size="560px,260px"></dc-import></div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font:600 12px 'Geist Mono',monospace;color:#666970">04</span><h2 style="margin:0;font-size:22px;font-weight:650;letter-spacing:-.02em">Variações da conexão com pedido pendente</h2><span style="font-size:13px;color:#4f5258">Fio com curva física; o pedido 7f3a espera há 42 s.</span></div>
+<div data-theme="dark" data-term="noite" style="padding:28px;background:var(--bg);background-image:radial-gradient(var(--grid) 1px, transparent 1.2px);background-size:20px 20px;border-radius:10px;display:flex;flex-wrap:wrap;gap:28px">
+<div id="1d" style="flex:none;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--text-2)"><a href="#1d" style="font:600 10.5px 'Geist Mono',monospace;padding:3px 7px;background:var(--text);color:var(--bg);border-radius:5px;text-decoration:none">1d</a>Fio tracejado + cronômetro no ponto baixo (selecionado) <b style="color:var(--st-done)">✓ escolhida</b></div>
+<div style="position:relative;width:480px;height:250px">
+<svg width="480" height="250" style="position:absolute;inset:0"><path d="M196 66 C 236 200, 250 200, 284 150" fill="none" stroke="var(--st-wait)" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round"></path><circle cx="196" cy="66" r="5" fill="var(--st-wait)"></circle><circle cx="284" cy="150" r="5" fill="var(--surface)" stroke="var(--st-wait)" stroke-width="2"></circle><circle cx="226" cy="150" r="4" fill="var(--surface)" stroke="var(--text)" stroke-width="1.5"></circle><circle cx="266" cy="170" r="4" fill="var(--surface)" stroke="var(--text)" stroke-width="1.5"></circle></svg>
+<div style="position:absolute;left:0;top:16px"><dc-import name="SquadNode" zoom="card" w="196" label="Planejador" agent="claude" role="plan" state="wait" elapsed="0:42" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:284px;top:100px"><dc-import name="SquadNode" zoom="card" w="196" label="Implementador" agent="codex" role="impl" state="work" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:196px;top:188px;display:flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 6px;border-radius:12px;background:var(--surface);border:1.5px solid var(--st-wait);color:var(--st-wait);font:600 12px 'Geist',sans-serif;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:15px">hourglass_top</span><span style="font-family:'Geist Mono',monospace">0:42</span><span style="color:var(--text-2);font-weight:500">7f3a</span></div>
+</div></div>
+<div id="1e" style="flex:none;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--text-2)"><a href="#1e" style="font:600 10.5px 'Geist Mono',monospace;padding:3px 7px;background:var(--surface-3);color:var(--text);border-radius:5px;text-decoration:none">1e</a>Fio neutro; envelope preso à origem, contas indicam o sentido</div>
+<div style="position:relative;width:480px;height:250px">
+<svg width="480" height="250" style="position:absolute;inset:0"><path d="M196 66 C 236 200, 250 200, 284 150" fill="none" stroke="var(--wire)" stroke-width="2.5" stroke-linecap="round"></path><circle cx="241" cy="172" r="3.5" fill="var(--st-wait)"></circle><circle cx="258" cy="175" r="3.5" fill="var(--st-wait)"></circle><circle cx="273" cy="166" r="3.5" fill="var(--st-wait)"></circle><circle cx="196" cy="66" r="5" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle><circle cx="284" cy="150" r="7" fill="none" stroke="var(--st-wait)" stroke-width="2"></circle><circle cx="284" cy="150" r="3" fill="var(--st-wait)"></circle></svg>
+<div style="position:absolute;left:0;top:16px"><dc-import name="SquadNode" zoom="card" w="196" label="Planejador" agent="claude" role="plan" state="wait" elapsed="0:42" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:284px;top:100px"><dc-import name="SquadNode" zoom="card" w="196" label="Implementador" agent="codex" role="impl" state="work" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:150px;top:128px;display:flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 6px;border-radius:5px;background:var(--st-wait);color:var(--on-signal);font:700 12px 'Geist',sans-serif;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:15px">mail</span>7f3a<span style="font-family:'Geist Mono',monospace">0:42</span></div>
+</div></div>
+<div id="1f" style="flex:none;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--text-2)"><a href="#1f" style="font:600 10.5px 'Geist Mono',monospace;padding:3px 7px;background:var(--surface-3);color:var(--text);border-radius:5px;text-decoration:none">1f</a>Trilho: a espera preenche o fio até o limite; saltos à vista</div>
+<div style="position:relative;width:480px;height:250px">
+<svg width="480" height="250" style="position:absolute;inset:0"><path d="M196 66 C 236 200, 250 200, 284 150" fill="none" stroke="var(--surface-3)" stroke-width="8" stroke-linecap="round"></path><path d="M196 66 C 236 200, 250 200, 284 150" pathLength="100" fill="none" stroke="var(--st-wait)" stroke-width="4" stroke-dasharray="38 200" stroke-linecap="round"></path></svg>
+<div style="position:absolute;left:0;top:16px"><dc-import name="SquadNode" zoom="card" w="196" label="Planejador" agent="claude" role="plan" state="wait" elapsed="0:42" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:284px;top:100px"><dc-import name="SquadNode" zoom="card" w="196" label="Implementador" agent="codex" role="impl" state="work" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:250px;top:214px;display:flex;align-items:center;gap:8px;height:24px;padding:0 9px;border-radius:5px;background:var(--surface);border:1px solid var(--line-2);font:500 11.5px 'Geist Mono',monospace;color:var(--text-2);white-space:nowrap"><span style="color:var(--st-wait);font-weight:600">⧗ 0:42 / 2:00</span><span>salto 2/6</span></div>
+</div></div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font:600 12px 'Geist Mono',monospace;color:#666970">05</span><h2 style="margin:0;font-size:22px;font-weight:650;letter-spacing:-.02em">Conversa em andamento</h2><span style="font-size:13px;color:#4f5258">Pedido 7f3a, do Planejador ao Implementador, em quatro momentos.</span></div>
+<div data-theme="dark" data-term="noite" style="padding:28px;background:var(--bg);background-image:radial-gradient(var(--grid) 1px, transparent 1.2px);background-size:20px 20px;border-radius:10px;display:grid;grid-template-columns:repeat(4,480px);gap:24px;width:max-content">
+
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 12px 'Geist Mono',monospace;color:var(--text-3)">1</span><span style="font-size:14px;font-weight:650;color:var(--text)">Pedido viajando</span><span style="font-size:12px;color:var(--text-2)">o fio acende da origem ao envelope</span></div>
+<div style="position:relative;height:240px">
+<svg width="480" height="240" style="position:absolute;inset:0"><path d="M196 66 C 236 200, 250 200, 284 150" fill="none" stroke="var(--wire)" stroke-width="2.5" stroke-linecap="round"></path><path d="M196 66 C 236 200, 250 200, 284 150" pathLength="100" fill="none" stroke="var(--st-wait)" stroke-width="2.5" stroke-dasharray="45 200" stroke-linecap="round"></path><circle cx="196" cy="66" r="5" fill="var(--st-wait)"></circle><circle cx="284" cy="150" r="5" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle></svg>
+<div style="position:absolute;left:0;top:16px"><dc-import name="SquadNode" zoom="card" w="196" label="Planejador" agent="claude" role="plan" state="wait" elapsed="0:01" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:284px;top:100px"><dc-import name="SquadNode" zoom="card" w="196" label="Implementador" agent="codex" role="impl" state="idle" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:180px;top:150px;display:flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 6px;border-radius:5px;background:var(--st-wait);color:var(--on-signal);font:700 12px 'Geist',sans-serif;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:15px">mail</span>7f3a<span style="font-family:'Material Symbols Outlined';font-size:15px">arrow_forward</span></div>
+</div>
+<div style="background:var(--term-bg);border:1px solid var(--line-2);border-radius:6px;padding:10px 12px;font:11px/16px 'Geist Mono',monospace;white-space:pre;color:var(--a-fg);height:84px;overflow:hidden"><span style="color:var(--a-dim)">Planejador ›</span> <span style="color:var(--a-blue)">squad ask</span> Implementador
+<span style="color:var(--a-dim)">  "Implemente a tarefa 1 do PLANO.md…"</span>
+<span style="color:var(--a-yellow)">  ⎿ pedido 7f3a enviado</span></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 12px 'Geist Mono',monospace;color:var(--text-3)">2</span><span style="font-size:14px;font-weight:650;color:var(--text)">Pendente</span><span style="font-size:12px;color:var(--text-2)">mesmo âmbar no fio e no remetente</span></div>
+<div style="position:relative;height:240px">
+<svg width="480" height="240" style="position:absolute;inset:0"><path d="M196 66 C 236 200, 250 200, 284 150" fill="none" stroke="var(--st-wait)" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round"></path><circle cx="196" cy="66" r="5" fill="var(--st-wait)"></circle><circle cx="284" cy="150" r="5" fill="var(--surface)" stroke="var(--st-wait)" stroke-width="2"></circle></svg>
+<div style="position:absolute;left:0;top:16px"><dc-import name="SquadNode" zoom="card" w="196" label="Planejador" agent="claude" role="plan" state="wait" elapsed="1:24" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:284px;top:100px"><dc-import name="SquadNode" zoom="card" w="196" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:22" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:196px;top:188px;display:flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 6px;border-radius:12px;background:var(--surface);border:1.5px solid var(--st-wait);color:var(--st-wait);font:600 12px 'Geist',sans-serif;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:15px">hourglass_top</span><span style="font-family:'Geist Mono',monospace">1:24</span><span style="color:var(--text-2);font-weight:500">7f3a</span></div>
+</div>
+<div style="background:var(--surface);border:1px solid var(--line-2);border-radius:6px;overflow:hidden;height:84px;display:flex;flex-direction:column"><div style="height:22px;display:flex;align-items:center;gap:5px;padding:0 10px;background:var(--rb-plan);color:var(--r-plan);font-size:11px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:14px">call_received</span>Pedido 7f3a de Planejador</div><div style="flex:1;background:var(--term-bg);padding:6px 12px;font:11px/16px 'Geist Mono',monospace;white-space:pre;color:var(--a-fg)"><span style="color:var(--a-cyan)">[de: Planejador · pedido 7f3a]</span>
+<span style="color:var(--a-blue)">◦</span> Trabalhando <span style="color:var(--a-dim)">(1m 22s)</span></div></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 12px 'Geist Mono',monospace;color:var(--text-3)">3</span><span style="font-size:14px;font-weight:650;color:var(--text)">Resposta chegando</span><span style="font-size:12px;color:var(--text-2)">sinal nativo de fim de turno</span></div>
+<div style="position:relative;height:240px">
+<svg width="480" height="240" style="position:absolute;inset:0"><path d="M284 150 C 250 200, 236 200, 196 66" fill="none" stroke="var(--wire)" stroke-width="2.5" stroke-linecap="round"></path><path d="M284 150 C 250 200, 236 200, 196 66" pathLength="100" fill="none" stroke="var(--st-done)" stroke-width="2.5" stroke-dasharray="58 200" stroke-linecap="round"></path><circle cx="196" cy="66" r="5" fill="var(--surface)" stroke="var(--st-wait)" stroke-width="2"></circle><circle cx="284" cy="150" r="5" fill="var(--st-done)"></circle></svg>
+<div style="position:absolute;left:0;top:16px"><dc-import name="SquadNode" zoom="card" w="196" label="Planejador" agent="claude" role="plan" state="wait" elapsed="2:14" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:284px;top:100px"><dc-import name="SquadNode" zoom="card" w="196" label="Implementador" agent="codex" role="impl" state="done" elapsed="2:12" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:120px;top:150px;display:flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 6px;border-radius:5px;background:var(--st-done);color:var(--on-signal);font:700 12px 'Geist',sans-serif;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:15px">arrow_back</span>resposta 7f3a<span style="font-family:'Material Symbols Outlined';font-size:15px">reply</span></div>
+</div>
+<div style="background:var(--surface);border:1px solid var(--line-2);border-radius:6px;padding:10px 12px;height:84px;box-sizing:border-box;display:flex;flex-direction:column;gap:4px"><span style="font:600 11px 'Geist',sans-serif;color:var(--st-done);display:flex;align-items:center;gap:4px"><span style="font-family:'Material Symbols Outlined';font-size:14px">check_circle</span>Última mensagem do Implementador</span><span style="font-size:12.5px;line-height:1.45;color:var(--text)">Feito. Alterei <span style="font-family:'Geist Mono',monospace">reports.ts</span>, criei <span style="font-family:'Geist Mono',monospace">csv.ts</span>. 12 testes passando.</span></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 12px 'Geist Mono',monospace;color:var(--text-3)">4</span><span style="font-size:14px;font-weight:650;color:var(--text)">Recebida</span><span style="font-size:12px;color:var(--text-2)">origem liberada, remetente no topo</span></div>
+<div style="position:relative;height:240px">
+<svg width="480" height="240" style="position:absolute;inset:0"><path d="M196 66 C 236 200, 250 200, 284 150" fill="none" stroke="var(--wire)" stroke-width="2.5" stroke-linecap="round"></path><circle cx="196" cy="66" r="5" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle><circle cx="284" cy="150" r="5" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle></svg>
+<div style="position:absolute;left:0;top:16px"><dc-import name="SquadNode" zoom="card" w="196" label="Planejador" agent="claude" role="plan" state="work" elapsed="0:03" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:284px;top:100px"><dc-import name="SquadNode" zoom="card" w="196" label="Implementador" agent="codex" role="impl" state="idle" hint-size="196px,110px"></dc-import></div>
+<div style="position:absolute;left:204px;top:188px;display:flex;align-items:center;gap:5px;height:22px;padding:0 8px 0 5px;border-radius:11px;background:var(--surface);border:1px solid var(--line-2);color:var(--text-2);font:500 11.5px 'Geist Mono',monospace;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:14px;color:var(--st-done)">check</span>7f3a · 2:14</div>
+</div>
+<div style="background:var(--surface);border:1px solid var(--line-2);border-radius:6px;overflow:hidden;height:84px;display:flex;flex-direction:column"><div style="height:22px;display:flex;align-items:center;gap:5px;padding:0 10px;background:var(--stb-done);color:var(--st-done);font-size:11px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:14px">reply</span>Resposta de Implementador · 7f3a · 2m14s</div><div style="flex:1;background:var(--term-bg);padding:6px 12px;font:11px/16px 'Geist Mono',monospace;white-space:pre;color:var(--a-fg)"><span style="color:var(--a-cyan)">[resposta de: Implementador · pedido 7f3a]</span>
+<span style="color:var(--a-green)">●</span> Ótimo. Próximo: pedir revisão do diff.</div></div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font:600 12px 'Geist Mono',monospace;color:#666970">06</span><h2 style="margin:0;font-size:22px;font-weight:650;letter-spacing:-.02em">Composer</h2><span style="font-size:13px;color:#4f5258">Flutua sobre o canvas, nunca sobre o terminal em foco. @menções só alcançam nós ligados ao destino.</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+<div data-theme="dark" data-term="noite" style="flex:none;width:780px;height:520px;padding:32px;box-sizing:border-box;background:var(--bg);background-image:radial-gradient(var(--grid) 1px, transparent 1.2px);background-size:20px 20px;border-radius:10px;position:relative;font-family:'Geist',sans-serif;color:var(--text)">
+<div style="position:absolute;left:50px;bottom:40px;width:680px;background:var(--surface);border:1px solid var(--line-2);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)"><span style="font-size:12px;color:var(--text-3)">Para</span>
+<span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 4px 0 6px;border-radius:5px;background:var(--rb-impl);color:var(--r-impl);font-size:12.5px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:15px">code</span>Implementador<span style="font:500 10.5px 'Geist Mono',monospace;color:var(--text-2)">codex</span><span style="font-family:'Material Symbols Outlined';font-size:14px;color:var(--text-2)">close</span></span>
+<span style="display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--text-3)"><span style="font-family:'Material Symbols Outlined';font-size:15px">add</span>destino</span>
+<span style="flex:1"></span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--st-work)"><span style="font-family:'Material Symbols Outlined';font-size:14px">autorenew</span>trabalhando · entra na fila</span><span style="font-family:'Material Symbols Outlined';font-size:17px;color:var(--text-3)">close</span></div>
+<div style="padding:12px 14px;font-size:14px;line-height:30px;color:var(--text);min-height:92px">Quando acabar a tarefa 1, siga o <span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 5px;border-radius:4px;background:var(--surface-3);font-size:13px;font-weight:600;vertical-align:middle;line-height:22px"><span style="font-family:'Material Symbols Outlined';font-size:14px;color:var(--text-2)">description</span>PLANO.md</span> e confira a tela no <span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 5px;border-radius:4px;background:var(--surface-3);font-size:13px;font-weight:600;vertical-align:middle;line-height:22px"><span style="font-family:'Material Symbols Outlined';font-size:14px;color:var(--text-2)">public</span>localhost:5173</span> antes de pedir revisão ao <span style="color:var(--text-2)">@re</span><span style="display:inline-block;width:1.5px;height:18px;background:var(--text);vertical-align:middle"></span></div>
+<div style="display:flex;gap:8px;padding:0 14px 10px"><div style="display:flex;align-items:center;gap:8px;height:44px;padding:0 6px 0 4px;border:1px solid var(--line-2);border-radius:6px"><div style="width:52px;height:36px;border-radius:4px;background:repeating-linear-gradient(135deg,var(--surface-2) 0 6px,var(--surface-3) 6px 12px)"></div><span style="display:flex;flex-direction:column;line-height:1.25"><span style="font-size:12px;font-weight:600">captura.png</span><span style="font:500 10.5px 'Geist Mono',monospace;color:var(--text-3)">1440×900 · colada</span></span><span style="font-family:'Material Symbols Outlined';font-size:15px;color:var(--text-3)">close</span></div></div>
+<div style="display:flex;align-items:center;gap:12px;padding:8px 8px 8px 14px;border-top:1px solid var(--line)"><span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-2)">image</span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-2)">alternate_email</span><span style="font-size:11.5px;color:var(--text-3)">⏎ enviar · ⇧⏎ nova linha · Esc fecha</span><span style="flex:1"></span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:7px;background:var(--text);color:var(--surface);font-size:13px;font-weight:600">Enviar<span style="font-family:'Material Symbols Outlined';font-size:16px">arrow_upward</span></span></div>
+<div style="position:absolute;left:330px;bottom:calc(100% + 8px);width:310px;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;box-shadow:var(--shadow);overflow:hidden">
+<div style="padding:8px 10px 6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3)">Ligados a Implementador</div>
+<div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;background:var(--surface-3)"><span style="width:8px;height:8px;border-radius:2px;background:var(--r-rev)"></span><span style="font-size:13px;font-weight:600"><span style="text-decoration:underline">Re</span>visor</span><span style="font:500 10.5px 'Geist Mono',monospace;color:var(--text-3)">gemini</span><span style="flex:1"></span><span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--st-done);font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:14px">check_circle</span>Terminou</span></div>
+<div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 10px"><span style="font-family:'Material Symbols Outlined';font-size:15px;color:var(--text-2)">description</span><span style="font-size:13px"><span style="text-decoration:underline">re</span>ports-spec.md</span><span style="flex:1"></span><span style="font-size:11px;color:var(--text-3)">nota</span></div>
+<div style="padding:8px 10px 4px;border-top:1px solid var(--line);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3)">Não ligados</div>
+<div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;color:var(--text-3)"><span style="font-family:'Material Symbols Outlined';font-size:15px">link_off</span><span style="font-size:13px">Pesquisador</span><span style="flex:1"></span><span style="font-size:11px">ligue para mencionar</span></div>
+</div>
+</div>
+</div>
+<div data-theme="light" data-term="papel" style="flex:none;width:780px;height:520px;padding:32px;box-sizing:border-box;background:var(--bg);background-image:radial-gradient(var(--grid) 1px, transparent 1.2px);background-size:20px 20px;border-radius:10px;border:1px solid #d4d4cf;position:relative;font-family:'Geist',sans-serif;color:var(--text)">
+<div style="position:absolute;left:50px;bottom:40px;width:680px;background:var(--surface);border:1px solid var(--line-2);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)"><span style="font-size:12px;color:var(--text-3)">Para</span>
+<span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 4px 0 6px;border-radius:5px;background:var(--rb-impl);color:var(--r-impl);font-size:12.5px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:15px">code</span>Implementador<span style="font-family:'Material Symbols Outlined';font-size:14px;color:var(--text-2)">close</span></span>
+<span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 4px 0 6px;border-radius:5px;background:var(--rb-rev);color:var(--r-rev);font-size:12.5px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:15px">rate_review</span>Revisor<span style="font-family:'Material Symbols Outlined';font-size:14px;color:var(--text-2)">close</span></span>
+<span style="flex:1"></span><span style="font-size:11.5px;color:var(--text-2)">menções: ligados aos dois</span><span style="font-family:'Material Symbols Outlined';font-size:17px;color:var(--text-3)">close</span></div>
+<div style="padding:12px 14px;font-size:14px;line-height:30px;color:var(--text);min-height:92px">Revisem juntos o <span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 5px;border-radius:4px;background:var(--surface-3);font-size:13px;font-weight:600;vertical-align:middle;line-height:22px"><span style="font-family:'Material Symbols Outlined';font-size:14px;color:var(--text-2)">description</span>PLANO.md</span> §3 e respondam ao <span style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px 0 5px;border-radius:4px;background:var(--rb-plan);color:var(--r-plan);font-size:13px;font-weight:600;vertical-align:middle;line-height:22px"><span style="width:7px;height:7px;border-radius:2px;background:var(--r-plan)"></span>Planejador</span> com uma lista única.</div>
+<div style="display:flex;align-items:center;gap:12px;padding:8px 8px 8px 14px;border-top:1px solid var(--line)"><span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-2)">image</span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-2)">alternate_email</span><span style="font-size:11.5px;color:var(--text-3)">enviado como 2 pedidos com o mesmo envelope</span><span style="flex:1"></span><span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:7px;background:var(--text);color:var(--surface);font-size:13px;font-weight:600">Enviar a 2<span style="font-family:'Material Symbols Outlined';font-size:16px">arrow_upward</span></span></div>
+</div>
+</div>
+</div>
+</div>
+
+<p style="margin:0;font-size:13px;color:#4f5258">Próximos passos possíveis: "escolha entre 1a, 1b e 1c" · "quero 1f no canvas" · "desenhe a primeira abertura e o estado vazio".</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      neutrals: ['bg', 'surface', 'surface-2', 'surface-3', 'line', 'line-2', 'text', 'text-2', 'text-3', 'wire', 'term-bg', 'note-bg'].map(k => ({ k })),
+      states: [
+        { k: 'boot', l: 'Iniciando', i: 'progress_activity' },
+        { k: 'idle', l: 'Ocioso', i: 'radio_button_unchecked' },
+        { k: 'work', l: 'Trabalhando', i: 'autorenew' },
+        { k: 'wait', l: 'Esperando resposta', i: 'hourglass_top' },
+        { k: 'done', l: 'Terminou', i: 'check_circle' },
+        { k: 'err', l: 'Parado · erro', i: 'error' },
+        { k: 'off', l: 'Descarregado', i: 'bedtime' }
+      ],
+      roles: [
+        { k: 'plan', l: 'Planejador', i: 'account_tree' },
+        { k: 'impl', l: 'Implementador', i: 'code' },
+        { k: 'rev', l: 'Revisor', i: 'rate_review' },
+        { k: 'test', l: 'Testador', i: 'science' }
+      ],
+      agents: ['claude', 'codex', 'gemini', 'zsh'],
+      ansi: ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'bblack', 'bred', 'bgreen', 'byellow', 'bblue', 'bmagenta', 'bcyan', 'bw'],
+      type: [
+        { n: 'título 22/650', f: "'Geist',sans-serif", s: '22px', w: 650, x: 'Canvas principal' },
+        { n: 'cartão 18/650', f: "'Geist',sans-serif", s: '18px', w: 650, x: 'Implementador' },
+        { n: 'corpo 13/400', f: "'Geist',sans-serif", s: '13px', w: 400, x: 'Revisor escreveu há 12 s' },
+        { n: 'cabeçalho 12.5/600', f: "'Geist',sans-serif", s: '12.5px', w: 600, x: 'Planejador · Esperando resposta' },
+        { n: 'rótulo 11/600', f: "'Geist',sans-serif", s: '11px', w: 600, x: 'LIGADOS A IMPLEMENTADOR' },
+        { n: 'terminal 11/15 mono', f: "'Geist Mono',monospace", s: '11px', w: 400, x: '[de: Planejador · pedido 7f3a]' },
+        { n: 'dado 10.5 mono', f: "'Geist Mono',monospace", s: '10.5px', w: 500, x: '⎇ main · 80×24 · 0:42' }
+      ],
+      space: [2, 4, 6, 8, 12, 16, 24, 32].map(v => ({ v, px: v + 'px' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

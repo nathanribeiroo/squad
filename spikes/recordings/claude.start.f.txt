@@ -1,0 +1,36 @@
+
+ ▐▛███▛█   Claude Code v2.1.300
+▝▜██████▀  Opus 5.5 with xhigh effort · Claude Max
+ ▝▝   ▝▝   ~/www/rea/maestri
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                     ◉ xhigh · /effort
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Try "how does <filepath> work?"
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⚠ Transcript saving is off — inherited CLAUDE_CODE_CHILD_SESSION marker · restart with CLAUDE_CODE_FORCE_SESSION_PE…
+  🤖 Opus 5.5 | 💪 xhigh | 🧠 0% | 💰 $0,00 | ⏱️
+  📁  | 🌳 no worktree | 🌿 no branch
+  ⏵⏵ auto mode on (shift+tab to cycle)

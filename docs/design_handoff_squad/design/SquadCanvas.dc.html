@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:relative;width:1760px;height:1040px;overflow:hidden;background-color:var(--bg);background-image:radial-gradient(var(--grid) 1px, transparent 1.2px);background-size:20px 20px;font-family:'Geist',system-ui,sans-serif;color:var(--text)">
+<div style="position:absolute;left:0;top:44px;width:2400px;height:1400px;transform:scale(.8);transform-origin:0 0">
+<svg width="2400" height="1400" style="position:absolute;left:0;top:0;overflow:visible">
+<path d="M400 530 C 400 640, 300 600, 300 690" fill="none" stroke="var(--wire)" stroke-width="2.5" stroke-linecap="round"></path>
+<path d="M1140 530 C 1190 590, 1190 640, 1140 690" fill="none" stroke="var(--wire)" stroke-width="2.5" stroke-linecap="round"></path>
+<path d="M860 900 C 760 990, 620 960, 520 880" fill="none" stroke="var(--wire)" stroke-width="2.5" stroke-linecap="round"></path>
+<path d="M1420 300 C 1500 420, 1540 470, 1600 470" fill="none" stroke="var(--wire)" stroke-width="2.5" stroke-linecap="round"></path>
+<path d="M680 300 C 740 400, 800 400, 860 300" fill="none" stroke="var(--st-wait)" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round"></path>
+<circle cx="400" cy="530" r="6" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle>
+<circle cx="300" cy="690" r="6" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle>
+<circle cx="1140" cy="530" r="6" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle>
+<circle cx="1140" cy="690" r="6" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle>
+<circle cx="860" cy="900" r="6" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle>
+<circle cx="520" cy="880" r="6" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle>
+<circle cx="1420" cy="300" r="6" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle>
+<circle cx="1600" cy="470" r="6" fill="var(--surface)" stroke="var(--line-2)" stroke-width="2"></circle>
+<circle cx="680" cy="300" r="7" fill="var(--st-wait)"></circle>
+<circle cx="860" cy="300" r="6" fill="var(--surface)" stroke="var(--st-wait)" stroke-width="2.5"></circle>
+</svg>
+<div style="position:absolute;left:700px;top:358px;display:flex;align-items:center;gap:6px;height:30px;padding:0 12px 0 9px;border-radius:15px;background:var(--surface);border:2px solid var(--st-wait);color:var(--st-wait);font:600 14px 'Geist',sans-serif;white-space:nowrap;box-shadow:var(--shadow)"><span style="font-family:'Material Symbols Outlined';font-size:18px">hourglass_top</span><span style="font-family:'Geist Mono',monospace">0:42</span><span style="color:var(--text-2);font-weight:500">7f3a</span></div>
+<div style="position:absolute;left:1484px;top:420px;display:flex;align-items:center;gap:5px;height:26px;padding:0 10px 0 7px;border-radius:13px;background:var(--surface);border:1px solid var(--line-2);color:var(--text-2);font:500 13px 'Geist',sans-serif;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:16px;color:var(--r-impl)">ads_click</span>clicando</div>
+<div style="position:absolute;left:120px;top:90px"><dc-import name="SquadNode" zoom="live" label="Planejador" agent="claude" role="plan" state="wait" elapsed="0:42" screen="plan" strip-kind="wait" strip-text="Aguardando Implementador · pedido 7f3a · enviado há 42 s" hint-size="560px,440px"></dc-import></div>
+<div style="position:absolute;left:860px;top:90px"><dc-import name="SquadNode" zoom="live" label="Implementador" agent="codex" role="impl" state="work" elapsed="1:58" screen="impl" focused="{{ true }}" strip-kind="from" from-role="plan" strip-text="Pedido 7f3a de Planejador · a resposta volta para ele" hint-size="560px,440px"></dc-import></div>
+<div style="position:absolute;left:860px;top:690px"><dc-import name="SquadNode" zoom="live" label="Revisor" agent="gemini" role="rev" state="done" elapsed="1:12" screen="rev" h="400" hint-size="560px,400px"></dc-import></div>
+<div style="position:absolute;left:120px;top:690px;width:400px;height:350px;display:flex;flex-direction:column;background:var(--note-bg);border:1px solid var(--line-2);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)">
+<div style="height:36px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--line)"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:var(--text-2)">description</span><span style="font-size:13px;font-weight:600">Plano: exportar CSV</span><span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">PLANO.md</span><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:16px;color:var(--text-3)">lock_open</span><span style="font:500 11px 'Geist',sans-serif;color:var(--text-2);border:1px solid var(--line-2);border-radius:4px;padding:1px 6px">Prévia</span></div>
+<div style="flex:1;padding:12px 16px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5;color:var(--text)">
+<div style="font-size:16px;font-weight:650">Exportar relatório em CSV</div>
+<div style="display:flex;gap:8px"><span style="font-family:'Material Symbols Outlined';font-size:16px;color:var(--st-done)">check_box</span><span>1. Endpoint GET /reports/:id/export</span></div>
+<div style="display:flex;gap:8px"><span style="font-family:'Material Symbols Outlined';font-size:16px;color:var(--text-3)">check_box_outline_blank</span><span>2. Serializador com streaming</span></div>
+<div style="display:flex;gap:8px"><span style="font-family:'Material Symbols Outlined';font-size:16px;color:var(--text-3)">check_box_outline_blank</span><span>3. Revisão do diff</span></div>
+<div style="margin-top:4px;padding:8px 10px;border-radius:6px;background:var(--rb-rev);display:flex;flex-direction:column;gap:2px"><span style="font:600 11px 'Geist',sans-serif;color:var(--r-rev);display:flex;align-items:center;gap:4px"><span style="font-family:'Material Symbols Outlined';font-size:14px">edit</span>Revisor escreveu há 12 s</span><span>§3 Falta teste para BOM em UTF-8.</span></div>
+</div>
+</div>
+<div style="position:absolute;left:1600px;top:260px;width:560px;height:420px;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)">
+<div style="height:3px;background:var(--line-2)"></div>
+<div style="height:36px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;border-bottom:1px solid var(--line)"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:var(--text-2)">public</span><span style="font-size:12.5px;font-weight:600">Portal</span><span style="font-family:'Material Symbols Outlined';font-size:17px;color:var(--text-3)">refresh</span><div style="flex:1;height:24px;display:flex;align-items:center;padding:0 8px;border-radius:5px;background:var(--surface-2);border:1px solid var(--line);font:500 11.5px 'Geist Mono',monospace;color:var(--text-2)">localhost:5173/reports/42</div><span style="display:inline-flex;align-items:center;gap:4px;font:600 11px 'Geist',sans-serif;color:var(--st-done)"><span style="width:7px;height:7px;border-radius:50%;background:var(--st-done)"></span>ao vivo · 120 ms</span></div>
+<div style="flex:1;position:relative;background:repeating-linear-gradient(135deg,var(--surface-2) 0 10px,var(--surface-3) 10px 20px);display:grid;place-items:center"><span style="font:500 12px 'Geist Mono',monospace;color:var(--text-3);background:var(--surface);padding:3px 8px;border-radius:4px">imagem ao vivo da página</span>
+<div style="position:absolute;left:330px;top:240px;display:flex;align-items:flex-start;gap:2px"><span style="font-family:'Material Symbols Outlined';font-size:22px;color:var(--r-impl)">arrow_selector_tool</span><span style="margin-top:14px;font:600 11px 'Geist',sans-serif;background:var(--r-impl);color:var(--on-signal);padding:2px 6px;border-radius:4px">Implementador</span></div>
+</div>
+</div>
+</div>
+<div style="position:absolute;left:0;top:0;right:0;height:44px;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--line)">
+<div style="display:flex;align-items:center;gap:7px;padding-right:6px"><span style="display:grid;grid-template-columns:6px 6px;gap:2px"><span style="width:6px;height:6px;background:var(--text)"></span><span style="width:6px;height:6px;background:var(--text)"></span><span style="width:6px;height:6px;background:var(--text)"></span><span style="width:6px;height:6px;border:1.5px solid var(--text);box-sizing:border-box"></span></span><span style="font:700 14px 'Geist Mono',monospace;letter-spacing:-.02em">squad</span></div>
+<div style="width:1px;height:20px;background:var(--line)"></div>
+<div style="display:flex;align-items:center;gap:8px;height:30px;padding:0 8px;border-radius:6px;border:1px solid var(--line)"><span style="width:10px;height:10px;border-radius:3px;background:var(--r-impl)"></span><span style="font-size:13px;font-weight:600">squad-api</span><span style="font-size:11.5px;color:var(--text-2)">3 agentes ativos</span><span style="font:500 10px 'Geist Mono',monospace;color:var(--text-3);border:1px solid var(--line-2);border-radius:3px;padding:0 4px">⌥1</span><span style="font-family:'Material Symbols Outlined';font-size:16px;color:var(--text-3)">expand_more</span></div>
+<span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-3)">chevron_right</span>
+<div style="display:flex;align-items:center;gap:2px;height:30px;padding:2px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line)">
+<div style="display:flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:4px;background:var(--surface);box-shadow:0 0 0 1px var(--line-2)"><span style="font-family:'Material Symbols Outlined';font-size:15px;color:var(--text-2)">layers</span><span style="font-size:12.5px;font-weight:600">main</span><span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">limpo</span></div>
+<div style="display:flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:4px;color:var(--text-2)"><span style="font-family:'Material Symbols Outlined';font-size:15px">layers</span><span style="font-size:12.5px;font-weight:500">exp-streaming</span><span style="font:500 11px 'Geist Mono',monospace;color:var(--st-wait)">● 4 alterações</span></div>
+<div style="display:grid;place-items:center;width:24px;height:24px;color:var(--text-3)"><span style="font-family:'Material Symbols Outlined';font-size:16px">add</span></div>
+</div>
+<span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">⎇ main · ~/code/squad-api</span>
+<span style="flex:1"></span>
+<span style="display:flex;align-items:center;gap:6px;font:500 11.5px 'Geist',sans-serif;color:var(--text-2)"><span style="font-family:'Material Symbols Outlined';font-size:15px">swap_horiz</span><span style="font-family:'Geist Mono',monospace">12/30</span>pedidos por min</span>
+<div style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px 0 8px;border-radius:6px;border:1px solid var(--line-2);font-size:12.5px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:17px">pause</span>Pausar conversas<span style="font:500 10px 'Geist Mono',monospace;color:var(--text-3)">⌥P</span></div>
+<sc-if value="{{ closed }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px 0 8px;border-radius:6px;border:1px solid var(--line-2);font-size:12.5px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:17px">view_timeline</span>Atividade<span style="min-width:18px;height:18px;border-radius:9px;background:var(--st-wait);color:var(--on-signal);font:700 11px/18px 'Geist Mono',monospace;text-align:center">1</span></div></sc-if>
+<sc-if value="{{ drawer }}"><div style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px 0 8px;border-radius:6px;background:var(--text);color:var(--surface);font-size:12.5px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:17px">view_timeline</span>Atividade</div></sc-if>
+<span style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-2)"><span style="font-family:'Material Symbols Outlined';font-size:15px;color:var(--st-done)">lan</span>servidor</span>
+<span style="font-family:'Material Symbols Outlined';font-size:19px;color:var(--text-2)">settings</span>
+</div>
+<div style="position:absolute;left:12px;top:60px;display:flex;flex-direction:column;gap:2px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)">
+<div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;background:var(--text);color:var(--surface);font-family:'Material Symbols Outlined';font-size:19px">near_me</div>
+<div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--text-2);font-family:'Material Symbols Outlined';font-size:19px">pan_tool</div>
+<div style="height:1px;background:var(--line);margin:3px 4px"></div>
+<div style="position:relative;width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--text-2);font-family:'Material Symbols Outlined';font-size:19px;background:var(--surface-2)">terminal<div style="position:absolute;left:44px;top:6px;display:flex;align-items:center;gap:8px;height:24px;padding:0 8px;border-radius:5px;background:var(--text);color:var(--surface);font:600 11.5px 'Geist',sans-serif;white-space:nowrap">Novo terminal<span style="font:500 10px 'Geist Mono',monospace;opacity:.75">T</span></div></div>
+<div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--text-2);font-family:'Material Symbols Outlined';font-size:19px">sticky_note_2</div>
+<div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--text-2);font-family:'Material Symbols Outlined';font-size:19px">public</div>
+<div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--text-2);font-family:'Material Symbols Outlined';font-size:19px">gesture</div>
+<div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--text-2);font-family:'Material Symbols Outlined';font-size:19px">select</div>
+</div>
+<div style="position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;height:40px;padding:0 6px 0 14px;width:460px;background:var(--surface);border:1px solid var(--line-2);border-radius:10px;box-shadow:var(--shadow)"><span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-3)">edit_square</span><span style="flex:1;font-size:13px;color:var(--text-3)">Escrever para Implementador…</span><span style="font:500 10px 'Geist Mono',monospace;color:var(--text-3);border:1px solid var(--line-2);border-radius:3px;padding:0 4px">⌥K</span><span style="width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:var(--surface-3);color:var(--text-3);font-family:'Material Symbols Outlined';font-size:18px">arrow_upward</span></div>
+<div style="position:absolute;right:{{ mapRight }};bottom:18px;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+<div style="position:relative;width:220px;height:132px;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)">
+<div style="position:absolute;left:11px;top:8px;width:51px;height:40px;border-radius:2px;background:var(--stb-wait);border:1.5px solid var(--st-wait)"></div>
+<div style="position:absolute;left:78px;top:8px;width:51px;height:40px;border-radius:2px;background:var(--stb-work);border:1.5px solid var(--st-work)"></div>
+<div style="position:absolute;left:78px;top:63px;width:51px;height:36px;border-radius:2px;background:var(--stb-done);border:1.5px solid var(--st-done)"></div>
+<div style="position:absolute;left:11px;top:63px;width:36px;height:32px;border-radius:2px;background:var(--surface-3)"></div>
+<div style="position:absolute;left:145px;top:24px;width:51px;height:38px;border-radius:2px;background:var(--surface-3)"></div>
+<div style="position:absolute;left:2px;top:2px;width:{{ vpW }};height:112px;border:1.5px solid var(--text);border-radius:3px"></div>
+</div>
+<div style="display:flex;align-items:center;gap:2px;height:30px;padding:0 3px;background:var(--surface);border:1px solid var(--line-2);border-radius:7px"><span style="width:26px;text-align:center;font-family:'Material Symbols Outlined';font-size:17px;color:var(--text-2)">remove</span><span style="font:600 11.5px 'Geist Mono',monospace;width:40px;text-align:center">80%</span><span style="width:26px;text-align:center;font-family:'Material Symbols Outlined';font-size:17px;color:var(--text-2)">add</span><span style="width:1px;height:16px;background:var(--line)"></span><span style="width:26px;text-align:center;font-family:'Material Symbols Outlined';font-size:16px;color:var(--text-2)">fit_screen</span></div>
+</div>
+<sc-if value="{{ closed }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;right:0;top:120px;width:28px;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-2);border-right:none;border-radius:8px 0 0 8px"><span style="font-family:'Material Symbols Outlined';font-size:16px;color:var(--text-2)">chevron_left</span><span style="writing-mode:vertical-rl;font-size:12px;font-weight:600">Atividade</span><span style="width:18px;height:18px;border-radius:9px;background:var(--st-wait);color:var(--on-signal);font:700 11px/18px 'Geist Mono',monospace;text-align:center">1</span></div></sc-if>
+<sc-if value="{{ drawer }}">
+<div style="position:absolute;right:0;top:44px;bottom:0;width:380px;display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--line-2);box-shadow:var(--shadow)">
+<div style="height:46px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px 0 14px;border-bottom:1px solid var(--line)"><span style="font-size:14px;font-weight:650">Atividade</span><span style="font-size:12px;color:var(--text-2)">squad-api · main</span><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:var(--text-2)">close</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-bottom:1px solid var(--line)">
+<span style="height:24px;padding:0 9px;border-radius:12px;background:var(--text);color:var(--surface);font:600 11.5px/24px 'Geist',sans-serif">Todos</span>
+<span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:12px;border:1px solid var(--line-2);font-size:11.5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--r-plan)"></span>Planejador</span>
+<span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:12px;border:1px solid var(--line-2);font-size:11.5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--r-impl)"></span>Implementador</span>
+<span style="display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:12px;border:1px solid var(--line-2);font-size:11.5px"><span style="width:7px;height:7px;border-radius:2px;background:var(--r-rev)"></span>Revisor</span>
+</div>
+<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+<sc-for list="{{ events }}" as="e" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:52px 1fr;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)">
+<span style="font:500 11px/18px 'Geist Mono',monospace;color:var(--text-3)">{{ e.t }}</span>
+<div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;font-weight:600"><span style="color:var(--r-{{ e.a }})">{{ e.from }}</span><span style="font-family:'Material Symbols Outlined';font-size:15px;color:var(--text-3)">{{ e.arrow }}</span><span style="color:var(--r-{{ e.b }})">{{ e.to }}</span><span style="font:500 11px 'Geist Mono',monospace;color:var(--text-3)">{{ e.id }}</span></div>
+<div style="font-size:12.5px;line-height:1.45;color:var(--text-2);text-wrap:pretty">{{ e.msg }}</div>
+<span style="align-self:flex-start;display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px 0 5px;border-radius:10px;background:var(--stb-{{ e.s }});color:var(--st-{{ e.s }});font-size:11px;font-weight:600"><span style="font-family:'Material Symbols Outlined';font-size:13px">{{ e.i }}</span>{{ e.sl }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--line);font:500 11px 'Geist Mono',monospace;color:var(--text-3)"><span style="font-family:'Material Symbols Outlined';font-size:15px">tune</span>máx. 6 saltos · 30 pedidos/min<span style="flex:1"></span><span style="font-family:'Geist',sans-serif;font-weight:600;color:var(--text);font-size:12px">Limites</span></div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1760,&quot;height&quot;:1040},&quot;drawer&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const drawer = !!this.props.drawer;
+    return {
+      drawer, closed: !drawer,
+      mapRight: drawer ? '398px' : '18px',
+      vpW: drawer ? '150px' : '212px',
+      events: [
+        { t: '14:32', a: 'plan', from: 'Planejador', arrow: 'arrow_forward', b: 'impl', to: 'Implementador', id: '7f3a', msg: 'Implemente a tarefa 1 do PLANO.md. Responda com os arquivos alterados e o resultado dos testes.', s: 'wait', i: 'hourglass_top', sl: 'Pendente · 0:42' },
+        { t: '14:31', a: 'impl', from: 'Implementador', arrow: 'arrow_forward', b: 'rev', to: 'Revisor', id: '2c91', msg: 'Revisão concluída: 2 pontos ok, falta teste para BOM em UTF-8.', s: 'done', i: 'reply', sl: 'Respondido em 1:12' },
+        { t: '14:30', a: 'rev', from: 'Revisor', arrow: 'edit', b: 'none', to: 'PLANO.md', id: '§3', msg: 'Acrescentou uma sugestão na seção 3.', s: 'idle', i: 'description', sl: 'Nota editada' },
+        { t: '14:28', a: 'none', from: 'Você', arrow: 'arrow_forward', b: 'plan', to: 'Planejador', id: 'composer', msg: 'Quebre a feature "exportar CSV" em tarefas e distribua.', s: 'done', i: 'check', sl: 'Entregue' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

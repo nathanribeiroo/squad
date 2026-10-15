@@ -1,0 +1,41 @@
+/* Squad — design tokens. Aplique data-theme="dark|light" e data-term="noite|papel" no <html>. */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;650;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0,0&display=block');
+
+:root{
+  --font-ui:'Geist',system-ui,sans-serif;
+  --font-mono:'Geist Mono',ui-monospace,monospace;
+  --space-0_5:2px;--space-1:4px;--space-1_5:6px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;
+  --radius-chip:4px;--radius-control:6px;--radius-node:8px;--radius-float:12px;--radius-pill:999px;
+  --header-h:32px;--role-stripe-h:3px;--node-footer-h:22px;--strip-h:24px;--topbar-h:44px;
+  --focus-ring-w:2px;--focus-ring-offset:3px;
+}
+
+[data-theme="dark"]{
+  --bg:#111214;--grid:#2a2c31;--surface:#1a1b1e;--surface-2:#212327;--surface-3:#2b2d32;
+  --line:#2c2e33;--line-2:#3c3f46;--text:#e8e9ec;--text-2:#a9acb3;--text-3:#8a8e96;
+  --focus:#f2f3f5;--wire:#5a5e68;--note-bg:#1d1d1b;--on-signal:#111214;
+  --shadow:0 1px 0 rgba(0,0,0,.35),0 10px 28px rgba(0,0,0,.35);
+  --st-boot:oklch(0.80 0.05 250);--st-idle:#a3a6ad;--st-work:oklch(0.77 0.13 245);--st-wait:oklch(0.83 0.14 78);
+  --st-done:oklch(0.79 0.14 152);--st-err:oklch(0.73 0.17 25);--st-off:#8a8e96;
+  --stb-boot:oklch(0.27 0.02 250);--stb-idle:#25272b;--stb-work:oklch(0.28 0.05 245);--stb-wait:oklch(0.30 0.06 78);
+  --stb-done:oklch(0.28 0.05 152);--stb-err:oklch(0.29 0.07 25);--stb-off:#202125;
+  --r-plan:oklch(0.77 0.13 300);--r-impl:oklch(0.79 0.11 200);--r-rev:oklch(0.77 0.13 350);--r-test:oklch(0.80 0.12 110);--r-none:#a9acb3;
+  --rb-plan:oklch(0.29 0.06 300);--rb-impl:oklch(0.29 0.05 200);--rb-rev:oklch(0.29 0.06 350);--rb-test:oklch(0.29 0.05 110);--rb-none:#2b2d32;
+}
+
+[data-theme="light"]{
+  --bg:#f2f2ef;--grid:#d4d4cf;--surface:#ffffff;--surface-2:#f7f7f5;--surface-3:#ebebe8;
+  --line:#e3e3df;--line-2:#cbcbc6;--text:#17181a;--text-2:#4f5258;--text-3:#666970;
+  --focus:#17181a;--wire:#9c9d99;--note-bg:#fffef8;--on-signal:#ffffff;
+  --shadow:0 1px 0 rgba(0,0,0,.04),0 6px 18px rgba(20,20,15,.08);
+  --st-boot:oklch(0.50 0.06 250);--st-idle:#5f626a;--st-work:oklch(0.50 0.15 250);--st-wait:oklch(0.53 0.12 68);
+  --st-done:oklch(0.50 0.12 150);--st-err:oklch(0.52 0.18 25);--st-off:#666970;
+  --stb-boot:oklch(0.95 0.015 250);--stb-idle:#f0f0ee;--stb-work:oklch(0.95 0.03 250);--stb-wait:oklch(0.95 0.05 80);
+  --stb-done:oklch(0.95 0.035 150);--stb-err:oklch(0.95 0.035 25);--stb-off:#f0f0ee;
+  --r-plan:oklch(0.50 0.16 300);--r-impl:oklch(0.50 0.10 210);--r-rev:oklch(0.52 0.17 355);--r-test:oklch(0.50 0.12 120);--r-none:#4f5258;
+  --rb-plan:oklch(0.95 0.03 300);--rb-impl:oklch(0.95 0.025 210);--rb-rev:oklch(0.95 0.03 355);--rb-test:oklch(0.95 0.03 120);--rb-none:#ebebe8;
+}
+
+[data-term="noite"]{--term-bg:#0d0e10}
+[data-term="papel"]{--term-bg:#fbfbf9}

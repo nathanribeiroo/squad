@@ -1,0 +1,11 @@
+--- a/emulator.go	2026-10-15 01:28:32
++++ b/emulator.go	2026-10-15 01:41:27
+@@ -86,7 +86,7 @@
+ 	t.scrs[1].cb = &t.cb
+ 	t.parser = ansi.NewParser()
+ 	t.parser.SetParamsSize(parser.MaxParamsSize)
+-	t.parser.SetDataSize(1024 * 1024 * 4) // 4MB data buffer
++	t.parser.SetDataSize(64 * 1024) // 64KB data buffer (fork)
+ 	t.parser.SetHandler(ansi.Handler{
+ 		Print:     t.handlePrint,
+ 		Execute:   t.handleControl,
