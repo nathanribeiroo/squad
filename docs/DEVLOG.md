@@ -2,6 +2,39 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, Planejador espera o resultado (`squad wait`)
+
+- **Problema (visto no teste do Arquiteto):** o Planejador respondeu "ainda esperando o Arq" a quem pediu e terminou o trabalho depois, sozinho; a resposta final ficou só na tela dele.
+- **Causa:** o `squad ask` espera enquanto o agente trabalha, mas volta depois de 2 min sem atividade, com a tela e `[squad: timeout]`. O Arq estava parado num pedido de permissão. Depois disso o pedido deixava de existir: a resposta do Arq, quando viesse, não tinha para onde ir. O Planejador só podia ler a tela (`check`) ou mandar de novo (pedido duplicado). Por isso o ajuste só no texto não bastava.
+- **`squad wait "Nome"`** (e a ferramenta MCP `wait`, liberada no Claude e no Devin porque não manda nada):
+  - espera o turno atual do agente acabar e devolve a resposta final dele, sem mandar mensagem;
+  - se ele não está num turno, devolve na hora a última resposta, com há quanto tempo e o começo do pedido que a gerou, ou a tela;
+  - tem o mesmo limite do `ask`: segue enquanto há atividade e volta depois de 2 min sem nenhuma, com a tela e o aviso de que ele pode estar esperando o usuário;
+  - quem espera aparece como "esperando" no canvas.
+- **Turno aberto:** antes, 60 s de silêncio desligavam o "trabalhando" de um agente com hooks, e não havia como saber que o turno continuava. Agora o monitor lembra que um turno começou e só um hook o termina (`InTurn`). No Codex, que não tem hook de início, o turno conta a partir da mensagem entregue.
+- **O timeout do `ask` avisa:** se o turno do agente não acabou, a mensagem diz para não reenviar e usar `squad wait "Nome"`.
+- **Mensagens durante o `wait`:** se o agente esperado pergunta algo a quem espera, a pergunta chega como resultado do `wait` (`[de: … · pedido …]`), em vez de ir para a fila de um terminal ocupado. Os dois ficariam se esperando até o limite de 30 min. Quem esperava responde com `squad reply` e espera de novo. Os ciclos com `wait` no meio também são liberados, como já eram com `ask`. Esperar por quem espera por você é recusado.
+- **Textos:**
+  - o Planejador espera os resultados antes de responder, não termina o turno com andamento e só para antes se algo depender do usuário, dizendo o quê;
+  - a skill ganhou o comando e a mesma regra para qualquer agente que recebeu um pedido;
+  - o MCP (agora 17 ferramentas) e a ajuda da CLI citam o `wait`.
+- **Limite do cliente MCP:** o Claude Code corta uma ferramenta MCP depois de `MCP_TOOL_TIMEOUT` (aqui no container, 60 s). O `ask` cortado vira "timed out", e o pedido é cancelado. Agora o `squad mcp` lê essa variável e faz o `ask` e o `wait` voltarem um pouco antes do limite, com a tela do agente esperado e a orientação: se ela mostra uma pergunta ou um pedido de permissão, avise o usuário; se não, chame `wait` de novo. Sem isso, com um limite menor que os 2 min do servidor, o aviso de inatividade nunca chegaria, e o agente esperaria em loop por alguém parado numa permissão. Não sei o padrão dessa variável no Claude Code da sua máquina, nem se o Devin tem um limite parecido; se não houver limite, nada muda.
+- **Bug encontrado:** o `squad roles` (do PR anterior) não estava na lista de comandos do binário. Pela CLI dava "unknown command"; só a ferramenta MCP funcionava. Corrigido, com um teste que confere que todo comando da ajuda dos terminais chega ao servidor.
+- **Todos os agentes:**
+  - Claude e Devin têm hook de início e de fim: o `wait` sabe que o turno continua mesmo parado numa permissão;
+  - Codex só tem o de fim: o turno conta a partir da mensagem entregue pelo Squad;
+  - Gemini não tem hook: o `wait` segue a tela, como o `ask`;
+  - a ferramenta MCP vale para Claude, Devin e Codex, e a CLI para todos.
+- **Testado aqui:**
+  - agentes falsos com hooks: `ask` que volta por tempo com o agente ainda no turno (e o aviso), `wait` até o hook de fim, a última resposta depois, o estado "esperando" no canvas, a pergunta do agente esperado chegando pelo `wait` e a resposta voltando por `squad reply`, e a recusa do ciclo;
+  - pelo cliente MCP de verdade: a ferramenta `wait` e o corte antes do `MCP_TOOL_TIMEOUT`, com a tela e o `wait` depois;
+  - `make check`, com `-race` nos testes da conversa, e o Devin real lendo a configuração com a ferramenta nova liberada (`TestRealDevinConfig`).
+- **Claude real, num worktree do Squad, com a skill nova:**
+  - **o mesmo pedido do teste do Arquiteto.** O `ask` do Planejador ao Arq foi cortado pelo limite de 60 s do Claude deste container. Ele chamou `wait`, foi cortado de novo e chamou `wait` outra vez, que trouxe a resposta final do Arq. Depois criou o Impl, ligou a nota e respondeu uma vez só, com o resultado;
+  - **um pedido que para numa permissão:** "crie um Arquiteto e peça a ele para rodar `go vet` e `go version`". Desta vez o Planejador usou a CLI pelo Bash. O Arq parou no pedido de permissão do `go vet` e eu segurei por 4 min. O Planejador ficou esperando no `squad ask`, sem responder nada; depois que aprovei, ele respondeu uma vez, com a saída dos dois comandos.
+- **Observado:** num pedido de permissão, o Claude Code pisca o marcador "●" da ferramenta. O Squad conta isso como atividade, então o `ask` não volta em 2 min: espera até a aprovação, até 30 min. Para o Planejador, é o comportamento certo, porque quem aprova é você, no canvas. Mas o canvas mostra o Arq como "trabalhando", não "esperando você". Para mostrar isso, dá para usar o hook `Notification` do Claude, que avisa quando ele pede permissão. Fica como ideia; ainda não sei se o Devin tem algo parecido.
+- **Não testado:** o corte novo pelo `MCP_TOOL_TIMEOUT` com o Claude real (no segundo teste, o Planejador usou a CLI; o corte foi testado com o cliente MCP de verdade e um agente falso); uma sessão real do Devin (sem login aqui); o Codex e o Gemini reais.
+
 ## 2026-10-16, papel Arquiteto
 
 - **Pedido do usuário:** um papel de arquiteto (e um de product manager, que ele decidiu deixar para depois). O Arquiteto não depende do PM: o PM, quando vier, entra só com o papel novo e o texto do Planejador.
