@@ -16,8 +16,13 @@ Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, 
 Com Go 1.26+:
 
 ```sh
-go install github.com/nathanribeiroo/squad/cmd/squad@latest   # ou @v0.1.0
+GONOPROXY=github.com/nathanribeiroo/squad go install github.com/nathanribeiroo/squad/cmd/squad@main
+squad version   # mostra o commit instalado
 ```
+
+- **Por que o `GONOPROXY`:** sem ele, o `@main` passa pelo proxy do Go, que guarda a resposta em cache e pode entregar a versão anterior por um bom tempo depois de um merge. Com ele, o Squad vem direto do GitHub (precisa do `git`, que o Git Bash já traz), e o resto continua pelo proxy.
+- **Um commit exato** também funciona: `go install github.com/nathanribeiroo/squad/cmd/squad@<commit>`.
+- O `@latest` pega a última tag, que está bem atrás da `main`.
 
 O binário vai para `$(go env GOPATH)/bin` (no Windows, `%USERPROFILE%\go\bin`) e já traz a interface web embutida, sem precisar de Node.
 

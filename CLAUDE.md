@@ -20,7 +20,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
   - o mesmo PR atualiza o README (uso), o DEVLOG (entrada nova) e o PLAN (status).
 - **Na mensagem final ao usuário:**
   - o que mudou, o que foi testado de verdade e o que não foi;
-  - como testar depois do merge: `go install github.com/nathanribeiroo/squad/cmd/squad@main`, `squad install-skill` (instala no Claude e no Devin, e registra o MCP no Devin) e reiniciar o `squad serve`;
+  - como testar depois do merge: `GONOPROXY=github.com/nathanribeiroo/squad go install github.com/nathanribeiroo/squad/cmd/squad@main` (sem o `GONOPROXY`, o proxy do Go pode entregar a versão anterior por um bom tempo), `squad install-skill` (instala no Claude e no Devin, e registra o MCP no Devin; a primeira linha mostra a versão) e reiniciar o `squad serve`;
   - capturas de tela das mudanças de interface.
 - **O usuário:** usa Windows com Git Bash (a política da empresa bloqueia o PowerShell), Claude Code e Devin. Testa o Claude no Mac e no Windows.
 - **Todos os agentes:** toda funcionalidade vale para o Claude e o Devin, e para o Codex e o Gemini quando der.
