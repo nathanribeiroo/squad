@@ -30,8 +30,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Vários workspaces | `feat/workspaces` | concluído |
 | P1 Portal ao vivo (CDP) | `feat/portal-live` | concluído |
 | P2 Agentes no portal (`squad portal`) | `feat/portal-agents` | concluído |
-| R1 Papéis com instruções | `feat/roles` | concluído (PR) |
-| R2 Agente gerente e portais criados por agentes | — | planejado |
+| R1 Papéis com instruções | `feat/roles` | concluído |
+| R2 Agente gerente e portais criados por agentes | `feat/manager` | concluído (PR) |
 | R3 MCP (`squad mcp`) | — | planejado |
 | R4 Andares: servidor | — | planejado |
 | R5 Andares: interface | — | planejado |
