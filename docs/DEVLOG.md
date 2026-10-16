@@ -2,6 +2,40 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, papéis com instruções (R1)
+
+- **Por quê:** até aqui o papel era só cor e etiqueta; o agente não recebia nada. Um Planejador aberto no canvas não sabia que devia delegar.
+- **`internal/roles`, a biblioteca:**
+  - os quatro papéis de sempre (ids `plan`, `impl`, `rev`, `test`, os mesmos que os terminais já gravavam) ganharam instruções padrão. O Testador testa interfaces web pelo portal (`squad portal snapshot/click/fill/console/screenshot`);
+  - o usuário edita as instruções e, se quiser, restaura o padrão. Também cria papéis com nome, cor (8 opções), ícone (12 opções) e instruções de até 4.000 caracteres;
+  - o arquivo é global (`~/.squad/roles.json`) e guarda só os papéis novos e os editados. Assim, um papel que ninguém editou acompanha os padrões das próximas versões;
+  - o hub serve `GET/POST /api/roles`, `PUT/DELETE /api/roles/{id}` e `POST /api/roles/{id}/reset`, e manda a lista em `/ws/workspaces` a cada mudança;
+  - remover um papel em uso é recusado, com a lista dos terminais ("Ana (proj)").
+- **Como cada agente recebe o papel** (texto: "Você está no terminal "Ana" do Squad, com o papel "Testador"…", seguido das instruções):
+  - **Claude Code:** `--append-system-prompt-file`, com um arquivo por terminal em `~/.squad/run/roles/`, apagado quando o terminal é removido. O flag funciona no modo interativo (documentação do Claude Code);
+  - **Codex:** `-c developer_instructions="…"` (chave oficial da config). O texto vai como string TOML só em ASCII: acentos, aspas, `%`, `$` e `!` viram `\uXXXX`, para que nenhum shell (sh, PowerShell, cmd) o altere na linha de lançamento;
+  - **Devin:** o hook `SessionStart` (no mesmo `--config` dos outros hooks) chama `squad hook devin-session-start`, e o servidor responde com `additionalContext` no formato do Claude Code, que o Devin documenta. O `squad hook` passou a imprimir a resposta do servidor;
+  - **Gemini:** não tem opção para instruções extras, então o papel vai como primeiro prompt (`gemini -i "$SQUAD_ROLE"`), a partir de uma variável de ambiente para a linha ficar curta. No cmd, as quebras de linha viram espaços;
+  - **shells e comandos próprios:** nada. Digitar instruções num shell poderia executá-las (com o Gemini ausente, por exemplo, o texto cairia no bash). Por isso a ideia inicial de mandar uma "primeira mensagem" quando o agente ficasse pronto foi descartada.
+- **`squad list`** mostra o nome do papel (`role: "Testador"`), e a skill diz para dar o trabalho a quem tem o papel certo.
+- **Interface:**
+  - ⚙ → "Papéis…" abre a biblioteca: lista à esquerda e editor à direita (nome, cor, ícone, instruções com contador), "Restaurar padrão" nos editados e "Remover" nos novos;
+  - o rodapé mostra quem usa o papel no workspace. Depois de salvar, oferece reiniciar esses agentes ("Ana recebe as instruções novas ao reiniciar · Reiniciar agora");
+  - no menu do terminal, os papéis vêm da biblioteca, com "Editar papéis…". Trocar o papel de um agente aberto pede confirmação e reinicia o terminal. Shells não têm papel;
+  - no formulário do terminal, o papel vem da biblioteca, com o aviso "O terminal reinicia…" quando muda. Nos comandos próprios aparece "o papel fica só como etiqueta";
+  - cor, ícone e nome do papel vêm da biblioteca em todo o canvas (faixa, etiqueta, cartão, Composer, gaveta, notas e cursor do portal). Há quatro cores novas (teal, indigo, magenta, laranja) nos dois temas.
+- **Testes:**
+  - `internal/roles`: padrões, criar, editar, restaurar, remover, ids com acento ("Revisão de UX" → `revisao-de-ux`), nomes únicos e o arquivo;
+  - `internal/hub`: API, recusa de papel em uso e lista ao vivo;
+  - `internal/agents`: linha de lançamento de cada agente (a string do Codex decodifica de volta ao texto, sem metacaracteres de shell) e hook `SessionStart`;
+  - `internal/app`: `squad list` com os papéis e o hook do Devin pelo binário `squad` de verdade.
+- **Teste com o Claude Code real** (`go test -tags e2e -run TestRealClaude ./internal/app/`):
+  - um papel "responda só em MAIÚSCULAS" fez o Claude responder `PONG`; sem papel, `pong`;
+  - o teste agora passa pela tela de boas-vindas e pela pergunta de confiança na pasta (a do repositório) numa máquina nova.
+- **Na interface, com o Chrome headless e um Claude Code real:**
+  - "Ana" (Claude, Testador) respondeu ao `squad ask` de um shell: "Sou a Ana, Testadora do Squad: testo o que foi feito… Numa interface web, uso um portal ligado a mim (`squad portal snapshot`, `click`…)";
+  - pelo formulário, o papel dela passou para Revisor ("Salvar e reiniciar"), e ela respondeu: "Sou a Revisora: leio as mudanças de código e aponto bugs…".
+
 ## 2026-10-15, portal: agentes (P2)
 
 - **`squad portal`** (extensão do `agentbus`, como `squad note`): `snapshot`, `click`, `fill`, `type`, `key`, `scroll`, `goto`, `back`, `forward`, `reload`, `screenshot`, `eval`, `console` e `list`. O agente só enxerga portais ligados a ele.

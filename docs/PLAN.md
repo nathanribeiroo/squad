@@ -30,7 +30,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Vários workspaces | `feat/workspaces` | concluído |
 | P1 Portal ao vivo (CDP) | `feat/portal-live` | concluído |
 | P2 Agentes no portal (`squad portal`) | `feat/portal-agents` | concluído |
-| R1 Papéis com instruções | `feat/roles` | em andamento |
+| R1 Papéis com instruções | `feat/roles` | concluído (PR) |
 | R2 Agente gerente e portais criados por agentes | — | planejado |
 | R3 MCP (`squad mcp`) | — | planejado |
 | R4 Andares: servidor | — | planejado |
@@ -135,8 +135,8 @@ Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe s
     - Claude Code: `--append-system-prompt-file`;
     - Codex: `-c developer_instructions=…`;
     - Devin: hook `SessionStart` com `additionalContext`;
-    - Gemini e comandos próprios: a instrução vai como primeira mensagem quando o agente fica pronto;
-    - shell: sem papel;
+    - Gemini: como primeira mensagem (`-i`, a partir de uma variável de ambiente);
+    - shells e comandos próprios: sem instruções (digitar texto num shell poderia executá-lo); nos comandos próprios o papel fica só como etiqueta;
   - trocar o papel reinicia o agente, com aviso;
   - a instrução padrão do Testador inclui testar interfaces web pelo portal.
 - **R2, agente gerente e portais criados por agentes:**
