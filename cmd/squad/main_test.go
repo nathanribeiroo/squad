@@ -88,15 +88,16 @@ func TestInstallSkillFindsTheAgents(t *testing.T) {
 	if _, err := os.Stat(claude); err != nil {
 		t.Fatalf("no agent found: Claude Code's skill expected: %v", err)
 	}
-	if _, err := os.Stat(devin); err == nil {
-		t.Fatal("Devin's skill installed without Devin")
+	if _, err := os.Stat(devin); err == nil || !strings.Contains(out.String(), "squad install-skill -agent devin") {
+		t.Fatalf("Devin's skill installed without Devin, or no hint:\n%s", out.String())
 	}
 	_ = os.MkdirAll(filepath.Join(cfg, "devin"), 0o700) // Devin is set up here
 	out.Reset()
 	if code := run([]string{"install-skill"}, &out, &errb); code != 0 {
 		t.Fatalf("install-skill: %d %s", code, errb.String())
 	}
-	if _, err := os.Stat(devin); err != nil || !strings.Contains(out.String(), "Claude Code") || !strings.Contains(out.String(), "MCP") {
+	if _, err := os.Stat(devin); err != nil || !strings.Contains(out.String(), "Claude Code") || !strings.Contains(out.String(), "MCP") ||
+		strings.Contains(out.String(), "não encontrado") || !strings.HasPrefix(out.String(), "squad ") {
 		t.Fatalf("both agents: %v\n%s", err, out.String())
 	}
 	if code := run([]string{"install-skill", "-agent", "all", "-dir", t.TempDir()}, &out, &errb); code != 2 {

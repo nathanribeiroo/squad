@@ -65,10 +65,15 @@ func usage(w io.Writer) {
 }
 
 func runVersion(_ []string, stdout, _ io.Writer) int {
+	fmt.Fprintln(stdout, "squad", versionString())
+	return 0
+}
+
+// versionString is the version, with the commit when the build knows it.
+func versionString() string {
 	v := version.Version
 	if version.Commit != "" {
 		v += " (" + version.Commit + ")"
 	}
-	fmt.Fprintln(stdout, "squad", v)
-	return 0
+	return v
 }
