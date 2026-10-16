@@ -98,15 +98,25 @@ func TestGuardsAndSession(t *testing.T) {
 	if resp, _ := h.do("POST", "/api/nodes", map[string]string{}, func(r *http.Request) { r.Header.Set("Origin", "http://evil.example") }); resp.StatusCode != 403 {
 		t.Fatalf("bad origin: %d", resp.StatusCode)
 	}
-	if resp, _ := h.do("GET", "/?token=wrong", nil, func(r *http.Request) { r.Header.Del("Authorization") }); resp.StatusCode != 401 {
-		t.Fatalf("bad url token: %d", resp.StatusCode)
+	if resp, body := h.do("GET", "/?token=wrong", nil, func(r *http.Request) { r.Header.Del("Authorization") }); resp.StatusCode != 401 || !strings.Contains(string(body), "sessão antiga") {
+		t.Fatalf("bad url token: %d %s", resp.StatusCode, body)
+	}
+	// Without a session: a page to paste the URL (an app window has no
+	// address bar); the icons and the manifest are served anyway.
+	if resp, body := h.do("GET", "/?ws=abc", nil, func(r *http.Request) { r.Header.Del("Authorization") }); resp.StatusCode != 401 || !strings.Contains(string(body), "Entrar") {
+		t.Fatalf("login page: %d %s", resp.StatusCode, body)
+	}
+	for f := range PublicFiles {
+		if resp, body := h.do("GET", f, nil, func(r *http.Request) { r.Header.Del("Authorization") }); resp.StatusCode != 200 || strings.Contains(string(body), "Entrar") {
+			t.Fatalf("public %s: %d", f, resp.StatusCode)
+		}
 	}
 	resp, _ := h.do("GET", "/?token="+testToken, nil, func(r *http.Request) { r.Header.Del("Authorization") })
 	if resp.StatusCode != http.StatusSeeOther || len(resp.Cookies()) == 0 {
 		t.Fatalf("token login: %d cookies=%v", resp.StatusCode, resp.Cookies())
 	}
 	cookie := resp.Cookies()[0]
-	if !cookie.HttpOnly || cookie.SameSite != http.SameSiteStrictMode {
+	if !cookie.HttpOnly || cookie.SameSite != http.SameSiteStrictMode || cookie.MaxAge != SessionMaxAge {
 		t.Fatalf("cookie flags: %+v", cookie)
 	}
 	resp, body := h.do("GET", "/", nil, func(r *http.Request) { r.Header.Del("Authorization"); r.AddCookie(cookie) })

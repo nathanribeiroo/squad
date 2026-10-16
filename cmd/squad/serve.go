@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -39,14 +38,27 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	port := fs.Int("port", config.Port(), "loopback port")
-	noOpen := fs.Bool("no-open", false, "don't open the browser")
+	open := fs.String("open", openApp, "how to show the canvas: app (a window of its own), browser (a tab) or none")
+	noOpen := fs.Bool("no-open", false, "same as -open none")
 	dir := fs.String("dir", ".", "project folder: opens its workspace, creating it the first time")
 	maxTeam := fs.Int("max-team", 6, "terminals one manager agent may create (squad new)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
 	}
+	if *noOpen {
+		*open = openNone
+	}
+	if err := validOpenMode(*open); err != nil {
+		fmt.Fprintln(stderr, "squad:", err)
+		return 2
+	}
 	log := slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	cwd, err := filepath.Abs(*dir)
+	if err != nil {
+		fmt.Fprintln(stderr, "squad:", err)
+		return 1
+	}
+	home, err := config.Home()
 	if err != nil {
 		fmt.Fprintln(stderr, "squad:", err)
 		return 1
@@ -61,17 +73,12 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}
 		openURL := workspaceURL(info.URL, info.Token, ws.ID)
 		fmt.Fprintf(stdout, "Squad já está rodando em %s\nWorkspace: %s (%s)\nAbra: %s\n", info.URL, ws.Name, ws.Cwd, openURL)
-		if !*noOpen {
-			openBrowser(openURL)
+		if where := openUI(*open, openURL, home); where != "" {
+			fmt.Fprintf(stdout, "Abrindo %s.\n", where)
 		}
 		return 0
 	}
 
-	home, err := config.Home()
-	if err != nil {
-		fmt.Fprintln(stderr, "squad:", err)
-		return 1
-	}
 	root, err := config.Dir("workspaces")
 	if err != nil {
 		fmt.Fprintln(stderr, "squad:", err)
@@ -86,7 +93,11 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	if real, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = real
 	}
-	token := ids.Token()
+	token, err := config.SessionToken(ids.Token)
+	if err != nil {
+		fmt.Fprintln(stderr, "squad: session token:", err)
+		return 1
+	}
 	// One browser for every portal, started by the first one that is shown.
 	br := browser.New(browser.Options{Profile: filepath.Join(home, "browser"), Logger: log})
 	defer br.Shutdown()
@@ -132,10 +143,11 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	h.Start()
 
 	openURL := workspaceURL(base, token, ws.ID)
-	fmt.Fprintf(stdout, "Squad rodando em %s\nAbra: %s\nWorkspace: %s (%s)\nCtrl-C para sair.\n", base, openURL, ws.Name, ws.Cwd)
-	if !*noOpen {
-		openBrowser(openURL)
+	fmt.Fprintf(stdout, "Squad rodando em %s\nAbra: %s\nWorkspace: %s (%s)\n", base, openURL, ws.Name, ws.Cwd)
+	if where := openUI(*open, openURL, home); where != "" {
+		fmt.Fprintf(stdout, "Abrindo %s. Fechar a janela não para o Squad.\n", where)
 	}
+	fmt.Fprintln(stdout, "Ctrl-C para sair.")
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
@@ -178,19 +190,6 @@ func openInRunning(info config.ServerInfo, cwd string) (hub.Summary, error) {
 		return hub.Summary{}, errors.New(out.Error)
 	}
 	return out.Summary, nil
-}
-
-func openBrowser(url string) {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	default:
-		cmd = exec.Command("xdg-open", url)
-	}
-	_ = cmd.Start()
 }
 
 func processAlive(pid int) bool {

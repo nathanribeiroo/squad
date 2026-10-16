@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -71,5 +73,29 @@ func TestPortFromEnv(t *testing.T) {
 	t.Setenv("SQUAD_PORT", "nope")
 	if Port() != DefaultPort {
 		t.Fatal("invalid SQUAD_PORT not ignored")
+	}
+}
+
+func TestSessionTokenSurvivesRestarts(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SQUAD_HOME", home)
+	n := 0
+	gen := func() string { n++; return strings.Repeat("ab", 24) }
+	a, err := SessionToken(gen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := SessionToken(gen)
+	if err != nil || a != b || n != 1 {
+		t.Fatalf("second start: %q %v (generated %d times); want %q once", b, err, n, a)
+	}
+	p := filepath.Join(home, "session-token")
+	if fi, err := os.Stat(p); err != nil || (runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600) {
+		t.Fatalf("token file: %v %v", fi, err)
+	}
+	// A damaged file is replaced; a deleted one logs everyone out.
+	_ = os.WriteFile(p, []byte("nope"), 0o600)
+	if c, _ := SessionToken(func() string { return strings.Repeat("cd", 24) }); c != strings.Repeat("cd", 24) {
+		t.Fatalf("damaged file kept: %q", c)
 	}
 }
