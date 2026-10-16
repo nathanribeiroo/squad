@@ -10,8 +10,72 @@
   box-shadow: var(--shadow);
   position: relative;
 }
-.tnode > :not(.react-flow__handle):not(.node-menu):not(.xfloor),
+.tnode > :not(.react-flow__handle):not(.node-menu):not(.xfloor):not(.tc),
 .pnode > :not(.react-flow__handle):not(.xfloor) { overflow: hidden; }
+
+/* An agent's last turn (TurnCard), hanging under its terminal; the floor
+   tags move below it. */
+.tc {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 10px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  color: var(--text-2);
+  z-index: 2;
+}
+.tnode.has-card .xfloor { top: calc(100% + 44px); }
+.tc-icon { color: var(--st-done); flex: none; }
+.tc-head { font-weight: 600; color: var(--text); white-space: nowrap; flex: none; }
+.tc-gist { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text-2); font: inherit; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; padding: 0; }
+.tc-gist:hover { color: var(--text); }
+.tc-count { color: var(--st-work); font-weight: 600; }
+.tc-btn { height: 22px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); font: inherit; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex: none; }
+.tc-btn:hover { background: var(--surface-3); }
+.tc-busy { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--st-work); flex: none; }
+.tc-x { width: 22px; height: 22px; border: 0; background: transparent; color: var(--text-3); border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
+.tc-x:hover { background: var(--surface-2); color: var(--text); }
+.tc-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px); /* over the terminal's lower part, always on screen with it */
+  max-height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  cursor: auto;
+  user-select: text;
+}
+.tc-panel section { display: flex; flex-direction: column; gap: 6px; }
+.tc-label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); }
+.tc-by { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.tc-summary { font-size: 13px; line-height: 1.5; color: var(--text); }
+.tc-summary > :first-child { margin-top: 0; }
+.tc-summary > :last-child { margin-bottom: 0; }
+.tc-text { margin: 0; font: inherit; font-size: 12px; line-height: 1.5; color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.tc-text.mono { font-family: var(--font-mono); font-size: 11px; }
+.tc-md { font-size: 12.5px; line-height: 1.5; color: var(--text-2); overflow-wrap: anywhere; }
+.tc-md > :first-child { margin-top: 0; }
+.tc-steps { display: flex; flex-direction: column; gap: 4px; }
+.tc-step { display: flex; align-items: flex-start; gap: 6px; text-align: left; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; line-height: 1.4; cursor: pointer; }
+.tc-step .msi { color: var(--st-work); margin-top: 1px; }
+.tc-step:hover { border-color: var(--line-2); background: var(--surface-3); }
 
 /* Wires to other floors (CrossFloorLinks): tags hanging under the node. */
 .xfloor {

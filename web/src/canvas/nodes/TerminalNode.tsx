@@ -6,6 +6,7 @@ import { Icon } from '../../components/Icon';
 import { STATE_META, elapsed, stateLabel } from '../../lib/model';
 import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, useRole, useRoleLookup } from '../../lib/roles';
 import { useBranch } from '../../lib/floors';
+import { TurnCard, useCardShown } from './TurnCard';
 import { shortPath, terminalCwd } from '../../lib/paths';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
@@ -43,6 +44,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
   const target = useConnectTarget(id);
   const state: UIState = rt?.activity ?? 'boot';
   const roleColorKey = roleColor(useRole(t.role));
+  const cardShown = useCardShown(id, state === 'work');
 
   // The session exists for every level, so miniatures have a live buffer.
   useEffect(() => {
@@ -112,7 +114,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
   };
 
   return (
-    <div className={cls}>
+    <div className={`${cls}${cardShown ? ' has-card' : ''}`}>
       <NodeResizer isVisible={selected && !focused} minWidth={320} minHeight={200} onResizeEnd={onResizeEnd} />
       <NodeHandles id={id} />
       <div className="node-stripe" style={{ background: `var(--r-${roleColorKey})` }} />
@@ -123,6 +125,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
         {(rt?.status === 'failed' || rt?.status === 'exited' || rt?.status === 'stopped') && <StoppedOverlay rt={rt} />}
       </TermBody>
       <LiveFooter id={id} t={t} createdBy={data.node.createdBy} floor={data.node.floor ?? ''} />
+      <TurnCard id={id} working={state === 'work'} />
     </div>
   );
 }

@@ -60,6 +60,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 | `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools` |
 | `internal/roles`, `internal/team` | biblioteca de papéis; `squad new/connect/close` (gerente) |
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `squad portal` |
+| `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |
 | `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `squad floor`, `/api/floors` |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
 | `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` |
@@ -72,9 +73,5 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 
 ## Pendências
 
-- **Decisões do usuário, a perguntar antes da etapa:**
-  - R6: o modelo dos resumos;
-  - R8: o que é "uso remoto";
-  - R9: manter ou cortar o Playwright.
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo, R6 (resumos de turno):** pergunte primeiro qual modelo usar (está nas decisões acima) e traga o plano detalhado antes de começar.
+- **Próximo passo:** a segunda rodada terminou no R6 (o usuário cortou R7, R8 e R9). Combine com o usuário o que vem a seguir; os candidatos estão em "Fora da rodada", no PLAN.

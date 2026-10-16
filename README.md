@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP e os andares (git worktree), com seletor no topo. Em seguida, resumos de turno (veja o plano). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP, os andares (git worktree), com seletor no topo, e os resumos de turno. Com eles, a segunda rodada está completa (veja o plano). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -120,6 +120,18 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - **O Planejador decide sozinho:** quando divide a implementação em duas ou mais frentes em paralelo no mesmo repositório, cria um andar por frente. O Revisor e o Testador de cada frente vão para o andar dela. Com uma frente só, ele trabalha no térreo. No fim, aterrissa uma frente por vez com merge, e você aprova cada uma. Quem editou o papel Planejador antes continua com a própria versão; "Restaurar padrão" traz a regra.
 - Gerentes criam e aterrissam andares (só os que eles criaram); qualquer agente lista. Pelo MCP, `floors` (listar, criar) vem liberada, e `floor_land` pede aprovação.
 - Um workspace com andares não pode ser removido nem mudar de pasta antes de aterrissar ou descartar os andares.
+
+**Resumos de turno:** quando um agente (Claude, Codex, Devin, Gemini) termina um turno, aparece um cartão embaixo do terminal.
+- **O cartão:** mostra "Turno · 2m10s" e a mensagem final do agente, que o hook dele já entrega, então não custa nada. O Gemini não tem hook, e o cartão usa o fim da tela. Clicar no texto abre o turno inteiro: o pedido que o iniciou e a mensagem final. O cartão some quando o próximo turno começa, ou com o ×, e o turno também entra na Atividade.
+- **"Resumir"**, no cartão, pede a um agente um resumo de verdade, com até 3 próximos passos. Clicar num passo abre o Composer para aquele terminal, com o texto pronto.
+- **"Resumo"**, no topo da Atividade, dá uma visão geral do workspace: o que cada agente fez e o que pede a sua atenção.
+- **Quem escreve os resumos** (⚙ → Resumos…, por workspace):
+  - **Automático:** cada terminal é resumido pela CLI do próprio agente: `claude -p` (com o modelo Haiku), `devin -p`, `codex exec` ou `gemini -p`. Sem ela, o Squad usa a primeira instalada. Assim o texto de um terminal Devin fica com o Devin.
+  - Dá para fixar uma das CLIs ou desligar.
+  - Sem nenhuma CLI no PATH, o botão "Resumir" não aparece, e os cartões continuam funcionando.
+- **Custo:** cada resumo gasta um pouco do plano da ferramenta que o escreve, e só roda quando você clica.
+- **Isolamento:** o resumo roda numa pasta vazia, sem ferramentas e sem mexer no projeto. No Claude, também sem as suas configurações, os seus hooks e sem salvar sessão no histórico.
+- **Duração:** os cartões ficam em memória e somem quando o `squad serve` reinicia.
 
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 

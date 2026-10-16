@@ -103,6 +103,38 @@ export interface FloorChanges {
   missing?: boolean;
 }
 
+/** An agent's last turn (internal/summary): its final message, and a summary on demand. */
+export interface TurnCard {
+  terminal: string;
+  start?: string;
+  at: string;
+  /** "hook": the agent's final message; "screen": its screen's last lines. */
+  source: 'hook' | 'screen';
+  prompt?: string;
+  message: string;
+  summary?: { text: string; steps: string[]; by: string; at: string };
+  summarizing?: boolean;
+  error?: string;
+}
+
+export type SummaryEngine = 'auto' | 'claude' | 'devin' | 'codex' | 'gemini' | 'off';
+
+/** GET /api/summary/settings. */
+export interface SummarySettings {
+  cards: boolean;
+  engine: SummaryEngine;
+  engines: { name: string; path?: string; available: boolean }[];
+}
+
+/** POST /api/summary/workspace. */
+export interface WorkspaceOverview {
+  text: string;
+  terminals: { name: string; status: string }[];
+  attention: string[];
+  by: string;
+  at: string;
+}
+
 export interface LandResult {
   floor: string;
   branch: string;

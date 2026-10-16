@@ -12,6 +12,7 @@ import (
 // HookEvent is what an agent hook means for Squad.
 type HookEvent struct {
 	TurnStart    bool   // the agent started working on a prompt
+	Prompt       string // that prompt (when TurnStart)
 	TurnEnd      bool   // the agent finished its turn
 	Message      string // final assistant message (when TurnEnd)
 	Failure      bool   // the turn ended with an error
@@ -26,7 +27,11 @@ func ParseHook(name string, body []byte) (HookEvent, bool) {
 	case "devin-session-start":
 		return HookEvent{SessionStart: true}, true
 	case "claude-prompt", "devin-prompt":
-		return HookEvent{TurnStart: true}, true
+		var p struct {
+			Prompt string `json:"prompt"`
+		}
+		_ = json.Unmarshal(body, &p) // the start counts even without a readable prompt
+		return HookEvent{TurnStart: true, Prompt: p.Prompt}, true
 	case "claude-stop", "claude-stop-failure", "devin-stop":
 		// Devin's Stop payload follows Claude Code's: last_assistant_message
 		// (Devin CLI v3000.5.20+), no transcript_path and no failure event.
@@ -93,7 +98,7 @@ func HookHandler(mon *activity.Monitor, callerOf func(*http.Request) string, rol
 			}})
 			return
 		case ev.TurnStart:
-			mon.SignalStart(id)
+			mon.SignalStart(id, ev.Prompt)
 		case ev.TurnEnd:
 			reason := r.PathValue("agent")
 			mon.Signal(activity.TurnEnd{ID: id, Reason: reason, Message: ev.Message})

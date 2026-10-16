@@ -19,6 +19,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
+	"github.com/nathanribeiroo/squad/internal/summary"
 	"github.com/nathanribeiroo/squad/internal/team"
 )
 
@@ -40,6 +41,7 @@ type App struct {
 	Notes   *notes.Service
 	Portals *portal.Service
 	Floors  *floors.Service
+	Summary *summary.Service
 
 	exts   []agentbus.Extension
 	cancel context.CancelFunc
@@ -63,10 +65,14 @@ func New(o Options) (*App, error) {
 	srv.SetStateExtra(bus.StateExtra)
 	srv.OnEdgeRemoved(bus.EdgeRemoved)
 	var launcher *agents.Launcher
+	var summaries *summary.Service
 	srv.OnNodeRemoved(func(n store.Node) {
 		bus.NodeRemoved(n)
 		if launcher != nil {
 			launcher.Forget(n.ID)
+		}
+		if summaries != nil {
+			summaries.Forget(n.ID)
 		}
 	})
 	// roleOf is the instructions a terminal's agent receives for its role.
@@ -80,14 +86,29 @@ func New(o Options) (*App, error) {
 		}
 		return roles.Instructions(r, n.Terminal.Name), true
 	}
-	bus.SetRoleNames(func(id string) string {
+	roleName := func(id string) string {
 		if o.Roles != nil {
 			if r, ok := o.Roles.Get(id); ok {
 				return r.Name
 			}
 		}
 		return ""
+	}
+	bus.SetRoleNames(roleName)
+	// Turn cards and summaries (R6).
+	summaries = summary.New(summary.Options{
+		Canvas: srv, Logger: o.Server.Logger, IsAgent: agentbus.IsAgent, HasHooks: agents.HasHooks, RoleName: roleName,
+		State: func(id string) activity.State { st, _ := mon.State(id); return st },
+		Pending: func() []summary.PendingRequest {
+			var out []summary.PendingRequest
+			for _, p := range bus.Pending() {
+				out = append(out, summary.PendingRequest{From: p.FromName, To: p.ToName, Preview: p.Preview})
+			}
+			return out
+		},
 	})
+	summaries.Attach(mon)
+	summaries.Register(srv.HandleSession)
 	notesSvc, err := notes.New(srv.Store(), srv.Bus(), o.Server.Logger)
 	if err != nil {
 		return nil, err
@@ -172,7 +193,7 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, exts: exts}
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, exts: exts}
 	return app, nil
 }
 
@@ -183,6 +204,7 @@ func (a *App) Start() {
 	a.cancel = cancel
 	a.Monitor.Start()
 	_ = a.Notes.Watch(ctx)
+	a.Summary.Watch(ctx)
 	a.Portals.Start()
 	a.Floors.Start()
 	a.Server.StartTerminals()

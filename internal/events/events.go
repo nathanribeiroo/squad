@@ -31,6 +31,8 @@ const (
 	ServerStatus        = "server.status"
 	WorkspaceUpdated    = "workspace.updated" // name, folder or color changed
 	FloorsUpdated       = "floors.updated"    // the floors and their config (floors.State)
+	TurnCard            = "turn.card"         // an agent's last turn, or its summary (summary.Card)
+	SummarySettings     = "summary.settings"  // turn cards and summary engine (summary.Settings)
 )
 
 // Event is one notification.

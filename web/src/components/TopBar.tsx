@@ -132,6 +132,16 @@ function SettingsMenu({ onClose }: { onClose: () => void }) {
         <Icon name="badge" size={18} />
         Papéis…
       </button>
+      <button
+        className="tb-menu-item"
+        onClick={() => {
+          onClose();
+          useSquad.getState().setSummaryDialog('settings');
+        }}
+      >
+        <Icon name="psychology" size={18} />
+        Resumos…
+      </button>
       <div className="tb-menu-title">Terminal</div>
       {(['noite', 'papel'] as const).map((t) => (
         <button key={t} className={`tb-menu-item${term === t ? ' on' : ''}`} onClick={() => setTerm(t)}>

@@ -1,6 +1,6 @@
 // Global client state, fed by /ws/events.
 import { create } from 'zustand';
-import { setWorkspace } from '../api/client';
+import { api, setWorkspace } from '../api/client';
 import type {
   Floor,
   FloorConfig,
@@ -10,14 +10,16 @@ import type {
   ServerEvent,
   StateExtra,
   StateResponse,
+  SummarySettings,
   TerminalRuntime,
+  TurnCard,
   WEdge,
   WNode,
   Workspace,
   WorkspaceSummary,
 } from '../api/types';
 
-export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note';
+export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn';
 
 export interface ActivityItem {
   key: string;
@@ -106,6 +108,14 @@ interface SquadState {
   floorDialog: FloorDialog | null;
   /** A node to center once its floor is on screen (a wire to another floor). */
   focusRequest: string | null;
+  /** Each agent terminal's last turn (internal/summary). */
+  cards: Record<string, TurnCard>;
+  /** Cards closed with ×: terminal → the turn's time. */
+  hiddenCards: Record<string, string>;
+  summarySettings: SummarySettings | null;
+  summaryDialog: 'overview' | 'settings' | null;
+  /** Text the Composer starts with (a suggested next step). */
+  composerDraft: string | null;
   workspace: Workspace | null;
   runtime: Record<string, TerminalRuntime>;
   extra: StateExtra;
@@ -148,7 +158,14 @@ interface SquadState {
   apply(ev: ServerEvent): void;
   setConnection(c: SquadState['connection']): void;
   setDrawer(open: boolean): void;
-  setComposer(open: boolean, target?: string | null): void;
+  /** Opens or closes the Composer; draft is text to start with. */
+  setComposer(open: boolean, target?: string | null, draft?: string): void;
+  takeComposerDraft(): string | null;
+  /** Reads the cards and the summary settings (on connecting). */
+  loadSummaries(): void;
+  hideCard(terminal: string, at: string): void;
+  setSummaryDialog(d: SquadState['summaryDialog']): void;
+  setSummarySettings(s: SummarySettings): void;
   setNewTerm(open: boolean): void;
   setEditTerm(id: string | null): void;
   setFocusedTerminal(id: string | null): void;
@@ -216,6 +233,11 @@ const perWorkspace = {
   floorStatus: null,
   floorDialog: null,
   focusRequest: null,
+  cards: {},
+  hiddenCards: {},
+  summarySettings: null,
+  summaryDialog: null,
+  composerDraft: null,
 } satisfies Partial<SquadState>;
 
 const WS_KEY = 'squad.ws';
@@ -251,6 +273,11 @@ export const useSquad = create<SquadState>((set, get) => ({
   floorStatus: null,
   floorDialog: null,
   focusRequest: null,
+  cards: {},
+  hiddenCards: {},
+  summarySettings: null,
+  summaryDialog: null,
+  composerDraft: null,
   workspace: null,
   runtime: {},
   extra: emptyExtra,
@@ -452,6 +479,22 @@ export const useSquad = create<SquadState>((set, get) => ({
       case 'workspace.updated':
         if (ws) set({ workspace: { ...ws, name: d.name, cwd: d.cwd, color: d.color } });
         return;
+      case 'turn.card': {
+        const c = d as TurnCard;
+        const key = `turn-${c.terminal}-${c.at}`;
+        const text = c.summary?.text ?? c.message.split('\n').find((l) => l.trim()) ?? '';
+        const known = st.activity.some((a) => a.key === key);
+        set({
+          cards: { ...st.cards, [c.terminal]: c },
+          activity: known
+            ? st.activity.map((a) => (a.key === key ? { ...a, text } : a))
+            : [{ key, time: c.at, from: c.terminal, fromName: nameOf(ws, c.terminal), toName: '', text, outcome: 'turn' as const }, ...st.activity].slice(0, 200),
+        });
+        return;
+      }
+      case 'summary.settings':
+        set({ summarySettings: d as SummarySettings });
+        return;
       case 'floors.updated': {
         if (!ws) return;
         const floors = d.floors as Floor[];
@@ -476,7 +519,47 @@ export const useSquad = create<SquadState>((set, get) => ({
 
   setConnection: (connection) => set({ connection }),
   setDrawer: (drawerOpen) => set({ drawerOpen }),
-  setComposer: (composerOpen, target) => set({ composerOpen, composerTarget: target === undefined ? get().composerTarget : target }),
+  setComposer: (composerOpen, target, draft) =>
+    set({ composerOpen, composerTarget: target === undefined ? get().composerTarget : target, composerDraft: draft ?? null }),
+  takeComposerDraft: () => {
+    const d = get().composerDraft;
+    if (d !== null) set({ composerDraft: null });
+    return d;
+  },
+  loadSummaries: () => {
+    const ws = get().activeWs;
+    api.cards().then(
+      (r) => {
+        const st = get();
+        if (st.activeWs !== ws) return;
+        // The turns that ended before the page opened join the activity.
+        const known = new Set(st.activity.map((a) => a.key));
+        const turns: ActivityItem[] = r.cards
+          .map((c) => ({
+            key: `turn-${c.terminal}-${c.at}`,
+            time: c.at,
+            from: c.terminal,
+            fromName: nameOf(st.workspace, c.terminal),
+            toName: '',
+            text: c.summary?.text ?? c.message.split('\n').find((l) => l.trim()) ?? '',
+            outcome: 'turn' as const,
+          }))
+          .filter((a) => !known.has(a.key));
+        set({
+          cards: Object.fromEntries(r.cards.map((c) => [c.terminal, c])),
+          activity: [...st.activity, ...turns].sort((a, b) => Date.parse(b.time) - Date.parse(a.time)).slice(0, 200),
+        });
+      },
+      () => {},
+    );
+    api.summarySettings().then(
+      (s) => get().activeWs === ws && set({ summarySettings: s }),
+      () => {},
+    );
+  },
+  hideCard: (terminal, at) => set({ hiddenCards: { ...get().hiddenCards, [terminal]: at } }),
+  setSummaryDialog: (summaryDialog) => set({ summaryDialog }),
+  setSummarySettings: (summarySettings) => set({ summarySettings }),
   // One terminal form at a time: new or settings.
   setNewTerm: (newTermOpen) => set(newTermOpen ? { newTermOpen, editTermId: null } : { newTermOpen }),
   setEditTerm: (editTermId) => set(editTermId ? { editTermId, newTermOpen: false } : { editTermId }),

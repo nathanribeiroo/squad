@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useBranch } from '../lib/floors';
 import type { IconName } from '../lib/icons';
 import { clock, elapsed } from '../lib/model';
 import { useNodeRoleColor } from '../lib/roles';
@@ -14,6 +15,7 @@ const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: n
   cancelled: { label: () => 'Cancelado', icon: 'block', state: 'err' },
   held: { label: () => 'Retido', icon: 'pause', state: 'wait' },
   note: { label: () => 'Nota editada', icon: 'description', state: 'idle' },
+  turn: { label: () => 'Fim do turno', icon: 'check_circle', state: 'done' },
 };
 
 export function ActivityDrawer() {
@@ -24,6 +26,8 @@ export function ActivityDrawer() {
   const extra = useSquad((s) => s.extra);
   const roleOf = useNodeRoleColor();
   const [filter, setFilter] = useState<string | null>(null);
+  const branch = useBranch(useSquad((s) => s.activeFloor));
+  const canSummarize = useSquad((s) => !!s.summarySettings && s.summarySettings.engine !== 'off' && s.summarySettings.engines.some((e) => e.available));
 
   const people = useMemo(() => {
     const names = new Map<string, string>();
@@ -48,8 +52,17 @@ export function ActivityDrawer() {
     <aside className="activity-drawer" aria-label="Atividade">
       <header className="ad-head">
         <span className="ad-title">Atividade</span>
-        <span className="ad-sub">{ws?.name ?? ''} · main</span>
+        <span className="ad-sub">
+          {ws?.name ?? ''}
+          {branch && ` · ${branch}`}
+        </span>
         <span style={{ flex: 1 }} />
+        {canSummarize && (
+          <button className="btn ad-overview" onClick={() => useSquad.getState().setSummaryDialog('overview')} title="Uma visão geral do que a equipe está fazendo">
+            <Icon name="psychology" size={16} />
+            Resumo
+          </button>
+        )}
         <button className="icon-btn" onClick={() => setDrawer(false)} aria-label="Fechar">
           <Icon name="close" size={18} />
         </button>
@@ -75,8 +88,14 @@ export function ActivityDrawer() {
               <div>
                 <div className="ad-line">
                   <span style={{ color: a.from ? `var(--r-${roleOf(a.from)})` : 'var(--text)' }}>{a.fromName || 'Você'}</span>
-                  <Icon name={a.outcome === 'note' ? 'edit' : 'arrow_forward'} size={15} style={{ color: 'var(--text-2)' }} />
-                  <span style={{ color: a.to ? `var(--r-${roleOf(a.to)})` : 'var(--text)' }}>{a.toName}</span>
+                  {a.outcome === 'turn' ? (
+                    <span className="ad-turn">terminou o turno</span>
+                  ) : (
+                    <>
+                      <Icon name={a.outcome === 'note' ? 'edit' : 'arrow_forward'} size={15} style={{ color: 'var(--text-2)' }} />
+                      <span style={{ color: a.to ? `var(--r-${roleOf(a.to)})` : 'var(--text)' }}>{a.toName}</span>
+                    </>
+                  )}
                   {a.id && <span className="mono ad-id">{a.id}</span>}
                 </div>
                 {a.text && <div className="ad-msg">{a.text}</div>}

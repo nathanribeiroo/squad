@@ -117,7 +117,23 @@ function ComposerPanel() {
   const [busy, setBusy] = useState(false);
   const [empty, setEmpty] = useState(true);
 
-  useEffect(() => editor.current?.focus(), []);
+  useEffect(() => {
+    const el = editor.current;
+    if (!el) return;
+    el.focus();
+    // A suggested next step opens the Composer with its text.
+    const draft = useSquad.getState().takeComposerDraft();
+    if (draft) {
+      el.textContent = draft;
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      setEmpty(false);
+    }
+  }, []);
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const terminals = nodes.filter((n) => n.terminal);
