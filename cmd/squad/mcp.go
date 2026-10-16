@@ -20,8 +20,8 @@ import (
 const mcpInstructions = `Squad: a canvas where agents and terminals are connected by wires; you can only reach what is connected to you.
 Start with list. ask sends a message to a connected agent and waits for its reply (its final answer; it can take minutes).
 note reads and writes connected notes; portal drives a connected browser page the user watches live.
-Managers (list says so) create their team with new and wire nodes with connect.
-keys, portal_eval and new_shell can run commands, so they ask the user first.`
+Managers (list says so) create their team with new and wire nodes with connect; floors give a team its own copy of the repository (a git worktree on a branch).
+keys, portal_eval and new_shell can run commands, and floor_land merges branches, so they ask the user first.`
 
 // runMCP serves Squad's commands as MCP tools over stdio (squad mcp). The
 // agent starts it inside a Squad terminal; each call goes to the Squad server
@@ -137,6 +137,18 @@ type (
 		Role  string `json:"role,omitempty" jsonschema:"role id or name: plan, impl, rev, test or another role"`
 		Agent string `json:"agent,omitempty" jsonschema:"claude, codex, devin or gemini (default: yours)"`
 		Cwd   string `json:"cwd,omitempty" jsonschema:"folder, relative to the workspace (default: yours)"`
+		Floor string `json:"floor,omitempty" jsonschema:"floor name, from floors list (default: yours; ground is the ground floor)"`
+	}
+	floorsInput struct {
+		Action   string `json:"action" jsonschema:"list | create"`
+		Name     string `json:"name,omitempty" jsonschema:"create: the new floor's name"`
+		Branch   string `json:"branch,omitempty" jsonschema:"create: its branch (default: from the name)"`
+		Existing bool   `json:"existing,omitempty" jsonschema:"create: open an existing branch instead of creating one"`
+	}
+	landInput struct {
+		Name  string `json:"name" jsonschema:"the floor's name"`
+		Merge bool   `json:"merge,omitempty" jsonschema:"merge its branch into the branch it started from first"`
+		Into  string `json:"into,omitempty" jsonschema:"merge into this branch instead"`
 	}
 	connectInput struct {
 		A string `json:"a" jsonschema:"a node name (terminal, portal or note)"`
@@ -245,7 +257,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 				return nil, err
 			}
 			args := []string{"new", n}
-			for _, f := range [][3]string{{"--role", "role", in.Role}, {"--agent", "agent", in.Agent}, {"--cwd", "cwd", in.Cwd}} {
+			for _, f := range [][3]string{{"--role", "role", in.Role}, {"--agent", "agent", in.Agent}, {"--cwd", "cwd", in.Cwd}, {"--floor", "floor", in.Floor}} {
 				if args, err = optional(args, f[0], f[1], f[2]); err != nil {
 					return nil, err
 				}
@@ -270,6 +282,25 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 		false, func(in nameInput) ([]string, error) {
 			n, err := name("name", in.Name)
 			return []string{"close", n}, err
+		})
+
+	addTool(s, env, "floors", "Floors: isolated copies of the repository (a git worktree on its own branch), each with its own canvas. list shows them; create (managers) makes one from the last commit, then put agents on it with new's floor. Its agents work and commit in its folder.",
+		false, func(in floorsInput) ([]string, error) {
+			switch in.Action {
+			case "list":
+				return []string{"floor", "list"}, nil
+			case "create":
+				n, err := name("name", in.Name)
+				if err != nil {
+					return nil, err
+				}
+				args, err := optional([]string{"floor", "create", n}, "--branch", "branch", in.Branch)
+				if err == nil && in.Existing {
+					args = append(args, "--existing")
+				}
+				return args, err
+			}
+			return nil, fmt.Errorf("unknown action %q (floor_land lands a floor)", in.Action)
 		})
 
 	// These can run commands: the user approves each call.
@@ -299,6 +330,19 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 				return nil, errors.New("js is required")
 			}
 			return append(args, "eval", in.JS), nil
+		})
+
+	addTool(s, env, "floor_land", "Managers: land a floor you created: close its terminals and remove its folder, keeping its branch; merge or into merges the branch first. Refused while it has uncommitted changes. The user approves it.",
+		false, func(in landInput) ([]string, error) {
+			n, err := name("name", in.Name)
+			if err != nil {
+				return nil, err
+			}
+			args := []string{"floor", "land", n}
+			if in.Merge && strings.TrimSpace(in.Into) == "" {
+				args = append(args, "--merge")
+			}
+			return optional(args, "--into", "into", in.Into)
 		})
 
 	addTool(s, env, "new_shell", "Managers: create a terminal that runs a command line (a dev server, a watcher) next to you, connected to you. The user approves it.",

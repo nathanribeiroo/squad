@@ -30,6 +30,7 @@ const (
 	MessageSent         = "message.sent" // the user sent a Composer message to a terminal
 	ServerStatus        = "server.status"
 	WorkspaceUpdated    = "workspace.updated" // name, folder or color changed
+	FloorsUpdated       = "floors.updated"    // the floors and their config (floors.State)
 )
 
 // Event is one notification.

@@ -73,11 +73,13 @@ var agentTypes = []string{"claude", "codex", "devin", "gemini", "shell", "custom
 
 // Usage of the manager commands.
 const Usage = `Manager commands (terminals in manager mode, e.g. the Planejador):
-  squad new "Name" [--role impl] [--agent claude] [--cwd dir] [--command "…"]
+  squad new "Name" [--role impl] [--agent claude] [--cwd dir] [--floor F] [--command "…"]
         create a terminal next to you, connected to you and started; returns
-        once its agent is ready. Defaults: your agent, your folder, no role.
-        Roles: plan, impl, rev, test or any role name. Agents: claude, codex,
-        devin, gemini, shell (a plain shell; --command runs in it), custom.
+        once its agent is ready. Defaults: your agent, your folder, your floor,
+        no role. Roles: plan, impl, rev, test or any role name. Agents: claude,
+        codex, devin, gemini, shell (a plain shell; --command runs in it),
+        custom. --floor puts it on a floor (squad floor list), working in the
+        floor's copy of the repository; --floor ground is the ground floor.
   squad connect "A" ["B"]   connect A and B (or you and A): terminals, notes, portals
   squad close "Name"        stop and remove a terminal (or portal) you created`
 
@@ -132,7 +134,7 @@ func (s *Service) Note(caller string) string {
 	if !ok || !s.IsManager(me) {
 		return ""
 	}
-	return fmt.Sprintf("You are a manager: create the terminals you need with squad new (%d of %d created; squad new --help).", s.created(caller, store.KindTerminal), s.o.MaxTeam)
+	return fmt.Sprintf("You are a manager: create the terminals you need with squad new (%d of %d created; squad new --help). For parallel work on the same files, give each front its own floor (squad floor --help).", s.created(caller, store.KindTerminal), s.o.MaxTeam)
 }
 
 func (s *Service) created(caller, kind string) int {
@@ -146,7 +148,7 @@ func (s *Service) created(caller, kind string) int {
 }
 
 type newArgs struct {
-	name, agent, role, cwd, command string
+	name, agent, role, cwd, command, floor string
 }
 
 func parseNew(args []string) (newArgs, error) {
@@ -164,6 +166,8 @@ func parseNew(args []string) (newArgs, error) {
 			dst = &a.cwd
 		case "--command":
 			dst = &a.command
+		case "--floor":
+			dst = &a.floor
 		default:
 			if strings.HasPrefix(arg, "--") {
 				return a, fmt.Errorf("unknown option %s", arg)
@@ -225,11 +229,24 @@ func (s *Service) create(ctx context.Context, me store.Node, args []string) agen
 		cwd = me.Terminal.Cwd
 	}
 	st := s.o.Canvas.Store()
+	floor, floorName := me.Floor, ""
+	if a.floor != "" && !store.IsGround(a.floor) {
+		f, ok := st.FindFloor(a.floor)
+		if !ok {
+			return res(404, fmt.Sprintf("squad: no floor named %q (squad floor list)", a.floor))
+		}
+		floor = f.ID
+	} else if a.floor != "" {
+		floor = ""
+	}
+	if f, ok := st.FindFloor(floor); ok {
+		floorName = f.Name
+	}
 	w, h := 560.0, 440.0 // a new terminal's size on the canvas
-	x, y := store.FreeSpot(st.Snapshot().Nodes, me, w, h)
+	x, y := store.FreeSpot(store.OnFloor(st.Snapshot().Nodes, floor), me, w, h)
 	off := false
 	n, err := s.o.Canvas.AddNode(store.Node{
-		Kind: store.KindTerminal, X: x, Y: y, W: w, H: h, CreatedBy: me.ID,
+		Kind: store.KindTerminal, X: x, Y: y, W: w, H: h, CreatedBy: me.ID, Floor: floor,
 		Terminal: &store.TerminalData{Name: a.name, Agent: a.agent, Command: a.command, Shell: me.Terminal.Shell, Cwd: cwd, Role: role, Manager: &off},
 	})
 	switch {
@@ -246,6 +263,9 @@ func (s *Service) create(ctx context.Context, me store.Node, args []string) agen
 	if role != "" {
 		r, _ := s.o.Roles.Get(role)
 		what += ", role " + strconv.Quote(r.Name)
+	}
+	if floorName != "" {
+		what += ", on floor " + strconv.Quote(floorName)
 	}
 	if a.agent == "shell" || a.agent == "custom" {
 		return res(200, fmt.Sprintf("Created %q (%s), connected to you. Read its screen with squad check %q.", a.name, what, a.name))

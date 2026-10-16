@@ -60,7 +60,7 @@ func TestMCPTools(t *testing.T) {
 	s := e.mcpSession(plan)
 
 	tools, err := s.ListTools(context.Background(), nil)
-	if err != nil || len(tools.Tools) != 13 {
+	if err != nil || len(tools.Tools) != 15 {
 		t.Fatalf("tools: %v %d", err, len(tools.Tools))
 	}
 
@@ -88,6 +88,7 @@ func TestMCPTools(t *testing.T) {
 		{"new", map[string]any{"name": "X", "agent": "shell"}, "new_shell"},
 		{"new", map[string]any{"name": "--command=rm", "agent": "claude"}, "can't start with -"},
 		{"portal", map[string]any{"action": "eval"}, "unknown action"},
+		{"floors", map[string]any{"action": "land", "name": "X"}, "floor_land"},
 	} {
 		if out, bad := call(t, s, c.tool, c.args); !strings.Contains(out, c.want) || (c.tool != "ask_batch" && !bad) {
 			t.Fatalf("%s %v: %v %s", c.tool, c.args, bad, out)
@@ -122,5 +123,16 @@ func TestMCPTools(t *testing.T) {
 	}
 	if out, bad := call(t, s, "close", map[string]any{"name": "Dev"}); bad || !strings.Contains(out, `Closed "Dev"`) {
 		t.Fatalf("close: %v %s", bad, out)
+	}
+
+	// Floors (the workspace folder here isn't a repository).
+	if out, bad := call(t, s, "floors", map[string]any{"action": "list"}); bad || !strings.Contains(out, "No floors yet") {
+		t.Fatalf("floors list: %v %s", bad, out)
+	}
+	if out, bad := call(t, s, "floors", map[string]any{"action": "create", "name": "Login"}); !bad || !strings.Contains(out, "not in a git repository") {
+		t.Fatalf("floors create: %v %s", bad, out)
+	}
+	if out, bad := call(t, s, "floor_land", map[string]any{"name": "Login", "merge": true}); !bad || !strings.Contains(out, `no floor named "Login"`) {
+		t.Fatalf("floor_land is refused as unsafe: %v %s", bad, out)
 	}
 }

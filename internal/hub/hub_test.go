@@ -153,6 +153,22 @@ func TestCreateOpenUpdateRemove(t *testing.T) {
 		t.Fatalf("unknown workspace: %d", code)
 	}
 
+	// A workspace with floors keeps its folder and can't be removed.
+	stB := h.hub.App(b.ID).Server.Store()
+	if _, err := stB.AddFloor(store.Floor{ID: "x", Name: "X"}); err != nil {
+		t.Fatal(err)
+	}
+	other := t.TempDir()
+	if _, err := h.hub.Update(b.ID, Patch{Cwd: &other}); !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), "floors") {
+		t.Fatalf("move a workspace with floors: %v", err)
+	}
+	if err := h.hub.Remove(b.ID); !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), "floors") {
+		t.Fatalf("remove a workspace with floors: %v", err)
+	}
+	if err := stB.RemoveFloor("x"); err != nil {
+		t.Fatal(err)
+	}
+
 	// Remove moves the files to the trash; the last one stays.
 	if code, data := h.do("DELETE", "/api/workspaces/"+b.ID, nil, nil); code != http.StatusNoContent {
 		t.Fatalf("remove: %d %s", code, data)

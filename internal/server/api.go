@@ -79,7 +79,7 @@ func (s *Server) handleAddNode(w http.ResponseWriter, r *http.Request) {
 // AddNode adds a node as the canvas does: default size, the preparers
 // (portal names, note files), then a terminal starts.
 func (s *Server) AddNode(n store.Node) (store.Node, error) {
-	if err := checkTerminalDir(n.Terminal, s.store.Snapshot().Cwd); err != nil {
+	if err := checkTerminalDir(n.Terminal, s.cwdResolver(n.Floor)); err != nil {
 		return store.Node{}, err
 	}
 	if n.W == 0 && n.H == 0 {
@@ -132,7 +132,8 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	wsCwd := s.store.Snapshot().Cwd // read before UpdateNode takes the store lock
+	cur, _ := s.store.Node(id)
+	resolve := s.cwdResolver(cur.Floor) // read before UpdateNode takes the store lock
 	n, err := s.store.UpdateNode(id, func(n *store.Node) error {
 		if p.X != nil {
 			n.X = *p.X
@@ -151,7 +152,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 				return errors.Join(store.ErrInvalid, errors.New("terminal needs a name"))
 			}
 			if p.Terminal.Cwd != n.Terminal.Cwd {
-				if err := checkTerminalDir(p.Terminal, wsCwd); err != nil {
+				if err := checkTerminalDir(p.Terminal, resolve); err != nil {
 					return err
 				}
 			}

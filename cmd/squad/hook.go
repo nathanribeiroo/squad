@@ -68,7 +68,7 @@ func debugf(w io.Writer, format string, a ...any) {
 // ~/.config/devin/skills/<name>/SKILL.md, same format).
 const skillMD = `---
 name: squad
-description: Talk to other agents and terminals connected to you on the Squad canvas, read or write connected notes, use or open portals (a live browser page) and, as a manager, create your team of agents. Use when a message starts with [de: <Name> · pedido <id>], when the user asks you to ask, tell, delegate to or check on another agent, to plan work for several agents, to read/update a note, or to look at, click or test something in the portal / browser.
+description: Talk to other agents and terminals connected to you on the Squad canvas, read or write connected notes, use or open portals (a live browser page) and, as a manager, create your team of agents and floors (isolated copies of the repository). Use when a message starts with [de: <Name> · pedido <id>], when the user asks you to ask, tell, delegate to or check on another agent, to plan work for several agents, to read/update a note, or to look at, click or test something in the portal / browser.
 ---
 
 # Squad
@@ -79,8 +79,9 @@ The ` + "`squad`" + ` command is on your PATH (if not, use "$SQUAD_CLI").
 
 If your session has the squad MCP tools (` + "`mcp__squad__list`" + `, ` + "`ask`" + `, ` + "`note`" + `,
 ` + "`portal`" + `, ` + "`new`" + `…), prefer them: same commands with typed arguments, and most
-need no approval. ` + "`keys`" + `, ` + "`new_shell`" + ` and ` + "`portal_eval`" + ` can run commands, so the
-user approves each call. The CLI below works everywhere.
+need no approval. ` + "`keys`" + `, ` + "`new_shell`" + ` and ` + "`portal_eval`" + ` can run commands, and
+` + "`floor_land`" + ` merges branches, so the user approves each call. The CLI below
+works everywhere.
 
 ## Commands
 
@@ -93,6 +94,7 @@ user approves each call. The CLI below works everywhere.
 - ` + "`squad note …`" + `: read and write connected notes (` + "`squad note help`" + `).
 - ` + "`squad portal …`" + `: use a connected portal, a browser page the user also sees live on the canvas (` + "`squad portal help`" + `).
 - ` + "`squad new`" + `, ` + "`squad connect`" + `, ` + "`squad close`" + `: managers only, see below.
+- ` + "`squad floor list`" + `: the floors of the workspace; ` + "`create`" + ` and ` + "`land`" + ` are for managers, see below.
 
 For long messages use a heredoc: ` + "`squad ask \"Name\" <<'EOF'`" + ` … ` + "`EOF`" + `.
 
@@ -132,6 +134,26 @@ removes one you created.
    is no longer needed. Leave the rest for the user to see.
 
 Agents you create can't create others, and there is a limit per manager.
+
+## Floors (managers)
+
+A floor is an isolated copy of the repository: a git worktree on its own
+branch, outside the project folder, with its own canvas. Use one per front
+of work that would otherwise touch the same files at the same time.
+
+1. ` + "`squad floor create \"Login\"`" + ` makes it from the last commit (uncommitted
+   changes stay behind), on branch ` + "`login`" + `, and runs the workspace's setup command.
+2. ` + "`squad new \"Bia\" --role impl --floor \"Login\"`" + ` creates an agent on that floor,
+   connected to you; it works in the floor's folder. Tell it to commit there.
+3. When the floor's work is done and reviewed: ` + "`squad floor land \"Login\" --merge`" + `
+   merges its branch into the branch it started from (` + "`--into main`" + ` for another),
+   closes its terminals and removes its folder; the branch is kept. Without
+   ` + "`--merge`" + ` nothing is merged. Landing is refused while the floor has uncommitted
+   changes, and a merge with conflicts changes nothing: have an agent on the
+   floor merge the base branch into the floor's branch, resolve, commit, and
+   land again.
+
+You can only land floors you created; the user can land or discard any floor.
 
 ## Receiving requests
 

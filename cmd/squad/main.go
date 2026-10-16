@@ -28,6 +28,7 @@ func commands() []command {
 		{"new", "managers: create a terminal next to you, connected and started", runClient},
 		{"connect", "managers: connect two nodes of the canvas", runClient},
 		{"close", "managers: remove a terminal you created", runClient},
+		{"floor", "floors (git worktrees with their own canvas): list, create, land", runClient},
 		{"mcp", "serve the commands above as MCP tools over stdio (agents start it)", runMCP},
 		{"hook", "receive an agent hook (used by agent configs)", runHook},
 		{"install-skill", "install the Squad skill for Claude Code (-agent devin: Devin CLI)", runInstallSkill},

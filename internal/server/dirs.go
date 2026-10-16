@@ -15,10 +15,11 @@ const maxDirSuggestions = 50
 // handleDirs suggests folders for a path being typed (GET /api/dirs?path=…):
 // the subfolders of the typed parent whose names start with the last
 // segment, written the way the user typed them (relative paths stay relative
-// to the workspace folder). Hidden folders only show for a "." prefix.
+// to the workspace folder, or to its copy on ?floor=<id>). Hidden folders only
+// show for a "." prefix.
 func (s *Server) handleDirs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string][]string{
-		"suggestions": DirSuggestions(r.URL.Query().Get("path"), s.store.Snapshot().Cwd),
+		"suggestions": DirSuggestions(r.URL.Query().Get("path"), s.cwdResolver(r.URL.Query().Get("floor"))("")),
 	})
 }
 

@@ -67,9 +67,10 @@ func HasHooks(agent string) bool { return Lookup(agent).Hooks }
 // SafeMCPTools are the squad mcp tools an agent may use without asking the
 // user: in their calls the server refuses anything that would run a command
 // (keys typed into a terminal, a message to a shell, a new terminal with a
-// command line, JavaScript in a page). keys, new_shell and portal_eval are
-// the others: the user approves each call.
-var SafeMCPTools = []string{"list", "ask", "ask_batch", "check", "reply", "note", "portal", "new", "connect", "close"}
+// command line, JavaScript in a page). keys, new_shell, portal_eval and
+// floor_land (it merges branches and closes terminals) are the others: the
+// user approves each call.
+var SafeMCPTools = []string{"list", "ask", "ask_batch", "check", "reply", "note", "portal", "new", "connect", "close", "floors"}
 
 // mcpEnv is what squad mcp needs from the terminal's environment.
 var mcpEnv = []string{"SQUAD_URL", "SQUAD_TERMINAL_ID", "SQUAD_TOKEN"}

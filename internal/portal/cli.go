@@ -475,8 +475,8 @@ func (s *Service) create(caller string, args []string) agentbus.Result {
 		return res(409, fmt.Sprintf("squad: you already created %d portals, the limit; close one with squad portal close \"Name\", or navigate one with goto", mine))
 	}
 	w, h := 560.0, 420.0 // a new portal's size on the canvas
-	x, y := store.FreeSpot(nodes, me, w, h)
-	n, err := s.canvas.AddNode(store.Node{Kind: store.KindPortal, X: x, Y: y, W: w, H: h, CreatedBy: caller, Portal: &store.PortalData{URL: url, Name: name}})
+	x, y := store.FreeSpot(store.OnFloor(nodes, me.Floor), me, w, h)
+	n, err := s.canvas.AddNode(store.Node{Kind: store.KindPortal, X: x, Y: y, W: w, H: h, CreatedBy: caller, Floor: me.Floor, Portal: &store.PortalData{URL: url, Name: name}})
 	if err != nil {
 		return res(400, "squad: "+err.Error())
 	}

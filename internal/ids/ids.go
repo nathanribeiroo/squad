@@ -5,6 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // New returns a random UUIDv4 string (uppercase, like the ids users see).
@@ -29,3 +32,25 @@ func Token() string {
 	_, _ = rand.Read(b[:])
 	return hex.EncodeToString(b[:])
 }
+
+// Slug turns a name into a readable identifier: lowercase ASCII letters and
+// digits joined by "-", accents folded ("Revisão de UX" → "revisao-de-ux").
+// It is "" when the name has no letter or digit.
+func Slug(name string) string {
+	var b strings.Builder
+	for _, c := range unaccent.Replace(strings.ToLower(name)) {
+		if c < utf8.RuneSelf && (unicode.IsLetter(c) || unicode.IsDigit(c)) {
+			b.WriteRune(c)
+		} else if s := b.String(); s != "" && !strings.HasSuffix(s, "-") {
+			b.WriteByte('-')
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
+// unaccent folds the accented letters of Portuguese and its neighbors.
+var unaccent = strings.NewReplacer(
+	"á", "a", "à", "a", "â", "a", "ã", "a", "ä", "a", "é", "e", "ê", "e", "è", "e", "ë", "e",
+	"í", "i", "ì", "i", "î", "i", "ï", "i", "ó", "o", "ò", "o", "ô", "o", "õ", "o", "ö", "o",
+	"ú", "u", "ù", "u", "û", "u", "ü", "u", "ç", "c", "ñ", "n",
+)

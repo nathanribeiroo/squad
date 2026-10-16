@@ -13,6 +13,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 	"github.com/nathanribeiroo/squad/internal/agents"
 	"github.com/nathanribeiroo/squad/internal/browser"
+	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/notes"
 	"github.com/nathanribeiroo/squad/internal/portal"
 	"github.com/nathanribeiroo/squad/internal/roles"
@@ -38,6 +39,7 @@ type App struct {
 	Bus     *agentbus.Bus
 	Notes   *notes.Service
 	Portals *portal.Service
+	Floors  *floors.Service
 
 	exts   []agentbus.Extension
 	cancel context.CancelFunc
@@ -101,7 +103,9 @@ func New(o Options) (*App, error) {
 	portals.SetCanvas(srv)
 	teamSvc := team.New(team.Options{Canvas: srv, Monitor: mon, Roles: o.Roles, MaxTeam: o.Limits.MaxTeam})
 	bus.SetSelfNote(teamSvc.Note)
-	exts := append([]agentbus.Extension{notesSvc.Extension, portals.Extension, teamSvc.Extension}, o.Extensions...)
+	floorsSvc := floors.New(floors.Options{Canvas: srv, Logger: o.Server.Logger, IsManager: teamSvc.IsManager})
+	floorsSvc.Register(srv.HandleSession)
+	exts := append([]agentbus.Extension{notesSvc.Extension, portals.Extension, teamSvc.Extension, floorsSvc.Extension}, o.Extensions...)
 	srv.SetCLIHandler(bus.Handler(server.CallerID, exts...))
 	srv.HandleSession("GET /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n, ok := srv.Store().Node(r.PathValue("id"))
@@ -168,7 +172,7 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, exts: exts}
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, exts: exts}
 	return app, nil
 }
 
@@ -180,6 +184,7 @@ func (a *App) Start() {
 	a.Monitor.Start()
 	_ = a.Notes.Watch(ctx)
 	a.Portals.Start()
+	a.Floors.Start()
 	a.Server.StartTerminals()
 }
 
@@ -190,6 +195,7 @@ func (a *App) Close() {
 	}
 	a.Monitor.Stop()
 	a.Portals.Close()
+	a.Floors.Close()
 	a.Server.Shutdown()
 }
 
