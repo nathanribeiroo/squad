@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -79,31 +80,41 @@ func runClient(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	args = withStdin(args)
-	cwd, _ := os.Getwd()
-	body, _ := json.Marshal(map[string]any{"args": args, "cwd": cwd})
-	req, err := http.NewRequest("POST", strings.TrimRight(env.url, "/")+"/cli", bytes.NewReader(body))
-	if err != nil {
-		fmt.Fprintln(stderr, "squad:", err)
-		return 1
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Terminal-ID", env.id)
-	req.Header.Set("X-Squad-Token", env.token)
-	client := &http.Client{Timeout: 60 * time.Second}
+	timeout := 60 * time.Second
 	if blocking(args) {
-		client.Timeout = 0 // the agent's own tool timeout bounds the wait
+		timeout = 0 // the agent's own tool timeout bounds the wait
 	}
-	resp, err := client.Do(req)
+	code, out, err := callServer(context.Background(), env, args, false, timeout)
 	if err != nil {
 		fmt.Fprintf(stderr, "squad: can't reach the Squad server at %s: %v\nIf the request was sent, it may still be processed; check before repeating it.\n", env.url, err)
 		return 1
 	}
-	defer resp.Body.Close()
-	out, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 300 {
+	if code >= 300 {
 		_, _ = stderr.Write(out)
 		return 1
 	}
 	_, _ = stdout.Write(out)
 	return 0
+}
+
+// callServer runs a CLI command on the Squad server as this terminal. safe
+// asks the server to refuse anything that would run a command (squad mcp's
+// tools that need no approval); timeout 0 waits as long as the call takes.
+func callServer(ctx context.Context, env clientEnv, args []string, safe bool, timeout time.Duration) (int, []byte, error) {
+	cwd, _ := os.Getwd()
+	body, _ := json.Marshal(map[string]any{"args": args, "cwd": cwd, "safe": safe})
+	req, err := http.NewRequestWithContext(ctx, "POST", strings.TrimRight(env.url, "/")+"/cli", bytes.NewReader(body))
+	if err != nil {
+		return 0, nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Terminal-ID", env.id)
+	req.Header.Set("X-Squad-Token", env.token)
+	resp, err := (&http.Client{Timeout: timeout}).Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	out, err := io.ReadAll(resp.Body)
+	return resp.StatusCode, out, err
 }

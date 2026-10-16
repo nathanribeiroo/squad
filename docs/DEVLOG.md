@@ -2,6 +2,36 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, MCP (R3)
+
+- **`squad mcp`:** servidor MCP por stdio, feito com o SDK oficial em Go (`modelcontextprotocol/go-sdk` v1.8.0). O agente o abre dentro do terminal, e cada chamada vai ao servidor do Squad como aquele terminal, pelo mesmo caminho da CLI (`callServer`). São 13 ferramentas, com argumentos tipados:
+  - `list`, `ask`, `ask_batch`, `check`, `reply`;
+  - `note` (list/read/write/edit/create);
+  - `portal` (snapshot, click, fill, type, key, scroll, goto, back, forward, reload, screenshot, console, create, close, list);
+  - `new`, `connect`, `close`;
+  - `keys`, `portal_eval`, `new_shell`.
+- **Segurança:**
+  - as dez primeiras vêm liberadas no Claude Code (`permissions.allow` no `--settings` que o Squad já passa). As chamadas delas levam a marca `safe`, e com ela o **servidor** recusa tudo o que rodaria um comando:
+    - mensagem para um shell ou comando próprio (seria executada como linha de comando);
+    - teclas (`--raw`);
+    - `new` com linha de comando ou shell;
+    - JavaScript no portal;
+  - `keys`, `new_shell` e `portal_eval` pedem aprovação a cada uso;
+  - nomes que começam com `-` são recusados, para um argumento não virar opção (`--command=…`);
+  - a decisão fica no servidor, então mexer nos argumentos não contorna a regra.
+- **Configuração por agente:**
+  - **Claude Code:** `--mcp-config ~/.squad/run/claude-mcp.json`;
+  - **Codex:** `-c mcp_servers.squad.*`, com `env_vars` (o Codex só repassa algumas variáveis a servidores stdio) e `tool_timeout_sec=1800` (o padrão é 60 s, e um `ask` pode levar minutos);
+  - **Devin:** `mcpServers` no mesmo `--config` dos hooks;
+  - **Gemini:** não tem opção por sessão; fica com a CLI.
+- **Por que não liberar a CLI:** `Bash(squad *)` liberado deixaria `squad new --agent shell --command …` rodar qualquer coisa sem aprovação. Pelo MCP, a separação segura/insegura existe por ferramenta.
+- **Testes:**
+  - `internal/agents`: linha do Claude e do Codex, config do MCP, ferramentas liberadas e as que não são;
+  - `internal/app`: um cliente MCP do SDK abre o `squad mcp` de verdade e chama as ferramentas contra o servidor e agentes falsos. Cobre `list`, `ask`, `ask_batch`, as recusas (mensagem ao shell, que não recebeu nada; `new` com shell; nome `--raw`; `eval` pela ferramenta `portal`), `keys`, `new_shell`, `note`, `connect` e `close`.
+- **Com o Claude Code real, sem `--allowedTools`:**
+  - "use só as ferramentas MCP: veja quem está ligado (list), crie um Implementador Bia (new) e pergunte o papel dela (ask)": em 16 s, sem nenhum pedido de aprovação, a Ana usou `mcp__squad__list`, `mcp__squad__new` e `mcp__squad__ask` e trouxe a resposta da Bia. Isso confirma que o `squad mcp` recebe a identidade do terminal pelo ambiente;
+  - pedido para usar `keys` no shell: o Claude Code parou em "squad — Keys Tool (MCP)… Do you want to proceed?", e o shell não recebeu nada. Depois da aprovação, `echo oi-das-teclas` rodou no shell.
+
 ## 2026-10-16, agente gerente e portais criados por agentes (R2)
 
 - **Por quê:** com os papéis, o Planejador já sabia que devia delegar, mas só podia falar com os terminais que o usuário tivesse criado e ligado a ele. Agora ele monta a equipe.

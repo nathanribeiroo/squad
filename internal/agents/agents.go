@@ -18,6 +18,10 @@
 // override (developer_instructions), Devin from its SessionStart hook, and
 // Gemini, which has no such option, as its first prompt (-i). Shells and
 // custom commands get none: typing instructions into them could run them.
+//
+// Squad's commands also reach agents as MCP tools (squad mcp): Claude Code
+// gets them with --mcp-config and pre-approves the safe ones (SafeMCPTools),
+// Codex with mcp_servers config overrides, Devin in its --config file.
 package agents
 
 import (
@@ -60,10 +64,21 @@ func Lookup(agent string) Info {
 // HasHooks reports whether an agent type signals turn ends explicitly.
 func HasHooks(agent string) bool { return Lookup(agent).Hooks }
 
+// SafeMCPTools are the squad mcp tools an agent may use without asking the
+// user: in their calls the server refuses anything that would run a command
+// (keys typed into a terminal, a message to a shell, a new terminal with a
+// command line, JavaScript in a page). keys, new_shell and portal_eval are
+// the others: the user approves each call.
+var SafeMCPTools = []string{"list", "ask", "ask_batch", "check", "reply", "note", "portal", "new", "connect", "close"}
+
+// mcpEnv is what squad mcp needs from the terminal's environment.
+var mcpEnv = []string{"SQUAD_URL", "SQUAD_TERMINAL_ID", "SQUAD_TOKEN"}
+
 // Launcher prepares launch lines for agents.
 type Launcher struct {
 	SquadPath      string // absolute path of the squad binary
 	ClaudeSettings string // path of the generated Claude settings file
+	ClaudeMCP      string // path of the generated Claude MCP config (squad mcp)
 	DevinConfig    string // path of the generated Devin config file
 	RoleDir        string // one file per terminal with its role, for Claude Code
 	// Role returns the instructions of a terminal's role (false: no role).
@@ -78,20 +93,29 @@ func NewLauncher(squadPath string) (*Launcher, error) {
 	}
 	l := &Launcher{SquadPath: squadPath,
 		ClaudeSettings: filepath.Join(dir, "claude-hooks.json"),
+		ClaudeMCP:      filepath.Join(dir, "claude-mcp.json"),
 		DevinConfig:    filepath.Join(dir, "devin-hooks.json"),
 		RoleDir:        filepath.Join(dir, "roles")}
+	allow := make([]string, len(SafeMCPTools))
+	for i, t := range SafeMCPTools {
+		allow[i] = "mcp__squad__" + t
+	}
+	servers := map[string]any{"squad": map[string]any{"command": squadPath, "args": []string{"mcp"}}}
 	if err := l.writeHooks(l.ClaudeSettings, map[string]string{
 		"Stop":             "claude-stop",
 		"StopFailure":      "claude-stop-failure",
 		"UserPromptSubmit": "claude-prompt",
-	}); err != nil {
+	}, map[string]any{"permissions": map[string]any{"allow": allow}}); err != nil {
+		return nil, err
+	}
+	if err := writeJSON(l.ClaudeMCP, map[string]any{"mcpServers": servers}); err != nil {
 		return nil, err
 	}
 	if err := l.writeHooks(l.DevinConfig, map[string]string{
 		"Stop":             "devin-stop",
 		"UserPromptSubmit": "devin-prompt",
 		"SessionStart":     "devin-session-start", // the role, as context
-	}); err != nil {
+	}, map[string]any{"mcpServers": servers}); err != nil {
 		return nil, err
 	}
 	return l, nil
@@ -114,14 +138,22 @@ type claudeMatcher struct {
 }
 
 // writeHooks writes a settings file whose "hooks" key maps each event to
-// `squad hook <name>`. Claude Code (--settings) and Devin (--config) read the
-// same format.
-func (l *Launcher) writeHooks(path string, events map[string]string) error {
+// `squad hook <name>`, plus the extra keys. Claude Code (--settings) and
+// Devin (--config) read the same format.
+func (l *Launcher) writeHooks(path string, events map[string]string, extra map[string]any) error {
 	hooks := map[string][]claudeMatcher{}
 	for event, name := range events {
 		hooks[event] = []claudeMatcher{{Hooks: []claudeHook{{Type: "command", Command: l.hookCommand(name), Timeout: 10}}}}
 	}
-	data, err := json.MarshalIndent(map[string]any{"hooks": hooks}, "", "  ")
+	doc := map[string]any{"hooks": hooks}
+	for k, v := range extra {
+		doc[k] = v
+	}
+	return writeJSON(path, doc)
+}
+
+func writeJSON(path string, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -146,6 +178,7 @@ func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 	switch info.Type {
 	case "claude":
 		spec.Command += " --settings " + terminal.Quote(fam, l.ClaudeSettings)
+		spec.Command += " --mcp-config " + terminal.Quote(fam, l.ClaudeMCP)
 		path := filepath.Join(l.RoleDir, n.ID+".md")
 		if !hasRole {
 			_ = os.Remove(path)
@@ -160,6 +193,9 @@ func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 		spec.Command += " --append-system-prompt-file " + terminal.Quote(fam, path)
 	case "codex":
 		spec.Command += " -c " + terminal.Quote(fam, l.codexNotify())
+		for _, o := range l.codexMCP() {
+			spec.Command += " -c " + terminal.Quote(fam, o)
+		}
 		if hasRole {
 			spec.Command += " -c " + terminal.Quote(fam, "developer_instructions="+TOMLString(role))
 		}
@@ -229,6 +265,22 @@ func (l *Launcher) codexNotify() string {
 		enc[i] = string(b)
 	}
 	return "notify=[" + strings.Join(enc, ",") + "]"
+}
+
+// codexMCP returns the config overrides that give Codex squad mcp: Codex
+// passes stdio servers only a few environment variables unless listed, and
+// waits 60 s for a tool by default (an ask may take minutes).
+func (l *Launcher) codexMCP() []string {
+	vars := make([]string, len(mcpEnv))
+	for i, v := range mcpEnv {
+		vars[i] = TOMLString(v)
+	}
+	return []string{
+		"mcp_servers.squad.command=" + TOMLString(l.SquadPath),
+		`mcp_servers.squad.args=["mcp"]`,
+		"mcp_servers.squad.env_vars=[" + strings.Join(vars, ",") + "]",
+		"mcp_servers.squad.tool_timeout_sec=1800",
+	}
 }
 
 // LastAssistantFromTranscript returns the text of the last assistant message

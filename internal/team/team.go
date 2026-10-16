@@ -209,6 +209,9 @@ func (s *Service) create(ctx context.Context, me store.Node, args []string) agen
 	if a.agent == "custom" && a.command == "" {
 		return res(400, "squad: --agent custom needs --command")
 	}
+	if agentbus.Safe(ctx) && (a.command != "" || !agentbus.IsAgent(a.agent)) {
+		return res(403, "squad: a shell or a command line needs the user's approval: use the new_shell tool.")
+	}
 	role := ""
 	if a.role != "" && a.agent != "shell" {
 		r, ok := s.findRole(a.role)
