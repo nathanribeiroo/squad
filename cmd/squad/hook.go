@@ -19,7 +19,7 @@ import (
 // The payload is the last argument (Codex notify) or stdin (Claude Code,
 // Devin CLI).
 // It never fails loudly: a hook error must not disturb the agent.
-func runHook(args []string, _, stderr io.Writer) int {
+func runHook(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
 		fmt.Fprintln(stderr, "usage: squad hook <name> [payload]")
 		return 0
@@ -49,7 +49,11 @@ func runHook(args []string, _, stderr io.Writer) int {
 		debugf(stderr, "%v", err)
 		return 0
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
+	// A hook's answer is for the agent (a session start's context).
+	if resp.StatusCode == http.StatusOK {
+		_, _ = io.Copy(stdout, io.LimitReader(resp.Body, 1<<20))
+	}
 	return 0
 }
 

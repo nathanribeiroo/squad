@@ -86,6 +86,7 @@ type Bus struct {
 	// hasHooks reports whether an agent type signals turn ends explicitly
 	// (set by the adapters); for those the screen-settled fallback is off.
 	hasHooks func(agent string) bool
+	roleName func(id string) string
 
 	mu      sync.Mutex
 	pending map[string]*Pending
@@ -110,6 +111,18 @@ func (b *Bus) SetMonitor(m *activity.Monitor) { b.mon = m }
 
 // SetHookedAgents tells which agent types report turn ends through hooks.
 func (b *Bus) SetHookedAgents(fn func(agent string) bool) { b.hasHooks = fn }
+
+// SetRoleNames sets how `squad list` names a role id ("test" → "Testador").
+func (b *Bus) SetRoleNames(fn func(id string) string) { b.roleName = fn }
+
+func (b *Bus) roleLabel(id string) string {
+	if b.roleName != nil {
+		if name := b.roleName(id); name != "" {
+			return name
+		}
+	}
+	return id
+}
 
 // Limits returns the effective limits.
 func (b *Bus) Limits() Limits { return b.limits }

@@ -24,6 +24,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
+	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
@@ -34,6 +35,9 @@ var Colors = []string{"teal", "blue", "purple", "pink", "red", "amber", "lime", 
 
 // EventWorkspaces is the hub event carrying the whole list ([]Summary).
 const EventWorkspaces = "workspaces"
+
+// EventRoles carries the whole role library ([]roles.Role) after a change.
+const EventRoles = "roles"
 
 // summaryDelay coalesces bursts of workspace events into one list update.
 const summaryDelay = 300 * time.Millisecond
@@ -65,6 +69,7 @@ type Options struct {
 	Extensions []agentbus.Extension
 	Setup      func(*app.App) error // runs on every workspace's app before it starts
 	Browser    *browser.Manager     // the portals' browser, shared by all workspaces (nil: no portals)
+	Roles      *roles.Library       // nil: roles.json next to Root (~/.squad/roles.json)
 }
 
 // Summary is a workspace as the selector shows it.
@@ -86,7 +91,8 @@ type workspace struct {
 type Hub struct {
 	opts   Options
 	log    *slog.Logger
-	events *events.Bus // EventWorkspaces
+	roles  *roles.Library
+	events *events.Bus // EventWorkspaces, EventRoles
 	dirty  chan struct{}
 	quit   chan struct{}
 
@@ -107,11 +113,19 @@ func New(opts Options) (*Hub, error) {
 	if err := os.MkdirAll(opts.Root, 0o700); err != nil {
 		return nil, err
 	}
+	if opts.Roles == nil {
+		lib, err := roles.Open(filepath.Join(filepath.Dir(opts.Root), "roles.json"))
+		if err != nil {
+			return nil, err
+		}
+		opts.Roles = lib
+	}
 	h := &Hub{
-		opts: opts, log: opts.Logger, events: events.NewBus(),
+		opts: opts, log: opts.Logger, roles: opts.Roles, events: events.NewBus(),
 		dirty: make(chan struct{}, 1), quit: make(chan struct{}),
 		ws: map[string]*workspace{},
 	}
+	h.roles.Subscribe(func(list []roles.Role) { h.events.Publish(EventRoles, list) })
 	entries, err := os.ReadDir(opts.Root)
 	if err != nil {
 		return nil, err
@@ -152,6 +166,7 @@ func (h *Hub) add(st *store.Store) error {
 		Limits:     h.opts.Limits,
 		Extensions: h.opts.Extensions,
 		Browser:    h.opts.Browser,
+		Roles:      h.roles,
 	})
 	if err != nil {
 		return err

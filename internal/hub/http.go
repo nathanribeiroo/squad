@@ -21,7 +21,8 @@ import (
 //
 //	/w/<id>/api/…, /w/<id>/ws/…   a workspace's API (see server.APIHandler)
 //	/api/workspaces…, /api/dirs     the workspace list (and folder suggestions)
-//	/ws/workspaces                  the list, live
+//	/api/roles…                     the role library, shared by every workspace
+//	/ws/workspaces                  the list and the roles, live
 //	POST /cli, POST /hooks/{agent}  calls from terminals, routed by terminal id
 //	/                               the web UI
 func (h *Hub) Handler() http.Handler {
@@ -33,6 +34,11 @@ func (h *Hub) Handler() http.Handler {
 	mux.Handle("PATCH /api/workspaces/{id}", sess(h.handleUpdate))
 	mux.Handle("DELETE /api/workspaces/{id}", sess(h.handleRemove))
 	mux.Handle("GET /api/dirs", sess(h.handleDirs))
+	mux.Handle("GET /api/roles", sess(h.handleRolesList))
+	mux.Handle("POST /api/roles", sess(h.handleRoleCreate))
+	mux.Handle("PUT /api/roles/{id}", sess(h.handleRoleUpdate))
+	mux.Handle("POST /api/roles/{id}/reset", sess(h.handleRoleReset))
+	mux.Handle("DELETE /api/roles/{id}", sess(h.handleRoleDelete))
 	mux.Handle("GET /ws/workspaces", sess(h.handleWorkspacesWS))
 	mux.Handle("/api/", sess(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not found (a workspace's API is under /w/<id>/api/…)")
@@ -137,8 +143,9 @@ func (h *Hub) handleDirs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string][]string{"suggestions": server.DirSuggestions(r.URL.Query().Get("path"), home)})
 }
 
-// handleWorkspacesWS streams the workspace list: first the current one, then
-// every change, as {"type":"workspaces","data":[…]}.
+// handleWorkspacesWS streams the workspace list and the role library: first
+// the current ones, then every change, as {"type":"workspaces","data":[…]}
+// and {"type":"roles","data":[…]}.
 func (h *Hub) handleWorkspacesWS(w http.ResponseWriter, r *http.Request) {
 	port := strconv.Itoa(h.opts.Port)
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: []string{"127.0.0.1:" + port, "localhost:" + port}})
@@ -150,6 +157,9 @@ func (h *Hub) handleWorkspacesWS(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	ctx := c.CloseRead(r.Context())
 	if err := writeWS(ctx, c, events.Event{Type: EventWorkspaces, Time: time.Now().UTC(), Data: h.List()}); err != nil {
+		return
+	}
+	if err := writeWS(ctx, c, events.Event{Type: EventRoles, Time: time.Now().UTC(), Data: h.roles.List()}); err != nil {
 		return
 	}
 	ping := time.NewTicker(25 * time.Second)

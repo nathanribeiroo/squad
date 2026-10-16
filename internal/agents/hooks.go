@@ -11,17 +11,20 @@ import (
 
 // HookEvent is what an agent hook means for Squad.
 type HookEvent struct {
-	TurnStart bool   // the agent started working on a prompt
-	TurnEnd   bool   // the agent finished its turn
-	Message   string // final assistant message (when TurnEnd)
-	Failure   bool   // the turn ended with an error
+	TurnStart    bool   // the agent started working on a prompt
+	TurnEnd      bool   // the agent finished its turn
+	Message      string // final assistant message (when TurnEnd)
+	Failure      bool   // the turn ended with an error
+	SessionStart bool   // a session began: the hook's answer may add context
 }
 
 // ParseHook interprets the payload of a named hook ("claude-stop",
 // "claude-stop-failure", "claude-prompt", "codex-notify", "devin-stop",
-// "devin-prompt").
+// "devin-prompt", "devin-session-start").
 func ParseHook(name string, body []byte) (HookEvent, bool) {
 	switch name {
+	case "devin-session-start":
+		return HookEvent{SessionStart: true}, true
 	case "claude-prompt", "devin-prompt":
 		return HookEvent{TurnStart: true}, true
 	case "claude-stop", "claude-stop-failure", "devin-stop":
@@ -62,9 +65,10 @@ func ParseHook(name string, body []byte) (HookEvent, bool) {
 }
 
 // HookHandler serves POST /hooks/{agent}: it turns hook payloads into turn
-// signals for the activity monitor. callerOf returns the authenticated
-// terminal id.
-func HookHandler(mon *activity.Monitor, callerOf func(*http.Request) string) http.Handler {
+// signals for the activity monitor, and answers a session start with the
+// terminal's role as context. callerOf returns the authenticated terminal id;
+// role returns the instructions of its role (false: none).
+func HookHandler(mon *activity.Monitor, callerOf func(*http.Request) string, role func(id string) (string, bool)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(io.LimitReader(r.Body, 16<<20))
 		ev, ok := ParseHook(r.PathValue("agent"), body)
@@ -74,6 +78,20 @@ func HookHandler(mon *activity.Monitor, callerOf func(*http.Request) string) htt
 		}
 		id := callerOf(r)
 		switch {
+		case ev.SessionStart:
+			text, ok := "", false
+			if role != nil {
+				text, ok = role(id)
+			}
+			if !ok {
+				break
+			}
+			// Claude Code's hook output format, which Devin reads too.
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"hookSpecificOutput": map[string]string{
+				"hookEventName": "SessionStart", "additionalContext": text,
+			}})
+			return
 		case ev.TurnStart:
 			mon.SignalStart(id)
 		case ev.TurnEnd:

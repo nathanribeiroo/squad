@@ -120,7 +120,7 @@ func (b *Bus) List(caller string) Result {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "You:\n  - name: %s, agent: %s", quote(me.Terminal.Name), me.Terminal.Agent)
 	if me.Terminal.Role != "" {
-		fmt.Fprintf(&sb, ", role: %s", me.Terminal.Role)
+		fmt.Fprintf(&sb, ", role: %s", quote(b.roleLabel(me.Terminal.Role)))
 	}
 	sb.WriteString("\n")
 
@@ -146,7 +146,7 @@ func (b *Bus) List(caller string) Result {
 		for _, n := range agents {
 			fmt.Fprintf(&sb, "  - name: %s, agent: %s", quote(n.Terminal.Name), n.Terminal.Agent)
 			if n.Terminal.Role != "" {
-				fmt.Fprintf(&sb, ", role: %s", n.Terminal.Role)
+				fmt.Fprintf(&sb, ", role: %s", quote(b.roleLabel(n.Terminal.Role)))
 			}
 			if b.mon != nil {
 				st, _ := b.mon.State(n.ID)
