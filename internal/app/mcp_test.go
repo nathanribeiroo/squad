@@ -115,8 +115,11 @@ func TestMCPTools(t *testing.T) {
 	if out, bad := call(t, s, "note", map[string]any{"action": "create", "name": "Plano de testes", "content": "- [ ] CSV"}); bad {
 		t.Fatalf("note create: %s", out)
 	}
-	if out, bad := call(t, s, "note", map[string]any{"action": "read", "name": "Plano de testes"}); bad || !strings.Contains(out, "CSV") {
-		t.Fatalf("note read: %v %s", bad, out)
+	if out, bad := call(t, s, "note", map[string]any{"action": "read", "name": "plano de TESTES"}); bad || !strings.Contains(out, "CSV") {
+		t.Fatalf("note read (any case): %v %s", bad, out)
+	}
+	if out, bad := call(t, s, "note", map[string]any{"action": "create", "name": "Plano de Testes"}); !bad || !strings.Contains(out, "already a note named") {
+		t.Fatalf("a second note with the same name: %v %s", bad, out)
 	}
 	if out, bad := call(t, s, "connect", map[string]any{"a": "Bia", "b": "Plano de testes"}); bad {
 		t.Fatalf("connect: %s", out)

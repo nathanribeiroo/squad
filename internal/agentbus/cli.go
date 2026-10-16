@@ -215,7 +215,13 @@ func (b *Bus) List(caller string) Result {
 	if len(notes) > 0 {
 		sb.WriteString("\nConnected notes (use squad note read/write/edit):\n")
 		for _, n := range notes {
-			fmt.Fprintf(&sb, "  - name: %s, file: %s", quote(n.Note.Title), n.Note.File)
+			fmt.Fprintf(&sb, "  - name: %s", quote(n.Note.Title))
+			if n.Note.File != "" {
+				fmt.Fprintf(&sb, ", file: %s", n.Note.File)
+			}
+			if len(n.Note.Aliases) > 0 {
+				fmt.Fprintf(&sb, ", formerly: %s", quote(strings.Join(n.Note.Aliases, `", "`)))
+			}
 			if n.Note.Locked {
 				sb.WriteString(", locked: true")
 			}

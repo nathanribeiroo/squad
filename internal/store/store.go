@@ -95,8 +95,14 @@ type TerminalData struct {
 // NoteData configures a note node; the content lives in a .md file.
 type NoteData struct {
 	Title  string `json:"title"`
-	File   string `json:"file"`
+	File   string `json:"file"` // "" while Draft
 	Locked bool   `json:"locked,omitempty"`
+	// Draft: a note made in the UI whose name the user hasn't confirmed; its
+	// file is created from the name it ends up with.
+	Draft bool `json:"draft,omitempty"`
+	// Aliases are the note's former titles: agents that knew one still find
+	// the note.
+	Aliases []string `json:"aliases,omitempty"`
 }
 
 // PortalData configures a portal node.
@@ -349,6 +355,7 @@ func cloneNode(n Node) Node {
 	}
 	if n.Note != nil {
 		v := *n.Note
+		v.Aliases = slices.Clone(v.Aliases)
 		n.Note = &v
 	}
 	if n.Portal != nil {

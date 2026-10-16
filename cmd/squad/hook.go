@@ -100,6 +100,14 @@ works everywhere.
 
 For long messages use a heredoc: ` + "`squad ask \"Name\" <<'EOF'`" + ` … ` + "`EOF`" + `.
 
+## Notes
+
+A note's name is unique in the workspace and permanent. When you create one
+(` + "`squad note create \"Name\"`" + `), give it a clear name; don't create a second
+note for the same thing, use ` + "`squad note list`" + ` to see the ones you have.
+Names ignore case. The user may rename a note they made: its former names
+keep working, and the reply tells you the current one; use that from then on.
+
 ## Portals
 
 A portal is a real browser tab on the canvas; the user watches what you do

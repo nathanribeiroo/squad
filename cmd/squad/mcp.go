@@ -118,7 +118,7 @@ type (
 	}
 	noteInput struct {
 		Action  string `json:"action" jsonschema:"list | read | write | edit | create"`
-		Name    string `json:"name,omitempty" jsonschema:"note title (all but list)"`
+		Name    string `json:"name,omitempty" jsonschema:"note name (all but list); ignores case, and a renamed note still answers to its former names. create: a clear, unique name, which is permanent"`
 		Content string `json:"content,omitempty" jsonschema:"write: the whole new content; create: the initial content"`
 		Old     string `json:"old,omitempty" jsonschema:"edit: text that appears exactly once"`
 		New     string `json:"new,omitempty" jsonschema:"edit: its replacement"`
@@ -222,7 +222,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 			return []string{"reply", id, in.Message}, nil
 		})
 
-	addTool(s, env, "note", "Read and write notes connected to you (Markdown): list, read (with line numbers), write (replace all), edit (replace text that appears once), create (a new note connected to you).",
+	addTool(s, env, "note", "Read and write notes connected to you (Markdown): list, read (with line numbers), write (replace all), edit (replace text that appears once), create (a new note connected to you, with a clear name: names are unique in the workspace and permanent).",
 		false, func(in noteInput) ([]string, error) {
 			if in.Action == "list" {
 				return []string{"note", "list"}, nil
