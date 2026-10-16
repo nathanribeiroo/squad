@@ -16,6 +16,29 @@ import (
 type CLIRequest struct {
 	Args []string `json:"args"`
 	Cwd  string   `json:"cwd"`
+	// Safe marks calls from tools the agent may use without asking the user
+	// (squad mcp): nothing they do may run a command. See Safe.
+	Safe bool `json:"safe,omitempty"`
+}
+
+type safeKey struct{}
+
+// WithSafe marks ctx as a call that must not run commands.
+func WithSafe(ctx context.Context) context.Context { return context.WithValue(ctx, safeKey{}, true) }
+
+// Safe reports whether a call must not run commands: no keys typed into a
+// terminal, no message to a shell (it would run as a command line), no new
+// terminal with a command line, no JavaScript in a portal.
+func Safe(ctx context.Context) bool { v, _ := ctx.Value(safeKey{}).(bool); return v }
+
+// IsAgent reports whether an agent type is an AI agent, which reads messages
+// as prompts (shells and custom commands run them).
+func IsAgent(agent string) bool {
+	switch agent {
+	case "claude", "codex", "devin", "gemini":
+		return true
+	}
+	return false
 }
 
 // Extension handles extra top-level commands (e.g. "note" from the notes
@@ -32,7 +55,11 @@ func (b *Bus) Handler(callerOf func(*http.Request) string, exts ...Extension) ht
 			return
 		}
 		caller := callerOf(r)
-		res := b.Dispatch(r.Context(), caller, req.Args, exts...)
+		ctx := r.Context()
+		if req.Safe {
+			ctx = WithSafe(ctx)
+		}
+		res := b.Dispatch(ctx, caller, req.Args, exts...)
 		writeResult(w, res)
 	})
 }
@@ -99,6 +126,9 @@ func (b *Bus) Dispatch(ctx context.Context, caller string, args []string, exts .
 			return b.Batch(ctx, caller, rest[1])
 		}
 		if len(rest) == 3 && rest[1] == "--raw" {
+			if Safe(ctx) {
+				return Result{Code: 403, Body: "squad: typing keys into a terminal needs the user's approval: use the keys tool."}
+			}
 			return b.Raw(caller, rest[0], rest[2])
 		}
 		if len(rest) < 2 || strings.HasPrefix(rest[0], "--") {

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -77,17 +78,41 @@ func TestPrepareLaunchLines(t *testing.T) {
 	if err := l.Prepare(store.Node{}, &spec); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(spec.Command, "claude --settings ") || !strings.Contains(spec.Command, "claude-hooks.json") {
+	if !strings.HasPrefix(spec.Command, "claude --settings ") || !strings.Contains(spec.Command, "claude-hooks.json") ||
+		!strings.Contains(spec.Command, " --mcp-config "+terminal.Quote(terminal.ShellPOSIX, l.ClaudeMCP)) {
 		t.Fatalf("claude command: %s", spec.Command)
+	}
+	// squad mcp for Claude Code, with the safe tools pre-approved and the
+	// others (keys, new_shell, portal_eval) left to the user.
+	var mcpCfg struct {
+		MCPServers map[string]struct {
+			Command string
+			Args    []string
+		} `json:"mcpServers"`
+	}
+	if data, err := os.ReadFile(l.ClaudeMCP); err != nil || json.Unmarshal(data, &mcpCfg) != nil ||
+		mcpCfg.MCPServers["squad"].Command != "/opt/squad/bin/squad" || strings.Join(mcpCfg.MCPServers["squad"].Args, " ") != "mcp" {
+		t.Fatalf("claude mcp config: %v %+v", err, mcpCfg)
+	}
+	var cs struct {
+		Permissions struct{ Allow []string }
+	}
+	_ = json.Unmarshal(settings, &cs)
+	if !slices.Contains(cs.Permissions.Allow, "mcp__squad__ask") || !slices.Contains(cs.Permissions.Allow, "mcp__squad__portal") ||
+		slices.Contains(cs.Permissions.Allow, "mcp__squad__keys") || slices.Contains(cs.Permissions.Allow, "mcp__squad__new_shell") ||
+		slices.Contains(cs.Permissions.Allow, "mcp__squad__portal_eval") {
+		t.Fatalf("pre-approved tools: %v", cs.Permissions.Allow)
 	}
 	spec = terminal.Spec{Agent: "codex", Command: "codex --model x", Shell: "/bin/sh"}
 	_ = l.Prepare(store.Node{}, &spec)
-	want := `codex --model x -c 'notify=["/opt/squad/bin/squad","hook","codex-notify"]'`
+	want := `codex --model x -c 'notify=["/opt/squad/bin/squad","hook","codex-notify"]'` +
+		` -c 'mcp_servers.squad.command="/opt/squad/bin/squad"' -c 'mcp_servers.squad.args=["mcp"]'` +
+		` -c 'mcp_servers.squad.env_vars=["SQUAD_URL","SQUAD_TERMINAL_ID","SQUAD_TOKEN"]' -c mcp_servers.squad.tool_timeout_sec=1800`
 	if spec.Command != want {
 		t.Fatalf("codex command:\n got %s\nwant %s", spec.Command, want)
 	}
 	devinCfg, err := os.ReadFile(l.DevinConfig)
-	if err != nil || !strings.Contains(string(devinCfg), `\"/opt/squad/bin/squad\" hook devin-stop`) ||
+	if err != nil || !strings.Contains(string(devinCfg), `\"/opt/squad/bin/squad\" hook devin-stop`) || !strings.Contains(string(devinCfg), `"mcpServers"`) ||
 		!strings.Contains(string(devinCfg), `hook devin-prompt`) || strings.Contains(string(devinCfg), "StopFailure") {
 		t.Fatalf("devin config: %v\n%s", err, devinCfg)
 	}

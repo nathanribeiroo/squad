@@ -73,7 +73,7 @@ func (s *Service) connected(caller string) []store.Node {
 }
 
 // Extension handles `squad portal …` for the agent bus.
-func (s *Service) Extension(_ context.Context, caller string, args []string) (agentbus.Result, bool) {
+func (s *Service) Extension(ctx context.Context, caller string, args []string) (agentbus.Result, bool) {
 	if len(args) == 0 || args[0] != "portal" {
 		return agentbus.Result{}, false
 	}
@@ -120,6 +120,9 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 	}
 	if s.browser == nil {
 		return res(503, "squad: portals are disabled in this server"), true
+	}
+	if rest[0] == "eval" && agentbus.Safe(ctx) {
+		return res(403, "squad: running JavaScript in a page needs the user's approval: use the portal_eval tool."), true
 	}
 	return s.run(caller, target, rest[0], rest[1:]), true
 }

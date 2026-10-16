@@ -55,6 +55,10 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 	if code != 0 {
 		return Result{Code: code, Body: emsg}
 	}
+	if Safe(ctx) && !IsAgent(tn.Terminal.Agent) {
+		// A message to a shell runs as a command line.
+		return Result{Code: 403, Body: fmt.Sprintf("squad: %s is a %s terminal, not an agent: a message would run there as a command. Use the keys tool (it asks the user) or squad ask --raw.", quote(tn.Terminal.Name), tn.Terminal.Agent)}
+	}
 	t, code, emsg := b.runningTerminal(tn)
 	if code != 0 {
 		return Result{Code: code, Body: emsg}

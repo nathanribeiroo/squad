@@ -77,6 +77,11 @@ You are running inside a Squad terminal. Squad is a canvas where agents and
 shells are connected by wires; you can only talk to what is connected to you.
 The ` + "`squad`" + ` command is on your PATH (if not, use "$SQUAD_CLI").
 
+If your session has the squad MCP tools (` + "`mcp__squad__list`" + `, ` + "`ask`" + `, ` + "`note`" + `,
+` + "`portal`" + `, ` + "`new`" + `…), prefer them: same commands with typed arguments, and most
+need no approval. ` + "`keys`" + `, ` + "`new_shell`" + ` and ` + "`portal_eval`" + ` can run commands, so the
+user approves each call. The CLI below works everywhere.
+
 ## Commands
 
 - ` + "`squad list`" + `: who you are and what is connected to you, with each agent's role (Planejador, Implementador, Revisor, Testador…). Run it first, use names exactly as printed, and give work to the agent whose role fits it. Your own role's instructions came with your session.
