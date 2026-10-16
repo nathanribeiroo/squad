@@ -339,7 +339,7 @@ func (s *Service) Changes(ctx context.Context, id string) (Changes, error) {
 		out.Missing = true
 		return out, nil
 	}
-	files, err := status(ctx, f.Path, false)
+	files, err := status(ctx, f.Path, untrackedAll)
 	if err != nil {
 		return Changes{}, err
 	}
@@ -405,7 +405,7 @@ func (s *Service) Land(ctx context.Context, id string, req LandRequest) (LandRes
 		} else if br != f.Branch {
 			return LandResult{}, invalidError(fmt.Sprintf("the floor's folder is not on its branch %s: switch back before landing", f.Branch))
 		}
-		files, err := status(ctx, f.Path, false)
+		files, err := status(ctx, f.Path, untrackedAll)
 		if err != nil {
 			return LandResult{}, err
 		}
@@ -514,7 +514,7 @@ func mergeInto(ctx context.Context, root string, f store.Floor, into string) (co
 		if op := operationInProgress(ctx, wt); op != "" {
 			return "", false, invalidError(fmt.Sprintf("%s has %s in progress: finish or abort it first", wt, op))
 		}
-		files, err := status(ctx, wt, true)
+		files, err := status(ctx, wt, untrackedNone)
 		if err != nil {
 			return "", false, err
 		}
@@ -937,4 +937,72 @@ func (t *tailBuffer) String() string {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return strings.TrimSpace(strings.ToValidUTF8(string(t.b), ""))
+}
+
+// Status is the git state the floor selector shows: each floor's branch and
+// how much it has that isn't landed yet.
+type Status struct {
+	Repo   bool                   `json:"repo"` // the workspace folder is in a git repository
+	Ground FloorStatus            `json:"ground"`
+	Floors map[string]FloorStatus `json:"floors"`
+}
+
+// FloorStatus is one floor's (or the ground floor's) git state.
+type FloorStatus struct {
+	Branch  string `json:"branch"`            // "" when detached
+	Changes int    `json:"changes"`           // uncommitted files (copied ones left out)
+	Ahead   int    `json:"ahead,omitempty"`   // floors: commits not on their base yet
+	Missing bool   `json:"missing,omitempty"` // floors: the folder is gone
+}
+
+// Status reads the branch and uncommitted changes of the ground floor and of
+// every floor.
+func (s *Service) Status(ctx context.Context) Status {
+	st := s.o.Canvas.Store()
+	out := Status{Floors: map[string]FloorStatus{}}
+	cwd := st.Meta().Cwd
+	if _, err := repoRoot(ctx, cwd); err != nil {
+		return out
+	}
+	out.Repo = true
+	out.Ground.Branch, _ = currentBranch(ctx, cwd)
+	if files, err := status(ctx, cwd, untrackedFolded); err == nil {
+		out.Ground.Changes = len(files)
+	}
+	for _, f := range st.Floors() {
+		fs := FloorStatus{Branch: f.Branch}
+		if !isDir(f.Path) {
+			fs.Missing = true
+			out.Floors[f.ID] = fs
+			continue
+		}
+		if b, err := currentBranch(ctx, f.Path); err == nil {
+			fs.Branch = b
+		}
+		if files, err := status(ctx, f.Path, untrackedAll); err == nil {
+			fs.Changes = len(withoutCopied(files, f.Copied))
+		}
+		base := f.BaseCommit
+		if f.Base != "" && hasRef(ctx, f.Path, "refs/heads/"+f.Base) {
+			base = "refs/heads/" + f.Base
+		}
+		fs.Ahead = count(ctx, f.Path, base+"..refs/heads/"+f.Branch)
+		out.Floors[f.ID] = fs
+	}
+	return out
+}
+
+// Branches lists the repository's local branches, for landing into one.
+func (s *Service) Branches(ctx context.Context) ([]string, error) {
+	out, err := git(ctx, s.o.Canvas.Store().Meta().Cwd, "for-each-ref", "--format=%(refname:short)", "refs/heads")
+	if err != nil {
+		return nil, err
+	}
+	branches := []string{}
+	for _, b := range strings.Split(out, "\n") {
+		if b = strings.TrimSpace(b); b != "" {
+			branches = append(branches, b)
+		}
+	}
+	return branches, nil
 }

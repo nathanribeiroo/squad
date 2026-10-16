@@ -14,6 +14,8 @@ import (
 //	GET    /api/floors               floors and config (State)
 //	POST   /api/floors               create {name, branch?, existing?}
 //	PUT    /api/floors/config        {copy: [...], setup: "..."}
+//	GET    /api/floors/status        branches and uncommitted changes (Status)
+//	GET    /api/branches             the repository's branches
 //	GET    /api/floors/{id}/changes  uncommitted files and commits (Changes)
 //	GET    /api/floors/{id}/log      the setup command's output (text)
 //	POST   /api/floors/{id}/land     {merge?, into?} → LandResult
@@ -47,6 +49,17 @@ func (s *Service) Register(handle func(pattern string, h http.Handler)) {
 			return
 		}
 		writeJSON(w, http.StatusOK, c)
+	}))
+	handle("GET /api/floors/status", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, s.Status(r.Context()))
+	}))
+	handle("GET /api/branches", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := s.Branches(r.Context())
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string][]string{"branches": b})
 	}))
 	handle("GET /api/floors/{id}/changes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := s.Changes(r.Context(), r.PathValue("id"))
