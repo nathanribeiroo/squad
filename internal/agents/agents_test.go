@@ -100,7 +100,8 @@ func TestPrepareLaunchLines(t *testing.T) {
 	_ = json.Unmarshal(settings, &cs)
 	if !slices.Contains(cs.Permissions.Allow, "mcp__squad__ask") || !slices.Contains(cs.Permissions.Allow, "mcp__squad__portal") ||
 		slices.Contains(cs.Permissions.Allow, "mcp__squad__keys") || slices.Contains(cs.Permissions.Allow, "mcp__squad__new_shell") ||
-		slices.Contains(cs.Permissions.Allow, "mcp__squad__portal_eval") {
+		slices.Contains(cs.Permissions.Allow, "mcp__squad__portal_eval") || slices.Contains(cs.Permissions.Allow, "mcp__squad__floor_land") ||
+		!slices.Contains(cs.Permissions.Allow, "mcp__squad__floors") {
 		t.Fatalf("pre-approved tools: %v", cs.Permissions.Allow)
 	}
 	spec = terminal.Spec{Agent: "codex", Command: "codex --model x", Shell: "/bin/sh"}

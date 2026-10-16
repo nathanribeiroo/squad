@@ -31,7 +31,7 @@ func (s *Server) StartTerminal(id string) error {
 	if !ok || n.Terminal == nil {
 		return errors.New("terminal node not found")
 	}
-	cwd := ResolveCwd(n.Terminal.Cwd, s.store.Snapshot().Cwd)
+	cwd := s.cwdResolver(n.Floor)(n.Terminal.Cwd)
 	tok := newToken()
 	s.mu.Lock()
 	s.termTokens[id] = tok
@@ -77,13 +77,33 @@ func ResolveCwd(cwd, wsCwd string) string {
 	return filepath.Join(wsCwd, cwd)
 }
 
+// cwdResolver returns how terminal folders resolve on a floor ("" is the
+// ground floor): from the workspace folder, or from the floor's copy of it,
+// where a folder of the ground floor maps to its copy. It reads the store
+// now, so the function can run under the store's lock.
+func (s *Server) cwdResolver(floor string) func(cwd string) string {
+	ws := s.store.Meta().Cwd
+	f, ok := s.store.Floor(floor)
+	if floor == "" || !ok {
+		return func(cwd string) string { return ResolveCwd(cwd, ws) }
+	}
+	return func(cwd string) string {
+		if filepath.IsAbs(cwd) {
+			if rel, err := filepath.Rel(ws, cwd); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				cwd = rel
+			}
+		}
+		return ResolveCwd(cwd, f.Cwd)
+	}
+}
+
 // checkTerminalDir reports a terminal folder that doesn't exist, so the
 // mistake shows in the form instead of as a terminal that fails to start.
-func checkTerminalDir(t *store.TerminalData, wsCwd string) error {
+func checkTerminalDir(t *store.TerminalData, resolve func(string) string) error {
 	if t == nil || t.Cwd == "" {
 		return nil
 	}
-	dir := ResolveCwd(t.Cwd, wsCwd)
+	dir := resolve(t.Cwd)
 	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
 		return invalidError("folder not found: " + dir)
 	}

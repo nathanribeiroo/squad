@@ -35,6 +35,10 @@ type Workspace struct {
 	Nodes     []Node    `json:"nodes"`
 	Edges     []Edge    `json:"edges"`
 	CreatedAt time.Time `json:"createdAt"`
+	// Floors are isolated copies of the repository, each with its own
+	// canvas; FloorConfig seeds new ones (nil: DefaultFloorConfig).
+	Floors      []Floor      `json:"floors,omitempty"`
+	FloorConfig *FloorConfig `json:"floorConfig,omitempty"`
 }
 
 // Node is an element on the canvas.
@@ -51,6 +55,8 @@ type Node struct {
 	// CreatedBy is the terminal whose agent created this node (squad new,
 	// squad portal create); empty when the user did.
 	CreatedBy string `json:"createdBy,omitempty"`
+	// Floor is the floor the node is on (a Floor id); "" is the ground floor.
+	Floor string `json:"floor,omitempty"`
 }
 
 // Label returns the node's display name.
@@ -289,6 +295,9 @@ func (s *Store) AddNode(n Node) (Node, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if n.Floor != "" && s.floorIndexLocked(n.Floor) < 0 {
+		return Node{}, fmt.Errorf("%w: floor %q", ErrNotFound, n.Floor)
+	}
 	for _, other := range s.ws.Nodes {
 		if other.ID == n.ID {
 			return Node{}, ErrDuplicate
@@ -313,7 +322,7 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 		if err := fn(&n); err != nil {
 			return Node{}, err
 		}
-		n.ID, n.Kind = id, s.ws.Nodes[i].Kind
+		n.ID, n.Kind, n.Floor = id, s.ws.Nodes[i].Kind, s.ws.Nodes[i].Floor
 		if n.Terminal != nil {
 			for _, other := range s.ws.Nodes {
 				if other.ID != id && other.Terminal != nil && other.Terminal.Name == n.Terminal.Name {

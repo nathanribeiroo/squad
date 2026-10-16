@@ -368,11 +368,11 @@ func (s *Service) Create(caller, title, content, author string) (store.Node, err
 			return store.Node{}, fmt.Errorf("%w: a connected note named %q", store.ErrDuplicate, title)
 		}
 	}
-	x, y := 0.0, 0.0
+	x, y, floor := 0.0, 0.0, ""
 	if me, ok := s.store.Node(caller); ok {
-		x, y = me.X-440, me.Y
+		x, y, floor = me.X-440, me.Y, me.Floor
 	}
-	n := store.Node{Kind: store.KindNote, X: x, Y: y, W: 400, H: 350, Note: &store.NoteData{Title: title}}
+	n := store.Node{Kind: store.KindNote, X: x, Y: y, W: 400, H: 350, Floor: floor, Note: &store.NoteData{Title: title}}
 	if err := s.PrepareNode(&n); err != nil {
 		return store.Node{}, err
 	}

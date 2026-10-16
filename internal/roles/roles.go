@@ -13,10 +13,10 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/nathanribeiroo/squad/internal/config"
+	"github.com/nathanribeiroo/squad/internal/ids"
 )
 
 // Role is one entry of the library. A terminal refers to it by ID.
@@ -270,15 +270,7 @@ func (l *Library) check(r *Role, except string) error {
 
 // freeID turns a name into a readable id that no role uses yet.
 func (l *Library) freeID(name string) string {
-	var b strings.Builder
-	for _, c := range unaccent.Replace(strings.ToLower(name)) {
-		if c < utf8.RuneSelf && (unicode.IsLetter(c) || unicode.IsDigit(c)) {
-			b.WriteRune(c)
-		} else if s := b.String(); s != "" && !strings.HasSuffix(s, "-") {
-			b.WriteByte('-')
-		}
-	}
-	base := strings.Trim(b.String(), "-")
+	base := ids.Slug(name)
 	if base == "" {
 		base = "role"
 	}
@@ -302,14 +294,6 @@ func (l *Library) saveLocked() error {
 	}
 	return config.WriteFileAtomic(l.path, data, 0o600)
 }
-
-// unaccent folds the accented letters of Portuguese and its neighbors, for
-// ids: "Revisão de UX" → "revisao-de-ux".
-var unaccent = strings.NewReplacer(
-	"á", "a", "à", "a", "â", "a", "ã", "a", "ä", "a", "é", "e", "ê", "e", "è", "e", "ë", "e",
-	"í", "i", "ì", "i", "î", "i", "ï", "i", "ó", "o", "ò", "o", "ô", "o", "õ", "o", "ö", "o",
-	"ú", "u", "ù", "u", "û", "u", "ü", "u", "ç", "c", "ñ", "n",
-)
 
 func contains(list []string, s string) bool {
 	for _, x := range list {

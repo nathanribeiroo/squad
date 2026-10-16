@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), e papéis com instruções que chegam a cada agente. Em seguida, o agente gerente, MCP e andares (git worktree) (veja o plano). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP e o servidor dos andares (git worktree). Em seguida, a interface dos andares (veja o plano). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -107,6 +107,15 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - Qualquer agente pode abrir um portal: `squad portal create localhost:5173 "App"` cria o portal ligado a quem pediu (até 3 por agente).
 - Pelo MCP (abaixo), o gerente trabalha sem pedir aprovação a cada passo. Pela CLI, cada comando `squad` pede aprovação no Claude Code como qualquer outro comando.
 
+**Andares:** cópias isoladas do repositório do workspace, para frentes de trabalho em paralelo que mexem nos mesmos arquivos. Por enquanto pela CLI, pelo MCP e pela API; o seletor no topo chega no R5.
+- Cada andar é um `git worktree` num branch próprio, com um canvas próprio. A pasta fica **fora do projeto**, como no Maestri: `<pasta-pai do repositório>/.squad/floors/<projeto>--<andar>`.
+- Ele parte do último commit (alterações não commitadas ficam no térreo). Recebe os arquivos versionados, mais os não versionados da lista de cópia do workspace (padrão `.env*`), e roda o comando de preparo, se houver (ex.: `npm install`). A lista e o comando ficam em `PUT /w/<id>/api/floors/config` (`{"copy": [".env*"], "setup": "npm install"}`). O preparo roda no shell padrão (Git Bash no Windows), e a saída fica em `GET /w/<id>/api/floors/<andar>/log`.
+- Os terminais do andar abrem na cópia; pastas relativas, e mesmo uma pasta do térreo dada por inteiro, apontam para a cópia. Fios podem ligar terminais de andares diferentes: o gerente no térreo conversa com quem está no andar.
+- **Aterrissar** fecha os terminais e portais do andar e apaga a pasta; as notas descem para o térreo. O branch fica. Com `--merge`, antes mescla o branch no branch de origem (`--into outro` para outro), com commit de merge. Se o branch de destino não estiver aberto em nenhuma pasta, a mescla acontece sem tocar em pasta nenhuma. É recusado se o andar tiver alteração não commitada, se a pasta de destino tiver alteração em arquivo versionado, ou se o branch do andar tiver commitado um arquivo copiado do térreo (como o `.env`, que pode ter segredos). Com conflito, nada muda, e a resposta lista os arquivos.
+- **Descartar** (`DELETE /w/<id>/api/floors/<andar>`, só pelo usuário) apaga tudo: terminais, pasta (mesmo com trabalho não commitado) e o branch, se foi o andar que o criou.
+- Gerentes criam e aterrissam andares (só os que eles criaram); qualquer agente lista. Pelo MCP, `floors` (listar, criar) vem liberada, e `floor_land` pede aprovação.
+- Um workspace com andares não pode ser removido nem mudar de pasta antes de aterrissar ou descartar os andares.
+
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 
 ### Testar a conversa sem a interface (pela API)
@@ -149,6 +158,10 @@ Dentro de um terminal do Squad, o comando `squad` está no PATH:
 | `squad portal create URL "Nome"` · `close "Nome"` | abre um portal ligado a você / fecha um que você criou |
 | `squad new "Nome" --role impl` | gerentes: cria um terminal ao lado, ligado e já pronto (`--agent`, `--cwd`, `--command`) |
 | `squad connect "A" "B"` · `squad close "Nome"` | gerentes: liga dois nós / remove um terminal que criou |
+| `squad floor list` | os andares: branch, estado, pasta |
+| `squad floor create "Nome"` | gerentes: cria um andar a partir do último commit (`--branch B`, `--existing` para abrir um branch que já existe) |
+| `squad new "Bia" --role impl --floor "Nome"` | gerentes: cria o terminal no andar, trabalhando na cópia (`--floor ground` é o térreo) |
+| `squad floor land "Nome" [--merge \| --into BRANCH]` | gerentes: aterrissa um andar que criou, mesclando o branch antes se pedido |
 
 Com mais de um portal ligado, diga qual: `squad portal "Docs" snapshot`. `squad portal help` mostra tudo.
 
@@ -160,8 +173,8 @@ Com mais de um portal ligado, diga qual: `squad portal "Docs" snapshot`. `squad 
 
 | Ferramentas | Aprovação |
 |---|---|
-| `list`, `ask`, `ask_batch`, `check`, `reply`, `note`, `portal`, `new`, `connect`, `close` | já liberadas no Claude Code. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
-| `keys` (digitar num terminal), `new_shell` (terminal com comando, ex.: `npm run dev`), `portal_eval` | o Claude Code pede a sua aprovação a cada uso |
+| `list`, `ask`, `ask_batch`, `check`, `reply`, `note`, `portal`, `new`, `connect`, `close`, `floors` | já liberadas no Claude Code. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
+| `keys` (digitar num terminal), `new_shell` (terminal com comando, ex.: `npm run dev`), `portal_eval`, `floor_land` (mescla branches e fecha terminais) | o Claude Code pede a sua aprovação a cada uso |
 
 Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do turno** (via hook `Stop` ou `notify`), não a tela. Com outros programas, o Squad espera a tela parar de mudar.
 
@@ -179,7 +192,7 @@ go test -tags e2e -run TestRealClaude -v ./internal/app/     # usa o Claude Code
 | Pasta | Conteúdo |
 |---|---|
 | `cmd/squad` | o binário único: servidor (`serve`), a CLI usada pelos agentes, `hook`, `install-skill` |
-| `internal/` | `terminal`, `pty`, `screen` (emulador), `activity` (monitor), `agentbus` (conversa), `agents` (hooks), `notes`, `store`, `server`, `app` |
+| `internal/` | `terminal`, `pty`, `screen` (emulador), `activity` (monitor), `agentbus` (conversa), `agents` (hooks), `notes`, `floors` (andares), `store`, `server`, `app` |
 | `web/` | interface React (React Flow, xterm.js); o build vai para `internal/webui/dist` |
 | `tools/shot` | captura de tela via Chrome headless (módulo Go próprio), usada para comparar a UI com o design |
 | `third_party/vt` | emulador de terminal (charmbracelet/x/vt, MIT) com patches, como pacote do próprio módulo |

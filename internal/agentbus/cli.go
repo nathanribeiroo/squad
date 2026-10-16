@@ -95,6 +95,7 @@ const Usage = `Usage (inside a Squad terminal):
   squad portal …                     use connected portals, or create one (squad portal help)
   squad new "Name" --role impl       managers: create a terminal next to you (squad new --help)
   squad connect / close              managers: connect nodes, remove what you created
+  squad floor …                      floors, isolated copies of the repository (squad floor help)
 
 Messages you receive start with [de: <Name> · pedido <id>]. Reply with
 squad reply <id> "…", or just finish your turn: your final answer is returned
@@ -144,6 +145,14 @@ func (b *Bus) Dispatch(ctx context.Context, caller string, args []string, exts .
 	return Result{Code: 400, Body: fmt.Sprintf("squad: unknown command %q\n\n%s", args[0], Usage)}
 }
 
+// floorLabel names a floor for squad list ("ground" for the ground floor).
+func (b *Bus) floorLabel(id string) string {
+	if f, ok := b.store.Floor(id); ok && id != "" {
+		return f.Name
+	}
+	return "ground"
+}
+
 // List describes the caller and what is connected to it.
 func (b *Bus) List(caller string) Result {
 	me, ok := b.store.Node(caller)
@@ -154,6 +163,9 @@ func (b *Bus) List(caller string) Result {
 	fmt.Fprintf(&sb, "You:\n  - name: %s, agent: %s", quote(me.Terminal.Name), me.Terminal.Agent)
 	if me.Terminal.Role != "" {
 		fmt.Fprintf(&sb, ", role: %s", quote(b.roleLabel(me.Terminal.Role)))
+	}
+	if f, ok := b.store.Floor(me.Floor); ok && me.Floor != "" {
+		fmt.Fprintf(&sb, ", floor: %s (branch %s; commit your work there)", quote(f.Name), f.Branch)
 	}
 	sb.WriteString("\n")
 	if b.selfNote != nil {
@@ -189,6 +201,9 @@ func (b *Bus) List(caller string) Result {
 			fmt.Fprintf(&sb, "  - name: %s, agent: %s", quote(n.Terminal.Name), n.Terminal.Agent)
 			if n.Terminal.Role != "" {
 				fmt.Fprintf(&sb, ", role: %s", quote(b.roleLabel(n.Terminal.Role)))
+			}
+			if n.Floor != me.Floor {
+				fmt.Fprintf(&sb, ", floor: %s", quote(b.floorLabel(n.Floor)))
 			}
 			if b.mon != nil {
 				st, _ := b.mon.State(n.ID)
