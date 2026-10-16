@@ -73,8 +73,5 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 
 ## Pendências
 
-- **Decisões do usuário, a perguntar antes da etapa:**
-  - R8: o que é "uso remoto";
-  - R9: manter ou cortar o Playwright.
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo, R8 (terminais remotos):** confirme o escopo de "uso remoto" e traga o plano detalhado antes de começar. O R7 (portal Android) foi cortado pelo usuário.
+- **Próximo passo:** a segunda rodada terminou no R6 (o usuário cortou R7, R8 e R9). Combine com o usuário o que vem a seguir; os candidatos estão em "Fora da rodada", no PLAN.

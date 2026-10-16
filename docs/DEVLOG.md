@@ -2,9 +2,9 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
-## 2026-10-16, portal Android (R7) cortado
+## 2026-10-16, R7, R8 e R9 cortados
 
-- **Decisão do usuário:** o portal Android não é necessário, e o R7 sai da rodada. O próximo passo é o R8 (terminais remotos), depois de confirmar o que é "uso remoto".
+- **Decisão do usuário:** o portal Android (R7), os terminais remotos (R8) e o Playwright (R9) não são necessários e saem da rodada. A segunda rodada termina no R6. O que vem depois fica para combinar; os candidatos estão em "Fora da rodada", no PLAN.
 
 ## 2026-10-16, resumos de turno (R6)
 
