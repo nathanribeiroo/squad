@@ -39,6 +39,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | R7 Portal Android | — | cortado (decisão do usuário) |
 | R8 Terminais remotos | — | cortado (decisão do usuário) |
 | R9 Playwright opcional | — | cortado (decisão do usuário) |
+| Janela de app | `feat/app-window` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -159,6 +160,9 @@ Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe s
 - **R9, Playwright opcional:** cortado em 2026-10-16. Seria um segundo motor do portal (Firefox e WebKit).
 
 **A rodada termina no R6:** o usuário cortou o R7, o R8 e o R9 por não precisar deles.
+
+**Depois da rodada:**
+- **Janela de app:** o `squad serve` abre o canvas numa janela própria (modo app do Chrome ou do Edge; no Mac só com Safari, o app do Dock), com ícone, título com o workspace e login que sobrevive ao reinício.
 
 **Fora da rodada:**
 - infraestrutura: CI com Windows, binários no GitHub Releases, terminais que sobrevivem ao reinício do servidor;

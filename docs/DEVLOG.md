@@ -2,6 +2,20 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, janela de app
+
+- **Pedido do usuário:** abrir o Squad numa janela, como um app, sem mostrar a URL. No Mac, ele usa o Safari.
+- **Escolha: o modo app do navegador** (`--app=<url>`) do Chrome, do Edge ou do Brave, achado por `browser.Find` (o mesmo dos portais). Uma janela nativa (WebView2 dentro do `squad.exe`) foi descartada: no Linux e no macOS exigiria compilar com C, e o `go install` deixaria de ser simples.
+- **Perfil próprio** em `~/.squad/window` (separado do perfil dos portais, `~/.squad/browser`): a janela não se mistura com o navegador do usuário e não carrega extensões. O tamanho 1440×900 vai só na primeira vez; testei que o `--window-size` passaria por cima do tamanho lembrado.
+- **Processo:** no Linux e no macOS, o navegador vai para outro grupo de processos, para o Ctrl-C do `serve` não fechar a janela (no Windows, um programa gráfico já não recebe o Ctrl-C). Fechar a janela não para o servidor.
+- **Login que sobrevive ao reinício:** antes, o token mudava a cada `squad serve`. Agora ele fica em `~/.squad/session-token` (permissão 0600), e o cookie dura um ano. Sem isso, o app do Dock do Safari, que não tem barra de endereço, ficaria sem login a cada reinício. Decisão reversível: o arquivo de descoberta (`run/server.json`) já guardava o token, e o servidor continua só em `127.0.0.1`, com checagem de Host e Origin. Apagar o arquivo desconecta tudo.
+- **Página de login:** sem sessão, a página pede a URL que o `serve` mostrou, num campo, já que a janela não tem barra de endereço. Um token antigo mostra a mesma página, com o aviso.
+- **Safari:** não tem modo app por comando. O caminho é o "Adicionar ao Dock" (macOS 14+), feito uma vez. Depois, o `squad serve` abre `~/Applications/Squad.app` com `open -a`, sem URL (não sei se um app do Dock aceita uma URL, então ele abre no último workspace). Com Chrome ou Edge no Mac, vale a janela de app.
+- **Web:** ícone (a grade do logo) em SVG e PNG, `apple-touch-icon`, `manifest.webmanifest`; título "workspace · Squad"; `theme-color` acompanha o tema, para a barra de título combinar com o topo; `translate="no"`, para o navegador não oferecer tradução. Os ícones e o manifest são servidos sem sessão, porque o navegador os busca sem cookie.
+- **Flags:** `-open app` (padrão), `-open browser` (a aba de antes) e `-open none` (o `-no-open` continua valendo).
+- **Testado aqui:** Chromium de verdade num display virtual (Xvfb): a janela abre sem barra de endereço, com o título do workspace; sobrevive ao servidor parado e reconecta quando ele volta; um segundo `squad serve -dir` abre outra janela; a página de login aceita a URL colada.
+- **Precisa de você:** conferir no Windows (Edge) e, no Mac, o app do Dock do Safari. Aqui não há Windows nem Mac. Também não consegui confirmar que o tamanho da janela é lembrado: sem gerenciador de janelas, o Chromium gravou o tamanho mas não o restaurou.
+
 ## 2026-10-16, R7, R8 e R9 cortados
 
 - **Decisão do usuário:** o portal Android (R7), os terminais remotos (R8) e o Playwright (R9) não são necessários e saem da rodada. A segunda rodada termina no R6. O que vem depois fica para combinar; os candidatos estão em "Fora da rodada", no PLAN.

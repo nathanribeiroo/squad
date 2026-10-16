@@ -1,6 +1,6 @@
 # Squad
 
-Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
+Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
 > Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP, os andares (git worktree), com seletor no topo, e os resumos de turno. Com eles, a segunda rodada está completa (veja o plano). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
@@ -32,7 +32,16 @@ bin/squad serve -dir ~/meu-projeto
 
 A mesma skill vem empacotada em [`squad-skill.zip`](squad-skill.zip) (pasta `squad/` com o `SKILL.md`), gerada por `make skill-zip`. Ela só faz sentido onde o comando `squad` existe, ou seja, dentro dos terminais do Squad.
 
-O `serve` mostra uma URL com token e abre o navegador. Os dados ficam em `~/.squad` (troque com `SQUAD_HOME`) e a porta padrão é 7420 (`-port` ou `SQUAD_PORT`).
+O `serve` mostra uma URL com token e abre o Squad numa janela. Os dados ficam em `~/.squad` (troque com `SQUAD_HOME`) e a porta padrão é 7420 (`-port` ou `SQUAD_PORT`).
+
+### Janela de app
+
+O Squad abre numa janela própria, sem abas e sem barra de endereço, com o ícone dele na barra de tarefas e o nome do workspace no título.
+- **Como:** é o modo app do Chrome, do Edge ou do Brave (o primeiro encontrado; o Edge vem em todo Windows), com um perfil separado em `~/.squad/window`. Ele não carrega as suas extensões e lembra o tamanho da janela.
+- **Fechar a janela não para o Squad:** os agentes continuam trabalhando. Para reabrir, rode `squad serve` de novo (em qualquer pasta). Para encerrar, use Ctrl-C no terminal do `serve`.
+- **Login:** o token não muda mais a cada reinício (fica em `~/.squad/session-token`), então a janela volta sozinha quando o servidor reinicia. Apagar esse arquivo desconecta todas as janelas e abas no próximo início. Se uma janela abrir sem login, ela pede a URL que o `serve` mostrou.
+- **Outras formas:** `squad serve -open browser` abre uma aba no navegador padrão, como antes; `-open none` (ou `-no-open`) não abre nada. Sem Chrome, Edge nem Brave, abre a aba.
+- **Mac com Safari:** o Safari não tem modo app por comando. No macOS 14 ou mais novo, abra o Squad no Safari e use **Arquivo → Adicionar ao Dock**, mantendo o nome **Squad**. Daí em diante, o `squad serve` abre esse app do Dock, que mostra o último workspace aberto (os outros ficam no seletor do topo). Com o Chrome ou o Edge instalado no Mac, a janela de app funciona sem esse passo.
 
 **Workspaces:** cada pasta de projeto é um workspace, com o seu canvas, terminais e notas (`~/.squad/workspaces/<id>/`).
 - `squad serve -dir <pasta>` abre o workspace da pasta (`.` se omitida) e o cria na primeira vez.
