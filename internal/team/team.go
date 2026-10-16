@@ -77,7 +77,8 @@ const Usage = `Manager commands (terminals in manager mode, e.g. the Planejador)
   squad new "Name" [--role impl] [--agent claude] [--cwd dir] [--floor F] [--command "…"]
         create a terminal next to you, connected to you and started; returns
         once its agent is ready. Defaults: your agent, your folder, your floor,
-        no role. Roles: plan, impl, rev, test or any role name. Agents: claude,
+        no role. Roles: plan, arch, impl, rev, test or any role name (listed
+        below, and by squad roles). Agents: claude,
         codex, devin, gemini, shell (a plain shell; --command runs in it),
         custom. --floor puts it on a floor (squad floor list), working in the
         floor's copy of the repository; --floor ground is the ground floor.
@@ -90,12 +91,14 @@ func (s *Service) Extension(ctx context.Context, caller string, args []string) (
 		return agentbus.Result{}, false
 	}
 	switch args[0] {
+	case "roles": // anyone: it only reads the library
+		return res(200, s.RolesText()), true
 	case "new", "connect", "close":
 	default:
 		return agentbus.Result{}, false
 	}
 	if len(args) > 1 && (args[1] == "help" || args[1] == "--help" || args[1] == "-h") {
-		return res(200, Usage), true
+		return res(200, Usage+"\n\n"+s.RolesText()), true
 	}
 	me, ok := s.o.Canvas.Store().Node(caller)
 	if !ok || me.Terminal == nil {
@@ -112,6 +115,26 @@ func (s *Service) Extension(ctx context.Context, caller string, args []string) (
 	default:
 		return s.close(me, args[1:]), true
 	}
+}
+
+// RolesText lists the roles of the library for agents: id, name, whether
+// it's a manager and what it does (squad roles, squad new --help).
+func (s *Service) RolesText() string {
+	if s.o.Roles == nil {
+		return "No role library."
+	}
+	var b strings.Builder
+	b.WriteString(`Roles (a manager gives one with squad new "Name" --role <id>; the id or the name works):`)
+	for _, r := range s.o.Roles.List() {
+		fmt.Fprintf(&b, "\n- %s: %s", r.ID, r.Name)
+		if r.Manager {
+			b.WriteString(" (manager)")
+		}
+		if sum := roles.Summary(r); sum != "" {
+			b.WriteString(" — " + sum)
+		}
+	}
+	return b.String()
 }
 
 // IsManager reports whether a terminal may create and connect terminals.

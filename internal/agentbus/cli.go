@@ -93,6 +93,7 @@ const Usage = `Usage (inside a Squad terminal):
   squad reply <id> "message"         answer request <id> (shown as [de: … · pedido <id>])
   squad note …                       read and write connected notes (squad note help)
   squad portal …                     use connected portals, or create one (squad portal help)
+  squad roles                        the roles agents can have (Planejador, Arquiteto, Implementador…)
   squad new "Name" --role impl       managers: create a terminal next to you (squad new --help)
   squad connect / close              managers: connect nodes, remove what you created
   squad floor …                      floors, isolated copies of the repository (squad floor help)

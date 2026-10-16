@@ -302,14 +302,14 @@ func TestWorkspacesStreamAndSummary(t *testing.T) {
 	if l := read(); len(l) != 1 || l[0].ID != a.ID {
 		t.Fatalf("first list: %+v", l)
 	}
-	if l := readRoles(); len(l) != 4 || l[3].Name != "Testador" {
+	if l := readRoles(); len(l) != 5 || l[4].Name != "Testador" {
 		t.Fatalf("first roles: %+v", l)
 	}
 	// A new role reaches every open page.
 	if code, data := h.do("POST", "/api/roles", roles.Role{Name: "Designer", Prompt: "Cuide do visual."}, nil); code != http.StatusCreated {
 		t.Fatalf("create role: %d %s", code, data)
 	}
-	if l := readRoles(); len(l) != 5 || l[4].ID != "designer" {
+	if l := readRoles(); len(l) != 6 || l[5].ID != "designer" {
 		t.Fatalf("roles after create: %+v", l)
 	}
 	h.addTerminal(a.ID, "Shell")
@@ -370,7 +370,7 @@ func TestRolesAPI(t *testing.T) {
 	var list []roles.Role
 	_, data := h.do("GET", "/api/roles", nil, nil)
 	_ = json.Unmarshal(data, &list)
-	if len(list) != 4 {
+	if len(list) != 5 {
 		t.Fatalf("list: %+v", list)
 	}
 }

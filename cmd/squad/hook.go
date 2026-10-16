@@ -100,6 +100,14 @@ works everywhere.
 
 For long messages use a heredoc: ` + "`squad ask \"Name\" <<'EOF'`" + ` … ` + "`EOF`" + `.
 
+## Roles
+
+` + "`squad list`" + ` shows each agent's role; ` + "`squad roles`" + ` lists all of them with what
+they do. The Arquiteto designs (a note "Arquitetura: …" with modules, contracts,
+risks and parts that can run in parallel) and doesn't write product code. If
+an architecture note is connected to you, read it before you implement or
+review, and follow it; ask its author before departing from it.
+
 ## Notes
 
 A note's name is unique in the workspace and permanent. When you create one
@@ -132,13 +140,19 @@ removes one you created.
 (the Planejador role does). Then:
 
 1. Plan the work and decide who you need: one agent per independent task,
-   with the role that fits (impl, rev, test or another role name).
+   with the role that fits (` + "`squad roles`" + ` lists them: arch, impl, rev, test and the
+   user's own). Call an Arquiteto (` + "`--role arch`" + `) when the change touches the
+   structure (a new module, an API, a data format, a dependency) or will be
+   split into parallel fronts; skip it for small, local tasks.
 2. ` + "`squad new \"Bia\" --role impl`" + ` creates a terminal next to you, connected to
    you, with that role and your agent, and returns once it is ready.
    Options: ` + "`--agent codex|devin|gemini|claude|shell`" + `, ` + "`--cwd folder`" + `,
    ` + "`--command \"npm run dev\"`" + ` (with ` + "`--agent shell`" + `, for a dev server).
 3. Delegate with ` + "`squad ask`" + ` (` + "`--batch`" + ` for parallel work) and check the results:
    have the Revisor review and the Testador test before telling the user it's done.
+   The Arquiteto writes its design in a note ("Arquitetura: …"): connect that
+   note to whoever implements and reviews, and use the parts it proposes to
+   decide the floors.
 4. ` + "`squad connect \"A\" \"B\"`" + ` wires two nodes (e.g. the Testador to a portal or
    the Implementador), ` + "`squad close \"Name\"`" + ` removes a terminal you created that
    is no longer needed. Leave the rest for the user to see.

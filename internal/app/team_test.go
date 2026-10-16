@@ -91,6 +91,14 @@ func TestManagerBuildsTeam(t *testing.T) {
 	if r := e.run(bia, "new", "Eva"); r.Code != 403 || !strings.Contains(r.Body, "manager mode") {
 		t.Fatalf("Bia creating: %d %s", r.Code, r.Body)
 	}
+	// Anyone sees the roles; the manager's help lists them too.
+	r = e.run(bia, "roles")
+	if r.Code != 200 || !strings.Contains(r.Body, "- plan: Planejador (manager) — Você planeja") || !strings.Contains(r.Body, "- arch: Arquiteto — Você desenha a solução técnica") {
+		t.Fatalf("roles: %d %s", r.Code, r.Body)
+	}
+	if r := e.run(plan, "new", "--help"); !strings.Contains(r.Body, "Roles: plan, arch, impl") || !strings.Contains(r.Body, "- test: Testador") {
+		t.Fatalf("new --help: %s", r.Body)
+	}
 
 	// connect and close.
 	if r := e.run(plan, "connect", "Bia", "Caio"); r.Code != 200 {
