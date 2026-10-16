@@ -66,7 +66,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 | `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe |
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |
 | `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot` |
-| `internal/agentbus` | `squad list/ask/check/reply`, limites, pausa, modo `Safe` |
+| `internal/agentbus` | `squad list/ask/check/wait/reply`, limites, pausa, modo `Safe` |
 | `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools`; a cópia da configuração do Devin e o registro do MCP nele (`devin.go`) |
 | `internal/roles`, `internal/team` | biblioteca de papéis; `squad new/connect/close` (gerente) |
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `squad portal` |

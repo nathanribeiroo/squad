@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/nathanribeiroo/squad/internal/agentbus"
 )
 
 func TestRunDispatch(t *testing.T) {
@@ -20,6 +22,28 @@ func TestRunDispatch(t *testing.T) {
 	errb.Reset()
 	if code := run([]string{"bogus"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unknown command") {
 		t.Fatalf("unknown: code=%d err=%q", code, errb.String())
+	}
+}
+
+// Every command the help inside a terminal shows reaches the server.
+func TestTerminalCommandsAreRouted(t *testing.T) {
+	known := map[string]bool{}
+	for _, c := range commands() {
+		known[c.name] = true
+	}
+	for _, line := range strings.Split(agentbus.Usage, "\n") {
+		f := strings.Fields(line)
+		if len(f) > 1 && f[0] == "squad" && !known[f[1]] {
+			t.Errorf("squad %s is in the terminal help but not a command of the squad binary", f[1])
+		}
+	}
+	for _, args := range [][]string{{"ask", "A", "m"}, {"wait", "A"}} {
+		if !blocking(args) {
+			t.Errorf("%v should wait as long as the call takes", args)
+		}
+	}
+	if blocking([]string{"ask", "A", "--raw", "x"}) || blocking([]string{"check", "A"}) {
+		t.Error("raw keys and check don't block")
 	}
 }
 

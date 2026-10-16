@@ -77,7 +77,7 @@ func HasHooks(agent string) bool { return Lookup(agent).Hooks }
 // command line, JavaScript in a page). keys, new_shell, portal_eval and
 // floor_land (it merges branches and closes terminals) are the others: the
 // user approves each call.
-var SafeMCPTools = []string{"list", "ask", "ask_batch", "check", "reply", "note", "portal", "new", "connect", "close", "floors", "roles"}
+var SafeMCPTools = []string{"list", "ask", "ask_batch", "check", "wait", "reply", "note", "portal", "new", "connect", "close", "floors", "roles"}
 
 // mcpEnv is what squad mcp needs from the terminal's environment.
 var mcpEnv = []string{"SQUAD_URL", "SQUAD_TERMINAL_ID", "SQUAD_TOKEN"}

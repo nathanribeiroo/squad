@@ -196,6 +196,7 @@ Dentro de um terminal do Squad, o comando `squad` está no PATH:
 | `squad ask "Nome" --raw "teclas"` | digita teclas (`\n` Enter, `\x03` Ctrl-C…) e devolve a tela |
 | `squad ask --batch '{"A":"…","B":"…"}'` | vários pedidos em paralelo |
 | `squad check "Nome"` | lê a tela de um terminal ligado |
+| `squad wait "Nome"` | espera o turno do agente acabar e devolve a resposta final, sem mandar nada (para depois de um `ask` que voltou por tempo esgotado; se ele já terminou, devolve a última resposta) |
 | `squad reply <id> "…"` | responde o pedido `<id>` |
 | `squad note list\|read\|write\|edit\|create` | notas ligadas a você |
 | `squad portal snapshot` | lê a página de um portal ligado: título, URL e os elementos com referências `@e1`, `@e2`… |
@@ -221,10 +222,17 @@ Com mais de um portal ligado, diga qual: `squad portal "Docs" snapshot`. `squad 
 
 | Ferramentas | Aprovação |
 |---|---|
-| `list`, `ask`, `ask_batch`, `check`, `reply`, `note`, `portal`, `new`, `connect`, `close`, `floors`, `roles` | já liberadas no Claude Code e no Devin. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
+| `list`, `ask`, `ask_batch`, `check`, `wait`, `reply`, `note`, `portal`, `new`, `connect`, `close`, `floors`, `roles` | já liberadas no Claude Code e no Devin. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
 | `keys` (digitar num terminal), `new_shell` (terminal com comando, ex.: `npm run dev`), `portal_eval`, `floor_land` (mescla branches e fecha terminais) | o agente pede a sua aprovação a cada uso |
 
 Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do turno** (via hook `Stop` ou `notify`), não a tela. Com outros programas, o Squad espera a tela parar de mudar.
+
+**Tempo de espera:**
+- o `ask` espera enquanto o agente trabalha (até 30 min) e volta depois de 2 min sem atividade nenhuma, com a tela e o aviso `[squad: timeout …]`. Isso acontece, por exemplo, quando o agente fica parado num pedido de permissão;
+- se o turno dele ainda não acabou, o aviso manda usar `squad wait "Nome"`: ele espera esse mesmo turno acabar e devolve a resposta final, sem mandar outra mensagem;
+- se, durante o `wait`, o agente esperado mandar uma pergunta a quem espera, ela chega como resultado do `wait` (`[de: … · pedido …]`). Quem esperava responde com `squad reply` e espera de novo;
+- esperar por quem está esperando por você é recusado, porque nenhum dos dois terminaria;
+- se o agente limita o tempo de uma ferramenta MCP (no Claude Code, a variável `MCP_TOOL_TIMEOUT`), as ferramentas `ask` e `wait` voltam um pouco antes do limite. Elas trazem a tela do agente esperado e dizem para chamar `wait` de novo ou, se a tela mostra uma pergunta ou um pedido de permissão, avisar o usuário.
 
 O Devin é lançado com `devin --config ~/.squad/run/devin-config.json`. Esse `--config` **substitui** o `config.json` do usuário, então o arquivo é uma cópia do seu `~/.config/devin/config.json` (relida a cada terminal Devin aberto) com os hooks do Squad (`Stop`, `UserPromptSubmit` e `SessionStart`) depois dos seus e as ferramentas MCP seguras liberadas. O seu modelo, as suas permissões e os seus hooks continuam valendo. Permissões que você salvar como globais de dentro do Squad ficam nessa cópia. Num andar, o Devin abre com `--respect-workspace-trust false`, sem a pergunta de confiança na pasta: o andar é uma cópia do repositório que você abriu. A leitura dessa configuração foi testada com o Devin real; os hooks numa sessão com conta ainda não (veja `docs/DEVLOG.md`).
 

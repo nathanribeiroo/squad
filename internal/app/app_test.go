@@ -61,6 +61,11 @@ type env struct {
 
 func newEnv(t *testing.T, limits agentbus.Limits) *env {
 	t.Helper()
+	return newEnvWith(t, limits, fastActivity)
+}
+
+func newEnvWith(t *testing.T, limits agentbus.Limits, act activity.Options) *env {
+	t.Helper()
 	ln, port, err := server.ListenLoopback(0)
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +81,7 @@ func newEnv(t *testing.T, limits agentbus.Limits) *env {
 	}
 	a, err := New(Options{
 		Server:   server.Options{Port: port, Token: "tok", Store: st, CLIPath: filepath.Join(binDir, "squad")},
-		Activity: fastActivity, Limits: limits, Roles: lib,
+		Activity: act, Limits: limits, Roles: lib,
 	})
 	if err != nil {
 		t.Fatal(err)

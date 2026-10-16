@@ -42,7 +42,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Janela de app | `feat/app-window` | concluído |
 | Paridade do Devin | `feat/devin-parity` | concluído |
 | Nomes de nota | `feat/note-names` | concluído |
-| Papel Arquiteto | `feat/role-architect` | concluído (PR) |
+| Papel Arquiteto | `feat/role-architect` | concluído |
+| Planejador espera o resultado (`squad wait`) | `feat/planner-waits` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -167,6 +168,7 @@ Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe s
 **Depois da rodada:**
 - **Janela de app:** o `squad serve` abre o canvas numa janela própria (modo app do Chrome ou do Edge; no Mac só com Safari, o app do Dock), com ícone, título com o workspace e login que sobrevive ao reinício.
 - **Papel Arquiteto:** desenha a solução numa nota "Arquitetura: …"; o Planejador o chama em mudanças de estrutura e usa as partes para os andares. `squad roles` e a ferramenta MCP `roles` mostram os papéis aos agentes. O papel de product manager fica para depois.
+- **Planejador espera o resultado:** `squad wait "Nome"` (e a ferramenta MCP `wait`) espera o turno de um agente acabar depois de um `ask` que voltou por tempo esgotado; o Planejador não responde mais com andamento.
 - **Nomes de nota:** a nota nova abre com o campo de nome; o usuário renomeia as suas notas, e os nomes antigos continuam valendo para os agentes; as notas de agente ficam com o nome que ele deu.
 - **Paridade do Devin:** o Devin recebe o MCP (registrado pelo `install-skill`), mantém a configuração do usuário dentro do Squad e não pergunta a confiança nos andares; o `install-skill` instala para todos os agentes encontrados.
 

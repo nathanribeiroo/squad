@@ -1,5 +1,5 @@
 // Package agentbus implements the conversation between terminals (feature 1,
-// docs/03): list, ask (blocking), ask --raw, ask --batch, check and reply,
+// docs/03): list, ask (blocking), ask --raw, ask --batch, check, wait and reply,
 // with pending requests, ask-back and deadlock-cycle release, hop and rate
 // limits, and pause/resume. It is reached through POST /cli.
 package agentbus
@@ -92,6 +92,8 @@ type Bus struct {
 
 	mu      sync.Mutex
 	pending map[string]*Pending
+	waiters map[*waiter]bool            // callers blocked in squad wait
+	last    map[string]activity.TurnEnd // each terminal's last final turn end (squad wait)
 	paused  bool
 	resume  chan struct{}
 	sends   []time.Time
@@ -105,11 +107,15 @@ func New(st *store.Store, terms *terminal.Manager, ev *events.Bus, log *slog.Log
 	}
 	return &Bus{limits: limits, store: st, terms: terms, events: ev, log: log,
 		hasHooks: func(string) bool { return false },
-		pending:  map[string]*Pending{}, resume: make(chan struct{})}
+		pending:  map[string]*Pending{}, waiters: map[*waiter]bool{}, last: map[string]activity.TurnEnd{},
+		resume: make(chan struct{})}
 }
 
-// SetMonitor attaches the activity monitor.
-func (b *Bus) SetMonitor(m *activity.Monitor) { b.mon = m }
+// SetMonitor attaches the activity monitor (before it starts).
+func (b *Bus) SetMonitor(m *activity.Monitor) {
+	b.mon = m
+	m.OnAnyTurnEnd(b.turnEnded)
+}
 
 // SetHookedAgents tells which agent types report turn ends through hooks.
 func (b *Bus) SetHookedAgents(fn func(agent string) bool) { b.hasHooks = fn }
@@ -132,12 +138,18 @@ func (b *Bus) roleLabel(id string) string {
 // Limits returns the effective limits.
 func (b *Bus) Limits() Limits { return b.limits }
 
-// IsWaiting reports whether terminal id has an outstanding request.
+// IsWaiting reports whether terminal id has an outstanding request or is
+// waiting for another terminal's turn (squad wait).
 func (b *Bus) IsWaiting(id string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for _, p := range b.pending {
 		if p.From == id && !p.resolved {
+			return true
+		}
+	}
+	for w := range b.waiters {
+		if w.From == id {
 			return true
 		}
 	}
@@ -284,7 +296,7 @@ func (b *Bus) incomingHopLocked(caller string) int {
 }
 
 // reachableLocked reports whether `to` is reachable from `from` following
-// pending requests (origin → destination edges).
+// pending requests and waits (origin → destination edges).
 func (b *Bus) reachableLocked(from, to string) bool {
 	seen := map[string]bool{}
 	stack := []string{from}
@@ -303,34 +315,50 @@ func (b *Bus) reachableLocked(from, to string) bool {
 				stack = append(stack, p.To)
 			}
 		}
+		for w := range b.waiters {
+			if w.From == cur {
+				stack = append(stack, w.To)
+			}
+		}
 	}
 	return false
 }
 
-// EdgeRemoved cancels requests travelling over a removed connection.
+// EdgeRemoved cancels requests and waits over a removed connection.
 func (b *Bus) EdgeRemoved(e store.Edge) {
-	b.cancelWhere(func(p *Pending) bool {
-		return (p.From == e.A && p.To == e.B) || (p.From == e.B && p.To == e.A)
-	}, "connection removed; request cancelled")
+	b.cancelWhere(func(from, to string) bool {
+		return (from == e.A && to == e.B) || (from == e.B && to == e.A)
+	}, "connection removed")
 }
 
-// NodeRemoved cancels requests involving a removed node.
+// NodeRemoved cancels requests and waits involving a removed node.
 func (b *Bus) NodeRemoved(n store.Node) {
-	b.cancelWhere(func(p *Pending) bool { return p.From == n.ID || p.To == n.ID },
-		"terminal removed; request cancelled")
+	b.cancelWhere(func(from, to string) bool { return from == n.ID || to == n.ID }, "terminal removed")
+	b.mu.Lock()
+	delete(b.last, n.ID)
+	b.mu.Unlock()
 }
 
-func (b *Bus) cancelWhere(match func(*Pending) bool, msg string) {
+func (b *Bus) cancelWhere(match func(from, to string) bool, why string) {
 	b.mu.Lock()
 	var hit []*Pending
 	for _, p := range b.pending {
-		if match(p) {
+		if match(p.From, p.To) {
 			hit = append(hit, p)
+		}
+	}
+	var waits []*waiter
+	for w := range b.waiters {
+		if match(w.From, w.To) {
+			waits = append(waits, w)
 		}
 	}
 	b.mu.Unlock()
 	for _, p := range hit {
-		b.resolve(p, Result{Code: 409, Body: msg, Source: "cancelled"})
+		b.resolve(p, Result{Code: 409, Body: why + "; request cancelled", Source: "cancelled"})
+	}
+	for _, w := range waits {
+		b.finishWait(w, Result{Code: 409, Body: why + "; wait cancelled", Source: "cancelled"})
 	}
 }
 

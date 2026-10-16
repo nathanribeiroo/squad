@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -18,7 +19,7 @@ import (
 )
 
 const mcpInstructions = `Squad: a canvas where agents and terminals are connected by wires; you can only reach what is connected to you.
-Start with list. ask sends a message to a connected agent and waits for its reply (its final answer; it can take minutes).
+Start with list. ask sends a message to a connected agent and waits for its reply (its final answer; it can take minutes). If it times out while the agent is still working, wait returns the answer when it finishes: don't resend.
 note reads and writes connected notes; portal drives a connected browser page the user watches live.
 Managers (list says so) create their team with new (roles lists the roles: Planejador, Arquiteto, Implementador, Revisor, Testador…) and wire nodes with connect; floors give a team its own copy of the repository (a git worktree on a branch).
 keys, portal_eval and new_shell can run commands, and floor_land merges branches, so they ask the user first.`
@@ -49,9 +50,10 @@ func runMCP(_ []string, _, stderr io.Writer) int {
 }
 
 // addTool registers a tool that runs the CLI command build returns. A
-// blocking tool waits as long as the call takes (ask). Calls of the tools in
-// agents.SafeMCPTools are marked safe: the server refuses anything in them
-// that would run a command.
+// blocking tool waits as long as the call takes (ask, wait), or until just
+// before the agent's own limit for a tool call (clientToolTimeout). Calls of
+// the tools in agents.SafeMCPTools are marked safe: the server refuses
+// anything in them that would run a command.
 func addTool[In any](s *mcp.Server, env clientEnv, name, desc string, blocking bool, build func(In) ([]string, error)) {
 	safe := slices.Contains(agents.SafeMCPTools, name)
 	mcp.AddTool(s, &mcp.Tool{Name: name, Description: desc}, func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, any, error) {
@@ -62,13 +64,48 @@ func addTool[In any](s *mcp.Server, env clientEnv, name, desc string, blocking b
 		timeout := 60 * time.Second
 		if blocking {
 			timeout = 0
+			if limit := clientToolTimeout(); limit >= 2*time.Second {
+				timeout = limit - min(5*time.Second, limit/4)
+			}
 		}
 		code, out, err := callServer(ctx, env, args, safe, timeout)
+		var te interface{ Timeout() bool }
+		if err != nil && blocking && errors.As(err, &te) && te.Timeout() {
+			return textResult(cutShort(ctx, env, args), false), nil, nil
+		}
 		if err != nil {
 			return textResult("can't reach the Squad server: "+err.Error(), true), nil, nil
 		}
 		return textResult(strings.TrimRight(string(out), "\n"), code >= 300), nil, nil
 	})
+}
+
+// cutShort is the result of a blocking call that returned at the agent's
+// limit for a tool call: the screen of the agent it waits for, so the caller
+// sees whether it is still working or waiting for the user (the server's own
+// note on inactivity comes only after a longer wait), and what to do next.
+func cutShort(ctx context.Context, env clientEnv, args []string) string {
+	note := fmt.Sprintf("[squad: your agent stops tool calls after %d s (MCP_TOOL_TIMEOUT), so this call returned before the answer. ", int(clientToolTimeout().Seconds()))
+	if len(args) < 2 || (args[0] != "ask" && args[0] != "wait") || strings.HasPrefix(args[1], "-") {
+		return note + "The agents you asked are still working: don't resend; call wait with each name to get their answers.]"
+	}
+	target := args[1]
+	screen := ""
+	if code, out, err := callServer(ctx, env, []string{"check", target}, true, 5*time.Second); err == nil && code < 300 {
+		screen = fmt.Sprintf("[screen of %s now]\n%s\n", target, strings.TrimRight(string(out), "\n"))
+	}
+	return screen + note + fmt.Sprintf("If %q's screen shows a question or a permission prompt, it is waiting for the user: tell the user. Otherwise it is still working: don't resend; call wait with name %q to keep waiting for its answer.]", target, target)
+}
+
+// clientToolTimeout is the agent's limit for a tool call, when it says
+// (Claude Code's MCP_TOOL_TIMEOUT, in ms); 0 when unknown. Blocking tools
+// return a little before it, with a hint to wait, instead of being cut off.
+func clientToolTimeout() time.Duration {
+	ms, err := strconv.Atoi(strings.TrimSpace(os.Getenv("MCP_TOOL_TIMEOUT")))
+	if err != nil || ms <= 0 {
+		return 0
+	}
+	return time.Duration(ms) * time.Millisecond
 }
 
 func textResult(text string, isError bool) *mcp.CallToolResult {
@@ -184,7 +221,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 	addTool(s, env, "roles", "The roles agents can have (id, name, whether it's a manager, what it does): Planejador, Arquiteto, Implementador, Revisor, Testador and the user's own. Managers give one to a new terminal with new.",
 		false, func(noInput) ([]string, error) { return []string{"roles"}, nil })
 
-	addTool(s, env, "ask", "Send a message to a connected agent and wait for its reply (its final answer for that turn; it can take minutes). Agents only: for a shell, use keys. If it times out, don't resend: use check.",
+	addTool(s, env, "ask", "Send a message to a connected agent and wait for its reply (its final answer for that turn; it can take minutes). Agents only: for a shell, use keys. If it times out while the agent is still in its turn, don't resend: use wait.",
 		true, func(in askInput) ([]string, error) {
 			n, err := name("name", in.Name)
 			if err != nil {
@@ -214,6 +251,12 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 		false, func(in nameInput) ([]string, error) {
 			n, err := name("name", in.Name)
 			return []string{"check", n}, err
+		})
+
+	addTool(s, env, "wait", "Wait for a connected agent's current turn to end and return its final answer, without sending anything: after an ask that timed out while the agent was still working. If the agent isn't in a turn, returns its last answer at once. A message it sends you meanwhile ends the wait; answer it with reply, then wait again.",
+		true, func(in nameInput) ([]string, error) {
+			n, err := name("name", in.Name)
+			return []string{"wait", n}, err
 		})
 
 	addTool(s, env, "reply", "Answer a request you received ([de: Name · pedido <id>]) before your turn ends. Finishing your turn with a clear answer also replies.",
