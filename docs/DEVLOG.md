@@ -2,6 +2,33 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, paridade do Devin
+
+- **Pedido do usuário:** tudo o que o Squad faz tem que valer para o Devin tanto quanto para o Claude (e para os outros agentes quando der). Ele usa os dois.
+- **Como conferi:** instalei o Devin CLI real (v3000.11.92) numa pasta isolada. Sem login não dá para abrir uma sessão, mas dá para ler a ajuda e as configurações (`devin mcp list`, `devin skills paths`).
+- **Três falhas encontradas:**
+  - **MCP:** desde a v3000.3, o Devin só lê servidores MCP do `mcp_config.json`. O `mcpServers` que o Squad punha no `--config` era ignorado (o `devin mcp list` não mostrava o `squad`). Os terminais Devin estavam sem as ferramentas MCP e pediam aprovação a cada comando `squad`.
+  - **Configuração do usuário:** pela ajuda do Devin, o `--config` **substitui** o `~/.config/devin/config.json`. Dentro do Squad, o modelo, as permissões salvas e os hooks pessoais do usuário não valiam.
+  - **Skill:** o `squad install-skill` sem `-agent` instalava só no Claude, e as instruções pós-merge só citavam esse comando. A skill do Devin ficava para trás.
+- **Correções:**
+  - **Cópia da configuração:** a cada terminal Devin aberto, o Squad lê o `config.json` do usuário (JSON com comentários e vírgulas sobrando, como o Devin aceita) e grava uma cópia em `~/.squad/run/devin-config.json` com os hooks do Squad depois dos do usuário e as ferramentas MCP seguras liberadas (as mesmas do Claude). As permissões que o Devin salvar nessa cópia durante uma sessão do Squad são mantidas. Se o arquivo do usuário não abrir, vai só a parte do Squad, como antes. Sem `mcpServers` na cópia.
+  - **MCP registrado (decisão do usuário):** o `squad install-skill` registra o servidor `squad` no `mcp_config.json` do Devin, mantendo os outros servidores e guardando o arquivo anterior como `.squad-backup`. Fora de um terminal do Squad, o `squad mcp` responde sem ferramentas, com um aviso, em vez de falhar.
+  - **Skill para todos:** sem `-agent`, o `install-skill` instala para cada agente encontrado (a CLI no PATH ou a pasta de configuração); `-agent all` instala nos dois.
+  - **Andares (decisão do usuário):** o Devin abre num andar com `--respect-workspace-trust false`, sem a pergunta de confiança na pasta. O Claude não pergunta num worktree de um repositório confiado.
+  - **Skill:** o aviso sobre telas de permissão cita o Devin e o Codex, não só o Claude.
+- **Testado aqui:**
+  - unitários: a cópia mantém o modelo, as permissões e os hooks do usuário; não duplica os hooks do Squad; mantém o que o Devin salvou; o JSON com comentários; o registro do MCP mantém os outros servidores e não sobrescreve um arquivo quebrado;
+  - com o Devin real: ele lê a cópia (grava nela a versão do esquema) e o `devin mcp list` mostra o `squad` ao lado dos servidores do usuário (`go test -tags e2e -run TestRealDevinConfig ./internal/agents/`);
+  - pelo `squad serve`: um terminal Devin no térreo abre com a cópia, e num andar abre dentro da cópia do repositório, com `--respect-workspace-trust false`;
+  - o `squad mcp` fora do Squad responde ao `initialize` e ao `tools/list` sem ferramentas.
+- **Precisa de você (Devin com login):**
+  - rodar `squad install-skill` e reiniciar o `squad serve`;
+  - num terminal Devin, pedir `use a ferramenta squad list`: ela deve rodar sem pedir aprovação. Isso confirma que o Devin passa as variáveis do terminal (`SQUAD_*`) ao servidor MCP; o binário não mostra sinal de filtrá-las, mas não deu para ver numa sessão;
+  - o cartão de fim de turno, o papel e os estados do Devin (os hooks dentro de uma sessão com conta);
+  - se o modelo e as permissões que você configurou no Devin continuam valendo dentro do Squad;
+  - um andar com um Devin: ele não deve perguntar se confia na pasta.
+- **Codex e Gemini (fora deste PR):** o Codex recebe MCP, papel e fim de turno, mas não tem skill instalável pelo Squad nem a pergunta de confiança tratada nos andares. O Gemini recebe só o papel.
+
 ## 2026-10-16, janela de app
 
 - **Pedido do usuário:** abrir o Squad numa janela, como um app, sem mostrar a URL. No Mac, ele usa o Safari.

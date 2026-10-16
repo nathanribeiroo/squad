@@ -31,7 +31,7 @@ func commands() []command {
 		{"floor", "floors (git worktrees with their own canvas): list, create, land", runClient},
 		{"mcp", "serve the commands above as MCP tools over stdio (agents start it)", runMCP},
 		{"hook", "receive an agent hook (used by agent configs)", runHook},
-		{"install-skill", "install the Squad skill for Claude Code (-agent devin: Devin CLI)", runInstallSkill},
+		{"install-skill", "install the Squad skill for Claude Code and Devin (and Devin's MCP server)", runInstallSkill},
 		{"version", "print the version", runVersion},
 	}
 }

@@ -66,6 +66,8 @@ func TestTranscriptFallback(t *testing.T) {
 
 func TestPrepareLaunchLines(t *testing.T) {
 	t.Setenv("SQUAD_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir()) // no user Devin config
+	t.Setenv("APPDATA", t.TempDir())
 	l, err := NewLauncher("/opt/squad/bin/squad")
 	if err != nil {
 		t.Fatal(err)
@@ -112,15 +114,21 @@ func TestPrepareLaunchLines(t *testing.T) {
 	if spec.Command != want {
 		t.Fatalf("codex command:\n got %s\nwant %s", spec.Command, want)
 	}
-	devinCfg, err := os.ReadFile(l.DevinConfig)
-	if err != nil || !strings.Contains(string(devinCfg), `\"/opt/squad/bin/squad\" hook devin-stop`) || !strings.Contains(string(devinCfg), `"mcpServers"`) ||
-		!strings.Contains(string(devinCfg), `hook devin-prompt`) || strings.Contains(string(devinCfg), "StopFailure") {
-		t.Fatalf("devin config: %v\n%s", err, devinCfg)
-	}
 	spec = terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
 	_ = l.Prepare(store.Node{}, &spec)
 	if want := "devin --config " + terminal.Quote(terminal.ShellPOSIX, l.DevinConfig); spec.Command != want {
 		t.Fatalf("devin command:\n got %s\nwant %s", spec.Command, want)
+	}
+	devinCfg, err := os.ReadFile(l.DevinConfig)
+	if err != nil || !strings.Contains(string(devinCfg), `\"/opt/squad/bin/squad\" hook devin-stop`) || strings.Contains(string(devinCfg), `"mcpServers"`) ||
+		!strings.Contains(string(devinCfg), `hook devin-prompt`) || strings.Contains(string(devinCfg), "StopFailure") {
+		t.Fatalf("devin config: %v\n%s", err, devinCfg)
+	}
+	// On a floor, Devin doesn't stop at its workspace trust prompt.
+	spec = terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
+	_ = l.Prepare(store.Node{Floor: "f1"}, &spec)
+	if !strings.HasSuffix(spec.Command, " --respect-workspace-trust false") {
+		t.Fatalf("devin on a floor: %s", spec.Command)
 	}
 	spec = terminal.Spec{Agent: "shell"}
 	_ = l.Prepare(store.Node{}, &spec)
@@ -134,6 +142,8 @@ func TestPrepareLaunchLines(t *testing.T) {
 
 func TestRoleDelivery(t *testing.T) {
 	t.Setenv("SQUAD_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("APPDATA", t.TempDir())
 	l, err := NewLauncher("/opt/squad/bin/squad")
 	if err != nil {
 		t.Fatal(err)
@@ -187,6 +197,8 @@ func TestRoleDelivery(t *testing.T) {
 	}
 
 	// Devin: the SessionStart hook asks for the role.
+	spec = terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
+	_ = l.Prepare(node("t4", "test"), &spec)
 	if cfg, _ := os.ReadFile(l.DevinConfig); !strings.Contains(string(cfg), `"SessionStart"`) || !strings.Contains(string(cfg), "hook devin-session-start") {
 		t.Fatalf("devin config: %s", cfg)
 	}

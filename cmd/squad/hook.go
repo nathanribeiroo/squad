@@ -7,12 +7,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	"golang.org/x/term"
+
+	"github.com/nathanribeiroo/squad/internal/agents"
 )
 
 // runHook forwards an agent hook to the server: `squad hook <name> [json]`.
@@ -135,8 +137,9 @@ removes one you created.
 
 Agents you create can't create others, and there is a limit per manager.
 When one of them stops at a permission prompt (Claude Code's "Do you want to
-proceed?"), don't answer it for them with keys: tell the user, who sees that
-terminal on the canvas (on its floor) and decides.
+proceed?", Devin's approval menu, Codex's approval request), don't answer it
+for them with keys: tell the user, who sees that terminal on the canvas (on
+its floor) and decides.
 
 ## Floors (managers)
 
@@ -179,53 +182,134 @@ waits, ` + "`squad ask \"Planejador\" \"…\"`" + ` delivers your message as the
 func runInstallSkill(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("install-skill", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	agent := fs.String("agent", "claude", "agent that loads the skill: claude or devin")
-	dir := fs.String("dir", "", "skills directory (default: the agent's global skills directory)")
+	agent := fs.String("agent", "", "claude, devin or all (default: each of them found on this machine)")
+	dir := fs.String("dir", "", "skills directory (default: each agent's global skills directory)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
 	}
-	if *dir == "" {
-		d, err := skillsDir(*agent)
-		if err != nil {
-			fmt.Fprintln(stderr, "squad:", err)
-			return 2
+	var targets []string
+	switch *agent {
+	case "":
+		targets = installedAgents()
+		if *dir != "" {
+			targets = []string{"claude"}
 		}
-		*dir = d
+	case "all":
+		targets = []string{"claude", "devin"}
+	case "claude", "devin":
+		targets = []string{*agent}
+	default:
+		fmt.Fprintf(stderr, "squad: unknown agent %q (use claude, devin or all)\n", *agent)
+		return 2
 	}
-	target := filepath.Join(*dir, "squad")
-	if err := os.MkdirAll(target, 0o755); err != nil {
+	if *dir != "" && len(targets) > 1 {
+		fmt.Fprintln(stderr, "squad: -dir takes one agent (-agent claude or -agent devin)")
+		return 2
+	}
+	for _, a := range targets {
+		d := *dir
+		if d == "" {
+			var err error
+			if d, err = skillsDir(a); err != nil {
+				fmt.Fprintln(stderr, "squad:", err)
+				return 1
+			}
+		}
+		path := filepath.Join(d, "squad", "SKILL.md")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			fmt.Fprintln(stderr, "squad:", err)
+			return 1
+		}
+		if err := os.WriteFile(path, []byte(skillMD), 0o644); err != nil {
+			fmt.Fprintln(stderr, "squad:", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "Skill do Squad instalada para o %s em %s\n", agentLabel[a], path)
+		if a == "devin" {
+			if code := registerDevinMCP(stdout, stderr); code != 0 {
+				return code
+			}
+		}
+	}
+	return 0
+}
+
+var agentLabel = map[string]string{"claude": "Claude Code", "devin": "Devin"}
+
+// installedAgents are the agents with a skill format found on this machine
+// (their CLI on the PATH, or their configuration folder); Claude Code when
+// none is.
+func installedAgents() []string {
+	var found []string
+	home, _ := os.UserHomeDir()
+	if _, err := exec.LookPath("claude"); err == nil || isDir(filepath.Join(home, ".claude")) {
+		found = append(found, "claude")
+	}
+	d, _ := agents.DevinConfigDir()
+	if _, err := exec.LookPath("devin"); err == nil || (d != "" && isDir(d)) {
+		found = append(found, "devin")
+	}
+	if len(found) == 0 {
+		found = []string{"claude"}
+	}
+	return found
+}
+
+func isDir(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
+}
+
+// registerDevinMCP adds the squad MCP server to Devin's mcp_config.json:
+// Devin reads MCP servers only from there, not from the config file Squad
+// passes it. Outside a Squad terminal, squad mcp serves no tools.
+func registerDevinMCP(stdout, stderr io.Writer) int {
+	exe, err := os.Executable()
+	if err == nil {
+		if real, err := filepath.EvalSymlinks(exe); err == nil {
+			exe = real
+		}
+	}
+	if err != nil || strings.Contains(exe, "go-build") { // go run: a temporary binary
+		if p, err := exec.LookPath("squad"); err == nil {
+			exe, _ = filepath.Abs(p)
+		}
+	}
+	d, err := agents.DevinConfigDir()
+	if err != nil {
 		fmt.Fprintln(stderr, "squad:", err)
 		return 1
 	}
-	path := filepath.Join(target, "SKILL.md")
-	if err := os.WriteFile(path, []byte(skillMD), 0o644); err != nil {
-		fmt.Fprintln(stderr, "squad:", err)
+	path := filepath.Join(d, "mcp_config.json")
+	changed, err := agents.AddDevinMCP(path, exe)
+	if err != nil {
+		fmt.Fprintln(stderr, "squad: register the MCP server for Devin:", err)
 		return 1
 	}
-	fmt.Fprintln(stdout, "Skill do Squad instalada em", path)
+	if changed {
+		fmt.Fprintf(stdout, "Servidor MCP squad registrado no Devin em %s\n", path)
+	} else {
+		fmt.Fprintf(stdout, "Servidor MCP squad já estava registrado no Devin (%s)\n", path)
+	}
 	return 0
 }
 
 // skillsDir is where an agent loads global skills from: ~/.claude/skills for
-// Claude Code; for Devin CLI, devin/skills under $XDG_CONFIG_HOME (default
-// ~/.config, also on macOS) or %APPDATA% on Windows.
+// Claude Code; for Devin CLI, skills in its configuration folder.
 func skillsDir(agent string) (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
 	switch agent {
 	case "claude":
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
 		return filepath.Join(home, ".claude", "skills"), nil
 	case "devin":
-		base := os.Getenv("XDG_CONFIG_HOME")
-		if runtime.GOOS == "windows" {
-			base = os.Getenv("APPDATA")
+		d, err := agents.DevinConfigDir()
+		if err != nil {
+			return "", err
 		}
-		if base == "" {
-			base = filepath.Join(home, ".config")
-		}
-		return filepath.Join(base, "devin", "skills"), nil
+		return filepath.Join(d, "skills"), nil
 	}
 	return "", fmt.Errorf("unknown agent %q (use claude or devin)", agent)
 }

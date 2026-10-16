@@ -7,10 +7,10 @@
 //     from settings files are merged, so the user's own hooks keep working.
 //   - Codex: -c notify=[…] runs `squad hook codex-notify <json>` on
 //     agent-turn-complete (not tested against a real Codex account).
-//   - Devin CLI: a config file passed with --config adds Stop and
-//     UserPromptSubmit hooks (Claude Code's format) that run `squad hook
-//     devin-…`; Devin collects hooks from every config source, so the user's
-//     own hooks keep working (not tested against a real Devin account).
+//   - Devin CLI: --config replaces the user's config.json, so Squad passes
+//     a copy of it with Stop, UserPromptSubmit and SessionStart hooks added
+//     (Claude Code's format) that run `squad hook devin-…` (writeDevinConfig;
+//     the hooks themselves not tested against a real Devin account).
 //   - Gemini, shells and custom commands: no hook; screen heuristics only.
 //
 // A terminal's role reaches its agent as instructions at launch: Claude Code
@@ -21,7 +21,13 @@
 //
 // Squad's commands also reach agents as MCP tools (squad mcp): Claude Code
 // gets them with --mcp-config and pre-approves the safe ones (SafeMCPTools),
-// Codex with mcp_servers config overrides, Devin in its --config file.
+// Codex with mcp_servers config overrides. Devin reads MCP servers only from
+// its mcp_config.json, where squad install-skill registers squad; its config
+// copy pre-approves the same safe tools.
+//
+// On a floor (a git worktree), Devin skips its workspace trust prompt: the
+// floor is a copy of the repository the user opened in Squad. Claude Code
+// doesn't ask there.
 package agents
 
 import (
@@ -30,6 +36,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -81,12 +88,18 @@ type Launcher struct {
 	ClaudeSettings string // path of the generated Claude settings file
 	ClaudeMCP      string // path of the generated Claude MCP config (squad mcp)
 	DevinConfig    string // path of the generated Devin config file
-	RoleDir        string // one file per terminal with its role, for Claude Code
+	// DevinUserConfig is the user's Devin config.json, copied into
+	// DevinConfig ("" when unknown).
+	DevinUserConfig string
+	RoleDir         string // one file per terminal with its role, for Claude Code
 	// Role returns the instructions of a terminal's role (false: no role).
 	Role func(n store.Node) (string, bool)
+
+	devinMu sync.Mutex
 }
 
-// NewLauncher writes the Claude and Devin hooks files under ~/.squad/run.
+// NewLauncher writes the Claude hooks and MCP files under ~/.squad/run; the
+// Devin config is written at each Devin launch (Prepare).
 func NewLauncher(squadPath string) (*Launcher, error) {
 	dir, err := config.Dir("run")
 	if err != nil {
@@ -95,8 +108,12 @@ func NewLauncher(squadPath string) (*Launcher, error) {
 	l := &Launcher{SquadPath: squadPath,
 		ClaudeSettings: filepath.Join(dir, "claude-hooks.json"),
 		ClaudeMCP:      filepath.Join(dir, "claude-mcp.json"),
-		DevinConfig:    filepath.Join(dir, "devin-hooks.json"),
+		DevinConfig:    filepath.Join(dir, "devin-config.json"),
 		RoleDir:        filepath.Join(dir, "roles")}
+	if d, err := DevinConfigDir(); err == nil {
+		l.DevinUserConfig = filepath.Join(d, "config.json")
+	}
+	_ = os.Remove(filepath.Join(dir, "devin-hooks.json")) // before: hooks only, without the user's config
 	allow := make([]string, len(SafeMCPTools))
 	for i, t := range SafeMCPTools {
 		allow[i] = "mcp__squad__" + t
@@ -110,13 +127,6 @@ func NewLauncher(squadPath string) (*Launcher, error) {
 		return nil, err
 	}
 	if err := writeJSON(l.ClaudeMCP, map[string]any{"mcpServers": servers}); err != nil {
-		return nil, err
-	}
-	if err := l.writeHooks(l.DevinConfig, map[string]string{
-		"Stop":             "devin-stop",
-		"UserPromptSubmit": "devin-prompt",
-		"SessionStart":     "devin-session-start", // the role, as context
-	}, map[string]any{"mcpServers": servers}); err != nil {
 		return nil, err
 	}
 	return l, nil
@@ -139,8 +149,8 @@ type claudeMatcher struct {
 }
 
 // writeHooks writes a settings file whose "hooks" key maps each event to
-// `squad hook <name>`, plus the extra keys. Claude Code (--settings) and
-// Devin (--config) read the same format.
+// `squad hook <name>`, plus the extra keys (Claude Code's --settings; Devin's
+// config copy uses the same hook format).
 func (l *Launcher) writeHooks(path string, events map[string]string, extra map[string]any) error {
 	hooks := map[string][]claudeMatcher{}
 	for event, name := range events {
@@ -201,7 +211,13 @@ func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 			spec.Command += " -c " + terminal.Quote(fam, "developer_instructions="+TOMLString(role))
 		}
 	case "devin":
+		if err := l.writeDevinConfig(); err != nil {
+			return err
+		}
 		spec.Command += " --config " + terminal.Quote(fam, l.DevinConfig)
+		if n.Floor != "" {
+			spec.Command += " --respect-workspace-trust false"
+		}
 	case "gemini":
 		if hasRole {
 			// From the environment: the launch line stays short and unquoted.

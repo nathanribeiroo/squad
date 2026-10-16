@@ -46,6 +46,11 @@ func TestInstallSkillDevin(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(cfg, "devin", "skills", "squad", "SKILL.md")); err != nil {
 		t.Fatalf("devin skill: %v (%s)", err, out.String())
 	}
+	// Devin reads MCP servers only from its mcp_config.json.
+	if data, err := os.ReadFile(filepath.Join(cfg, "devin", "mcp_config.json")); err != nil ||
+		!strings.Contains(string(data), `"squad"`) || !strings.Contains(string(data), `"mcp"`) {
+		t.Fatalf("devin mcp config: %v %s", err, data)
+	}
 	if code := run([]string{"install-skill", "-agent", "gemini"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unknown agent") {
 		t.Fatalf("unknown agent: %d %q", code, errb.String())
 	}
@@ -63,5 +68,38 @@ func TestClientOutsideTerminal(t *testing.T) {
 	// Hooks never fail loudly.
 	if code := run([]string{"hook", "claude-stop"}, &out, &errb); code != 0 {
 		t.Fatalf("hook outside: %d", code)
+	}
+}
+
+// Without -agent, the skill goes to every agent found on the machine.
+func TestInstallSkillFindsTheAgents(t *testing.T) {
+	home, cfg := t.TempDir(), t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_CONFIG_HOME", cfg)
+	t.Setenv("APPDATA", cfg)
+	t.Setenv("PATH", t.TempDir()) // neither claude nor devin
+	var out, errb bytes.Buffer
+	if code := run([]string{"install-skill"}, &out, &errb); code != 0 {
+		t.Fatalf("install-skill: %d %s", code, errb.String())
+	}
+	claude := filepath.Join(home, ".claude", "skills", "squad", "SKILL.md")
+	devin := filepath.Join(cfg, "devin", "skills", "squad", "SKILL.md")
+	if _, err := os.Stat(claude); err != nil {
+		t.Fatalf("no agent found: Claude Code's skill expected: %v", err)
+	}
+	if _, err := os.Stat(devin); err == nil {
+		t.Fatal("Devin's skill installed without Devin")
+	}
+	_ = os.MkdirAll(filepath.Join(cfg, "devin"), 0o700) // Devin is set up here
+	out.Reset()
+	if code := run([]string{"install-skill"}, &out, &errb); code != 0 {
+		t.Fatalf("install-skill: %d %s", code, errb.String())
+	}
+	if _, err := os.Stat(devin); err != nil || !strings.Contains(out.String(), "Claude Code") || !strings.Contains(out.String(), "MCP") {
+		t.Fatalf("both agents: %v\n%s", err, out.String())
+	}
+	if code := run([]string{"install-skill", "-agent", "all", "-dir", t.TempDir()}, &out, &errb); code != 2 {
+		t.Fatalf("-dir with two agents: %d", code)
 	}
 }

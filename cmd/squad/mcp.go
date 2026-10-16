@@ -23,17 +23,24 @@ note reads and writes connected notes; portal drives a connected browser page th
 Managers (list says so) create their team with new and wire nodes with connect; floors give a team its own copy of the repository (a git worktree on a branch).
 keys, portal_eval and new_shell can run commands, and floor_land merges branches, so they ask the user first.`
 
+const mcpOutside = `Squad: this session is not running inside a Squad terminal, so Squad's tools are not available here.`
+
 // runMCP serves Squad's commands as MCP tools over stdio (squad mcp). The
 // agent starts it inside a Squad terminal; each call goes to the Squad server
 // as that terminal, like the CLI.
+//
+// Outside a Squad terminal it serves no tools instead of failing: Devin
+// starts it in every session (squad install-skill registers it globally).
 func runMCP(_ []string, _, stderr io.Writer) int {
+	instructions := mcpInstructions
 	env, err := readClientEnv()
 	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return 1
+		instructions = mcpOutside
 	}
-	s := mcp.NewServer(&mcp.Implementation{Name: "squad", Version: version.Version}, &mcp.ServerOptions{Instructions: mcpInstructions})
-	addMCPTools(s, env)
+	s := mcp.NewServer(&mcp.Implementation{Name: "squad", Version: version.Version}, &mcp.ServerOptions{Instructions: instructions})
+	if err == nil {
+		addMCPTools(s, env)
+	}
 	if err := s.Run(context.Background(), &mcp.StdioTransport{}); err != nil && !errors.Is(err, io.EOF) {
 		fmt.Fprintln(stderr, "squad mcp:", err)
 		return 1

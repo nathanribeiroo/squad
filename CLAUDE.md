@@ -20,9 +20,13 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
   - o mesmo PR atualiza o README (uso), o DEVLOG (entrada nova) e o PLAN (status).
 - **Na mensagem final ao usuário:**
   - o que mudou, o que foi testado de verdade e o que não foi;
-  - como testar depois do merge: `go install github.com/nathanribeiroo/squad/cmd/squad@main`, `squad install-skill` e reiniciar o `squad serve`;
+  - como testar depois do merge: `go install github.com/nathanribeiroo/squad/cmd/squad@main`, `squad install-skill` (instala no Claude e no Devin, e registra o MCP no Devin) e reiniciar o `squad serve`;
   - capturas de tela das mudanças de interface.
-- **O usuário:** usa Windows com Git Bash (a política da empresa bloqueia o PowerShell), Claude Code e Devin.
+- **O usuário:** usa Windows com Git Bash (a política da empresa bloqueia o PowerShell), Claude Code e Devin. Testa o Claude no Mac e no Windows.
+- **Todos os agentes:** toda funcionalidade vale para o Claude e o Devin, e para o Codex e o Gemini quando der.
+  - Ao planejar e ao testar, passe pelo caminho de cada agente: lançamento, hooks, papel, MCP, permissões, skill.
+  - O que ficar de fora para algum agente vai no PR, em "Não testado" ou numa nota.
+  - O caminho do Devin se confere com o binário real (veja "Devin real", abaixo), não só com o agente falso.
 
 ## Validação
 
@@ -32,6 +36,11 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 - **Skill:** o texto fica em `skillMD`, em `cmd/squad/hook.go`. Depois de mudar, rode `make skill-zip`. Se só o texto da skill não mudou, o zip muda apenas nos horários; nesse caso, desfaça com `git checkout squad-skill.zip`.
 - **Integração com agentes falsos:** `internal/testutil/fakeagent`, com os helpers `newEnv`, `agent`, `agentOfType` e `run` em `internal/app/app_test.go`.
 - **Claude Code real:** `go test -tags e2e -run TestRealClaude ./internal/app/`. O Claude está logado no container. O teste passa pela tela de boas-vindas e pela pergunta de confiança na pasta.
+- **Devin real (sem login):**
+  - instale numa pasta isolada: baixe `https://cli.devin.ai/install.sh`, leia, e rode com `HOME=<pasta temporária> bash install.sh`. O binário fica em `<pasta>/.local/bin/devin`;
+  - sem login não há sessão, mas `devin --help`, `devin mcp list`, `devin skills paths` e `devin --config <arquivo> mcp list` funcionam;
+  - `PATH=<pasta>/.local/bin:$PATH go test -tags e2e -run TestRealDevinConfig ./internal/agents/` confere que o Devin lê a cópia da configuração e vê o MCP `squad`;
+  - o `--config` do Devin **substitui** o `config.json` do usuário, e servidores MCP só valem no `mcp_config.json`.
 - **Interface de ponta a ponta:**
   - compile o binário para uma pasta temporária com o nome **`squad`**: o terminal põe a pasta do binário no PATH, e com outro nome os agentes não acham o `squad`;
   - suba com `SQUAD_HOME=<pasta temporária> SQUAD_BROWSER=/opt/pw-browsers/chromium <pasta>/squad serve -dir /home/user/squad -port 78xx -no-open`;
@@ -58,7 +67,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |
 | `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot` |
 | `internal/agentbus` | `squad list/ask/check/reply`, limites, pausa, modo `Safe` |
-| `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools` |
+| `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools`; a cópia da configuração do Devin e o registro do MCP nele (`devin.go`) |
 | `internal/roles`, `internal/team` | biblioteca de papéis; `squad new/connect/close` (gerente) |
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `squad portal` |
 | `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |

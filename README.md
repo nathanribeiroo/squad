@@ -25,10 +25,13 @@ O binário vai para `$(go env GOPATH)/bin` (no Windows, `%USERPROFILE%\go\bin`) 
 
 ```sh
 make build                       # gera bin/squad
-bin/squad install-skill          # opcional: ensina o Claude Code a usar o Squad (~/.claude/skills/squad)
-bin/squad install-skill -agent devin   # idem para o Devin CLI (~/.config/devin/skills/squad)
+bin/squad install-skill          # ensina o Squad ao Claude Code e ao Devin que estiverem nesta máquina
 bin/squad serve -dir ~/meu-projeto
 ```
+
+**`squad install-skill`:** rode de novo a cada atualização do Squad, para a skill acompanhar.
+- Sem `-agent`, instala para cada agente encontrado na máquina (a CLI no PATH ou a pasta de configuração): o Claude Code em `~/.claude/skills/squad` e o Devin em `~/.config/devin/skills/squad` (no Windows, `%APPDATA%\devin\skills\squad`). `-agent claude`, `-agent devin` ou `-agent all` escolhem.
+- **No Devin, também registra o servidor MCP `squad`** em `~/.config/devin/mcp_config.json` (no Windows, `%APPDATA%\devin\mcp_config.json`), mantendo os seus outros servidores. O Devin só lê servidores MCP desse arquivo. Fora de um terminal do Squad, esse servidor não oferece ferramentas. O arquivo anterior fica guardado como `mcp_config.json.squad-backup`.
 
 A mesma skill vem empacotada em [`squad-skill.zip`](squad-skill.zip) (pasta `squad/` com o `SKILL.md`), gerada por `make skill-zip`. Ela só faz sentido onde o comando `squad` existe, ou seja, dentro dos terminais do Squad.
 
@@ -114,7 +117,7 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - `squad new "Bia" --role impl` cria um terminal ao lado do gerente, já ligado a ele e com o papel. O comando só volta quando o agente está pronto para receber a primeira mensagem.
 - O que um agente criou mostra "criado por Plano". Esses terminais não são gerentes, e cada gerente cria no máximo 6 (`squad serve -max-team N`).
 - Qualquer agente pode abrir um portal: `squad portal create localhost:5173 "App"` cria o portal ligado a quem pediu (até 3 por agente).
-- Pelo MCP (abaixo), o gerente trabalha sem pedir aprovação a cada passo. Pela CLI, cada comando `squad` pede aprovação no Claude Code como qualquer outro comando.
+- Pelo MCP (abaixo), o gerente trabalha sem pedir aprovação a cada passo, no Claude Code e no Devin. Pela CLI, cada comando `squad` pede aprovação como qualquer outro comando.
 
 **Andares:** cópias isoladas do repositório do workspace, para frentes de trabalho em paralelo que mexem nos mesmos arquivos.
 - Cada andar é um `git worktree` num branch próprio, com um canvas próprio. A pasta fica **fora do projeto**, como no Maestri: `<pasta-pai do repositório>/.squad/floors/<projeto>--<andar>`.
@@ -194,17 +197,17 @@ Com mais de um portal ligado, diga qual: `squad portal "Docs" snapshot`. `squad 
 **MCP (`squad mcp`):** os mesmos comandos como ferramentas MCP, com argumentos tipados. O Squad configura isso sozinho em cada terminal:
 - **Claude Code:** `--mcp-config`.
 - **Codex:** `mcp_servers`, com o tempo de espera em 30 min.
-- **Devin:** no `--config`.
+- **Devin:** pelo `mcp_config.json` dele, onde o `squad install-skill` registra o servidor (o Devin não aceita servidores MCP por sessão).
 - **Gemini:** não tem como receber por sessão; use a CLI.
 
 | Ferramentas | Aprovação |
 |---|---|
-| `list`, `ask`, `ask_batch`, `check`, `reply`, `note`, `portal`, `new`, `connect`, `close`, `floors` | já liberadas no Claude Code. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
-| `keys` (digitar num terminal), `new_shell` (terminal com comando, ex.: `npm run dev`), `portal_eval`, `floor_land` (mescla branches e fecha terminais) | o Claude Code pede a sua aprovação a cada uso |
+| `list`, `ask`, `ask_batch`, `check`, `reply`, `note`, `portal`, `new`, `connect`, `close`, `floors` | já liberadas no Claude Code e no Devin. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
+| `keys` (digitar num terminal), `new_shell` (terminal com comando, ex.: `npm run dev`), `portal_eval`, `floor_land` (mescla branches e fecha terminais) | o agente pede a sua aprovação a cada uso |
 
 Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do turno** (via hook `Stop` ou `notify`), não a tela. Com outros programas, o Squad espera a tela parar de mudar.
 
-O Devin é lançado com `devin --config ~/.squad/run/devin-hooks.json`, um arquivo só com os hooks `Stop` e `UserPromptSubmit` do Squad. A integração segue a documentação oficial e ainda não foi testada com uma conta real (veja `docs/DEVLOG.md`).
+O Devin é lançado com `devin --config ~/.squad/run/devin-config.json`. Esse `--config` **substitui** o `config.json` do usuário, então o arquivo é uma cópia do seu `~/.config/devin/config.json` (relida a cada terminal Devin aberto) com os hooks do Squad (`Stop`, `UserPromptSubmit` e `SessionStart`) depois dos seus e as ferramentas MCP seguras liberadas. O seu modelo, as suas permissões e os seus hooks continuam valendo. Permissões que você salvar como globais de dentro do Squad ficam nessa cópia. Num andar, o Devin abre com `--respect-workspace-trust false`, sem a pergunta de confiança na pasta: o andar é uma cópia do repositório que você abriu. A leitura dessa configuração foi testada com o Devin real; os hooks numa sessão com conta ainda não (veja `docs/DEVLOG.md`).
 
 ## Testes
 
