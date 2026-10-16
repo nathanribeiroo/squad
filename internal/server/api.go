@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -66,31 +67,42 @@ func (s *Server) handleAddNode(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	n.ID = "" // ids are assigned by the server
-	if err := checkTerminalDir(n.Terminal, s.store.Snapshot().Cwd); err != nil {
+	n.ID, n.CreatedBy = "", "" // assigned by the server
+	n, err := s.AddNode(n)
+	if err != nil {
 		writeError(w, storeErrorCode(err), err.Error())
 		return
+	}
+	writeJSON(w, http.StatusCreated, n)
+}
+
+// AddNode adds a node as the canvas does: default size, the preparers
+// (portal names, note files), then a terminal starts.
+func (s *Server) AddNode(n store.Node) (store.Node, error) {
+	if err := checkTerminalDir(n.Terminal, s.store.Snapshot().Cwd); err != nil {
+		return store.Node{}, err
 	}
 	if n.W == 0 && n.H == 0 {
 		n.W, n.H = defaultSize(n.Kind)
 	}
 	if s.prepareNode != nil {
 		if err := s.prepareNode(&n); err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
+			return store.Node{}, invalidError(err.Error())
 		}
 	}
 	n, err := s.store.AddNode(n)
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
-		return
+		return store.Node{}, err
 	}
 	s.bus.Publish(events.NodeAdded, n)
 	if n.Kind == store.KindTerminal {
 		_ = s.StartTerminal(n.ID) // failures are reported as terminal state
 	}
-	writeJSON(w, http.StatusCreated, n)
+	return n, nil
 }
+
+// DefaultSize is the size of a new node of a kind.
+func DefaultSize(kind string) (w, h float64) { return defaultSize(kind) }
 
 func defaultSize(kind string) (float64, float64) {
 	switch kind {
@@ -177,16 +189,22 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRemoveNode(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
+	if err := s.RemoveNode(r.PathValue("id")); err != nil {
+		writeError(w, storeErrorCode(err), err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RemoveNode removes a node with its edges, stopping its terminal.
+func (s *Server) RemoveNode(id string) error {
 	n, ok := s.store.Node(id)
 	if !ok {
-		writeError(w, http.StatusNotFound, "node not found")
-		return
+		return fmt.Errorf("node %w", store.ErrNotFound)
 	}
 	removed, err := s.store.RemoveNode(id)
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
-		return
+		return err
 	}
 	if n.Kind == store.KindTerminal {
 		s.terms.Remove(id)
@@ -205,7 +223,7 @@ func (s *Server) handleRemoveNode(w http.ResponseWriter, r *http.Request) {
 		s.onNodeGone(n)
 	}
 	s.bus.Publish(events.NodeRemoved, map[string]string{"id": id})
-	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 func (s *Server) handleNodeAction(w http.ResponseWriter, r *http.Request) {
@@ -256,13 +274,22 @@ func (s *Server) handleAddEdge(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	e, err := s.store.AddEdge(b.A, b.B, b.RopePoints)
+	e, err := s.AddEdge(b.A, b.B, b.RopePoints)
 	if err != nil {
 		writeError(w, storeErrorCode(err), err.Error())
 		return
 	}
-	s.bus.Publish(events.EdgeAdded, e)
 	writeJSON(w, http.StatusCreated, e)
+}
+
+// AddEdge connects two nodes, as dragging a wire on the canvas does.
+func (s *Server) AddEdge(a, b string, rope [][2]float64) (store.Edge, error) {
+	e, err := s.store.AddEdge(a, b, rope)
+	if err != nil {
+		return store.Edge{}, err
+	}
+	s.bus.Publish(events.EdgeAdded, e)
+	return e, nil
 }
 
 func (s *Server) handleUpdateEdge(w http.ResponseWriter, r *http.Request) {

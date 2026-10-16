@@ -100,6 +100,13 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - Como cada agente recebe o papel: Claude Code por `--append-system-prompt-file`; Codex por `developer_instructions`; Devin pelo hook `SessionStart`; Gemini como primeira mensagem (`-i`). Shells não têm papel, e comandos próprios mostram o papel só como etiqueta.
 - Trocar o papel de um agente aberto reinicia o terminal, com aviso. Depois de editar um papel, o painel oferece reiniciar os agentes que o usam.
 
+**Agente gerente:** um agente em modo gerente monta a própria equipe.
+- O Planejador já vem em modo gerente. A opção fica no papel ("Gerente", em Papéis…), e cada terminal pode ligá-la ou desligá-la no menu ⋯ → "Modo gerente". O chip "gerente" aparece no cabeçalho.
+- `squad new "Bia" --role impl` cria um terminal ao lado do gerente, já ligado a ele e com o papel. O comando só volta quando o agente está pronto para receber a primeira mensagem.
+- O que um agente criou mostra "criado por Plano". Esses terminais não são gerentes, e cada gerente cria no máximo 6 (`squad serve -max-team N`).
+- Qualquer agente pode abrir um portal: `squad portal create localhost:5173 "App"` cria o portal ligado a quem pediu (até 3 por agente).
+- Os comandos do gerente pedem a sua aprovação no Claude Code como qualquer outro comando, a não ser que você os libere (por exemplo, `claude --allowedTools "Bash(squad *)"` no comando do terminal).
+
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 
 ### Testar a conversa sem a interface (pela API)
@@ -139,6 +146,9 @@ Dentro de um terminal do Squad, o comando `squad` está no PATH:
 | `squad portal click @e3` · `fill @e2 "texto"` · `type "texto"` · `key Enter` · `scroll down` | age na página (`click X Y` também vale) |
 | `squad portal goto URL` · `back` · `forward` · `reload` | navega |
 | `squad portal screenshot` · `console` · `eval "js"` | imagem PNG (salva no workspace), console do navegador, JavaScript |
+| `squad portal create URL "Nome"` · `close "Nome"` | abre um portal ligado a você / fecha um que você criou |
+| `squad new "Nome" --role impl` | gerentes: cria um terminal ao lado, ligado e já pronto (`--agent`, `--cwd`, `--command`) |
+| `squad connect "A" "B"` · `squad close "Nome"` | gerentes: liga dois nós / remove um terminal que criou |
 
 Com mais de um portal ligado, diga qual: `squad portal "Docs" snapshot`. `squad portal help` mostra tudo.
 

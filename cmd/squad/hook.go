@@ -68,7 +68,7 @@ func debugf(w io.Writer, format string, a ...any) {
 // ~/.config/devin/skills/<name>/SKILL.md, same format).
 const skillMD = `---
 name: squad
-description: Talk to other agents and terminals connected to you on the Squad canvas, read or write connected notes, and use connected portals (a live browser page). Use when a message starts with [de: <Name> · pedido <id>], when the user asks you to ask, tell, delegate to or check on another agent, to read/update a note, or to look at, click or test something in the portal / browser.
+description: Talk to other agents and terminals connected to you on the Squad canvas, read or write connected notes, use or open portals (a live browser page) and, as a manager, create your team of agents. Use when a message starts with [de: <Name> · pedido <id>], when the user asks you to ask, tell, delegate to or check on another agent, to plan work for several agents, to read/update a note, or to look at, click or test something in the portal / browser.
 ---
 
 # Squad
@@ -87,6 +87,7 @@ The ` + "`squad`" + ` command is on your PATH (if not, use "$SQUAD_CLI").
 - ` + "`squad reply <id> \"message\"`" + `: answer request <id>.
 - ` + "`squad note …`" + `: read and write connected notes (` + "`squad note help`" + `).
 - ` + "`squad portal …`" + `: use a connected portal, a browser page the user also sees live on the canvas (` + "`squad portal help`" + `).
+- ` + "`squad new`" + `, ` + "`squad connect`" + `, ` + "`squad close`" + `: managers only, see below.
 
 For long messages use a heredoc: ` + "`squad ask \"Name\" <<'EOF'`" + ` … ` + "`EOF`" + `.
 
@@ -103,6 +104,29 @@ Also: ` + "`goto URL`" + `, ` + "`back`" + `, ` + "`reload`" + `, ` + "`scroll d
 a PNG path you can open), ` + "`eval \"js\"`" + ` and ` + "`console`" + ` (errors and logs).
 With several portals connected, name one first: ` + "`squad portal \"Docs\" snapshot`" + `.
 Use it to check your own work in the running app (dev server) after changes.
+
+No portal connected? Open one: ` + "`squad portal create localhost:5173 \"App\"`" + ` creates it
+next to you, connected to you (a few per agent). ` + "`squad portal close \"App\"`" + `
+removes one you created.
+
+## Building a team (managers)
+
+` + "`squad list`" + ` says "You are a manager" when your terminal may create others
+(the Planejador role does). Then:
+
+1. Plan the work and decide who you need: one agent per independent task,
+   with the role that fits (impl, rev, test or another role name).
+2. ` + "`squad new \"Bia\" --role impl`" + ` creates a terminal next to you, connected to
+   you, with that role and your agent, and returns once it is ready.
+   Options: ` + "`--agent codex|devin|gemini|claude|shell`" + `, ` + "`--cwd folder`" + `,
+   ` + "`--command \"npm run dev\"`" + ` (with ` + "`--agent shell`" + `, for a dev server).
+3. Delegate with ` + "`squad ask`" + ` (` + "`--batch`" + ` for parallel work) and check the results:
+   have the Revisor review and the Testador test before telling the user it's done.
+4. ` + "`squad connect \"A\" \"B\"`" + ` wires two nodes (e.g. the Testador to a portal or
+   the Implementador), ` + "`squad close \"Name\"`" + ` removes a terminal you created that
+   is no longer needed. Leave the rest for the user to see.
+
+Agents you create can't create others, and there is a limit per manager.
 
 ## Receiving requests
 

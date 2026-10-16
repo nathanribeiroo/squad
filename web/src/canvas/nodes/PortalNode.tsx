@@ -8,6 +8,7 @@ import { useSquad } from '../../state/store';
 import { NodeHandles, connectClass, useConnectTarget } from './NodeHandles';
 import { NodeMenu } from './NodeMenu';
 import { actionVerb, usePortalAction } from './portalAction';
+import { useCreator } from '../../lib/roles';
 import { BUTTONS, mods, usePortalStream, type PortalStream } from './portalStream';
 
 export type PortalFlowNode = Node<{ node: WNode }, 'portal'>;
@@ -27,6 +28,7 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
   const stream = usePortalStream(id, !!url && level === 'live');
   const [focused, setFocused] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const creator = useCreator(data.node.createdBy);
   const remove = () => api.removeNode(id).catch((e: Error) => toast(e.message));
 
   const onResizeEnd = (_: unknown, p: ResizeParams) => {
@@ -52,6 +54,12 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
             onDoubleClick={() => setRenaming(true)}
           >
             {portal.name || 'Portal'}
+          </span>
+        )}
+        {creator && (
+          <span className="pn-creator" title={`${creator.name} abriu este portal (squad portal create)`}>
+            <i style={{ background: `var(--r-${creator.color})` }} />
+            por {creator.name}
           </span>
         )}
         <span className="pn-nav nodrag">

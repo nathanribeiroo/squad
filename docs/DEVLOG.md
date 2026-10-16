@@ -2,6 +2,37 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, agente gerente e portais criados por agentes (R2)
+
+- **Por quê:** com os papéis, o Planejador já sabia que devia delegar, mas só podia falar com os terminais que o usuário tivesse criado e ligado a ele. Agora ele monta a equipe.
+- **Modo gerente:**
+  - vem do papel (campo `manager`; o Planejador vem ligado) e pode ser trocado no terminal (`manager` no nó; nulo segue o papel);
+  - os terminais que um gerente cria não são gerentes, para que uma equipe não cresça sozinha;
+  - cada gerente cria no máximo 6 terminais (`squad serve -max-team N`).
+- **`internal/team`:**
+  - `squad new "Nome" [--role] [--agent] [--cwd] [--command]` cria o terminal num lugar livre ao lado do gerente: à direita primeiro, depois embaixo, à esquerda e em cima, anel por anel (`store.FreeSpot`). O terminal herda o agente, a pasta e o shell do gerente, nasce ligado a ele e inicia;
+  - o comando só volta quando o agente novo está pronto (tela parada por 2 s, sem trabalhar; no máximo 45 s, dentro dos 60 s da CLI). Sem isso, um `squad ask` logo depois cairia no shell antes de o agente abrir. Se não ficar pronto, a resposta diz isso e mostra o fim da tela;
+  - `squad connect "A" ["B"]` liga dois nós pelo nome (terminais, portais, notas; sem diferenciar maiúsculas);
+  - `squad close "Nome"` remove só o que o próprio gerente criou;
+  - quem não é gerente recebe 403 com a explicação (menu ⋯ → Modo gerente).
+- **Portais criados por agentes:** `squad portal create URL ["Nome"]`, para qualquer agente, abre o portal ao lado de quem pediu, já ligado a ele, até 3 por agente. `squad portal close` fecha um que o agente criou.
+- **Servidor:** criar, ligar e remover nós virou método do servidor (`AddNode`, `AddEdge`, `RemoveNode`), usado pela API e pelos agentes. Assim os eventos chegam ao canvas igual. Cada nó guarda quem o criou (`createdBy`).
+- **`squad list`** diz ao gerente o que ele pode fazer ("You are a manager: … 2 of 6 created"). A skill ganhou a seção "Building a team". As instruções padrão do Planejador dizem para criar quem faltar com `squad new`, e as do Testador, para abrir um portal com `squad portal create`.
+- **Interface:**
+  - chip "gerente" no cabeçalho;
+  - "Modo gerente" no menu ⋯ dos agentes;
+  - opção "Gerente" no editor de papéis;
+  - "criado por Plano" no rodapé do terminal e "por Plano" no cabeçalho do portal, com a cor do papel de quem criou.
+- **Correção:** `squad portal list` quebrava num servidor sem navegador; `browser.Manager.Get` agora aceita o gerenciador nulo.
+- **Segurança:** os comandos `squad` continuam pedindo aprovação no Claude Code. Liberá-los de vez (por exemplo, no `--settings` do Squad) deixaria um agente rodar qualquer comando sem aprovação, com `squad new --agent shell --command …`. Fica a critério do usuário (`--allowedTools`).
+- **Testes:**
+  - `internal/store` (lugar livre);
+  - `internal/app`, com agentes falsos: criar, esperar ficar pronto e o primeiro `ask` chegar ao agente; erros, limite, criados não são gerentes, connect, close e modo gerente desligado; portais criados, nomes, limite e só quem criou fecha.
+- **Com o Claude Code real:**
+  - um Planejador (com `--allowedTools "Bash(squad *)"`) recebeu: "monte uma equipe com um Implementador Bia e um Testador Caio, abra um portal App em localhost:8765, ligue o Caio a ele e pergunte o papel de cada um";
+  - em 22 s ele rodou `squad new` duas vezes, `squad portal create`, `squad connect` e `squad ask --batch`. Respondeu: "Bia: Sou a Bia, a Implementadora do Squad… / Caio: Sou o Testador do Squad…";
+  - no canvas, Bia e Caio apareceram ao lado do Plano, com "criado por Plano", e o portal App, com "por Plano", ligado ao Caio.
+
 ## 2026-10-16, papéis com instruções (R1)
 
 - **Por quê:** até aqui o papel era só cor e etiqueta; o agente não recebia nada. Um Planejador aberto no canvas não sabia que devia delegar.

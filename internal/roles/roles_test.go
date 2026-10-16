@@ -26,6 +26,9 @@ func TestDefaults(t *testing.T) {
 	if !strings.Contains(got[3].Prompt, "squad portal snapshot") {
 		t.Fatalf("the tester tests web pages through the portal: %q", got[3].Prompt)
 	}
+	if !got[0].Manager || got[1].Manager || got[3].Manager || !strings.Contains(got[0].Prompt, "squad new") || !strings.Contains(got[3].Prompt, "squad portal create") {
+		t.Fatal("the Planejador is a manager that creates its team; the Testador opens portals")
+	}
 	for _, r := range got {
 		if !contains(Colors, r.Color) || !contains(Icons, r.Icon) || len([]rune(r.Prompt)) > MaxPrompt {
 			t.Fatalf("default %s is invalid: %+v", r.ID, r)
@@ -87,6 +90,11 @@ func TestCreateEditResetDelete(t *testing.T) {
 	if r, _ := l.Update("plan", plan); r.Edited {
 		t.Fatal("an unchanged built-in role is not edited")
 	}
+	plan.Manager = false
+	if r, _ := l.Update("plan", plan); !r.Edited || r.Manager {
+		t.Fatal("turning manager mode off edits the role")
+	}
+	_, _ = l.Reset("plan")
 	if _, err := l.Reset("revisao-de-ux"); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("reset of a new role: %v", err)
 	}

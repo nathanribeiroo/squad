@@ -36,6 +36,7 @@ export const ICONS = [
   'expand_more',
   'fit_screen',
   'gesture',
+  'groups',
   'hourglass_top',
   'image',
   'keyboard',

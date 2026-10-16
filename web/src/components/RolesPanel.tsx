@@ -12,7 +12,7 @@ type Draft = Omit<RoleDef, 'id'> & { id?: string };
 const NEW: Draft = { name: '', prompt: '', color: 'teal', icon: 'psychology' };
 
 function same(a: Draft, b: Draft): boolean {
-  return a.name === b.name && a.prompt === b.prompt && a.color === b.color && a.icon === b.icon;
+  return a.name === b.name && a.prompt === b.prompt && a.color === b.color && a.icon === b.icon && !!a.manager === !!b.manager;
 }
 
 /**
@@ -42,7 +42,7 @@ function Panel({ initial }: { initial: string | null }) {
     setDraft(current ?? NEW);
     setSaved(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, current?.name, current?.prompt, current?.color, current?.icon]);
+  }, [selected, current?.name, current?.prompt, current?.color, current?.icon, current?.manager]);
 
   const leave = (then: () => void) => {
     if (!dirty || window.confirm('Descartar as alterações deste papel?')) then();
@@ -193,6 +193,13 @@ function Editor({ draft, setDraft, current }: { draft: Draft; setDraft: (d: Draf
           ))}
         </div>
       </div>
+      <label className="roles-check">
+        <input type="checkbox" checked={!!draft.manager} onChange={(e) => set({ manager: e.target.checked })} />
+        <span>
+          <b>Gerente</b>: o agente pode criar terminais ligados a ele e ligar nós (<span className="mono">squad new</span>,{' '}
+          <span className="mono">squad connect</span>). Cada terminal pode desligar isso no menu ⋯.
+        </span>
+      </label>
       <label className="field roles-prompt">
         <span className="field-row">
           Instruções

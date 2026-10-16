@@ -65,6 +65,9 @@ const Usage = `Usage (inside a Squad terminal):
   squad check "Name"                 read a connected terminal's screen without sending anything
   squad reply <id> "message"         answer request <id> (shown as [de: … · pedido <id>])
   squad note …                       read and write connected notes (squad note help)
+  squad portal …                     use connected portals, or create one (squad portal help)
+  squad new "Name" --role impl       managers: create a terminal next to you (squad new --help)
+  squad connect / close              managers: connect nodes, remove what you created
 
 Messages you receive start with [de: <Name> · pedido <id>]. Reply with
 squad reply <id> "…", or just finish your turn: your final answer is returned
@@ -123,6 +126,11 @@ func (b *Bus) List(caller string) Result {
 		fmt.Fprintf(&sb, ", role: %s", quote(b.roleLabel(me.Terminal.Role)))
 	}
 	sb.WriteString("\n")
+	if b.selfNote != nil {
+		if note := b.selfNote(caller); note != "" {
+			sb.WriteString("  " + note + "\n")
+		}
+	}
 
 	neighbors := b.store.Neighbors(caller)
 	sort.Slice(neighbors, func(i, j int) bool { return neighbors[i].Label() < neighbors[j].Label() })
@@ -138,7 +146,11 @@ func (b *Bus) List(caller string) Result {
 		}
 	}
 	if len(agents)+len(notes)+len(portals) == 0 {
-		sb.WriteString("\nNothing is connected to you yet. Ask the user to connect you to other terminals or notes on the canvas.\n")
+		sb.WriteString("\nNothing is connected to you yet. Ask the user to connect you to other terminals or notes on the canvas")
+		if b.selfNote != nil && b.selfNote(caller) != "" {
+			sb.WriteString(", or create the terminals you need")
+		}
+		sb.WriteString(".\n")
 		return Result{Code: 200, Body: sb.String()}
 	}
 	if len(agents) > 0 {

@@ -29,6 +29,7 @@ type Limits struct {
 	Stable       time.Duration // screen unchanged this long → reply by screen (5 s)
 	ActiveWindow time.Duration // output within this → extend the timeout (10 s)
 	RawDelay     time.Duration // wait before reading the screen after --raw (300 ms)
+	MaxTeam      int           // terminals one manager may create (6; squad new)
 }
 
 func (l *Limits) defaults() {
@@ -87,6 +88,7 @@ type Bus struct {
 	// (set by the adapters); for those the screen-settled fallback is off.
 	hasHooks func(agent string) bool
 	roleName func(id string) string
+	selfNote func(id string) string
 
 	mu      sync.Mutex
 	pending map[string]*Pending
@@ -111,6 +113,9 @@ func (b *Bus) SetMonitor(m *activity.Monitor) { b.mon = m }
 
 // SetHookedAgents tells which agent types report turn ends through hooks.
 func (b *Bus) SetHookedAgents(fn func(agent string) bool) { b.hasHooks = fn }
+
+// SetSelfNote adds a line about the caller to `squad list` (manager mode).
+func (b *Bus) SetSelfNote(fn func(id string) string) { b.selfNote = fn }
 
 // SetRoleNames sets how `squad list` names a role id ("test" → "Testador").
 func (b *Bus) SetRoleNames(fn func(id string) string) { b.roleName = fn }

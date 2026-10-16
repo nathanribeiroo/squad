@@ -48,6 +48,9 @@ type Node struct {
 	Terminal *TerminalData `json:"terminal,omitempty"`
 	Note     *NoteData     `json:"note,omitempty"`
 	Portal   *PortalData   `json:"portal,omitempty"`
+	// CreatedBy is the terminal whose agent created this node (squad new,
+	// squad portal create); empty when the user did.
+	CreatedBy string `json:"createdBy,omitempty"`
 }
 
 // Label returns the node's display name.
@@ -73,9 +76,12 @@ type TerminalData struct {
 	Command string `json:"command,omitempty"` // launch line; empty = plain shell
 	Shell   string `json:"shell,omitempty"`
 	Cwd     string `json:"cwd,omitempty"`
-	Role    string `json:"role,omitempty"` // plan | impl | rev | test | ""
+	Role    string `json:"role,omitempty"` // a role of the library: plan | impl | rev | test | …
 	Cols    int    `json:"cols,omitempty"`
 	Rows    int    `json:"rows,omitempty"`
+	// Manager lets the agent create and connect terminals (squad new); nil
+	// follows its role.
+	Manager *bool `json:"manager,omitempty"`
 }
 
 // NoteData configures a note node; the content lives in a .md file.
@@ -324,6 +330,10 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 func cloneNode(n Node) Node {
 	if n.Terminal != nil {
 		t := *n.Terminal
+		if t.Manager != nil {
+			m := *t.Manager
+			t.Manager = &m
+		}
 		n.Terminal = &t
 	}
 	if n.Note != nil {

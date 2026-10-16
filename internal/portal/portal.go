@@ -40,10 +40,22 @@ type Service struct {
 	port    int
 	log     *slog.Logger
 
+	canvas Canvas // creates and removes portals for agents (squad portal create)
+
 	mu    sync.Mutex
 	pages map[string]*tab // open portals
 	unsub func()
 }
+
+// Canvas changes the canvas the way the user does, with its events.
+type Canvas interface {
+	AddNode(n store.Node) (store.Node, error)
+	AddEdge(a, b string, rope [][2]float64) (store.Edge, error)
+	RemoveNode(id string) error
+}
+
+// SetCanvas lets agents create and close portals.
+func (s *Service) SetCanvas(c Canvas) { s.canvas = c }
 
 // tab is an open portal: its page, the address last applied to it (from the
 // canvas or saved from the page), and the state listener to stop.
