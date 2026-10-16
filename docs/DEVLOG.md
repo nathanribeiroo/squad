@@ -2,6 +2,33 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, papel Arquiteto
+
+- **Pedido do usuário:** um papel de arquiteto (e um de product manager, que ele decidiu deixar para depois). O Arquiteto não depende do PM: o PM, quando vier, entra só com o papel novo e o texto do Planejador.
+- **O papel (`arch`, cor índigo, ícone `architecture`):** desenha a solução numa nota "Arquitetura: …" (problema, módulos e arquivos, contratos, alternativas, riscos, partes paralelas) e não escreve o código do produto. Não é gerente nem obrigatório.
+- **Ajustes nos papéis prontos:**
+  - o Planejador chama o Arquiteto quando a mudança mexe na estrutura ou vai ser dividida, liga a nota à equipe e usa as partes para decidir os andares;
+  - o Implementador segue a nota;
+  - o Revisor confere se a mudança segue o desenho;
+  - o Testador não mudou. Quem editou esses papéis continua com a própria versão; "Restaurar padrão" traz os ajustes.
+- **Conflito ao carregar a biblioteca:**
+  - um papel do usuário com o mesmo nome de um papel pronto novo ganha o sufixo " (personalizado)";
+  - um papel do usuário com o mesmo id ganha outro id. Só acontece se alguém tivesse criado um papel chamado "arch".
+- **Os agentes enxergam os papéis:** `squad roles` e a ferramenta MCP `roles` (liberada no Claude e no Devin, porque só leem) listam id, nome, se é gerente e a primeira linha das instruções, inclusive dos papéis do usuário. O `squad new --help` mostra a mesma lista. A skill ganhou a seção "Roles", e os textos do MCP e da CLI citam o `arch`.
+- **Limite da equipe:** continua 6 por gerente. Arquiteto, Revisor e duas frentes de Implementador + Testador cabem.
+- **Testado aqui:**
+  - teste unitário dos cinco papéis, dos ajustes e do conflito de nome e de id;
+  - `squad roles` para um agente que não é gerente, e o `squad new --help`;
+  - a ferramenta MCP `roles` pelo cliente MCP de verdade, agora com 16 ferramentas;
+  - o Devin real lê a configuração com a ferramenta nova liberada (`TestRealDevinConfig`).
+- **Claude real, num worktree do próprio Squad:** pedi ao Planejador "GET /api/version no servidor e a versão no rodapé da web; monte a equipe e peça o desenho a um Arquiteto, crie o Implementador e ligue a nota, sem implementar".
+  - Ele criou o "Arq" com o papel Arquiteto.
+  - O Arq parou num pedido de permissão do Claude Code para um `ls`/`grep`. O Planejador não respondeu por ele: me perguntou, como a skill manda, e eu aprovei.
+  - O Arq leu o código e criou a nota "Arquitetura: versão no servidor e rodapé" (7.300 caracteres: o contrato, de onde vem a versão, a autenticação, os arquivos e as partes; ele recomendou uma branch só, por ser pequena).
+  - O Planejador criou o "Impl" e ligou a nota a ele e a si.
+- **Observado:** o Planejador respondeu um "ainda esperando" antes de o desenho ficar pronto e terminou o trabalho depois, sozinho. O resultado foi o pedido, mas a resposta intermediária confunde. Fica para ajustar no texto do Planejador se aparecer de novo.
+- **Não testado:** uma sessão real do Devin (sem login aqui), e o Codex e o Gemini reais.
+
 ## 2026-10-16, nomes de nota
 
 - **Pedido do usuário:** dar nome às notas, em vez de "Nota" e `nota-2.md`. Ele renomeia as próprias notas depois de criar; os agentes nomeiam na criação e não renomeiam.

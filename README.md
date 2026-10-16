@@ -112,7 +112,14 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - **Agentes no portal:** um terminal ligado ao portal usa a página com `squad portal` (tabela abaixo). Enquanto ele age, o cursor dele aparece na página com o nome e a cor do papel, e o fio mostra "clicando", "preenchendo", "digitando"…
 
 **Papéis:** instruções que o agente recebe ao abrir (⚙ → Papéis…, ou "Editar papéis…" no menu do terminal).
-- Vêm quatro prontos: Planejador, Implementador, Revisor e Testador. As instruções podem ser editadas, e "Restaurar padrão" volta às do Squad. O Testador, por exemplo, testa interfaces web pelo portal.
+- Vêm cinco prontos: Planejador, Arquiteto, Implementador, Revisor e Testador. As instruções podem ser editadas, e "Restaurar padrão" volta às do Squad. O Testador, por exemplo, testa interfaces web pelo portal.
+- **Arquiteto** (`arch`): desenha a solução técnica e não escreve o código do produto.
+  - Lê o código e a documentação, e registra o desenho numa nota "Arquitetura: …": problema, solução com os módulos e arquivos que mudam, contratos (tipos, rotas, formato dos dados), alternativas descartadas, riscos e as partes que podem andar em paralelo.
+  - O Planejador o chama quando a mudança mexe na estrutura (módulo novo, API, formato de dados, dependência) ou vai ser dividida em frentes; numa tarefa pequena, dispensa.
+  - O Planejador liga a nota a quem implementa e revisa, e usa as partes para decidir os andares. O Implementador segue a nota, e o Revisor confere se a mudança segue o desenho. Antes de aterrissar, o Arquiteto pode fazer uma revisão de arquitetura.
+  - Também dá para usá-lo sem o Planejador: ligue-o a um Implementador e peça o desenho.
+- **`squad roles`** (ou a ferramenta MCP `roles`, liberada): qualquer agente vê os papéis disponíveis, com o id, se é gerente e o que faz, inclusive os que você criar. O `squad new --help` mostra a mesma lista.
+- Se você já tinha criado um papel com o nome de um que passou a vir pronto (por exemplo, "Arquiteto"), o seu continua, com as mesmas instruções, como "Arquiteto (personalizado)".
 - Dá para criar papéis com nome, cor, ícone e instruções. Eles valem para todos os workspaces (`~/.squad/roles.json`). Um papel em uso não pode ser removido.
 - Como cada agente recebe o papel: Claude Code por `--append-system-prompt-file`; Codex por `developer_instructions`; Devin pelo hook `SessionStart`; Gemini como primeira mensagem (`-i`). Shells não têm papel, e comandos próprios mostram o papel só como etiqueta.
 - Trocar o papel de um agente aberto reinicia o terminal, com aviso. Depois de editar um papel, o painel oferece reiniciar os agentes que o usam.
@@ -196,6 +203,7 @@ Dentro de um terminal do Squad, o comando `squad` está no PATH:
 | `squad portal goto URL` · `back` · `forward` · `reload` | navega |
 | `squad portal screenshot` · `console` · `eval "js"` | imagem PNG (salva no workspace), console do navegador, JavaScript |
 | `squad portal create URL "Nome"` · `close "Nome"` | abre um portal ligado a você / fecha um que você criou |
+| `squad roles` | os papéis disponíveis (id, nome, o que fazem) |
 | `squad new "Nome" --role impl` | gerentes: cria um terminal ao lado, ligado e já pronto (`--agent`, `--cwd`, `--command`) |
 | `squad connect "A" "B"` · `squad close "Nome"` | gerentes: liga dois nós / remove um terminal que criou |
 | `squad floor list` | os andares: branch, estado, pasta |
@@ -213,7 +221,7 @@ Com mais de um portal ligado, diga qual: `squad portal "Docs" snapshot`. `squad 
 
 | Ferramentas | Aprovação |
 |---|---|
-| `list`, `ask`, `ask_batch`, `check`, `reply`, `note`, `portal`, `new`, `connect`, `close`, `floors` | já liberadas no Claude Code e no Devin. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
+| `list`, `ask`, `ask_batch`, `check`, `reply`, `note`, `portal`, `new`, `connect`, `close`, `floors`, `roles` | já liberadas no Claude Code e no Devin. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
 | `keys` (digitar num terminal), `new_shell` (terminal com comando, ex.: `npm run dev`), `portal_eval`, `floor_land` (mescla branches e fecha terminais) | o agente pede a sua aprovação a cada uso |
 
 Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do turno** (via hook `Stop` ou `notify`), não a tela. Com outros programas, o Squad espera a tela parar de mudar.
