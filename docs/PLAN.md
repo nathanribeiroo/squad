@@ -31,8 +31,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | P1 Portal ao vivo (CDP) | `feat/portal-live` | concluído |
 | P2 Agentes no portal (`squad portal`) | `feat/portal-agents` | concluído |
 | R1 Papéis com instruções | `feat/roles` | concluído |
-| R2 Agente gerente e portais criados por agentes | `feat/manager` | concluído (PR) |
-| R3 MCP (`squad mcp`) | — | planejado |
+| R2 Agente gerente e portais criados por agentes | `feat/manager` | concluído |
+| R3 MCP (`squad mcp`) | `feat/mcp` | concluído (PR) |
 | R4 Andares: servidor | — | planejado |
 | R5 Andares: interface | — | planejado |
 | R6 Resumos de turno | — | planejado |
@@ -146,7 +146,7 @@ Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe s
   - `squad portal create URL "Nome"`, para qualquer agente: o portal nasce ligado a quem o criou, com limite por agente; `squad portal close`;
   - no canvas, o que um agente criou fica marcado ("criado por Planejador");
   - a skill ensina o fluxo planejar → criar a equipe → delegar → testar → revisar.
-- **R3, MCP (`squad mcp`):** as mesmas ferramentas da CLI (inclusive gerente e portal), configurado em cada terminal do Claude (`--mcp-config`) e do Codex, já liberado nas permissões. A CLI continua.
+- **R3, MCP (`squad mcp`):** as mesmas ferramentas da CLI (inclusive gerente e portal), configurado em cada terminal do Claude (`--mcp-config`), do Codex e do Devin. As ferramentas que não podem rodar comandos vêm liberadas (o servidor recusa nelas o que rodaria um); `keys`, `new_shell` e `portal_eval` pedem aprovação. A CLI continua.
 - **R4, andares (servidor):**
   - git worktree com branch próprio e canvas próprio por andar; os terminais do andar abrem dentro da cópia;
   - sem cópia instantânea no Windows, o andar recebe os arquivos versionados, uma lista de não versionados para copiar (ex.: `.env`) e um comando de preparo opcional;

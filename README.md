@@ -105,7 +105,7 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - `squad new "Bia" --role impl` cria um terminal ao lado do gerente, já ligado a ele e com o papel. O comando só volta quando o agente está pronto para receber a primeira mensagem.
 - O que um agente criou mostra "criado por Plano". Esses terminais não são gerentes, e cada gerente cria no máximo 6 (`squad serve -max-team N`).
 - Qualquer agente pode abrir um portal: `squad portal create localhost:5173 "App"` cria o portal ligado a quem pediu (até 3 por agente).
-- Os comandos do gerente pedem a sua aprovação no Claude Code como qualquer outro comando, a não ser que você os libere (por exemplo, `claude --allowedTools "Bash(squad *)"` no comando do terminal).
+- Pelo MCP (abaixo), o gerente trabalha sem pedir aprovação a cada passo. Pela CLI, cada comando `squad` pede aprovação no Claude Code como qualquer outro comando.
 
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 
@@ -151,6 +151,17 @@ Dentro de um terminal do Squad, o comando `squad` está no PATH:
 | `squad connect "A" "B"` · `squad close "Nome"` | gerentes: liga dois nós / remove um terminal que criou |
 
 Com mais de um portal ligado, diga qual: `squad portal "Docs" snapshot`. `squad portal help` mostra tudo.
+
+**MCP (`squad mcp`):** os mesmos comandos como ferramentas MCP, com argumentos tipados. O Squad configura isso sozinho em cada terminal:
+- **Claude Code:** `--mcp-config`.
+- **Codex:** `mcp_servers`, com o tempo de espera em 30 min.
+- **Devin:** no `--config`.
+- **Gemini:** não tem como receber por sessão; use a CLI.
+
+| Ferramentas | Aprovação |
+|---|---|
+| `list`, `ask`, `ask_batch`, `check`, `reply`, `note`, `portal`, `new`, `connect`, `close` | já liberadas no Claude Code. O servidor recusa nelas tudo o que rodaria um comando: mensagem para um shell ou comando próprio, terminal com linha de comando, JavaScript na página. |
+| `keys` (digitar num terminal), `new_shell` (terminal com comando, ex.: `npm run dev`), `portal_eval` | o Claude Code pede a sua aprovação a cada uso |
 
 Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do turno** (via hook `Stop` ou `notify`), não a tela. Com outros programas, o Squad espera a tela parar de mudar.
 
