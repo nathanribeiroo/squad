@@ -41,6 +41,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	port := fs.Int("port", config.Port(), "loopback port")
 	noOpen := fs.Bool("no-open", false, "don't open the browser")
 	dir := fs.String("dir", ".", "project folder: opens its workspace, creating it the first time")
+	maxTeam := fs.Int("max-team", 6, "terminals one manager agent may create (squad new)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
 	}
@@ -94,6 +95,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		Port:    boundPort, Token: token, CLIPath: exe, Logger: log,
 		Root: root, Trash: filepath.Join(home, "trash"),
 		Extensions: extensions,
+		Limits:     agentbus.Limits{MaxTeam: *maxTeam},
 		Setup: func(a *app.App) error {
 			for _, fn := range setupHooks {
 				if err := fn(a); err != nil {

@@ -21,13 +21,16 @@ import (
 
 // Role is one entry of the library. A terminal refers to it by ID.
 type Role struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Prompt  string `json:"prompt"` // the instruction the agent receives
-	Color   string `json:"color"`  // one of Colors
-	Icon    string `json:"icon"`   // one of Icons
-	Builtin bool   `json:"builtin,omitempty"`
-	Edited  bool   `json:"edited,omitempty"` // a built-in role that differs from its default
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Prompt string `json:"prompt"` // the instruction the agent receives
+	Color  string `json:"color"`  // one of Colors
+	Icon   string `json:"icon"`   // one of Icons
+	// Manager: its terminals may create and connect terminals (squad new),
+	// unless a terminal turns it off.
+	Manager bool `json:"manager,omitempty"`
+	Builtin bool `json:"builtin,omitempty"`
+	Edited  bool `json:"edited,omitempty"` // a built-in role that differs from its default
 }
 
 // Colors a role may take: the four of the built-in roles, then four more
@@ -153,7 +156,7 @@ func (l *Library) Update(id string, r Role) (Role, error) {
 		}
 		r.ID, r.Builtin, r.Edited = id, l.roles[i].Builtin, false
 		if d, ok := defaultOf(id); ok && r.Builtin {
-			r.Edited = r.Name != d.Name || r.Prompt != d.Prompt || r.Color != d.Color || r.Icon != d.Icon
+			r.Edited = r.Name != d.Name || r.Prompt != d.Prompt || r.Color != d.Color || r.Icon != d.Icon || r.Manager != d.Manager
 		}
 		l.roles[i] = r
 		return r, nil

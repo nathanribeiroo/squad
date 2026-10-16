@@ -184,8 +184,11 @@ func (m *Manager) stopLocked() {
 	m.allocCtx, m.stop, m.browser = nil, nil, nil
 }
 
-// Get returns the open tab of portal id, or nil.
+// Get returns the open tab of portal id, or nil (also without a browser).
 func (m *Manager) Get(id string) *Page {
+	if m == nil {
+		return nil
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if p := m.pages[id]; p != nil && p.alive() {

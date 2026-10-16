@@ -36,6 +36,8 @@ type Action struct {
 
 const portalUsage = `Usage (portals connected to you; name one first when several are):
   squad portal list                           connected portals
+  squad portal create URL ["Name"]            open a new portal, connected to you
+  squad portal close ["Name"]                 remove a portal you created
   squad portal [Name] snapshot                the page as elements with refs (@e1, @e2…)
   squad portal [Name] click @e3               click an element (or: click X Y, in viewport px)
   squad portal [Name] fill @e2 "text"         replace a field's text
@@ -78,6 +80,12 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 	rest := args[1:]
 	if len(rest) == 0 || rest[0] == "help" || rest[0] == "--help" {
 		return res(200, portalUsage), true
+	}
+	switch rest[0] {
+	case "create":
+		return s.create(caller, rest[1:]), true
+	case "close":
+		return s.closePortal(caller, rest[1:]), true
 	}
 	portals := s.connected(caller)
 	if rest[0] == "list" {
@@ -425,4 +433,80 @@ func (s *Service) nameUnnamed() {
 			s.bus.Publish(events.NodeUpdated, u)
 		}
 	}
+}
+
+// MaxCreated is how many portals one agent may have created at a time.
+const MaxCreated = 3
+
+// create opens a portal next to the calling terminal, connected to it.
+func (s *Service) create(caller string, args []string) agentbus.Result {
+	if len(args) < 1 || len(args) > 2 || strings.TrimSpace(args[0]) == "" {
+		return res(400, `Usage: squad portal create URL ["Name"]   e.g. squad portal create localhost:5173 "App"`)
+	}
+	if s.canvas == nil {
+		return res(503, "squad: agents can't create portals in this server")
+	}
+	me, ok := s.store.Node(caller)
+	if !ok || me.Terminal == nil {
+		return res(400, "squad: unknown calling terminal")
+	}
+	url := NormalizeURL(args[0])
+	name := ""
+	if len(args) == 2 {
+		name = strings.TrimSpace(args[1])
+	}
+	nodes := s.store.Snapshot().Nodes
+	mine := 0
+	for _, n := range nodes {
+		if n.Portal == nil {
+			continue
+		}
+		if n.CreatedBy == caller {
+			mine++
+		}
+		if name != "" && strings.EqualFold(n.Portal.Name, name) {
+			return res(409, fmt.Sprintf("squad: there is already a portal named %q; pick another name", n.Portal.Name))
+		}
+	}
+	if mine >= MaxCreated {
+		return res(409, fmt.Sprintf("squad: you already created %d portals, the limit; close one with squad portal close \"Name\", or navigate one with goto", mine))
+	}
+	w, h := 560.0, 420.0 // a new portal's size on the canvas
+	x, y := store.FreeSpot(nodes, me, w, h)
+	n, err := s.canvas.AddNode(store.Node{Kind: store.KindPortal, X: x, Y: y, W: w, H: h, CreatedBy: caller, Portal: &store.PortalData{URL: url, Name: name}})
+	if err != nil {
+		return res(400, "squad: "+err.Error())
+	}
+	if _, err := s.canvas.AddEdge(caller, n.ID, nil); err != nil {
+		return res(500, "squad: created the portal but could not connect it: "+err.Error())
+	}
+	return res(200, fmt.Sprintf("Created portal %q at %s, connected to you. Read the page with squad portal %q snapshot.", n.Portal.Name, n.Portal.URL, n.Portal.Name))
+}
+
+// closePortal removes a portal the caller created.
+func (s *Service) closePortal(caller string, args []string) agentbus.Result {
+	if len(args) > 1 {
+		return res(400, `Usage: squad portal close ["Name"]`)
+	}
+	if s.canvas == nil {
+		return res(503, "squad: agents can't close portals in this server")
+	}
+	var mine []store.Node
+	for _, n := range s.store.Snapshot().Nodes {
+		if n.Portal != nil && n.CreatedBy == caller && (len(args) == 0 || strings.EqualFold(n.Portal.Name, args[0])) {
+			mine = append(mine, n)
+		}
+	}
+	switch {
+	case len(mine) == 0 && len(args) == 1:
+		return res(404, fmt.Sprintf("squad: you didn't create a portal named %q (only portals you created can be closed)", args[0]))
+	case len(mine) == 0:
+		return res(404, "squad: you didn't create any portal")
+	case len(mine) > 1:
+		return res(400, fmt.Sprintf("squad: you created several portals (%s): name one", names(mine)))
+	}
+	if err := s.canvas.RemoveNode(mine[0].ID); err != nil {
+		return res(500, "squad: "+err.Error())
+	}
+	return res(200, fmt.Sprintf("Closed portal %q.", mine[0].Portal.Name))
 }

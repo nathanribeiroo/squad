@@ -18,6 +18,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
+	"github.com/nathanribeiroo/squad/internal/team"
 )
 
 // Options configure the application.
@@ -97,7 +98,10 @@ func New(o Options) (*App, error) {
 		return portals.PrepareNode(n)
 	})
 	srv.HandleSession("GET /ws/portal/{id}", http.HandlerFunc(portals.HandleWS))
-	exts := append([]agentbus.Extension{notesSvc.Extension, portals.Extension}, o.Extensions...)
+	portals.SetCanvas(srv)
+	teamSvc := team.New(team.Options{Canvas: srv, Monitor: mon, Roles: o.Roles, MaxTeam: o.Limits.MaxTeam})
+	bus.SetSelfNote(teamSvc.Note)
+	exts := append([]agentbus.Extension{notesSvc.Extension, portals.Extension, teamSvc.Extension}, o.Extensions...)
 	srv.SetCLIHandler(bus.Handler(server.CallerID, exts...))
 	srv.HandleSession("GET /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n, ok := srv.Store().Node(r.PathValue("id"))
