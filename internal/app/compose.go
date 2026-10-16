@@ -108,6 +108,8 @@ func mentionRef(m store.Node) string {
 	switch {
 	case m.Terminal != nil:
 		return fmt.Sprintf("@%s = terminal ligado (squad ask %q \"…\")", m.Terminal.Name, m.Terminal.Name)
+	case m.Note != nil && m.Note.File == "": // a draft: its name is all it has
+		return fmt.Sprintf("@%s = nota ligada (squad note read %q)", m.Note.Title, m.Note.Title)
 	case m.Note != nil:
 		return fmt.Sprintf("@%s = nota ligada %s (squad note read %q)", m.Note.Title, m.Note.File, m.Note.File)
 	case m.Portal != nil:

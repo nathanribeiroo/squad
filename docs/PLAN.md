@@ -40,7 +40,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | R8 Terminais remotos | — | cortado (decisão do usuário) |
 | R9 Playwright opcional | — | cortado (decisão do usuário) |
 | Janela de app | `feat/app-window` | concluído |
-| Paridade do Devin | `feat/devin-parity` | concluído (PR) |
+| Paridade do Devin | `feat/devin-parity` | concluído |
+| Nomes de nota | `feat/note-names` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -164,6 +165,7 @@ Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe s
 
 **Depois da rodada:**
 - **Janela de app:** o `squad serve` abre o canvas numa janela própria (modo app do Chrome ou do Edge; no Mac só com Safari, o app do Dock), com ícone, título com o workspace e login que sobrevive ao reinício.
+- **Nomes de nota:** a nota nova abre com o campo de nome; o usuário renomeia as suas notas, e os nomes antigos continuam valendo para os agentes; as notas de agente ficam com o nome que ele deu.
 - **Paridade do Devin:** o Devin recebe o MCP (registrado pelo `install-skill`), mantém a configuração do usuário dentro do Squad e não pergunta a confiança nos andares; o `install-skill` instala para todos os agentes encontrados.
 
 **Fora da rodada:**

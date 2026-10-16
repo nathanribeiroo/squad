@@ -159,7 +159,9 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 			*n.Terminal = *p.Terminal
 		}
 		if p.Note != nil && n.Note != nil {
-			*n.Note = *p.Note
+			// Only the lock: the name changes by renaming (notes.Rename,
+			// which keeps the old one for agents) and the file never does.
+			n.Note.Locked = p.Note.Locked
 		}
 		if p.Portal != nil && n.Portal != nil {
 			// Agents address a portal by its name: changing the address keeps it.

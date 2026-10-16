@@ -141,6 +141,30 @@ func New(o Options) (*App, error) {
 		}
 		writeJSON(w, map[string]any{"id": n.ID, "file": n.Note.File, "title": n.Note.Title, "locked": n.Note.Locked, "content": content})
 	}))
+	// Naming a note the user made: its first name names the file; renaming
+	// later keeps the file and the old name (agents still find the note).
+	srv.HandleSession("PATCH /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Title string `json:"title"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&body); err != nil {
+			writeErrorJSON(w, http.StatusBadRequest, "invalid body")
+			return
+		}
+		n, err := notesSvc.Rename(r.PathValue("id"), body.Title)
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			writeErrorJSON(w, http.StatusNotFound, "note not found")
+		case errors.Is(err, store.ErrInvalid):
+			writeErrorJSON(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, store.ErrDuplicate), errors.Is(err, notes.ErrAgentNote):
+			writeErrorJSON(w, http.StatusConflict, err.Error())
+		case err != nil:
+			writeErrorJSON(w, http.StatusInternalServerError, err.Error())
+		default:
+			writeJSON(w, n)
+		}
+	}))
 	srv.HandleSession("PUT /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n, ok := srv.Store().Node(r.PathValue("id"))
 		if !ok || n.Note == nil {
@@ -224,6 +248,12 @@ func (a *App) Close() {
 // Run executes a CLI command as a terminal (used by tests).
 func (a *App) Run(ctx context.Context, caller string, args ...string) agentbus.Result {
 	return a.Bus.Dispatch(ctx, caller, args, a.exts...)
+}
+
+func writeErrorJSON(w http.ResponseWriter, code int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

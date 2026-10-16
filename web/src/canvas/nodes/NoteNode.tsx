@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Node, NodeProps } from '@xyflow/react';
-import { api } from '../../api/client';
-import type { WNode } from '../../api/types';
+import { ApiError, api } from '../../api/client';
+import type { NoteData, WNode } from '../../api/types';
 import { Icon } from '../../components/Icon';
-import { roleColor, useRoleLookup } from '../../lib/roles';
+import { roleColor, useCreator, useRoleLookup } from '../../lib/roles';
 import { Markdown, changedLines, type MarkdownHighlight } from '../../lib/markdown';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
@@ -30,6 +30,10 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
   const shown = useRef<string | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const now = useNow(1000, !!mark);
+  const [renaming, setRenaming] = useState(false);
+  const creator = useCreator(data.node.createdBy);
+  // Notes agents make keep the name they gave them.
+  const canRename = !data.node.createdBy;
 
   // Load, and reload when someone else edits the file.
   useEffect(() => {
@@ -86,8 +90,8 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
 
   const setLocked = (locked: boolean) => api.updateNode(id, { note: { ...note, locked } }).catch((e: Error) => toast(e.message));
   const remove = () => {
-    if (window.confirm(`Remover a nota "${note.title}" do canvas? O arquivo ${note.file} continua no disco.`))
-      api.removeNode(id).catch((e: Error) => toast(e.message));
+    const kept = note.file ? ` O arquivo ${note.file} continua no disco.` : '';
+    if (window.confirm(`Remover a nota "${note.title}" do canvas?${kept}`)) api.removeNode(id).catch((e: Error) => toast(e.message));
   };
 
   const authorRole = (name: string) => roleColor(roleOf(nodes?.find((n) => n.terminal?.name === name)?.terminal?.role));
@@ -100,8 +104,20 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
       <NodeHandles id={id} />
       <header className="nn-head node-drag">
         <Icon name="description" size={18} style={{ color: 'var(--text-2)' }} />
-        <span className="nn-title">{note.title}</span>
-        <span className="nn-file mono">{note.file}</span>
+        {note.draft || renaming ? (
+          <NoteNameInput id={id} note={note} onDone={() => setRenaming(false)} />
+        ) : (
+          <span className="nn-title" title={titleHint(note, creator?.name, canRename)} onDoubleClick={() => canRename && setRenaming(true)}>
+            {note.title}
+          </span>
+        )}
+        {creator && (
+          <span className="pn-creator" title={`${creator.name} criou esta nota (squad note create); o nome é o que ela deu`}>
+            <i style={{ background: `var(--r-${creator.color})` }} />
+            por {creator.name}
+          </span>
+        )}
+        {note.file && <span className="nn-file mono">{note.file}</span>}
         <span className="tn-spacer" />
         <button
           className="icon-btn nodrag nn-lock"
@@ -118,7 +134,12 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
             Editar
           </button>
         </div>
-        <NodeMenu items={[{ icon: 'delete', label: 'Remover do canvas', action: remove, danger: true }]} />
+        <NodeMenu
+          items={[
+            ...(canRename ? [{ icon: 'edit' as const, label: 'Renomear', action: () => setRenaming(true) }] : []),
+            { icon: 'delete', label: 'Remover do canvas', action: remove, danger: true },
+          ]}
+        />
       </header>
       {mode === 'edit' ? (
         <>
@@ -170,6 +191,65 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
         </div>
       )}
     </div>
+  );
+}
+
+/** The title's tooltip: the name agents use, and who may change it. */
+function titleHint(note: NoteData, creator: string | undefined, canRename: boolean): string {
+  const use = `Os agentes usam este nome: squad note read "${note.title}"`;
+  const former = note.aliases?.length ? `\nNomes antigos, que continuam valendo: ${note.aliases.map((a) => `"${a}"`).join(', ')}` : '';
+  if (!canRename) return `${use}\nNome dado por ${creator ?? 'um agente'}; não muda.${former}`;
+  return `${use}${former}\nDuplo clique para renomear (o nome antigo continua valendo para os agentes).`;
+}
+
+/** The note's name, editable. A draft opens with it selected: Enter or a
+ * click elsewhere confirms it (and names the file), Esc keeps the default. */
+function NoteNameInput({ id, note, onDone }: { id: string; note: NoteData; onDone: () => void }) {
+  const done = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
+  const commit = (value: string, keep: boolean) => {
+    if (done.current) return;
+    const name = keep ? note.title : value.trim();
+    if (!note.draft && (keep || name === note.title)) {
+      done.current = true;
+      onDone();
+      return;
+    }
+    const problem = !name ? 'Dê um nome à nota.' : name.startsWith('-') ? 'O nome não pode começar com "-".' : '';
+    if (problem) {
+      toast(problem);
+      input.current?.focus();
+      return;
+    }
+    done.current = true;
+    api
+      .renameNote(id, name)
+      .then(onDone)
+      .catch((e: Error) => {
+        done.current = false;
+        toast(e instanceof ApiError && e.status === 409 ? `Já existe uma nota chamada "${name}" (ou que já teve esse nome).` : e.message);
+        input.current?.focus();
+        input.current?.select();
+      });
+  };
+  return (
+    <input
+      ref={input}
+      className="nn-name nodrag"
+      defaultValue={note.title}
+      autoFocus
+      spellCheck={false}
+      maxLength={60}
+      aria-label="Nome da nota"
+      placeholder="Nome da nota"
+      onFocus={(e) => e.target.select()}
+      onBlur={(e) => commit(e.target.value, false)}
+      onKeyDown={(e) => {
+        e.stopPropagation(); // canvas shortcuts (N, T…) stay out of the name
+        if (e.key === 'Enter') commit(e.currentTarget.value, false);
+        if (e.key === 'Escape') commit(e.currentTarget.value, true);
+      }}
+    />
   );
 }
 

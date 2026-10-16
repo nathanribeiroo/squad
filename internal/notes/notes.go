@@ -1,6 +1,13 @@
 // Package notes stores canvas notes as Markdown files (the file is the
 // source of truth; external edits are picked up by a watcher) and serves the
 // `squad note …` commands, limited to notes connected to the caller.
+//
+// A note's name is its title. Names are unique in the workspace, ignoring
+// case, and agents find a note by its title, a former title (Aliases) or its
+// file. A note made in the UI starts as a draft without a file: the name the
+// user confirms names the file, which never changes after that. The user may
+// rename the notes they made (the old name stays an alias, so an agent that
+// knew it doesn't lose the note); a note an agent made keeps its name.
 package notes
 
 import (
@@ -11,10 +18,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/fsnotify/fsnotify"
 
@@ -34,6 +44,8 @@ type Service struct {
 	mu        sync.Mutex
 	selfWrite map[string]time.Time // file → time of our own last write
 	watcher   *fsnotify.Watcher
+
+	nameMu sync.Mutex // naming: unique names, drafts getting their file
 }
 
 // New creates the notes directory next to the workspace file.
@@ -96,29 +108,205 @@ func (s *Service) uniqueFile(title string) string {
 	}
 }
 
-// PrepareNode fills a new note node (file name, empty file) before it's
-// stored; installed as the server's node preparer.
+// DefaultTitle names a note nobody named: "Nota", then "Nota 2"…
+const DefaultTitle = "Nota"
+
+// MaxTitle is the longest note name, in characters.
+const MaxTitle = 60
+
+// ErrAgentNote refuses renaming a note an agent made.
+var ErrAgentNote = errors.New("an agent made this note: it keeps the name the agent gave it")
+
+// match is how a note answers to a name.
+type match int
+
+const (
+	noMatch match = iota
+	byTitle
+	byAlias
+	byFile
+)
+
+// answers tells whether (and how) note n answers to name, ignoring case.
+func answers(n store.Node, name string) match {
+	name = strings.TrimSpace(name)
+	switch {
+	case n.Note == nil || name == "":
+		return noMatch
+	case strings.EqualFold(n.Note.Title, name):
+		return byTitle
+	case slices.ContainsFunc(n.Note.Aliases, func(a string) bool { return strings.EqualFold(a, name) }):
+		return byAlias
+	case n.Note.File != "" && (strings.EqualFold(n.Note.File, name) || strings.EqualFold(strings.TrimSuffix(n.Note.File, ".md"), name)):
+		return byFile
+	}
+	return noMatch
+}
+
+// taken returns the note, other than except, that already answers to name.
+func (s *Service) taken(name, except string) (store.Node, bool) {
+	for _, n := range s.store.Snapshot().Nodes {
+		if n.ID != except && answers(n, name) != noMatch {
+			return n, true
+		}
+	}
+	return store.Node{}, false
+}
+
+// uniqueTitle returns base, or "base 2", "base 3"… when taken.
+func (s *Service) uniqueTitle(base string) string {
+	for i := 1; ; i++ {
+		t := base
+		if i > 1 {
+			t = base + " " + strconv.Itoa(i)
+		}
+		if _, ok := s.taken(t, ""); !ok {
+			return t
+		}
+	}
+}
+
+// checkTitle validates a note name and returns it trimmed.
+func checkTitle(title string) (string, error) {
+	t := strings.TrimSpace(title)
+	switch {
+	case t == "":
+		return "", fmt.Errorf("%w: a note needs a name", store.ErrInvalid)
+	case utf8.RuneCountInString(t) > MaxTitle:
+		return "", fmt.Errorf("%w: a note name has at most %d characters", store.ErrInvalid, MaxTitle)
+	case strings.HasPrefix(t, "-"):
+		return "", fmt.Errorf("%w: a note name can't start with -", store.ErrInvalid)
+	case strings.IndexFunc(t, unicode.IsControl) >= 0:
+		return "", fmt.Errorf("%w: a note name is one line of text", store.ErrInvalid)
+	}
+	return t, nil
+}
+
+// duplicate is the error for a name another note answers to.
+func duplicate(name string, other store.Node) error {
+	if strings.EqualFold(other.Note.Title, name) {
+		return fmt.Errorf("%w: there is already a note named %q", store.ErrDuplicate, other.Note.Title)
+	}
+	return fmt.Errorf("%w: %q is taken by the note %q", store.ErrDuplicate, name, other.Note.Title)
+}
+
+// PrepareNode fills a new note node before it's stored (installed as the
+// server's node preparer). A draft gets a free default name and no file yet;
+// any other note must have a free name (a default one when blank) and gets
+// a new file named after it.
 func (s *Service) PrepareNode(n *store.Node) error {
 	if n.Kind != store.KindNote {
 		return nil
 	}
+	s.nameMu.Lock()
+	defer s.nameMu.Unlock()
+	return s.prepare(n)
+}
+
+func (s *Service) prepare(n *store.Node) error {
 	if n.Note == nil {
 		n.Note = &store.NoteData{}
 	}
-	if strings.TrimSpace(n.Note.Title) == "" {
-		n.Note.Title = "Nota"
+	n.Note.Aliases = nil
+	if strings.TrimSpace(n.Note.Title) == "" || n.Note.Draft {
+		n.Note.Title = s.uniqueTitle(DefaultTitle)
+	} else {
+		t, err := checkTitle(n.Note.Title)
+		if err != nil {
+			return err
+		}
+		if other, ok := s.taken(t, ""); ok {
+			return duplicate(t, other)
+		}
+		n.Note.Title = t
 	}
-	if n.Note.File == "" {
-		n.Note.File = s.uniqueFile(n.Note.Title)
+	if n.Note.Draft {
+		n.Note.File = ""
+		return nil
 	}
-	p, err := s.path(n.Note.File)
+	n.Note.File = s.uniqueFile(n.Note.Title)
+	return s.writeFile(n.Note.File, "")
+}
+
+// Finalize ends a note's draft: it gets its file, named after its current
+// name, and the name is no longer provisional. It happens when the user
+// confirms the name, writes content, connects the note, or Squad restarts.
+func (s *Service) Finalize(id string) (store.Node, error) {
+	s.nameMu.Lock()
+	defer s.nameMu.Unlock()
+	return s.finalize(id)
+}
+
+func (s *Service) finalize(id string) (store.Node, error) {
+	n, ok := s.store.Node(id)
+	if !ok || n.Note == nil || !n.Note.Draft {
+		return n, nil
+	}
+	file := s.uniqueFile(n.Note.Title)
+	if err := s.writeFile(file, ""); err != nil {
+		return n, err
+	}
+	n, err := s.store.UpdateNode(id, func(m *store.Node) error {
+		m.Note.Draft, m.Note.File = false, file
+		return nil
+	})
 	if err != nil {
-		return err
+		return n, err
 	}
-	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		return s.writeFile(n.Note.File, "")
+	s.events.Publish(events.NodeUpdated, n)
+	return n, nil
+}
+
+// Rename gives a note the user made a new name. A draft gets its file from
+// it; a note with a file keeps the file, and its old name becomes an alias,
+// so an agent that knew it still finds the note. Notes made by agents keep
+// their names (ErrAgentNote).
+func (s *Service) Rename(id, title string) (store.Node, error) {
+	s.nameMu.Lock()
+	defer s.nameMu.Unlock()
+	n, ok := s.store.Node(id)
+	if !ok || n.Note == nil {
+		return store.Node{}, store.ErrNotFound
 	}
-	return nil
+	if n.CreatedBy != "" {
+		return n, ErrAgentNote
+	}
+	t, err := checkTitle(title)
+	if err != nil {
+		return n, err
+	}
+	if other, ok := s.taken(t, id); ok {
+		return n, duplicate(t, other)
+	}
+	if t != n.Note.Title {
+		old := n.Note.Title
+		n, err = s.store.UpdateNode(id, func(m *store.Node) error {
+			m.Note.Title = t
+			m.Note.Aliases = slices.DeleteFunc(m.Note.Aliases, func(a string) bool { return strings.EqualFold(a, t) })
+			// A draft's provisional name was never seen by an agent.
+			if !m.Note.Draft && !strings.EqualFold(old, t) {
+				m.Note.Aliases = append(m.Note.Aliases, old)
+			}
+			return nil
+		})
+		if err != nil {
+			return n, err
+		}
+		s.events.Publish(events.NodeUpdated, n)
+	}
+	return s.finalize(id)
+}
+
+// finalizeAll ends every draft (Squad restarted: the UI that was naming
+// them is gone).
+func (s *Service) finalizeAll() {
+	for _, n := range s.store.Snapshot().Nodes {
+		if n.Note != nil && n.Note.Draft {
+			if _, err := s.Finalize(n.ID); err != nil {
+				s.log.Warn("note draft", "id", n.ID, "err", err)
+			}
+		}
+	}
 }
 
 func (s *Service) writeFile(file, content string) error {
@@ -132,8 +320,11 @@ func (s *Service) writeFile(file, content string) error {
 	return config.WriteFileAtomic(p, []byte(content), 0o600)
 }
 
-// Read returns a note's content.
+// Read returns a note's content ("" for a draft, which has no file yet).
 func (s *Service) Read(file string) (string, error) {
+	if file == "" {
+		return "", nil
+	}
 	p, err := s.path(file)
 	if err != nil {
 		return "", err
@@ -153,6 +344,12 @@ func (s *Service) Write(n store.Node, content, author string) error {
 	if n.Note.Locked {
 		return ErrLocked
 	}
+	if n.Note.Draft { // content first: the name it has now names the file
+		var err error
+		if n, err = s.Finalize(n.ID); err != nil {
+			return err
+		}
+	}
 	if err := s.writeFile(n.Note.File, content); err != nil {
 		return err
 	}
@@ -164,8 +361,11 @@ func (s *Service) Write(n store.Node, content, author string) error {
 var ErrLocked = errors.New("the note is locked; the user must unlock it in Squad")
 
 // Watch publishes note.edited for changes made outside Squad (editors,
-// agents writing the file directly). It stops when ctx ends.
+// agents writing the file directly) and ends the draft of a note when it is
+// connected to anything. It stops when ctx ends.
 func (s *Service) Watch(ctx context.Context) error {
+	s.finalizeAll()
+	go s.finalizeConnected(ctx)
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -214,6 +414,39 @@ func (s *Service) Watch(ctx context.Context) error {
 	return nil
 }
 
+// finalizeConnected ends the draft of a note when a wire reaches it. The
+// bus drops a subscriber that falls behind: it subscribes again, after
+// ending the drafts whose wires it may have missed.
+func (s *Service) finalizeConnected(ctx context.Context) {
+	for ctx.Err() == nil {
+		sub, unsubscribe := s.events.Subscribe()
+		for open := true; open; {
+			select {
+			case <-ctx.Done():
+				unsubscribe()
+				return
+			case ev, ok := <-sub:
+				if open = ok; !ok {
+					break
+				}
+				if e, isEdge := ev.Data.(store.Edge); isEdge && ev.Type == events.EdgeAdded {
+					for _, id := range []string{e.A, e.B} {
+						if _, err := s.Finalize(id); err != nil {
+							s.log.Warn("note draft", "id", id, "err", err)
+						}
+					}
+				}
+			}
+		}
+		unsubscribe()
+		for _, n := range s.store.Snapshot().Nodes {
+			if n.Note != nil && n.Note.Draft && len(s.store.Neighbors(n.ID)) > 0 {
+				_, _ = s.Finalize(n.ID)
+			}
+		}
+	}
+}
+
 // accessible returns the notes reachable from a terminal: connected notes
 // and notes chained to them (note ↔ note), not through other terminals.
 func (s *Service) accessible(caller string) []store.Node {
@@ -228,6 +461,11 @@ func (s *Service) accessible(caller string) []store.Node {
 				continue
 			}
 			seen[n.ID] = true
+			if n.Note.Draft { // connected before the watcher saw it
+				if f, err := s.Finalize(n.ID); err == nil {
+					n = f
+				}
+			}
 			out = append(out, n)
 			queue = append(queue, n.ID)
 		}
@@ -235,13 +473,24 @@ func (s *Service) accessible(caller string) []store.Node {
 	return out
 }
 
-func (s *Service) find(caller, name string) (store.Node, agentbus.Result, bool) {
-	for _, n := range s.accessible(caller) {
-		if n.Note.Title == name || n.Note.File == name || strings.TrimSuffix(n.Note.File, ".md") == name {
-			return n, agentbus.Result{}, true
+// find returns the connected note that answers to name: by title first,
+// then by a former title, then by file. renamed is set when it was found by
+// a former title, so the reply can give the current one.
+func (s *Service) find(caller, name string) (n store.Node, renamed bool, r agentbus.Result, ok bool) {
+	notes := s.accessible(caller)
+	for _, want := range []match{byTitle, byAlias, byFile} {
+		for _, n := range notes {
+			if answers(n, name) == want {
+				return n, want == byAlias, agentbus.Result{}, true
+			}
 		}
 	}
-	return store.Node{}, agentbus.Result{Code: 404, Body: fmt.Sprintf("squad: no connected note named %q (run `squad note list`)", name)}, false
+	return store.Node{}, false, agentbus.Result{Code: 404, Body: fmt.Sprintf("squad: no connected note named %q (run `squad note list`)", name)}, false
+}
+
+// renamedNote is the line that tells an agent a note's current name.
+func renamedNote(n store.Node) string {
+	return fmt.Sprintf("(this note is now named %q; use that name from now on)\n", n.Note.Title)
 }
 
 const noteUsage = `Usage:
@@ -249,7 +498,11 @@ const noteUsage = `Usage:
   squad note read "Name" [from] [count]   read with line numbers
   squad note write "Name" "content"       replace the content (use - to read stdin)
   squad note edit "Name" "old" "new"      replace text that appears exactly once
-  squad note create "Name" ["content"]    create a note connected to you`
+  squad note create "Name" ["content"]    create a note connected to you
+
+A note's name is unique in the workspace and permanent: choose a clear one
+when you create it. Names ignore case, and a note the user renamed still
+answers to its former names.`
 
 // Extension handles `squad note …` for the agent bus.
 func (s *Service) Extension(_ context.Context, caller string, args []string) (agentbus.Result, bool) {
@@ -273,6 +526,9 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		}
 		for _, n := range notes {
 			fmt.Fprintf(&sb, "- name: %q, file: %s", n.Note.Title, n.Note.File)
+			if len(n.Note.Aliases) > 0 {
+				fmt.Fprintf(&sb, ", formerly: %s", quoteAll(n.Note.Aliases))
+			}
 			if n.Note.Locked {
 				sb.WriteString(", locked: true")
 			}
@@ -283,7 +539,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		if len(args) < 3 || len(args) > 5 {
 			return agentbus.Result{Code: 400, Body: `Usage: squad note read "Name" [from] [count]`}, true
 		}
-		n, r, ok := s.find(caller, args[2])
+		n, renamed, r, ok := s.find(caller, args[2])
 		if !ok {
 			return r, true
 		}
@@ -298,24 +554,28 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		if len(args) == 5 {
 			count, _ = strconv.Atoi(args[4])
 		}
-		return agentbus.Result{Code: 200, Body: numbered(content, from, count)}, true
+		body := numbered(content, from, count)
+		if renamed {
+			body = renamedNote(n) + body
+		}
+		return agentbus.Result{Code: 200, Body: body}, true
 	case "write":
 		if len(args) != 4 {
 			return agentbus.Result{Code: 400, Body: `Usage: squad note write "Name" "content"`}, true
 		}
-		n, r, ok := s.find(caller, args[2])
+		n, renamed, r, ok := s.find(caller, args[2])
 		if !ok {
 			return r, true
 		}
 		if err := s.Write(n, args[3], author); err != nil {
 			return writeErr(err), true
 		}
-		return agentbus.Result{Code: 200, Body: fmt.Sprintf("OK: wrote %q", n.Note.Title)}, true
+		return agentbus.Result{Code: 200, Body: okLine("wrote", n, renamed)}, true
 	case "edit":
 		if len(args) != 5 {
 			return agentbus.Result{Code: 400, Body: `Usage: squad note edit "Name" "old" "new"`}, true
 		}
-		n, r, ok := s.find(caller, args[2])
+		n, renamed, r, ok := s.find(caller, args[2])
 		if !ok {
 			return r, true
 		}
@@ -332,7 +592,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		if err := s.Write(n, strings.Replace(content, args[3], args[4], 1), author); err != nil {
 			return writeErr(err), true
 		}
-		return agentbus.Result{Code: 200, Body: fmt.Sprintf("OK: edited %q", n.Note.Title)}, true
+		return agentbus.Result{Code: 200, Body: okLine("edited", n, renamed)}, true
 	case "create":
 		if len(args) < 3 || len(args) > 4 {
 			return agentbus.Result{Code: 400, Body: `Usage: squad note create "Name" ["content"]`}, true
@@ -344,14 +604,35 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		n, err := s.Create(caller, args[2], content, author)
 		if err != nil {
 			code := 500
-			if errors.Is(err, store.ErrDuplicate) {
+			switch {
+			case errors.Is(err, store.ErrDuplicate):
 				code = 409
+			case errors.Is(err, store.ErrInvalid):
+				code = 400
 			}
 			return agentbus.Result{Code: code, Body: "squad: " + err.Error()}, true
 		}
 		return agentbus.Result{Code: 200, Body: fmt.Sprintf("Created note %q (file %s), connected to you.", n.Note.Title, n.Note.File)}, true
 	}
 	return agentbus.Result{Code: 400, Body: noteUsage}, true
+}
+
+// okLine confirms a write, with the note's current name when it was reached
+// by a former one.
+func okLine(verb string, n store.Node, renamed bool) string {
+	line := fmt.Sprintf("OK: %s %q", verb, n.Note.Title)
+	if renamed {
+		line += fmt.Sprintf(" (the note is now named %q; use that name from now on)", n.Note.Title)
+	}
+	return line
+}
+
+func quoteAll(names []string) string {
+	q := make([]string, len(names))
+	for i, n := range names {
+		q[i] = strconv.Quote(n)
+	}
+	return strings.Join(q, ", ")
 }
 
 func writeErr(err error) agentbus.Result {
@@ -362,21 +643,24 @@ func writeErr(err error) agentbus.Result {
 }
 
 // Create makes a note connected to caller, placed left of it on the canvas.
+// Its name is the one the agent gives it, unique and permanent.
 func (s *Service) Create(caller, title, content, author string) (store.Node, error) {
-	for _, n := range s.accessible(caller) {
-		if n.Note.Title == title {
-			return store.Node{}, fmt.Errorf("%w: a connected note named %q", store.ErrDuplicate, title)
-		}
-	}
-	x, y, floor := 0.0, 0.0, ""
-	if me, ok := s.store.Node(caller); ok {
-		x, y, floor = me.X-440, me.Y, me.Floor
-	}
-	n := store.Node{Kind: store.KindNote, X: x, Y: y, W: 400, H: 350, Floor: floor, Note: &store.NoteData{Title: title}}
-	if err := s.PrepareNode(&n); err != nil {
+	t, err := checkTitle(title)
+	if err != nil {
 		return store.Node{}, err
 	}
-	n, err := s.store.AddNode(n)
+	x, y, floor := 0.0, 0.0, ""
+	if me, ok := s.store.Node(caller); ok { // a free spot near the agent, like its portals
+		floor = me.Floor
+		x, y = store.FreeSpot(store.OnFloor(s.store.Snapshot().Nodes, floor), me, 400, 350)
+	}
+	n := store.Node{Kind: store.KindNote, X: x, Y: y, W: 400, H: 350, Floor: floor, CreatedBy: caller, Note: &store.NoteData{Title: t}}
+	s.nameMu.Lock() // the name stays free until the note is stored
+	err = s.prepare(&n)
+	if err == nil {
+		n, err = s.store.AddNode(n)
+	}
+	s.nameMu.Unlock()
 	if err != nil {
 		return store.Node{}, err
 	}

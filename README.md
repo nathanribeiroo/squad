@@ -152,6 +152,12 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 
+**Nome das notas:**
+- **Nota nova** (tecla N ou barra de ferramentas): já abre com o campo de nome selecionado. Enter confirma; Esc fica com o nome provisório ("Nota", "Nota 2"…). O arquivo nasce com o nome que você der ("Plano de testes" → `plano-de-testes.md`) e não muda mais.
+- **Renomear** as suas notas: duplo clique no título, ou "Renomear" no menu ⋯. O arquivo fica, e **o nome antigo continua valendo para os agentes**: um agente que pedir a nota pelo nome antigo a encontra, e a resposta diz o nome novo.
+- **Notas criadas por agentes** (`squad note create "Nome"`, ou a ferramenta `note` do MCP) ficam com o nome que o agente deu: aparecem com "por Bia" e sem "Renomear".
+- **Nomes únicos no workspace**, sem diferenciar maiúsculas, contando os nomes antigos. Os agentes acham a nota pelo nome em qualquer caixa.
+
 ### Testar a conversa sem a interface (pela API)
 
 Em outro terminal, com o servidor rodando:

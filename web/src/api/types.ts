@@ -26,8 +26,13 @@ export interface ShellOption {
 
 export interface NoteData {
   title: string;
+  /** "" while a draft. */
   file: string;
   locked?: boolean;
+  /** Made in the UI and not named yet: the name the user confirms names the file. */
+  draft?: boolean;
+  /** Former names: agents that knew one still find the note. */
+  aliases?: string[];
 }
 
 export interface PortalData {

@@ -67,7 +67,8 @@ function Stage() {
       const c = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
       const floor = useSquad.getState().activeFloor;
       const body: Partial<WNode> = { kind, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), floor: floor || undefined };
-      if (kind === 'note') body.note = { title: 'Nota', file: '' };
+      // A draft: it opens with its name selected; the name the user gives names the file.
+      if (kind === 'note') body.note = { title: '', file: '', draft: true };
       api.addNode(body).catch((e: Error) => toast(e.message));
     },
     [rf],

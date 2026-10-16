@@ -179,8 +179,12 @@
   border-bottom: 1px solid var(--line); overflow: visible !important;
 }
 .nn-title, .pn-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.nn-title { flex: 0 1 auto; max-width: 70%; }
-.nn-file { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 3 auto; }
+.nn-title { flex: 0 0 auto; max-width: 70%; } /* the file name gives way first */
+.nn-name {
+  flex: 0 1 220px; min-width: 80px; height: 24px; border-radius: 5px; border: 1px solid var(--focus); outline: none;
+  background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; padding: 0 6px;
+}
+.nn-file { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .nn-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; cursor: text; user-select: text; }
 .nn-empty { color: var(--text-3); }
 .nn-lock { width: 24px; height: 24px; color: var(--text-3); }
