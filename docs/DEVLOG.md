@@ -2,6 +2,63 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, andares: servidor (R4)
+
+- **O que é:** um andar é uma cópia isolada do repositório do workspace (um `git worktree` num branch próprio), com um canvas próprio. Serve para frentes de trabalho em paralelo que mexem nos mesmos arquivos.
+- **Onde fica a cópia** (decisão do usuário): fora do projeto, como no Maestri, em `<pasta-pai do repositório>/.squad/floors/<projeto>--<andar>`. Se o repositório estiver direto na pasta do usuário, a cópia cai em `~/.squad/floors`, ao lado dos dados do Squad, sem conflito. As pastas `floors` e `.squad` são apagadas quando ficam vazias.
+- **Modelo:** os andares ficam dentro do workspace (`floors` no `workspace.json`, mais o campo `floor` em cada nó), como os `floors[]` do Maestri.
+  - A alternativa seria um workspace por andar, mas os fios não cruzam workspaces, e o gerente no térreo precisa falar com quem está no andar.
+  - Assim o barramento não mudou: um fio entre andares funciona como qualquer outro, e os nomes continuam únicos no workspace.
+- **Criar** (`internal/floors`):
+  - o branch é o nome sem acentos (`Página de Login` → `pagina-de-login`), ou `--branch B`. Um branch que já existe só abre com `--existing`;
+  - o andar parte do último commit do térreo. Sem cópia instantânea no Windows, ele recebe o checkout dos arquivos versionados e os não versionados que casam com a lista de cópia do workspace (padrão `.env*`), sem sobrescrever o que o checkout trouxe;
+  - o comando de preparo (ex.: `npm install`) roda em segundo plano, no shell padrão (Git Bash no Windows). Ele roda num grupo de processos (Unix) ou Job Object (Windows), para que parar o comando pare também o que ele abriu. O limite é de 30 min, e a saída vai para um log;
+  - `squad floor create` espera o preparo por até 45 s e diz se terminou, falhou ou continua.
+- **Aterrissar**, nas regras do Maestri:
+  - é recusado se o andar tiver alteração não commitada (arquivos copiados não contam), uma operação pela metade (merge, rebase) ou a pasta fora do branch do andar;
+  - sem `--merge` não mescla: fecha os terminais, apaga a pasta e mantém o branch;
+  - com `--merge` (ou `--into B`), o merge é `--no-ff`, com a mensagem "Merge branch 'x' into y". Se o destino está aberto numa pasta, essa pasta não pode ter alteração em arquivos versionados. Se não está aberto em nenhuma, o Squad usa `merge-tree --write-tree`, `commit-tree` e `update-ref`, sem tocar em pasta nenhuma (git 2.38+);
+  - num conflito, o Squad faz `merge --abort` e devolve a lista de arquivos; nada muda.
+- **Descartar** (só pelo usuário, `DELETE /api/floors/<id>`): fecha tudo, apaga a pasta e o branch, se foi o andar que o criou.
+- **Decisões tomadas sem consulta** (reversíveis):
+  - **Mescla de arquivo copiado:** é recusada se o branch do andar commitou um arquivo copiado do térreo. Isso apareceu no teste: um `git add .` no andar commitou o `.env`, o merge falhou, e um segredo iria para o branch base;
+  - **Notas:** as notas do andar descem para o térreo ao aterrissar ou descartar, porque guardam conhecimento, não código. Terminais e portais fecham;
+  - **Agentes:** gerentes criam andares e aterrissam só os que criaram. Ninguém aterrissa o andar em que está, e descartar fica com o usuário. Pelo MCP, `floors` (listar e criar) vem liberada e `floor_land` pede aprovação, porque mescla branches e fecha terminais;
+  - **Workspace com andares:** não pode ser removido nem mudar de pasta (os worktrees pertencem ao repositório).
+- **Servidor:**
+  - os terminais de um andar abrem na cópia. Pastas relativas resolvem na cópia, e uma pasta do térreo dada por inteiro vira a mesma pasta na cópia. `/api/dirs?floor=<id>` sugere pastas da cópia;
+  - `squad new --floor "Nome"` (padrão: o andar de quem cria; `--floor ground` é o térreo);
+  - portais e notas criados por um agente ficam no andar dele;
+  - API `/api/floors`: listar, criar, configuração, alterações (arquivos e commits, para o diálogo do R5), log do preparo, aterrissar e descartar. O evento `floors.updated` traz a lista;
+  - `squad list` mostra o andar de cada um, e a nota do gerente sugere andares. A skill ganhou a seção "Floors", e o MCP passou de 13 para 15 ferramentas.
+- **Web, só o mínimo:** o canvas mostra o térreo, sem os nós e fios dos andares, e já tem os tipos e o evento. O seletor, criar e alternar, as alterações pendentes e o diálogo de aterrissar ficam no R5. A barra do topo já tem o marcador estático "main · limpo" do design, que o R5 liga aos andares.
+- **Achado:** o Claude Code não pergunta se confia na pasta quando ela é um worktree de um repositório já confiado. Testei: a cópia em `.squad/floors` abriu direto, e uma pasta comum perguntou. Então os agentes do andar abrem sem essa pergunta.
+- **Testes:**
+  - `internal/floors`, com git de verdade:
+    - criar (com acento no nome, `.env` copiado, preparo, log);
+    - alterações e recusa com trabalho não commitado ou térreo sujo;
+    - merge com o destino aberto (commit com dois pais) e sem pasta;
+    - conflito nos dois caminhos, sem deixar rastro;
+    - descartar (com branch próprio e com branch existente);
+    - subpasta do workspace, preparo que falha e preparo interrompido;
+    - pasta que não é repositório;
+  - `internal/app`, com agentes falsos:
+    - o gerente cria o andar e põe agentes nele (`pwd` mostra a cópia, inclusive com uma pasta do térreo dada por inteiro);
+    - `squad list` e `squad floor list`;
+    - portal criado no andar;
+    - recusas (não gerente, `.env` commitado, trabalho não commitado, Bia aterrissando);
+    - aterrissar com merge pela CLI;
+    - criar, listar e descartar pela API;
+  - `internal/store`, `internal/hub` (recusa remover ou mover um workspace com andares), `internal/agents` e MCP (15 ferramentas, `floor_land` não liberada).
+- **Com o Claude Code real** (num worktree de teste do próprio Squad):
+  - pedi ao Planejador, de um shell ligado a ele: "crie o andar Rodape, ponha a Bia nele, peça um arquivo commitado e aterrisse mesclando";
+  - ele usou `floors` e `new` pelo MCP, sem aprovação;
+  - a Bia, na cópia, pediu aprovação para criar o arquivo e para o `git commit` (o modo manual dela). Aprovei como usuário;
+  - o Planejador chamou `floor_land`, que pediu aprovação;
+  - resultado: um commit de merge com os dois pais no branch de origem. A pasta do andar e o `.squad` vazio foram apagados, e o branch `rodape` ficou;
+  - depois, com um andar e um terminal nele, a interface mostrou só os nós do térreo (captura no PR).
+- **Precisa de você (Windows):** criar um andar, abrir um agente nele e aterrissar. O ponto a observar é a remoção da pasta logo depois de fechar os terminais: o Squad tenta de novo por até 5 s, porque o Windows pode segurar a pasta por um instante. Vale também testar o preparo pelo Git Bash.
+
 ## 2026-10-16, MCP (R3)
 
 - **`squad mcp`:** servidor MCP por stdio, feito com o SDK oficial em Go (`modelcontextprotocol/go-sdk` v1.8.0). O agente o abre dentro do terminal, e cada chamada vai ao servidor do Squad como aquele terminal, pelo mesmo caminho da CLI (`callServer`). São 13 ferramentas, com argumentos tipados:

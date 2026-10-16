@@ -60,6 +60,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 | `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools` |
 | `internal/roles`, `internal/team` | biblioteca de papéis; `squad new/connect/close` (gerente) |
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `squad portal` |
+| `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `squad floor`, `/api/floors` |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
 | `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` |
 
@@ -76,4 +77,4 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
   - R8: o que é "uso remoto";
   - R9: manter ou cortar o Playwright.
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo, R4 (andares, servidor):** traga o plano detalhado antes de começar. O comportamento de referência está em `docs/01-investigacao-maestri.md` (feature 7) e `docs/02-arquitetura-maestri.md`; os cuidados com o Windows, em `docs/05-proposta-arquitetura-go.md` §9.
+- **Próximo passo, R5 (andares, interface):** traga o plano detalhado antes de começar. O servidor já está pronto (R4, veja o DEVLOG): API `/api/floors`, evento `floors.updated` e o campo `floor` nos nós. Hoje o canvas mostra só o térreo. A barra do topo tem o marcador estático "main · limpo" do design, que vira o seletor.

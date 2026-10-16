@@ -32,8 +32,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | P2 Agentes no portal (`squad portal`) | `feat/portal-agents` | concluído |
 | R1 Papéis com instruções | `feat/roles` | concluído |
 | R2 Agente gerente e portais criados por agentes | `feat/manager` | concluído |
-| R3 MCP (`squad mcp`) | `feat/mcp` | concluído (PR) |
-| R4 Andares: servidor | — | planejado |
+| R3 MCP (`squad mcp`) | `feat/mcp` | concluído |
+| R4 Andares: servidor | `feat/floors` | concluído (PR) |
 | R5 Andares: interface | — | planejado |
 | R6 Resumos de turno | — | planejado |
 | R7 Portal Android | — | planejado |
