@@ -2,6 +2,21 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, nomes de nota
+
+- **Pedido do usuário:** dar nome às notas, em vez de "Nota" e `nota-2.md`. Ele renomeia as próprias notas depois de criar; os agentes nomeiam na criação e não renomeiam.
+- **O risco de renomear:** um agente que já conhecia o nome antigo receberia "nota não encontrada" na próxima leitura. **Solução:** a nota guarda os nomes antigos (`aliases`), e o arquivo não muda depois de criado. O agente acha a nota pelo nome antigo, e a resposta avisa o nome atual ("this note is now named …"). O usuário escolheu isso em vez de travar o nome.
+- **Rascunho:** a nota criada na interface nasce sem arquivo, com um nome provisório único. O primeiro nome confirmado dá nome ao arquivo. O rascunho termina no que vier primeiro: nome confirmado, conteúdo escrito, fio ligado (o serviço de notas escuta `edge.added`, e a busca dos agentes também termina rascunhos) ou o servidor reiniciando. Assim o arquivo nunca é renomeado no disco, o que no Windows falharia com o arquivo aberto num editor.
+- **Nomes:** únicos no workspace, sem diferenciar maiúsculas, contando os nomes antigos e os nomes de arquivo; até 60 caracteres, uma linha, sem começar com `-`. A busca dos agentes ignora maiúsculas e prefere o nome atual, depois um antigo, depois o arquivo. Antes, a busca diferenciava maiúsculas, e a checagem de repetição só olhava as notas ligadas ao agente.
+- **Notas de agente:** guardam o autor (`createdBy`), como os portais. Na interface, aparecem com "por Bia" e sem "Renomear", e a API recusa renomeá-las. Agora nascem num espaço livre perto do agente (antes, sempre à esquerda dele, por cima do que estivesse ali).
+- **Proteção:** o `PATCH /api/nodes` trocava título e arquivo de uma nota sem checagem nenhuma. Agora ele muda só o cadeado; nomear passa pela rota nova, `PATCH /api/notes/{id}`.
+- **Todos os agentes:** a CLI (`squad note`), a ferramenta `note` do MCP, o `squad list` (que mostra `formerly: …`) e o `squad connect` por nome antigo são os mesmos para Claude, Devin, Codex e Gemini. A skill ganhou uma seção "Notes".
+- **Testado aqui:**
+  - teste de integração do rascunho, dos quatro gatilhos, dos nomes únicos e dos nomes antigos, da recusa em notas de agente e do `PATCH` protegido; o MCP recusa nome repetido e acha a nota em qualquer caixa;
+  - interface, pelo Chromium: nota nova com o campo selecionado, nome repetido com aviso, Esc com o nome provisório, renomear com duplo clique;
+  - Claude real: leu a nota pelo nome; renomeei pela interface; pedi pelo nome antigo e ele achou, escreveu e disse o nome novo. Criou "Bugs encontrados" (com "por Ana", num espaço livre) e teve recusada uma nota "roteiro de testes", nome já usado.
+- **Não testado:** uma sessão real do Devin (sem login aqui). Ele usa a mesma CLI e o mesmo MCP.
+
 ## 2026-10-16, instalação da versão certa
 
 - **O que aconteceu:** no Windows, o `squad install-skill` instalou só a skill do Claude, e com `-agent devin` não registrou o MCP. A causa não era o código: o `go install …@main` passa pelo proxy do Go, que ainda respondia com o commit anterior (o merge do PR #15) quase uma hora depois do merge do PR #16. O usuário instalou a versão antiga.
