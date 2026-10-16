@@ -15,6 +15,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/notes"
 	"github.com/nathanribeiroo/squad/internal/portal"
+	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
@@ -26,6 +27,7 @@ type Options struct {
 	Limits     agentbus.Limits
 	Extensions []agentbus.Extension // extra CLI commands (notes, …)
 	Browser    *browser.Manager     // shared by the portals of every workspace; nil disables them
+	Roles      *roles.Library       // shared by every workspace; nil: roles are only labels
 }
 
 // App is a wired Squad instance.
@@ -57,7 +59,32 @@ func New(o Options) (*App, error) {
 	})
 	srv.SetStateExtra(bus.StateExtra)
 	srv.OnEdgeRemoved(bus.EdgeRemoved)
-	srv.OnNodeRemoved(bus.NodeRemoved)
+	var launcher *agents.Launcher
+	srv.OnNodeRemoved(func(n store.Node) {
+		bus.NodeRemoved(n)
+		if launcher != nil {
+			launcher.Forget(n.ID)
+		}
+	})
+	// roleOf is the instructions a terminal's agent receives for its role.
+	roleOf := func(n store.Node) (string, bool) {
+		if o.Roles == nil || n.Terminal == nil || n.Terminal.Role == "" {
+			return "", false
+		}
+		r, ok := o.Roles.Get(n.Terminal.Role)
+		if !ok || r.Prompt == "" {
+			return "", false
+		}
+		return roles.Instructions(r, n.Terminal.Name), true
+	}
+	bus.SetRoleNames(func(id string) string {
+		if o.Roles != nil {
+			if r, ok := o.Roles.Get(id); ok {
+				return r.Name
+			}
+		}
+		return ""
+	})
 	notesSvc, err := notes.New(srv.Store(), srv.Bus(), o.Server.Logger)
 	if err != nil {
 		return nil, err
@@ -111,13 +138,19 @@ func New(o Options) (*App, error) {
 
 	// Agent adapters: launch flags that install hooks, and the hook receiver.
 	if o.Server.CLIPath != "" {
-		launcher, err := agents.NewLauncher(o.Server.CLIPath)
-		if err != nil {
+		if launcher, err = agents.NewLauncher(o.Server.CLIPath); err != nil {
 			return nil, err
 		}
+		launcher.Role = roleOf
 		srv.SetLaunchHook(launcher.Prepare)
 	}
-	srv.SetHookHandler(agents.HookHandler(mon, server.CallerID))
+	srv.SetHookHandler(agents.HookHandler(mon, server.CallerID, func(id string) (string, bool) {
+		n, ok := srv.Store().Node(id)
+		if !ok || n.Terminal == nil || !agents.Lookup(n.Terminal.Agent).Roles {
+			return "", false
+		}
+		return roleOf(n)
+	}))
 	bus.SetHookedAgents(agents.HasHooks)
 
 	var app *App

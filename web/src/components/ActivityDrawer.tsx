@@ -1,15 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { IconName } from '../lib/icons';
-import { roleKey, clock, elapsed } from '../lib/model';
+import { clock, elapsed } from '../lib/model';
+import { useNodeRoleColor } from '../lib/roles';
 import { useNow } from '../lib/useNow';
-import { useNodes, useSquad, type ActivityItem } from '../state/store';
+import { useSquad, type ActivityItem } from '../state/store';
 import { Icon } from './Icon';
 import './ActivityDrawer.css';
-
-function useRoleOf() {
-  const nodes = useNodes();
-  return (id?: string) => roleKey(nodes.find((n) => n.id === id)?.terminal?.role);
-}
 
 const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: number) => string; icon: IconName; state: string }> = {
   pending: { label: (a, now) => `Pendente · ${elapsed(a.time, now)}`, icon: 'hourglass_top', state: 'wait' },
@@ -26,7 +22,7 @@ export function ActivityDrawer() {
   const items = useSquad((s) => s.activity);
   const ws = useSquad((s) => s.workspace);
   const extra = useSquad((s) => s.extra);
-  const roleOf = useRoleOf();
+  const roleOf = useNodeRoleColor();
   const [filter, setFilter] = useState<string | null>(null);
 
   const people = useMemo(() => {

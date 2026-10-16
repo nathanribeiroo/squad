@@ -3,7 +3,7 @@ import type { Node, NodeProps } from '@xyflow/react';
 import { api } from '../../api/client';
 import type { WNode } from '../../api/types';
 import { Icon } from '../../components/Icon';
-import { roleKey } from '../../lib/model';
+import { roleColor, useRoleLookup } from '../../lib/roles';
 import { Markdown, changedLines, type MarkdownHighlight } from '../../lib/markdown';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
@@ -20,6 +20,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
   const note = data.node.note!;
   const edit = useSquad((s) => s.noteEdits[id]);
   const nodes = useSquad((s) => s.workspace?.nodes);
+  const roleOf = useRoleLookup();
   const target = useConnectTarget(id);
   const [content, setContent] = useState<string | null>(null);
   const [mode, setMode] = useState<'preview' | 'edit'>('preview');
@@ -89,7 +90,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
       api.removeNode(id).catch((e: Error) => toast(e.message));
   };
 
-  const authorRole = (name: string) => roleKey(nodes?.find((n) => n.terminal?.name === name)?.terminal?.role);
+  const authorRole = (name: string) => roleColor(roleOf(nodes?.find((n) => n.terminal?.name === name)?.terminal?.role));
   const highlight: MarkdownHighlight | null = mark
     ? { from: mark.from, to: mark.to, role: authorRole(mark.author), label: `${mark.author} escreveu ${ago(now - mark.at)}` }
     : null;

@@ -17,6 +17,7 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
@@ -52,9 +53,10 @@ var fastLimits = agentbus.Limits{QuickAfter: time.Second, QuickEvery: 200 * time
 	Timeout: 15 * time.Second, ActiveWindow: 2 * time.Second, RawDelay: 200 * time.Millisecond}
 
 type env struct {
-	t   *testing.T
-	app *App
-	dir string
+	t     *testing.T
+	app   *App
+	dir   string
+	roles *roles.Library
 }
 
 func newEnv(t *testing.T, limits agentbus.Limits) *env {
@@ -68,9 +70,13 @@ func newEnv(t *testing.T, limits agentbus.Limits) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	lib, err := roles.Open(filepath.Join(dir, "roles.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	a, err := New(Options{
 		Server:   server.Options{Port: port, Token: "tok", Store: st, CLIPath: filepath.Join(binDir, "squad")},
-		Activity: fastActivity, Limits: limits,
+		Activity: fastActivity, Limits: limits, Roles: lib,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +86,7 @@ func newEnv(t *testing.T, limits agentbus.Limits) *env {
 	hs.Start()
 	a.Monitor.Start()
 	t.Cleanup(func() { hs.Close(); a.Close() })
-	return &env{t: t, app: a, dir: dir}
+	return &env{t: t, app: a, dir: dir, roles: lib}
 }
 
 // agent adds a fakeagent terminal; extra are KEY=VALUE settings.

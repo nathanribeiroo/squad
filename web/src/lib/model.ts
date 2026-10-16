@@ -1,5 +1,5 @@
-// Labels, icons and tokens for states and roles (docs/design_handoff_squad §2).
-import type { Role, UIState } from '../api/types';
+// Labels, icons and tokens for states (docs/design_handoff_squad §2); roles: lib/roles.ts.
+import type { UIState } from '../api/types';
 import type { IconName } from './icons';
 
 export const STATE_META: Record<UIState, { label: string; icon: IconName }> = {
@@ -11,17 +11,6 @@ export const STATE_META: Record<UIState, { label: string; icon: IconName }> = {
   err: { label: 'Parado · erro', icon: 'error' },
   off: { label: 'Descarregado', icon: 'bedtime' },
 };
-
-export const ROLE_META: Record<Exclude<Role, ''>, { label: string; icon: IconName }> = {
-  plan: { label: 'Planejador', icon: 'account_tree' },
-  impl: { label: 'Implementador', icon: 'code' },
-  rev: { label: 'Revisor', icon: 'rate_review' },
-  test: { label: 'Testador', icon: 'science' },
-};
-
-export function roleKey(role?: string): Exclude<Role, ''> | 'none' {
-  return role === 'plan' || role === 'impl' || role === 'rev' || role === 'test' ? role : 'none';
-}
 
 export function stateLabel(state: UIState, exitCode?: number): string {
   if (state === 'err' && exitCode && exitCode > 0) return `Parado · saída ${exitCode}`;

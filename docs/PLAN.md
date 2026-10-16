@@ -26,6 +26,19 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | W3 Web: fios e conversa | `feat/w3-wires` | concluído |
 | W4 Web: Composer, notas e portal | `feat/w4-composer` | concluído |
 | A1 Adaptador do Devin CLI | `feat/devin-agent` | implementado, falta teste com conta real |
+| Pasta e shell por terminal, fonte de ícones | `feat/terminal-folder-shell` | concluído |
+| Vários workspaces | `feat/workspaces` | concluído |
+| P1 Portal ao vivo (CDP) | `feat/portal-live` | concluído |
+| P2 Agentes no portal (`squad portal`) | `feat/portal-agents` | concluído |
+| R1 Papéis com instruções | `feat/roles` | concluído (PR) |
+| R2 Agente gerente e portais criados por agentes | — | planejado |
+| R3 MCP (`squad mcp`) | — | planejado |
+| R4 Andares: servidor | — | planejado |
+| R5 Andares: interface | — | planejado |
+| R6 Resumos de turno | — | planejado |
+| R7 Portal Android | — | planejado |
+| R8 Terminais remotos | — | planejado |
+| R9 Playwright opcional | — | planejado |
 
 ## B0, esqueleto
 
@@ -112,6 +125,41 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 
 **Aceite:** comparação visual com a referência HTML via Chrome headless; conversa real entre dois terminais visível no canvas.
 
-## Depois (fora desta rodada)
+## Segunda rodada: funcionalidades (R1–R9)
 
-Papéis, andares (git worktree + CoW), Ombro (resumos) e validação no Windows real. O portal ao vivo via CDP e os comandos do portal para os agentes (`squad portal`) já estão prontos (ver DEVLOG).
+Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe sozinho: cria e liga um Implementador e um Testador, delega com `squad ask`, e o Testador abre um portal e testa a interface.
+
+- **R1, papéis com instruções:**
+  - biblioteca de papéis: os quatro atuais (Planejador, Implementador, Revisor, Testador) com instruções padrão editáveis, e papéis novos com nome, cor, ícone e instrução;
+  - o agente recebe a instrução ao abrir:
+    - Claude Code: `--append-system-prompt-file`;
+    - Codex: `-c developer_instructions=…`;
+    - Devin: hook `SessionStart` com `additionalContext`;
+    - Gemini: como primeira mensagem (`-i`, a partir de uma variável de ambiente);
+    - shells e comandos próprios: sem instruções (digitar texto num shell poderia executá-lo); nos comandos próprios o papel fica só como etiqueta;
+  - trocar o papel reinicia o agente, com aviso;
+  - a instrução padrão do Testador inclui testar interfaces web pelo portal.
+- **R2, agente gerente e portais criados por agentes:**
+  - `squad new "Nome" --agent claude --role impl` cria, liga e inicia um terminal perto do gerente;
+  - `squad connect "A" "B"` e `squad close "Nome"`;
+  - só terminais com o modo gerente (ligado por padrão no Planejador), com limite de terminais por gerente;
+  - `squad portal create URL "Nome"`, para qualquer agente: o portal nasce ligado a quem o criou, com limite por agente; `squad portal close`;
+  - no canvas, o que um agente criou fica marcado ("criado por Planejador");
+  - a skill ensina o fluxo planejar → criar a equipe → delegar → testar → revisar.
+- **R3, MCP (`squad mcp`):** as mesmas ferramentas da CLI (inclusive gerente e portal), configurado em cada terminal do Claude (`--mcp-config`) e do Codex, já liberado nas permissões. A CLI continua.
+- **R4, andares (servidor):**
+  - git worktree com branch próprio e canvas próprio por andar; os terminais do andar abrem dentro da cópia;
+  - sem cópia instantânea no Windows, o andar recebe os arquivos versionados, uma lista de não versionados para copiar (ex.: `.env`) e um comando de preparo opcional;
+  - aterrissar recusa alteração não commitada; sem mesclar (remove a cópia e guarda o branch) ou mesclando no branch base, com a lista de conflitos; descartar apaga tudo;
+  - `squad floor create/list/land` para o gerente.
+- **R5, andares (interface):** o seletor no topo, criar e alternar, alterações pendentes e o diálogo de aterrissar.
+- **R6, resumos de turno:** cartão ao fim do turno (o que fez e 3 próximos passos) e resumo do workspace, a partir da mensagem final dos hooks ou da tela. Desligado por padrão; o modelo é decidido antes de começar.
+- **R7, portal Android:** `adb` com os mesmos comandos `squad portal` e imagem ao vivo.
+- **R8, terminais remotos:** terminal por SSH (ou WSL/Docker) com túnel de volta para o Squad. O escopo de "uso remoto" é confirmado antes de começar.
+- **R9, Playwright opcional:** segundo motor do portal (Firefox e WebKit). Pode ser cortado.
+
+**Fora da rodada:**
+- infraestrutura: CI com Windows, binários no GitHub Releases, terminais que sobrevivem ao reinício do servidor;
+- funcionalidades: Modelos (salvar um arranjo de agentes), chat por terminal, simulador de iPhone.
+
+**Validação no Windows real** continua pendente (ver DEVLOG).

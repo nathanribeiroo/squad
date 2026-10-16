@@ -2,7 +2,6 @@
 
 export type NodeKind = 'terminal' | 'note' | 'portal';
 export type AgentType = 'claude' | 'codex' | 'devin' | 'gemini' | 'shell' | 'custom';
-export type Role = 'plan' | 'impl' | 'rev' | 'test' | '';
 export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'done' | 'err' | 'off';
 
 export interface TerminalData {
@@ -11,7 +10,8 @@ export interface TerminalData {
   command?: string;
   shell?: string;
   cwd?: string;
-  role?: Role;
+  /** Id of a role in the library (RoleDef). */
+  role?: string;
   cols?: number;
   rows?: number;
 }
@@ -101,6 +101,20 @@ export interface ServerEvent<T = any> {
   type: string;
   time: string;
   data: T;
+}
+
+/** A role of the library (internal/roles), shared by every workspace. */
+export interface RoleDef {
+  id: string;
+  name: string;
+  /** The instructions the agent receives. */
+  prompt: string;
+  /** --r-<color> / --rb-<color> */
+  color: string;
+  icon: string;
+  builtin?: boolean;
+  /** A built-in role that differs from its default. */
+  edited?: boolean;
 }
 
 /** A workspace as the selector shows it (GET /api/workspaces, /ws/workspaces). */

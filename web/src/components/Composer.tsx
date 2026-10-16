@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { UIState, WNode } from '../api/types';
-import { ROLE_META, STATE_META, roleKey } from '../lib/model';
+import { STATE_META } from '../lib/model';
+import { roleColor, roleIcon, useRole, useRoleLookup } from '../lib/roles';
 import { toast } from '../lib/toast';
 import { useNodes, useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -99,6 +100,7 @@ export function Composer() {
 
 function ComposerPanel() {
   const nodes = useNodes();
+  const roleOf = useRoleLookup();
   const edges = useSquad((s) => s.workspace?.edges);
   const runtime = useSquad((s) => s.runtime);
   const initial = useSquad((s) => s.composerTarget ?? s.focusedTerminal ?? s.selectedNode);
@@ -172,7 +174,7 @@ function ComposerPanel() {
     } else {
       const sq = document.createElement('i');
       sq.className = 'mention-square';
-      sq.style.background = `var(--r-${roleKey(n.terminal?.role)})`;
+      sq.style.background = `var(--r-${roleColor(roleOf(n.terminal?.role))})`;
       chip.appendChild(sq);
     }
     chip.appendChild(document.createTextNode(nodeName(n)));
@@ -321,10 +323,11 @@ function ComposerPanel() {
         {targets.map((id) => {
           const n = byId.get(id);
           if (!n?.terminal) return null;
-          const r = roleKey(n.terminal.role);
+          const role = roleOf(n.terminal.role);
+          const r = roleColor(role);
           return (
             <span key={id} className="cmp-target" style={{ background: `var(--rb-${r})`, color: `var(--r-${r})` }}>
-              {r !== 'none' ? <Icon name={ROLE_META[r].icon} size={14} /> : <Icon name="terminal" size={14} />}
+              <Icon name={role ? roleIcon(role) : 'terminal'} size={14} />
               <span className="cmp-target-name">{n.terminal.name}</span>
               <span className="mono cmp-target-agent">{n.terminal.agent}</span>
               <button className="cmp-x" onClick={() => setTargets(targets.filter((x) => x !== id))} aria-label={`Remover ${n.terminal.name}`}>
@@ -446,9 +449,10 @@ function targetNotice(states: UIState[], runtime: Record<string, { status?: stri
 }
 
 function NodeGlyph({ n }: { n: WNode }) {
+  const role = useRole(n.terminal?.role);
   if (n.note) return <Icon name="description" size={16} />;
   if (n.portal) return <Icon name="public" size={16} />;
-  return <i className="mention-square" style={{ background: `var(--r-${roleKey(n.terminal?.role)})` }} />;
+  return <i className="mention-square" style={{ background: `var(--r-${roleColor(role)})` }} />;
 }
 
 function MiniState({ state }: { state: UIState }) {

@@ -12,6 +12,12 @@
 //     devin-…`; Devin collects hooks from every config source, so the user's
 //     own hooks keep working (not tested against a real Devin account).
 //   - Gemini, shells and custom commands: no hook; screen heuristics only.
+//
+// A terminal's role reaches its agent as instructions at launch: Claude Code
+// reads them from a file (--append-system-prompt-file), Codex from a config
+// override (developer_instructions), Devin from its SessionStart hook, and
+// Gemini, which has no such option, as its first prompt (-i). Shells and
+// custom commands get none: typing instructions into them could run them.
 package agents
 
 import (
@@ -31,13 +37,14 @@ type Info struct {
 	Type           string // claude | codex | devin | gemini | shell | custom
 	DefaultCommand string // used when the node has no command
 	Hooks          bool   // reports turn ends through a native hook
+	Roles          bool   // receives its role's instructions
 }
 
 var known = map[string]Info{
-	"claude": {Type: "claude", DefaultCommand: "claude", Hooks: true},
-	"codex":  {Type: "codex", DefaultCommand: "codex", Hooks: true},
-	"devin":  {Type: "devin", DefaultCommand: "devin", Hooks: true},
-	"gemini": {Type: "gemini", DefaultCommand: "gemini"},
+	"claude": {Type: "claude", DefaultCommand: "claude", Hooks: true, Roles: true},
+	"codex":  {Type: "codex", DefaultCommand: "codex", Hooks: true, Roles: true},
+	"devin":  {Type: "devin", DefaultCommand: "devin", Hooks: true, Roles: true},
+	"gemini": {Type: "gemini", DefaultCommand: "gemini", Roles: true},
 	"shell":  {Type: "shell"},
 	"custom": {Type: "custom"},
 }
@@ -58,6 +65,9 @@ type Launcher struct {
 	SquadPath      string // absolute path of the squad binary
 	ClaudeSettings string // path of the generated Claude settings file
 	DevinConfig    string // path of the generated Devin config file
+	RoleDir        string // one file per terminal with its role, for Claude Code
+	// Role returns the instructions of a terminal's role (false: no role).
+	Role func(n store.Node) (string, bool)
 }
 
 // NewLauncher writes the Claude and Devin hooks files under ~/.squad/run.
@@ -68,7 +78,8 @@ func NewLauncher(squadPath string) (*Launcher, error) {
 	}
 	l := &Launcher{SquadPath: squadPath,
 		ClaudeSettings: filepath.Join(dir, "claude-hooks.json"),
-		DevinConfig:    filepath.Join(dir, "devin-hooks.json")}
+		DevinConfig:    filepath.Join(dir, "devin-hooks.json"),
+		RoleDir:        filepath.Join(dir, "roles")}
 	if err := l.writeHooks(l.ClaudeSettings, map[string]string{
 		"Stop":             "claude-stop",
 		"StopFailure":      "claude-stop-failure",
@@ -79,6 +90,7 @@ func NewLauncher(squadPath string) (*Launcher, error) {
 	if err := l.writeHooks(l.DevinConfig, map[string]string{
 		"Stop":             "devin-stop",
 		"UserPromptSubmit": "devin-prompt",
+		"SessionStart":     "devin-session-start", // the role, as context
 	}); err != nil {
 		return nil, err
 	}
@@ -117,7 +129,7 @@ func (l *Launcher) writeHooks(path string, events map[string]string) error {
 }
 
 // Prepare rewrites a terminal spec before start: default command for the
-// agent type plus the flags that install Squad's hooks.
+// agent type plus the flags that install Squad's hooks and pass its role.
 func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 	info := Lookup(spec.Agent)
 	if strings.TrimSpace(spec.Command) == "" {
@@ -127,15 +139,84 @@ func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 		return nil
 	}
 	_, fam := terminal.ResolveShell(spec.Shell)
+	role, hasRole := "", false
+	if l.Role != nil && info.Roles {
+		role, hasRole = l.Role(n)
+	}
 	switch info.Type {
 	case "claude":
 		spec.Command += " --settings " + terminal.Quote(fam, l.ClaudeSettings)
+		path := filepath.Join(l.RoleDir, n.ID+".md")
+		if !hasRole {
+			_ = os.Remove(path)
+			break
+		}
+		if err := os.MkdirAll(l.RoleDir, 0o700); err != nil {
+			return err
+		}
+		if err := config.WriteFileAtomic(path, []byte(role), 0o600); err != nil {
+			return err
+		}
+		spec.Command += " --append-system-prompt-file " + terminal.Quote(fam, path)
 	case "codex":
 		spec.Command += " -c " + terminal.Quote(fam, l.codexNotify())
+		if hasRole {
+			spec.Command += " -c " + terminal.Quote(fam, "developer_instructions="+TOMLString(role))
+		}
 	case "devin":
 		spec.Command += " --config " + terminal.Quote(fam, l.DevinConfig)
+	case "gemini":
+		if hasRole {
+			// From the environment: the launch line stays short and unquoted.
+			if fam == terminal.ShellCmd { // %VAR% can't hold line breaks or quotes
+				role = strings.NewReplacer("\r", "", "\n", " ", `"`, "'").Replace(role)
+			}
+			if spec.Env == nil {
+				spec.Env = map[string]string{}
+			}
+			spec.Env["SQUAD_ROLE"] = role
+			spec.Command += " -i " + envRef(fam, "SQUAD_ROLE")
+		}
 	}
 	return nil
+}
+
+// envRef is an environment variable as one argument of a shell command line.
+func envRef(f terminal.ShellFamily, name string) string {
+	switch f {
+	case terminal.ShellPowerShell:
+		return "$env:" + name
+	case terminal.ShellCmd:
+		return `"%` + name + `%"`
+	default:
+		return `"$` + name + `"`
+	}
+}
+
+// Forget removes what Prepare wrote for a terminal.
+func (l *Launcher) Forget(id string) {
+	_ = os.Remove(filepath.Join(l.RoleDir, id+".md"))
+}
+
+// TOMLString encodes s as a TOML basic string that is also plain ASCII with
+// no shell metacharacters: everything but letters, digits, spaces and a few
+// marks becomes \uXXXX, so no shell (sh, PowerShell, cmd with its %VAR%)
+// changes it on a launch line.
+func TOMLString(s string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', strings.ContainsRune(" ,.:;-_()?/=+*#@[]{}", r):
+			b.WriteRune(r)
+		case r > 0xFFFF:
+			fmt.Fprintf(&b, `\U%08X`, r)
+		default:
+			fmt.Fprintf(&b, `\u%04X`, r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
 }
 
 // codexNotify returns the TOML override for Codex's notify program; TOML

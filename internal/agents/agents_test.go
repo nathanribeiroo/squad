@@ -1,8 +1,12 @@
 package agents
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -99,5 +103,118 @@ func TestPrepareLaunchLines(t *testing.T) {
 	}
 	if !HasHooks("claude") || !HasHooks("devin") || HasHooks("gemini") || HasHooks("whatever") {
 		t.Fatal("HasHooks")
+	}
+}
+
+func TestRoleDelivery(t *testing.T) {
+	t.Setenv("SQUAD_HOME", t.TempDir())
+	l, err := NewLauncher("/opt/squad/bin/squad")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const text = "# Papel no Squad: Testador\n\nUse `squad ask \"Nome\"`; 100% $HOME! 'ok' ção \U0001F600\n"
+	asked := 0
+	l.Role = func(n store.Node) (string, bool) {
+		asked++
+		return text, n.Terminal != nil && n.Terminal.Role != ""
+	}
+	node := func(id, role string) store.Node {
+		return store.Node{ID: id, Terminal: &store.TerminalData{Name: "Ana", Role: role}}
+	}
+
+	// Claude Code: a file per terminal, appended to the system prompt.
+	spec := terminal.Spec{Agent: "claude", Shell: "/bin/sh"}
+	if err := l.Prepare(node("t1", "test"), &spec); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(l.RoleDir, "t1.md")
+	if !strings.HasSuffix(spec.Command, " --append-system-prompt-file "+terminal.Quote(terminal.ShellPOSIX, file)) {
+		t.Fatalf("claude: %s", spec.Command)
+	}
+	if data, _ := os.ReadFile(file); string(data) != text {
+		t.Fatalf("role file: %q", data)
+	}
+	spec = terminal.Spec{Agent: "claude", Shell: "/bin/sh"}
+	_ = l.Prepare(node("t1", ""), &spec)
+	if strings.Contains(spec.Command, "append-system-prompt") {
+		t.Fatalf("no role, no flag: %s", spec.Command)
+	}
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		t.Fatal("a role taken away removes the file")
+	}
+
+	// Codex: developer_instructions as an ASCII TOML string, safe in any shell.
+	spec = terminal.Spec{Agent: "codex", Shell: "/bin/sh"}
+	_ = l.Prepare(node("t2", "test"), &spec)
+	_, arg, ok := strings.Cut(spec.Command, " -c 'developer_instructions=")
+	if !ok {
+		t.Fatalf("codex: %s", spec.Command)
+	}
+	value := strings.TrimSuffix(arg, "'")
+	for _, c := range value[1 : len(value)-1] {
+		if c > 127 || strings.ContainsRune("\"'$%!`\n&|<>^", c) {
+			t.Fatalf("codex value has %q: %s", c, value)
+		}
+	}
+	if got, err := strconv.Unquote(value); err != nil || got != text { // TOML escapes are Go's
+		t.Fatalf("codex value decodes to %q (%v)", got, err)
+	}
+
+	// Devin: the SessionStart hook asks for the role.
+	if cfg, _ := os.ReadFile(l.DevinConfig); !strings.Contains(string(cfg), `"SessionStart"`) || !strings.Contains(string(cfg), "hook devin-session-start") {
+		t.Fatalf("devin config: %s", cfg)
+	}
+
+	// Gemini: the role is the first prompt, from the environment.
+	spec = terminal.Spec{Agent: "gemini", Shell: "/bin/sh"}
+	_ = l.Prepare(node("t3", "test"), &spec)
+	if spec.Command != `gemini -i "$SQUAD_ROLE"` || spec.Env["SQUAD_ROLE"] != text {
+		t.Fatalf("gemini: %s %q", spec.Command, spec.Env["SQUAD_ROLE"])
+	}
+	if envRef(terminal.ShellPowerShell, "X") != "$env:X" || envRef(terminal.ShellCmd, "X") != `"%X%"` {
+		t.Fatal("envRef")
+	}
+
+	// Shells and custom commands never get it: typing it there could run it.
+	asked = 0
+	for _, agent := range []string{"shell", "custom"} {
+		spec = terminal.Spec{Agent: agent, Command: "aider", Shell: "/bin/sh"}
+		_ = l.Prepare(node("t4", "test"), &spec)
+		if spec.Command != "aider" || len(spec.Env) != 0 {
+			t.Fatalf("%s: %s %v", agent, spec.Command, spec.Env)
+		}
+	}
+	if asked != 0 {
+		t.Fatal("the role of a shell is not even looked up")
+	}
+}
+
+func TestSessionStartHook(t *testing.T) {
+	if ev, ok := ParseHook("devin-session-start", []byte(`{"hook_event_name":"SessionStart","source":"startup"}`)); !ok || !ev.SessionStart {
+		t.Fatalf("parse: %+v %v", ev, ok)
+	}
+	h := HookHandler(nil, func(r *http.Request) string { return r.Header.Get("X-Terminal-ID") }, func(id string) (string, bool) {
+		return "Seja o Testador.", id == "with-role"
+	})
+	call := func(id string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "/hooks/devin-session-start", strings.NewReader(`{"source":"startup"}`))
+		r.SetPathValue("agent", "devin-session-start")
+		r.Header.Set("X-Terminal-ID", id)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	w := call("with-role")
+	var out struct {
+		HookSpecificOutput struct {
+			HookEventName     string `json:"hookEventName"`
+			AdditionalContext string `json:"additionalContext"`
+		} `json:"hookSpecificOutput"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &out) != nil || out.HookSpecificOutput.HookEventName != "SessionStart" || out.HookSpecificOutput.AdditionalContext != "Seja o Testador." {
+		t.Fatalf("with role: %d %s", w.Code, w.Body)
+	}
+	if w := call("no-role"); w.Code != http.StatusNoContent || w.Body.Len() != 0 {
+		t.Fatalf("no role: %d %s", w.Code, w.Body)
 	}
 }

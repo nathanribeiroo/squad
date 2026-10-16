@@ -1,7 +1,8 @@
-// /ws/workspaces with automatic reconnection: the workspace list, live.
+// /ws/workspaces with automatic reconnection: the workspace list and the role
+// library, live.
 import { useSquad } from '../state/store';
 import { wsURL } from './client';
-import type { ServerEvent, WorkspaceSummary } from './types';
+import type { RoleDef, ServerEvent, WorkspaceSummary } from './types';
 
 export function connectWorkspaces(): () => void {
   let ws: WebSocket | null = null;
@@ -14,10 +15,10 @@ export function connectWorkspaces(): () => void {
     ws = new WebSocket(wsURL('/ws/workspaces'));
     ws.onmessage = (m) => {
       try {
-        const ev = JSON.parse(m.data as string) as ServerEvent<WorkspaceSummary[]>;
-        if (ev.type !== 'workspaces') return;
+        const ev = JSON.parse(m.data as string) as ServerEvent<WorkspaceSummary[] | RoleDef[]>;
         retry = 0;
-        useSquad.getState().setWorkspaces(ev.data);
+        if (ev.type === 'workspaces') useSquad.getState().setWorkspaces(ev.data as WorkspaceSummary[]);
+        if (ev.type === 'roles') useSquad.getState().setRoles(ev.data as RoleDef[]);
       } catch {
         /* ignore malformed */
       }

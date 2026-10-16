@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { NodeResizer, useReactFlow, type Node, type NodeProps, type ResizeParams } from '@xyflow/react';
 import { api } from '../../api/client';
-import type { Role, TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
+import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { Icon } from '../../components/Icon';
-import { ROLE_META, STATE_META, elapsed, roleKey, stateLabel } from '../../lib/model';
+import { STATE_META, elapsed, stateLabel } from '../../lib/model';
+import { ROLE_AGENTS, changeRole, roleColor, roleIcon, useRole, useRoleLookup } from '../../lib/roles';
 import { shortPath, terminalCwd } from '../../lib/paths';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
@@ -40,6 +41,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
   const focused = useSquad((s) => s.focusedTerminal === id);
   const target = useConnectTarget(id);
   const state: UIState = rt?.activity ?? 'boot';
+  const roleColorKey = roleColor(useRole(t.role));
 
   // The session exists for every level, so miniatures have a live buffer.
   useEffect(() => {
@@ -87,7 +89,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
       <div className={`${cls} node-drag`}>
         <NodeHandles id={id} />
         <ScreenSpace zoom={zoom} className="tmini">
-          <div className="node-stripe" style={{ background: `var(--r-${roleKey(t.role)})` }} />
+          <div className="node-stripe" style={{ background: `var(--r-${roleColorKey})` }} />
           <header className="tm-head">
             <span className="tm-name">{t.name}</span>
             <span className="tm-agent mono">{t.agent}</span>
@@ -112,7 +114,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
     <div className={cls}>
       <NodeResizer isVisible={selected && !focused} minWidth={320} minHeight={200} onResizeEnd={onResizeEnd} />
       <NodeHandles id={id} />
-      <div className="node-stripe" style={{ background: `var(--r-${roleKey(t.role)})` }} />
+      <div className="node-stripe" style={{ background: `var(--r-${roleColorKey})` }} />
       <LiveHeader id={id} t={t} rt={rt} state={state} focused={focused} />
       <SenderStrip id={id} />
       <TermBody id={id}>
@@ -164,10 +166,10 @@ function TermBody({ id, children }: { id: string; children: React.ReactNode }) {
 }
 
 function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData; rt?: TerminalRuntime; state: UIState; focused: boolean }) {
-  const role = roleKey(t.role);
+  const role = useRole(t.role);
+  const roles = useSquad((s) => s.roles);
   const running = rt?.status === 'running' || rt?.status === 'starting';
   const act = (a: 'start' | 'stop' | 'restart') => api.nodeAction(id, a).catch((e: Error) => toast(e.message));
-  const setRole = (r: Role) => api.updateNode(id, { terminal: { ...t, role: r } }).catch((e: Error) => toast(e.message));
   const remove = () => {
     if (window.confirm(`Remover "${t.name}"? O processo do terminal é encerrado.`)) api.removeNode(id).catch((e: Error) => toast(e.message));
   };
@@ -178,23 +180,33 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
     { icon: 'restart_alt', label: 'Reiniciar', action: () => act('restart') },
     { icon: 'tune', label: 'Configurar…', action: () => useSquad.getState().setEditTerm(id) },
     'divider',
-    ...(Object.keys(ROLE_META) as Exclude<Role, ''>[]).map((r) => ({
-      icon: ROLE_META[r].icon,
-      label: ROLE_META[r].label,
-      checked: t.role === r,
-      action: () => setRole(t.role === r ? '' : r),
-    })),
-    'divider',
+    // Shells have no role (docs/design_handoff_squad/brief.md).
+    ...(t.agent === 'shell'
+      ? []
+      : [
+          ...roles.map((r) => ({
+            icon: roleIcon(r),
+            label: r.name,
+            checked: t.role === r.id,
+            action: () => changeRole(id, t, t.role === r.id ? '' : r.id, running),
+          })),
+          { icon: 'badge' as const, label: 'Editar papéis…', action: () => useSquad.getState().openRoles(t.role || null) },
+          'divider' as const,
+        ]),
     { icon: 'delete', label: 'Remover', action: remove, danger: true },
   ];
   return (
     <header className="tn-head node-drag">
       <span className="tn-name">{t.name}</span>
       <span className="tn-agent mono">{t.agent}</span>
-      {role !== 'none' && (
-        <span className="tn-role" style={{ background: `var(--rb-${role})`, color: `var(--r-${role})` }}>
-          <Icon name={ROLE_META[role].icon} size={14} />
-          {ROLE_META[role].label}
+      {role && (
+        <span
+          className="tn-role"
+          style={{ background: `var(--rb-${role.color})`, color: `var(--r-${role.color})` }}
+          title={ROLE_AGENTS.has(t.agent) ? `Papel: ${role.name}` : `Papel: ${role.name} (só a etiqueta: ${t.agent} não recebe instruções)`}
+        >
+          <Icon name={roleIcon(role)} size={14} />
+          {role.name}
         </span>
       )}
       <span className="tn-spacer" />
@@ -241,7 +253,8 @@ function SenderStrip({ id }: { id: string }) {
   const incoming = pending.find((p) => p.to === id);
   const outgoing = pending.find((p) => p.from === id);
   const now = useNow(1000, !!outgoing || !!reply);
-  const roleOf = (nid: string) => roleKey(nodes?.find((n) => n.id === nid)?.terminal?.role);
+  const lookup = useRoleLookup();
+  const roleOf = (nid: string) => roleColor(lookup(nodes?.find((n) => n.id === nid)?.terminal?.role));
 
   if (incoming) {
     const r = roleOf(incoming.from);
@@ -321,13 +334,13 @@ function MiniSnapshot({ id, zoom }: { id: string; zoom: number }) {
 }
 
 function TerminalCard({ id, t, rt, state }: { id: string; t: TerminalData; rt?: TerminalRuntime; state: UIState }) {
-  const role = roleKey(t.role);
+  const role = useRole(t.role);
   const inbox = useInbox(id);
   const timed = state === 'work' || state === 'wait' || state === 'done';
   const now = useNow(1000, timed);
   return (
     <div className="tcard">
-      <div className="tc-stripe" style={{ background: `var(--r-${role})` }} />
+      <div className="tc-stripe" style={{ background: `var(--r-${roleColor(role)})` }} />
       <div className="tc-main">
         <div className="tc-title">
           <span className="tc-name">{t.name}</span>
@@ -335,10 +348,10 @@ function TerminalCard({ id, t, rt, state }: { id: string; t: TerminalData; rt?: 
         </div>
         <div className="tc-sub">
           <span className="mono">{t.agent}</span>
-          {role !== 'none' && (
+          {role && (
             <>
               {' · '}
-              <span style={{ color: `var(--r-${role})`, fontWeight: 600 }}>{ROLE_META[role].label}</span>
+              <span style={{ color: `var(--r-${role.color})`, fontWeight: 600 }}>{role.name}</span>
             </>
           )}
         </div>

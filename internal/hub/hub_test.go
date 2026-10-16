@@ -19,6 +19,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
@@ -255,23 +256,45 @@ func TestWorkspacesStreamAndSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.CloseNow()
+	// next returns the next event of a type, skipping the others.
+	next := func(typ string) json.RawMessage {
+		for {
+			_, data, err := c.Read(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var ev struct {
+				Type string
+				Data json.RawMessage
+			}
+			_ = json.Unmarshal(data, &ev)
+			if ev.Type == typ {
+				return ev.Data
+			}
+		}
+	}
 	read := func() []Summary {
-		_, data, err := c.Read(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var ev struct {
-			Type string
-			Data []Summary
-		}
-		_ = json.Unmarshal(data, &ev)
-		if ev.Type != EventWorkspaces {
-			t.Fatalf("event %s", data)
-		}
-		return ev.Data
+		var l []Summary
+		_ = json.Unmarshal(next(EventWorkspaces), &l)
+		return l
+	}
+	readRoles := func() []roles.Role {
+		var l []roles.Role
+		_ = json.Unmarshal(next(EventRoles), &l)
+		return l
 	}
 	if l := read(); len(l) != 1 || l[0].ID != a.ID {
 		t.Fatalf("first list: %+v", l)
+	}
+	if l := readRoles(); len(l) != 4 || l[3].Name != "Testador" {
+		t.Fatalf("first roles: %+v", l)
+	}
+	// A new role reaches every open page.
+	if code, data := h.do("POST", "/api/roles", roles.Role{Name: "Designer", Prompt: "Cuide do visual."}, nil); code != http.StatusCreated {
+		t.Fatalf("create role: %d %s", code, data)
+	}
+	if l := readRoles(); len(l) != 5 || l[4].ID != "designer" {
+		t.Fatalf("roles after create: %+v", l)
 	}
 	h.addTerminal(a.ID, "Shell")
 	for {
@@ -284,6 +307,55 @@ func TestWorkspacesStreamAndSummary(t *testing.T) {
 		if l := read(); len(l) == 2 && l[1].ID == b.ID {
 			break
 		}
+	}
+}
+
+func TestRolesAPI(t *testing.T) {
+	h := newHarness(t, "")
+	a := h.create("A")
+	role := func(method, path string, body any, want int) roles.Role {
+		t.Helper()
+		code, data := h.do(method, path, body, nil)
+		if code != want {
+			t.Fatalf("%s %s: %d %s", method, path, code, data)
+		}
+		var r roles.Role
+		_ = json.Unmarshal(data, &r)
+		return r
+	}
+	ux := role("POST", "/api/roles", roles.Role{Name: "Revisão de UX", Prompt: "Olhe a interface.", Color: "teal", Icon: "palette"}, http.StatusCreated)
+	role("POST", "/api/roles", roles.Role{Name: "revisão de ux"}, http.StatusBadRequest)
+	ux.Prompt = "Olhe a interface com calma."
+	if r := role("PUT", "/api/roles/"+ux.ID, ux, http.StatusOK); r.Prompt != ux.Prompt {
+		t.Fatalf("update: %+v", r)
+	}
+	test := role("PUT", "/api/roles/test", roles.Role{Name: "QA", Prompt: "Teste.", Color: "test", Icon: "science"}, http.StatusOK)
+	if !test.Edited || test.Name != "QA" {
+		t.Fatalf("edit built-in: %+v", test)
+	}
+	if r := role("POST", "/api/roles/test/reset", nil, http.StatusOK); r.Name != "Testador" || r.Edited {
+		t.Fatalf("reset: %+v", r)
+	}
+	role("DELETE", "/api/roles/test", nil, http.StatusBadRequest)
+	role("PUT", "/api/roles/nope", ux, http.StatusNotFound)
+
+	// A role in use can't be removed: its terminals would lose it silently.
+	n := h.addTerminal(a.ID, "Ana")
+	n.Terminal.Role = ux.ID
+	if code, data := h.do("PATCH", "/w/"+a.ID+"/api/nodes/"+n.ID, map[string]any{"terminal": n.Terminal}, nil); code != http.StatusOK {
+		t.Fatalf("assign: %d %s", code, data)
+	}
+	if code, data := h.do("DELETE", "/api/roles/"+ux.ID, nil, nil); code != http.StatusConflict || !strings.Contains(string(data), "Ana (A)") {
+		t.Fatalf("delete in use: %d %s", code, data)
+	}
+	n.Terminal.Role = ""
+	h.do("PATCH", "/w/"+a.ID+"/api/nodes/"+n.ID, map[string]any{"terminal": n.Terminal}, nil)
+	role("DELETE", "/api/roles/"+ux.ID, nil, http.StatusNoContent)
+	var list []roles.Role
+	_, data := h.do("GET", "/api/roles", nil, nil)
+	_ = json.Unmarshal(data, &list)
+	if len(list) != 4 {
+		t.Fatalf("list: %+v", list)
 	}
 }
 
