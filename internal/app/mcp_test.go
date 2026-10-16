@@ -16,11 +16,13 @@ import (
 	"github.com/nathanribeiroo/squad/internal/store"
 )
 
-// mcpSession starts `squad mcp` as terminal n's agent would.
-func (e *env) mcpSession(n store.Node) *mcp.ClientSession {
+// mcpSession starts `squad mcp` as terminal n's agent would; env adds
+// KEY=VALUE settings of the agent.
+func (e *env) mcpSession(n store.Node, env ...string) *mcp.ClientSession {
 	e.t.Helper()
 	cmd := exec.Command(filepath.Join(binDir, "squad"), "mcp")
 	cmd.Env = append(os.Environ(), "SQUAD_URL="+e.app.Server.URL(), "SQUAD_TERMINAL_ID="+n.ID, "SQUAD_TOKEN="+e.app.Server.TerminalToken(n.ID))
+	cmd.Env = append(cmd.Env, env...)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	s, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(ctx, &mcp.CommandTransport{Command: cmd}, nil)
@@ -60,7 +62,7 @@ func TestMCPTools(t *testing.T) {
 	s := e.mcpSession(plan)
 
 	tools, err := s.ListTools(context.Background(), nil)
-	if err != nil || len(tools.Tools) != 16 {
+	if err != nil || len(tools.Tools) != 17 {
 		t.Fatalf("tools: %v %d", err, len(tools.Tools))
 	}
 
@@ -73,6 +75,10 @@ func TestMCPTools(t *testing.T) {
 	}
 	if out, bad := call(t, s, "ask_batch", map[string]any{"requests": map[string]string{"Bia": "e o teste?"}}); bad || !strings.Contains(out, `"output"`) {
 		t.Fatalf("ask_batch: %v %s", bad, out)
+	}
+	// wait sends nothing; Bia's turn is over, so it returns at once.
+	if out, bad := call(t, s, "wait", map[string]any{"name": "Bia"}); bad || !strings.Contains(out, "[screen of Bia · it isn't in a turn]") {
+		t.Fatalf("wait: %v %s", bad, out)
 	}
 
 	// The safe tools never run a command: a message to a shell, keys,
@@ -142,5 +148,25 @@ func TestMCPTools(t *testing.T) {
 	}
 	if out, bad := call(t, s, "floor_land", map[string]any{"name": "Login", "merge": true}); !bad || !strings.Contains(out, `no floor named "Login"`) {
 		t.Fatalf("floor_land is refused as unsafe: %v %s", bad, out)
+	}
+}
+
+// An agent that limits tool calls (Claude Code's MCP_TOOL_TIMEOUT) gets its
+// ask back just before the limit, told to wait; wait then gets the answer.
+func TestMCPWithinTheAgentsToolLimit(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	plan := e.agentOfType("Plano", "gemini")
+	arq := e.agentOfType("Arq", "claude", "FAKEAGENT_HOOK=claude")
+	e.connect(plan, arq)
+	s := e.mcpSession(plan, "MCP_TOOL_TIMEOUT=4000") // calls return after 3 s
+
+	start := time.Now()
+	out, bad := call(t, s, "ask", map[string]any{"name": "Arq", "message": "SLEEP:4"})
+	if bad || !strings.HasPrefix(out, "[screen of Arq now]\n") || !strings.Contains(out, "received: [de: Plano · pedido ") ||
+		!strings.Contains(out, "stops tool calls after 4 s") || time.Since(start) > 3500*time.Millisecond {
+		t.Fatalf("ask after %v: %v %s", time.Since(start), bad, out)
+	}
+	if out, bad := call(t, s, "wait", map[string]any{"name": "Arq"}); bad || !strings.HasPrefix(out, "[final answer from Arq · end of its turn]") {
+		t.Fatalf("wait: %v %s", bad, out)
 	}
 }

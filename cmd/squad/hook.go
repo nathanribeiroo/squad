@@ -92,6 +92,7 @@ works everywhere.
 - ` + "`squad ask \"Name\" --raw \"keys\"`" + `: type keys into a terminal (escapes: \n Enter, \t Tab, \e ESC, \xNN byte, e.g. \x03 Ctrl-C) and get its screen back. Use for menus or shells.
 - ` + "`squad ask --batch '{\"A\": \"m1\", \"B\": \"m2\"}'`" + `: ask several at once; returns a JSON array of {name, output|error}.
 - ` + "`squad check \"Name\"`" + `: read a terminal's current screen without sending anything. Text still in someone's input box is not addressed to you.
+- ` + "`squad wait \"Name\"`" + `: wait for an agent's current turn to end and get its final answer, without sending anything (as with ask, set a generous shell tool timeout). Use it when an ask timed out while the agent was still working. If the agent isn't in a turn, you get its last answer at once. A message it sends you meanwhile ends the wait: answer with ` + "`squad reply`" + `, then wait again.
 - ` + "`squad reply <id> \"message\"`" + `: answer request <id>.
 - ` + "`squad note …`" + `: read and write connected notes (` + "`squad note help`" + `).
 - ` + "`squad portal …`" + `: use a connected portal, a browser page the user also sees live on the canvas (` + "`squad portal help`" + `).
@@ -193,7 +194,11 @@ waits, ` + "`squad ask \"Planejador\" \"…\"`" + ` delivers your message as the
 
 ## Rules
 
-- If an ask times out, don't resend it: run ` + "`squad check \"Name\"`" + ` and wait again.
+- If an ask times out while the agent is still in its turn, don't resend it: ` + "`squad wait \"Name\"`" + ` returns its answer when it finishes.
+- When you were asked something, your final answer is what goes back: don't
+  end your turn with progress ("still waiting for X") while agents you called
+  are working. Wait for them; stop early only when something needs the user
+  (a question or a permission prompt on someone's screen), and say what.
 - Don't edit files another agent is changing right now.
 - Conversations can be paused by the user, and chains are limited in depth;
   when a command says so, stop and tell the user.

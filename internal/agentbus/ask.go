@@ -132,42 +132,65 @@ func replyBody(fromName, id, msg string) string {
 	return fmt.Sprintf("[reply from %s · request %s]\n%s", fromName, id, msg)
 }
 
+// onFinalTurnEnd calls fn at the next final turn end of a terminal. For
+// agents with hooks, a turn end guessed from the screen isn't final (the
+// agent may be thinking quietly, or at a permission prompt): it waits for
+// the hook.
+func (b *Bus) onFinalTurnEnd(id string, hooked bool, fn func(activity.TurnEnd)) (cancel func()) {
+	var mu sync.Mutex
+	var cancelWaiter func()
+	var register func()
+	register = func() {
+		c := b.mon.OnTurnEnd(id, func(te activity.TurnEnd) {
+			if hooked && te.Reason == "idle" {
+				register()
+				return
+			}
+			fn(te)
+		})
+		mu.Lock()
+		cancelWaiter = c
+		mu.Unlock()
+	}
+	register()
+	return func() {
+		mu.Lock()
+		defer mu.Unlock()
+		cancelWaiter()
+	}
+}
+
+// active reports whether a terminal is working or printed something
+// lately, which extends a wait for its turn end.
+func (b *Bus) active(id string, t *terminal.Terminal) bool {
+	_, last := t.Output()
+	return (b.mon != nil && b.mon.Working(id)) || (!last.IsZero() && time.Since(last) < b.limits.ActiveWindow)
+}
+
 func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Terminal, tn store.Node, msg string) Result {
 	shell := tn.Terminal.Agent == "shell"
 	hooked := b.hasHooks(tn.Terminal.Agent)
 	if b.mon != nil {
 		b.mon.ResetTurn(tn.ID)
-		var mu sync.Mutex
-		var cancelWaiter func()
-		var register func()
-		register = func() {
-			c := b.mon.OnTurnEnd(tn.ID, func(te activity.TurnEnd) {
-				// Agents with hooks: a turn end guessed from the screen isn't
-				// final (the agent may be thinking quietly); wait for the hook.
-				if hooked && te.Reason == "idle" {
-					register()
-					return
-				}
-				if te.Message != "" {
-					b.resolve(p, Result{Code: 200, Body: replyBody(p.ToName, p.ID, te.Message), Source: te.Reason})
-					return
-				}
-				b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()), Source: te.Reason})
-			})
-			mu.Lock()
-			cancelWaiter = c
-			mu.Unlock()
-		}
-		register()
-		defer func() {
-			mu.Lock()
-			defer mu.Unlock()
-			cancelWaiter()
-		}()
+		defer b.onFinalTurnEnd(tn.ID, hooked, func(te activity.TurnEnd) {
+			if te.Message != "" {
+				b.resolve(p, Result{Code: 200, Body: replyBody(p.ToName, p.ID, te.Message), Source: te.Reason})
+				return
+			}
+			b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()), Source: te.Reason})
+		})()
 	}
-	if err := t.Paste(Envelope(p.FromName, p.ID, msg, shell), true); err != nil {
-		b.resolve(p, Result{Code: 500, Body: "squad: delivery failed: " + err.Error(), Source: "cancelled"})
-		return <-p.done
+	// A target blocked in squad wait for the caller (or for someone who,
+	// through a chain, waits for the caller) would read a pasted message only
+	// after its wait, which can't end: the message ends the wait instead.
+	if !b.handToWaiter(p, msg) {
+		if err := t.Paste(Envelope(p.FromName, p.ID, msg, shell), true); err != nil {
+			b.resolve(p, Result{Code: 500, Body: "squad: delivery failed: " + err.Error(), Source: "cancelled"})
+			return <-p.done
+		}
+		if hooked && b.mon != nil {
+			b.mon.ExpectTurn(tn.ID)
+		}
 	}
 	b.events.Publish(events.RequestDelivered, map[string]any{"id": p.ID, "from": p.From, "to": p.To})
 	b.events.Publish(events.RequestPending, map[string]any{"id": p.ID, "from": p.From, "to": p.To, "sentAt": p.SentAt})
@@ -195,16 +218,16 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 			quick.Reset(b.limits.QuickEvery)
 		case <-timeout.C:
 			now := time.Now()
-			_, last := t.Output()
-			active := (b.mon != nil && b.mon.Working(tn.ID)) || (!last.IsZero() && now.Sub(last) < b.limits.ActiveWindow)
-			bytes, _ := t.Output()
-			if now.Before(hardCap) && active {
+			if now.Before(hardCap) && b.active(tn.ID, t) {
 				timeout.Reset(min(b.limits.Timeout, hardCap.Sub(now)))
 				continue
 			}
 			note := "timeout"
-			if bytes == startBytes {
+			if bytes, _ := t.Output(); bytes == startBytes {
 				note = "timeout (no output since delivery)"
+			}
+			if b.mon != nil && b.mon.InTurn(tn.ID) {
+				note += fmt.Sprintf("; %s is still in its turn (busy without output, or waiting for the user at a prompt on its screen). Don't resend: squad wait %s returns its answer when it finishes", quote(p.ToName), quote(p.ToName))
 			}
 			b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()) + "\n[squad: " + note + "]", Source: "timeout"})
 		}

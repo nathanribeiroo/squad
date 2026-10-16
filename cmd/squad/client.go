@@ -70,7 +70,7 @@ func withStdin(args []string) []string {
 
 // blocking reports whether a command may wait for another agent.
 func blocking(args []string) bool {
-	return len(args) > 1 && args[0] == "ask" && !(len(args) == 4 && args[2] == "--raw")
+	return len(args) > 1 && (args[0] == "ask" && !(len(args) == 4 && args[2] == "--raw") || args[0] == "wait")
 }
 
 func runClient(args []string, stdout, stderr io.Writer) int {

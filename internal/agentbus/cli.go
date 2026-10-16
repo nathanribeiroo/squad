@@ -90,6 +90,7 @@ const Usage = `Usage (inside a Squad terminal):
   squad ask "Name" --raw "keys"      type keys (escapes: \n Enter, \t, \e ESC, \xNN) and return the screen
   squad ask --batch '{"A":"m1","B":"m2"}'   ask several terminals in parallel (JSON array result)
   squad check "Name"                 read a connected terminal's screen without sending anything
+  squad wait "Name"                  wait for its turn to end and get its final answer, without sending anything
   squad reply <id> "message"         answer request <id> (shown as [de: … · pedido <id>])
   squad note …                       read and write connected notes (squad note help)
   squad portal …                     use connected portals, or create one (squad portal help)
@@ -100,7 +101,8 @@ const Usage = `Usage (inside a Squad terminal):
 
 Messages you receive start with [de: <Name> · pedido <id>]. Reply with
 squad reply <id> "…", or just finish your turn: your final answer is returned
-to the sender. If an ask times out, don't resend it: use squad check.`
+to the sender. If an ask times out while the other agent is still working,
+don't resend it: squad wait "Name" returns its answer when it finishes.`
 
 // Dispatch runs one CLI command for caller.
 func (b *Bus) Dispatch(ctx context.Context, caller string, args []string, exts ...Extension) Result {
@@ -117,6 +119,11 @@ func (b *Bus) Dispatch(ctx context.Context, caller string, args []string, exts .
 			return Result{Code: 400, Body: `Usage: squad check "Name"`}
 		}
 		return b.Check(caller, args[1])
+	case "wait":
+		if len(args) != 2 || strings.HasPrefix(args[1], "-") {
+			return Result{Code: 400, Body: `Usage: squad wait "Name"`}
+		}
+		return b.Wait(ctx, caller, args[1])
 	case "reply":
 		if len(args) < 3 {
 			return Result{Code: 400, Body: `Usage: squad reply <id> "message"`}

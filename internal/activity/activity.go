@@ -101,6 +101,7 @@ type track struct {
 	turnStart      time.Time // when the current (or last) turn started
 	prompt         string    // the prompt that started it, from a hook
 	hookTurn       bool      // turn started by a hook: only a hook (or HookTimeout of silence) ends it
+	open           bool      // a turn that only a hook ends has started and no hook ended it yet (survives HookTimeout)
 	state          State
 	since          time.Time
 	waiters        map[int]func(TurnEnd)
@@ -336,7 +337,7 @@ func (m *Monitor) SignalStart(id, prompt string) {
 	m.mu.Lock()
 	tr := m.get(id)
 	tr.turnStart, tr.prompt = now, prompt
-	tr.working, tr.hookTurn = true, true
+	tr.working, tr.hookTurn, tr.open = true, true, true
 	tr.streak = m.opts.ActiveStreak
 	tr.lastMeaningful = now
 	tr.turnEndedAt = time.Time{}
@@ -351,7 +352,7 @@ func (m *Monitor) Signal(te TurnEnd) {
 	}
 	m.mu.Lock()
 	tr := m.get(te.ID)
-	tr.working, tr.hookTurn, tr.streak = false, false, 0
+	tr.working, tr.hookTurn, tr.open, tr.streak = false, false, false, 0
 	tr.turnEndedAt = te.At
 	if te.Start.IsZero() {
 		te.Start = tr.turnStart
@@ -379,6 +380,25 @@ func (m *Monitor) Working(id string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.get(id).working
+}
+
+// ExpectTurn marks a turn as started on an agent whose turns end with a
+// hook (Squad just delivered it a message): like a turn a hook started, it
+// lasts until a hook ends it (InTurn). For agents without a start hook.
+func (m *Monitor) ExpectTurn(id string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.get(id).open = true
+}
+
+// InTurn reports whether the terminal's turn hasn't ended yet: it is
+// working, or a turn that only a hook ends hasn't ended (an agent silent at
+// a permission prompt stops "working" after a while, but its turn goes on).
+func (m *Monitor) InTurn(id string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	tr := m.get(id)
+	return tr.working || tr.open
 }
 
 // State returns the UI state of a terminal and since when.
