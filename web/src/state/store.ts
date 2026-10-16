@@ -1,7 +1,7 @@
 // Global client state, fed by /ws/events.
 import { create } from 'zustand';
 import { setWorkspace } from '../api/client';
-import type { PendingRequest, RoleDef, ServerEvent, StateExtra, StateResponse, TerminalRuntime, WEdge, WNode, Workspace, WorkspaceSummary } from '../api/types';
+import type { Floor, PendingRequest, RoleDef, ServerEvent, StateExtra, StateResponse, TerminalRuntime, WEdge, WNode, Workspace, WorkspaceSummary } from '../api/types';
 
 export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note';
 
@@ -373,6 +373,9 @@ export const useSquad = create<SquadState>((set, get) => ({
       }
       case 'workspace.updated':
         if (ws) set({ workspace: { ...ws, name: d.name, cwd: d.cwd, color: d.color } });
+        return;
+      case 'floors.updated':
+        if (ws) set({ workspace: { ...ws, floors: d.floors as Floor[] } });
         return;
       case 'note.edited': {
         const author = d.author === 'external' ? 'Edição externa' : d.author === 'user' ? 'Você' : d.author;

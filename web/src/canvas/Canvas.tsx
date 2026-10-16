@@ -71,21 +71,28 @@ export function Canvas() {
   const defaultViewport = useMemo(() => savedViewport(activeWs), [activeWs]);
 
   // The server is the source of truth; local state only adds React Flow's
-  // own fields (selection, measured size, drag).
+  // own fields (selection, measured size, drag). The canvas shows the ground
+  // floor; nodes on floors (git worktrees) have their own canvases.
   useEffect(() => {
     setNodes((prev) => {
       const byId = new Map(prev.map((n) => [n.id, n]));
-      return (ws?.nodes ?? []).map((n) => toFlow(n, byId.get(n.id)));
+      return (ws?.nodes ?? []).filter((n) => !n.floor).map((n) => toFlow(n, byId.get(n.id)));
     });
     if (ws) pruneSessions(new Set(ws.nodes.filter((n) => n.kind === 'terminal').map((n) => n.id)));
   }, [ws?.nodes]);
   useEffect(() => useSquad.getState().setZoom(defaultViewport.zoom, true), [defaultViewport]);
+  // Wires show when both ends are on the canvas; the key changes only when
+  // the set of shown nodes does (not on every drag).
+  const shownKey = useMemo(() => (ws?.nodes ?? []).filter((n) => !n.floor).map((n) => n.id).join(' '), [ws?.nodes]);
   useEffect(() => {
     setEdges((prev) => {
       const byId = new Map(prev.map((e) => [e.id, e]));
-      return (ws?.edges ?? []).map((e) => ({ ...byId.get(e.id), id: e.id, source: e.a, target: e.b, type: 'wire', data: { rope: e.ropePoints } }));
+      const shown = new Set(shownKey.split(' '));
+      return (ws?.edges ?? [])
+        .filter((e) => shown.has(e.a) && shown.has(e.b))
+        .map((e) => ({ ...byId.get(e.id), id: e.id, source: e.a, target: e.b, type: 'wire', data: { rope: e.ropePoints } }));
     });
-  }, [ws?.edges]);
+  }, [ws?.edges, shownKey]);
 
   const onNodesChange = useCallback((c: NodeChange[]) => setNodes((n) => applyNodeChanges(c, n)), []);
   const onEdgesChange = useCallback((c: EdgeChange[]) => setEdges((e) => applyEdgeChanges(c, e)), []);

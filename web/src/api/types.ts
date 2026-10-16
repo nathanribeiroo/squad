@@ -48,6 +48,29 @@ export interface WNode {
   portal?: PortalData;
   /** The terminal whose agent created this node (squad new, squad portal create). */
   createdBy?: string;
+  /** The floor the node is on (a Floor id); absent on the ground floor. */
+  floor?: string;
+}
+
+/** An isolated copy of the repository (git worktree) with its own canvas. */
+export interface Floor {
+  id: string;
+  name: string;
+  branch: string;
+  /** Branch it started from (landing merges there by default). */
+  base?: string;
+  baseCommit: string;
+  path: string;
+  cwd: string;
+  newBranch?: boolean;
+  copied?: string[];
+  status: 'preparing' | 'ready' | 'failed';
+  error?: string;
+  createdBy?: string;
+  createdAt: string;
+  /** From GET /api/floors and floors.updated. */
+  terminals?: number;
+  missing?: boolean;
 }
 
 export interface WEdge {
@@ -65,6 +88,7 @@ export interface Workspace {
   color?: string;
   nodes: WNode[];
   edges: WEdge[];
+  floors?: Floor[];
 }
 
 export interface TerminalRuntime {
