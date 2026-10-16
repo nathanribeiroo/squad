@@ -2,6 +2,57 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, resumos de turno (R6)
+
+- **Decisão do usuário:** cartões automáticos com a mensagem final do agente, de graça (opção A), e resumo sob demanda escrito por uma CLI de agente (opção C), sem nota. O texto de um terminal fica com o agente dele; numa máquina só com Devin, o Devin resume.
+- **Fim de turno para todos:**
+  - o monitor de atividade passou a avisar todo fim de turno (`OnAnyTurnEnd`), com a hora de início e o pedido que iniciou o turno;
+  - o pedido vem do hook `UserPromptSubmit` do Claude e do Devin (campo `prompt`). Para os outros agentes, vem da última mensagem enviada ao terminal (`ask` ou Composer).
+- **Cartões** (`internal/summary`):
+  - só os agentes (Claude, Codex, Devin, Gemini) ganham cartão;
+  - nos agentes com hook, o cartão espera o hook (com a mensagem final) e ignora a tela parada. No Gemini, sem hook, usa as últimas 40 linhas da tela;
+  - os cartões ficam em memória, um por terminal, e chegam pelo evento `turn.card`.
+- **Resumir e resumo do workspace:**
+  - **Claude:** `claude -p --model haiku --tools "" --no-session-persistence --setting-sources "" --strict-mcp-config --output-format json --system-prompt-file …`, com o material pela entrada padrão;
+    - testei: 6,7 s, nada no histórico de sessões, nenhum hook do usuário. O preço de lista seria de US$ 0,0008 por resumo; numa assinatura, desconta do limite do plano;
+    - o `--bare` ficou de fora, porque ignora o login e exige chave de API. O `--system-prompt-file` funciona, embora não apareça na ajuda;
+  - **Devin:** `devin -p --prompt-file … --respect-workspace-trust false`, pela documentação dele;
+  - **Codex:** `codex exec --sandbox read-only --output-last-message …`;
+  - **Gemini:** `gemini -p`, com o material pela entrada padrão;
+  - **Isolamento:** sempre numa pasta temporária vazia, com o texto em arquivo ou na entrada padrão, nunca como argumento (nada de aspas no Windows). Limite de 90 s, e o ambiente sai sem as marcas de uma sessão de agente pai;
+  - **Material como dado:** o material vai entre `<material>` e `</material>`, e as instruções dizem que é só dado. Foi a própria Ana (Claude) quem apontou o risco, ao ler o arquivo das instruções;
+  - **Resposta:** um JSON (`resumo` e `passos`, ou `visao`, `terminais` e `atencao`), lido mesmo dentro de um bloco de código.
+- **Ajustes por workspace:** cartões ligados e quem resume (automático, claude, devin, codex, gemini ou desligado), com as CLIs encontradas no PATH (`/api/summary/settings`).
+- **Interface:**
+  - **o cartão:** fica embaixo do terminal, para não cobrir a tela do agente (as etiquetas de andar descem para dar lugar), com a duração e o começo da mensagem;
+  - **o painel:** abre para cima, sobre o terminal (para baixo saía da tela). Mostra o resumo, os passos, o pedido e a mensagem final em Markdown;
+  - **"Resumir":** mostra "resumindo…" enquanto roda;
+  - **os passos:** abrem o Composer com o texto pronto para aquele terminal;
+  - **a Atividade:** mostra o turno, inclusive os que terminaram antes de a página abrir, e ganhou o botão "Resumo", que abre a visão geral do workspace (clicar num nome leva ao terminal, no andar dele);
+  - **⚙ → Resumos…** abre os ajustes;
+  - **o diálogo genérico** saiu de `FloorDialogs` para `Dialog`;
+  - **a Atividade** mostrava "· main" fixo e agora mostra o branch do andar aberto.
+- **Decisões tomadas sem consulta** (reversíveis):
+  - os cartões começam ligados (o PLAN dizia "desligado", mas isso valia para um modelo pago) e ficam só em memória;
+  - o ajuste é por workspace;
+  - "Automático" no resumo do workspace usa o agente mais comum entre os terminais;
+  - a instrução pede de 1 a 3 próximos passos e só deixa a lista vazia quando não há mesmo nada útil a pedir. Na primeira versão, o modelo devolveu passos vazios para uma pergunta só informativa.
+- **Testes:**
+  - `internal/summary`, com CLIs falsas no PATH:
+    - o cartão vem do hook, e não da tela, para quem tem hook;
+    - shells não ganham cartão;
+    - o "Automático" escolhe a CLI do agente do terminal; com CLI fixa, inclusive não instalada, ou desligado;
+    - os argumentos do `claude` e do `devin`;
+    - o resumo do workspace e a leitura do JSON;
+  - `internal/app`, com o agente falso no papel de Claude (hook `Stop` e `UserPromptSubmit` com o pedido): o cartão pelo caminho real, o "Resumir" pela API com um `claude` falso e o material que ele leu, e os ajustes.
+- **Com o Claude real, pelo Chromium:**
+  - a Ana (Implementador) leu arquivos do projeto e o cartão apareceu, com a duração e a mensagem;
+  - o "Resumir" chamou o `claude -p` de verdade e trouxe o resumo e 3 passos;
+  - o passo clicado abriu o Composer para a Ana com o texto;
+  - o resumo do workspace descreveu a Ana e o shell "Eu";
+  - os ajustes mostraram o Claude instalado e as outras CLIs não encontradas.
+- **Precisa de você:** o `devin -p` na sua máquina (aqui não há Devin, Codex nem Gemini) e os cartões do Devin, que dependem do hook `Stop` dele.
+
 ## 2026-10-16, Planejador usa andares sozinho
 
 - **Por quê:** até aqui, os andares só eram usados quando alguém pedia. O Planejador tinha as ferramentas, mas as instruções dele não diziam quando usá-las. O padrão das ferramentas de agentes em paralelo é isolar cada tarefa paralela automaticamente e deixar a mescla para uma pessoa revisar.
