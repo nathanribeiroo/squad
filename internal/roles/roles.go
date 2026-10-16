@@ -1,5 +1,5 @@
 // Package roles is the library of roles: reusable instructions that a
-// terminal's agent receives when it starts. The four built-in roles always
+// terminal's agent receives when it starts. The built-in roles always
 // exist; the user may edit them (and restore their default) or add new ones.
 // The library is global, shared by every workspace (~/.squad/roles.json),
 // which stores only new roles and edited built-in ones, so a built-in role
@@ -41,6 +41,7 @@ var Colors = []string{"plan", "impl", "rev", "test", "teal", "indigo", "magenta"
 var Icons = []string{
 	"account_tree", "code", "rate_review", "science", "bug_report", "palette",
 	"description", "shield", "database", "rocket_launch", "psychology", "build",
+	"architecture",
 }
 
 // Limits of a role's fields. The prompt limit keeps it within what every
@@ -92,17 +93,50 @@ func Open(path string) (*Library, error) {
 	}
 	for _, r := range f.Roles {
 		if i := l.index(r.ID); i >= 0 && l.roles[i].Builtin {
-			r.Builtin, r.Edited = true, true
-			l.roles[i] = r
-			continue
+			if r.Builtin { // an edited built-in role
+				r.Edited = true
+				l.roles[i] = r
+				continue
+			}
+			r.ID = l.freeID(r.Name) // the user's role whose id a newer built-in took
 		}
 		if r.ID == "" || l.index(r.ID) >= 0 {
 			continue
 		}
 		r.Builtin, r.Edited = false, false
+		// A built-in role added by a newer Squad may take the name of one the
+		// user made (e.g. "Arquiteto"): theirs keeps its id and instructions
+		// under another name, so --role and the role picker stay unambiguous.
+		for l.nameTaken(r.Name) {
+			r.Name = customName(r.Name)
+		}
 		l.roles = append(l.roles, r)
 	}
 	return l, nil
+}
+
+// nameTaken reports whether a role already has this name, in any case.
+func (l *Library) nameTaken(name string) bool {
+	for _, o := range l.roles {
+		if strings.EqualFold(o.Name, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// customName marks the name of a user's role that clashed with a built-in
+// one, within MaxName.
+func customName(name string) string {
+	const suffix = " (personalizado)"
+	if strings.HasSuffix(name, suffix) {
+		return name + "*"
+	}
+	r := []rune(name)
+	if max := MaxName - utf8.RuneCountInString(suffix); len(r) > max {
+		r = r[:max]
+	}
+	return strings.TrimSpace(string(r)) + suffix
 }
 
 func (l *Library) index(id string) int {
@@ -302,6 +336,17 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// Summary is what a role does in one line: the first line of its
+// instructions (built-in roles start with it), shortened.
+func Summary(r Role) string {
+	line, _, _ := strings.Cut(strings.TrimSpace(r.Prompt), "\n")
+	line = strings.TrimSpace(line)
+	if rs := []rune(line); len(rs) > 160 {
+		line = strings.TrimSpace(string(rs[:159])) + "…"
+	}
+	return line
 }
 
 // Instructions is what an agent receives for its role: a header that names

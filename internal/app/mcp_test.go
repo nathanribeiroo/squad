@@ -60,7 +60,7 @@ func TestMCPTools(t *testing.T) {
 	s := e.mcpSession(plan)
 
 	tools, err := s.ListTools(context.Background(), nil)
-	if err != nil || len(tools.Tools) != 15 {
+	if err != nil || len(tools.Tools) != 16 {
 		t.Fatalf("tools: %v %d", err, len(tools.Tools))
 	}
 
@@ -109,6 +109,11 @@ func TestMCPTools(t *testing.T) {
 	}
 	if out, bad := call(t, s, "portal_eval", map[string]any{"js": "1+1"}); !bad || strings.Contains(out, "approval") {
 		t.Fatalf("portal_eval is not refused as unsafe (no portal here): %v %s", bad, out)
+	}
+
+	// The roles, for anyone.
+	if out, bad := call(t, s, "roles", map[string]any{}); bad || !strings.Contains(out, "- arch: Arquiteto") {
+		t.Fatalf("roles: %v %s", bad, out)
 	}
 
 	// Notes and the team tools.

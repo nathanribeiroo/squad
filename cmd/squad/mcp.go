@@ -20,7 +20,7 @@ import (
 const mcpInstructions = `Squad: a canvas where agents and terminals are connected by wires; you can only reach what is connected to you.
 Start with list. ask sends a message to a connected agent and waits for its reply (its final answer; it can take minutes).
 note reads and writes connected notes; portal drives a connected browser page the user watches live.
-Managers (list says so) create their team with new and wire nodes with connect; floors give a team its own copy of the repository (a git worktree on a branch).
+Managers (list says so) create their team with new (roles lists the roles: Planejador, Arquiteto, Implementador, Revisor, Testador…) and wire nodes with connect; floors give a team its own copy of the repository (a git worktree on a branch).
 keys, portal_eval and new_shell can run commands, and floor_land merges branches, so they ask the user first.`
 
 const mcpOutside = `Squad: this session is not running inside a Squad terminal, so Squad's tools are not available here.`
@@ -141,7 +141,7 @@ type (
 	}
 	newInput struct {
 		Name  string `json:"name" jsonschema:"the new terminal's name"`
-		Role  string `json:"role,omitempty" jsonschema:"role id or name: plan, impl, rev, test or another role"`
+		Role  string `json:"role,omitempty" jsonschema:"role id or name: plan, arch, impl, rev, test or another role (the roles tool lists them)"`
 		Agent string `json:"agent,omitempty" jsonschema:"claude, codex, devin or gemini (default: yours)"`
 		Cwd   string `json:"cwd,omitempty" jsonschema:"folder, relative to the workspace (default: yours)"`
 		Floor string `json:"floor,omitempty" jsonschema:"floor name, from floors list (default: yours; ground is the ground floor)"`
@@ -180,6 +180,9 @@ type (
 func addMCPTools(s *mcp.Server, env clientEnv) {
 	addTool(s, env, "list", "Who you are and what is connected to you: agents (role, state), notes and portals. Run it first and use names exactly as printed.",
 		false, func(noInput) ([]string, error) { return []string{"list"}, nil })
+
+	addTool(s, env, "roles", "The roles agents can have (id, name, whether it's a manager, what it does): Planejador, Arquiteto, Implementador, Revisor, Testador and the user's own. Managers give one to a new terminal with new.",
+		false, func(noInput) ([]string, error) { return []string{"roles"}, nil })
 
 	addTool(s, env, "ask", "Send a message to a connected agent and wait for its reply (its final answer for that turn; it can take minutes). Agents only: for a shell, use keys. If it times out, don't resend: use check.",
 		true, func(in askInput) ([]string, error) {

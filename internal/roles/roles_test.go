@@ -20,14 +20,29 @@ func open(t *testing.T, path string) *Library {
 func TestDefaults(t *testing.T) {
 	l := open(t, filepath.Join(t.TempDir(), "roles.json"))
 	got := l.List()
-	if len(got) != 4 || got[0].ID != "plan" || got[3].Name != "Testador" || !got[3].Builtin || got[3].Edited {
+	var ids []string
+	for _, r := range got {
+		ids = append(ids, r.ID)
+	}
+	if strings.Join(ids, ",") != "plan,arch,impl,rev,test" || got[4].Name != "Testador" || !got[4].Builtin || got[4].Edited {
 		t.Fatalf("defaults: %+v", got)
 	}
-	if !strings.Contains(got[3].Prompt, "squad portal snapshot") {
-		t.Fatalf("the tester tests web pages through the portal: %q", got[3].Prompt)
+	if !strings.Contains(got[4].Prompt, "squad portal snapshot") {
+		t.Fatalf("the tester tests web pages through the portal: %q", got[4].Prompt)
 	}
-	if !got[0].Manager || got[1].Manager || got[3].Manager || !strings.Contains(got[0].Prompt, "squad new") || !strings.Contains(got[3].Prompt, "squad portal create") {
+	if !got[0].Manager || got[1].Manager || got[4].Manager || !strings.Contains(got[0].Prompt, "squad new") || !strings.Contains(got[4].Prompt, "squad portal create") {
 		t.Fatal("the Planejador is a manager that creates its team; the Testador opens portals")
+	}
+	// The Arquiteto designs in a note; the Planejador calls it and shares the
+	// note; the Implementador and the Revisor follow it.
+	arch := got[1]
+	if arch.Name != "Arquiteto" || arch.Color != "indigo" || arch.Icon != "architecture" || !strings.Contains(arch.Prompt, `squad note create "Arquitetura`) {
+		t.Fatalf("arquiteto: %+v", arch)
+	}
+	for i, want := range map[int]string{0: "--role arch", 2: "nota de arquitetura", 3: "nota de arquitetura"} {
+		if !strings.Contains(got[i].Prompt, want) {
+			t.Fatalf("%s should mention %q", got[i].Name, want)
+		}
 	}
 	for _, r := range got {
 		if !contains(Colors, r.Color) || !contains(Icons, r.Icon) || len([]rune(r.Prompt)) > MaxPrompt {
@@ -46,7 +61,7 @@ func TestCreateEditResetDelete(t *testing.T) {
 	if err != nil || ux.ID != "revisao-de-ux" || ux.Name != "Revisão de UX" || ux.Prompt != "Olhe a interface.\nSeja breve." || ux.Builtin {
 		t.Fatalf("create: %+v %v", ux, err)
 	}
-	if list := <-changes; len(list) != 5 {
+	if list := <-changes; len(list) != 6 {
 		t.Fatalf("subscriber got %d roles", len(list))
 	}
 	if r, err := l.Create(Role{Name: "Revisão de UX!"}); err != nil || r.ID != "revisao-de-ux-2" || r.Color == "" || r.Icon != "psychology" {
@@ -78,7 +93,7 @@ func TestCreateEditResetDelete(t *testing.T) {
 	if r, ok := l2.Get("revisao-de-ux"); !ok || r.Color != "teal" {
 		t.Fatalf("new role not saved: %+v", r)
 	}
-	if list := l2.List(); list[3].ID != "test" || list[4].ID != "revisao-de-ux" {
+	if list := l2.List(); list[4].ID != "test" || list[5].ID != "revisao-de-ux" {
 		t.Fatalf("order: built-in first, then new ones: %v", list)
 	}
 
@@ -127,5 +142,28 @@ func TestOpenBadFile(t *testing.T) {
 	_ = os.WriteFile(path, []byte("{"), 0o600)
 	if _, err := Open(path); err == nil {
 		t.Fatal("a broken file is an error, not silently replaced")
+	}
+}
+
+// A built-in role added by a newer Squad keeps its name; a role the user made
+// with that name keeps its id and instructions under another name.
+func TestBuiltinNameClash(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "roles.json")
+	_ = os.WriteFile(path, []byte(`{"schemaVersion":1,"roles":[
+		{"id":"arquiteto","name":"arquiteto","prompt":"Meu arquiteto.","color":"teal","icon":"palette"},
+		{"id":"arquiteto-2","name":"Arquiteto (personalizado)","prompt":"Outro.","color":"teal","icon":"palette"},
+		{"id":"arch","name":"Meu arch","prompt":"Antigo.","color":"teal","icon":"palette"}]}`), 0o600)
+	l := open(t, path)
+	built, _ := l.Get("arch")
+	mine, _ := l.Get("arquiteto")
+	other, _ := l.Get("arquiteto-2")
+	if built.Name != "Arquiteto" || !built.Builtin || built.Edited {
+		t.Fatalf("built-in: %+v", built)
+	}
+	if mine.Name == other.Name || !strings.Contains(mine.Name, "personalizado") || mine.Prompt != "Meu arquiteto." {
+		t.Fatalf("user roles: %q %q", mine.Name, other.Name)
+	}
+	if n := customName(strings.Repeat("x", MaxName)); len([]rune(n)) > MaxName {
+		t.Fatalf("custom name too long: %q", n)
 	}
 }
