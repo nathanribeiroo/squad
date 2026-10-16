@@ -2,6 +2,18 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, Planejador usa andares sozinho
+
+- **Por quê:** até aqui, os andares só eram usados quando alguém pedia. O Planejador tinha as ferramentas, mas as instruções dele não diziam quando usá-las. O padrão das ferramentas de agentes em paralelo é isolar cada tarefa paralela automaticamente e deixar a mescla para uma pessoa revisar.
+- **A regra** (nas instruções padrão do Planejador; o usuário escolheu só a regra, sem ajuste por workspace):
+  - com duas ou mais frentes de implementação em paralelo no mesmo repositório, cada frente ganha um andar. O Implementador e, se houver, o Revisor e o Testador daquela frente ficam no andar dela, para verem o código dela. O Planejador fica no térreo;
+  - com uma frente só, nada de andar: o preparo custa (`npm install`, disco, portas), e quem revisa precisa ver o mesmo código;
+  - quem está no andar faz commit do que terminou. Depois da revisão e dos testes, o Planejador aterrissa uma frente por vez com `--merge`, e o usuário aprova cada uma. Num conflito, um agente daquele andar mescla o branch de origem, resolve e faz commit, e o Planejador aterrissa de novo.
+- **Quem já editou o Planejador** continua com a própria versão (os papéis editados ficam em `roles.json`). "Restaurar padrão" traz a regra.
+- **Com o Claude real**, sem falar em andares no pedido:
+  - "duas mudanças independentes em paralelo, por dois implementadores; só monte a equipe": ele criou os andares Frutas e Cores e um Implementador em cada (`squad new … --floor`), ficou no térreo e descreveu a aterrissagem com merge, uma de cada vez, com aprovação;
+  - "uma tarefa só": ele criou o Implementador no térreo e explicou que não criou andar porque não havia frente paralela.
+
 ## 2026-10-16, andares: interface (R5)
 
 - **Seletor no topo** (o item 5 do design, que era só um marcador):
