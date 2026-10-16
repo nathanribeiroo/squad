@@ -22,6 +22,7 @@ export const ROLE_ICONS: IconName[] = [
   'rocket_launch',
   'psychology',
   'build',
+  'architecture',
 ];
 export const MAX_ROLE_NAME = 40;
 export const MAX_ROLE_PROMPT = 4000;

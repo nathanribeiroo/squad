@@ -7,6 +7,7 @@ export const ICONS = [
   'add',
   'ads_click',
   'alternate_email',
+  'architecture',
   'arrow_back',
   'arrow_forward',
   'arrow_selector_tool',
