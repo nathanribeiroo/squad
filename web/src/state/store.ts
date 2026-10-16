@@ -1,7 +1,7 @@
 // Global client state, fed by /ws/events.
 import { create } from 'zustand';
 import { setWorkspace } from '../api/client';
-import type { PendingRequest, ServerEvent, StateExtra, StateResponse, TerminalRuntime, WEdge, WNode, Workspace, WorkspaceSummary } from '../api/types';
+import type { PendingRequest, RoleDef, ServerEvent, StateExtra, StateResponse, TerminalRuntime, WEdge, WNode, Workspace, WorkspaceSummary } from '../api/types';
 
 export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note';
 
@@ -76,6 +76,10 @@ export function levelFor(z: number, prev: ZoomLevel): ZoomLevel {
 interface SquadState {
   /** Every workspace, for the selector (/ws/workspaces). */
   workspaces: WorkspaceSummary[];
+  /** The role library, shared by every workspace (/ws/workspaces). */
+  roles: RoleDef[];
+  /** The role library panel: closed (false), or open on a role (null: none chosen). */
+  rolesPanel: false | string | null;
   /** The workspace on screen. */
   activeWs: string | null;
   workspace: Workspace | null;
@@ -107,6 +111,9 @@ interface SquadState {
   termTheme: 'noite' | 'papel';
 
   setWorkspaces(list: WorkspaceSummary[]): void;
+  setRoles(list: RoleDef[]): void;
+  openRoles(id?: string | null): void;
+  closeRoles(): void;
   switchWorkspace(id: string): void;
   load(s: StateResponse): void;
   apply(ev: ServerEvent): void;
@@ -183,6 +190,8 @@ const WS_KEY = 'squad.ws';
 
 export const useSquad = create<SquadState>((set, get) => ({
   workspaces: [],
+  roles: [],
+  rolesPanel: false,
   activeWs: null,
   workspace: null,
   runtime: {},
@@ -206,6 +215,10 @@ export const useSquad = create<SquadState>((set, get) => ({
   renderZoom: 1,
   theme: stored<'dark' | 'light'>('squad.theme', prefersDark() ? 'dark' : 'light'),
   termTheme: stored<'noite' | 'papel'>('squad.term', stored('squad.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
+
+  setRoles: (roles) => set({ roles }),
+  openRoles: (id = null) => set({ rolesPanel: id }),
+  closeRoles: () => set({ rolesPanel: false }),
 
   setWorkspaces: (workspaces) => {
     set({ workspaces });

@@ -8,6 +8,7 @@ import { Canvas } from './canvas/Canvas';
 import { ActivityDrawer } from './components/ActivityDrawer';
 import { Composer } from './components/Composer';
 import { ComposerPill } from './components/ComposerPill';
+import { RolesPanel } from './components/RolesPanel';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
 import { Toast, toast } from './lib/toast';
@@ -89,8 +90,8 @@ function Stage() {
         else if (st.composerOpen) st.setComposer(false);
         return;
       }
-      // Plain letters only act on the canvas, never while typing.
-      if (e.metaKey || e.ctrlKey || typing(e.target)) return;
+      // Plain letters only act on the canvas, never while typing (or in a dialog).
+      if (e.metaKey || e.ctrlKey || typing(e.target) || st.rolesPanel !== false) return;
       const plain: Record<string, () => void> = {
         KeyV: () => st.setTool('select'),
         KeyH: () => st.setTool('pan'),
@@ -115,6 +116,7 @@ function Stage() {
       <ComposerPill />
       <Composer />
       <ActivityDrawer />
+      <RolesPanel />
       <Toast />
     </main>
   );

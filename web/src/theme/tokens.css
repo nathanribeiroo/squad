@@ -21,6 +21,9 @@
   --stb-done:oklch(0.28 0.05 152);--stb-err:oklch(0.29 0.07 25);--stb-off:#202125;
   --r-plan:oklch(0.77 0.13 300);--r-impl:oklch(0.79 0.11 200);--r-rev:oklch(0.77 0.13 350);--r-test:oklch(0.80 0.12 110);--r-none:#a9acb3;
   --rb-plan:oklch(0.29 0.06 300);--rb-impl:oklch(0.29 0.05 200);--rb-rev:oklch(0.29 0.06 350);--rb-test:oklch(0.29 0.05 110);--rb-none:#2b2d32;
+  /* More colors for new roles (internal/roles.Colors). */
+  --r-teal:oklch(0.78 0.13 168);--r-indigo:oklch(0.76 0.12 272);--r-magenta:oklch(0.76 0.15 325);--r-orange:oklch(0.79 0.13 52);
+  --rb-teal:oklch(0.29 0.05 168);--rb-indigo:oklch(0.29 0.06 272);--rb-magenta:oklch(0.29 0.06 325);--rb-orange:oklch(0.30 0.06 52);
 }
 
 [data-theme="light"]{
@@ -34,6 +37,8 @@
   --stb-done:oklch(0.95 0.035 150);--stb-err:oklch(0.95 0.035 25);--stb-off:#f0f0ee;
   --r-plan:oklch(0.50 0.16 300);--r-impl:oklch(0.50 0.10 210);--r-rev:oklch(0.52 0.17 355);--r-test:oklch(0.50 0.12 120);--r-none:#4f5258;
   --rb-plan:oklch(0.95 0.03 300);--rb-impl:oklch(0.95 0.025 210);--rb-rev:oklch(0.95 0.03 355);--rb-test:oklch(0.95 0.03 120);--rb-none:#ebebe8;
+  --r-teal:oklch(0.50 0.11 168);--r-indigo:oklch(0.50 0.15 272);--r-magenta:oklch(0.50 0.17 325);--r-orange:oklch(0.55 0.14 50);
+  --rb-teal:oklch(0.95 0.03 168);--rb-indigo:oklch(0.95 0.03 272);--rb-magenta:oklch(0.95 0.03 325);--rb-orange:oklch(0.95 0.035 50);
 }
 
 [data-term="noite"]{--term-bg:#0d0e10}

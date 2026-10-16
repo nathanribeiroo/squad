@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { api } from '../api/client';
-import type { Role, ShellOption, WNode } from '../api/types';
-import { AGENTS, ROLE_META } from '../lib/model';
+import type { ShellOption, WNode } from '../api/types';
+import { AGENTS } from '../lib/model';
+import { ROLE_AGENTS } from '../lib/roles';
 import { shortPath, trimDir } from '../lib/paths';
 import { useNodes, useSquad } from '../state/store';
 import { DirInput } from './DirInput';
@@ -55,13 +56,22 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
   const [name, setName] = useState(t?.name ?? '');
   const [command, setCommand] = useState(t?.command ?? '');
   const [role, setRole] = useState<string>(t?.role ?? '');
+  const roles = useSquad((s) => s.roles);
+  const hasRole = agent !== 'shell'; // shells have no role
   const [cwd, setCwd] = useState(t?.cwd ?? '');
   const [shell, setShell] = useState(t?.shell ?? '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const newRole = hasRole ? role : '';
   const relaunch =
-    !!t && (agent !== t.agent || command.trim() !== (t.command ?? '') || trimDir(cwd) !== (t.cwd ?? '') || shell !== (t.shell ?? ''));
+    !!t &&
+    (agent !== t.agent ||
+      command.trim() !== (t.command ?? '') ||
+      trimDir(cwd) !== (t.cwd ?? '') ||
+      shell !== (t.shell ?? '') ||
+      // the agent gets its role's instructions when it starts
+      (ROLE_AGENTS.has(agent) && newRole !== (t.role ?? '')));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +80,7 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
     const fields = {
       agent,
       command: command.trim() || undefined,
-      role: (role || undefined) as Role | undefined,
+      role: newRole || undefined,
       cwd: trimDir(cwd) || undefined,
       shell: shell || undefined,
     };
@@ -152,17 +162,27 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
             {shell && !shells.some((s) => s.path === shell) && <option value={shell}>{baseName(shell)}</option>}
           </select>
         </label>
-        <label className="field">
-          Papel
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="">Nenhum</option>
-            {Object.entries(ROLE_META).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {hasRole && (
+          <label className="field">
+            <span className="field-row">
+              Papel
+              <button type="button" className="link-btn" onClick={() => useSquad.getState().openRoles(role || null)}>
+                Editar papéis…
+              </button>
+            </span>
+            <select value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="">Nenhum</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+            {role && !ROLE_AGENTS.has(agent) && (
+              <span className="field-hint">Comandos próprios não recebem as instruções do papel: ele fica só como etiqueta.</span>
+            )}
+          </label>
+        )}
         {error && <div style={{ color: 'var(--st-err)', fontSize: 12 }}>{error}</div>}
         {relaunch && <div style={{ color: 'var(--text-2)', fontSize: 11.5 }}>O terminal reinicia e a sessão atual é encerrada.</div>}
         <button className="btn filled" type="submit" disabled={busy} style={{ justifyContent: 'center' }}>

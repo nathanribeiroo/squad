@@ -1,7 +1,7 @@
 // REST client. The session cookie (set by /?token=…) authenticates requests.
 // A workspace's API lives under /w/<id>/ (the one on screen: setWorkspace);
 // the workspace list is at the root.
-import type { ShellOption, StateResponse, WEdge, WNode, StateExtra, WorkspaceSummary } from './types';
+import type { RoleDef, ShellOption, StateResponse, WEdge, WNode, StateExtra, WorkspaceSummary } from './types';
 
 let base = '';
 
@@ -64,6 +64,10 @@ export const hub = {
   remove: (id: string) => req<void>('DELETE', `/api/workspaces/${encodeURIComponent(id)}`),
   /** Folder suggestions from the home folder (for a new workspace). */
   dirs: (path: string) => req<{ suggestions: string[] }>('GET', `/api/dirs?path=${encodeURIComponent(path)}`),
+  createRole: (r: Omit<RoleDef, 'id'>) => req<RoleDef>('POST', '/api/roles', r),
+  updateRole: (r: RoleDef) => req<RoleDef>('PUT', `/api/roles/${encodeURIComponent(r.id)}`, r),
+  resetRole: (id: string) => req<RoleDef>('POST', `/api/roles/${encodeURIComponent(id)}/reset`),
+  removeRole: (id: string) => req<void>('DELETE', `/api/roles/${encodeURIComponent(id)}`),
 };
 
 export function wsURL(path: string): string {
