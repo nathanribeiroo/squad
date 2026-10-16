@@ -67,6 +67,8 @@ type TurnEnd struct {
 	Reason  string // "idle" (screen settled) or a hook name ("claude-stop", "codex-notify", "devin-stop")
 	Message string // final assistant message when a hook provides it
 	At      time.Time
+	Start   time.Time // when the turn started (zero if unknown)
+	Prompt  string    // what started it, when a hook reported it (the user's prompt)
 }
 
 // Monitor samples terminals periodically.
@@ -78,6 +80,8 @@ type Monitor struct {
 
 	mu sync.Mutex
 	st map[string]*track
+
+	listeners []func(TurnEnd) // every turn end (OnAnyTurnEnd)
 
 	quit chan struct{}
 	once sync.Once
@@ -94,7 +98,9 @@ type track struct {
 	lastChange     time.Time // last hash change (stable-for)
 	firstOutput    bool
 	turnEndedAt    time.Time
-	hookTurn       bool // turn started by a hook: only a hook (or HookTimeout of silence) ends it
+	turnStart      time.Time // when the current (or last) turn started
+	prompt         string    // the prompt that started it, from a hook
+	hookTurn       bool      // turn started by a hook: only a hook (or HookTimeout of silence) ends it
 	state          State
 	since          time.Time
 	waiters        map[int]func(TurnEnd)
@@ -209,6 +215,7 @@ func (m *Monitor) Poll() {
 			if !tr.working {
 				tr.working = true
 				tr.turnEndedAt = time.Time{}
+				tr.turnStart, tr.prompt = now, ""
 			}
 			tr.lastMeaningful = now
 		} else if tr.working && (hashChanged || titleSpin) {
@@ -221,8 +228,8 @@ func (m *Monitor) Poll() {
 		if tr.working && now.Sub(tr.lastMeaningful) > idleLimit {
 			tr.working, tr.hookTurn = false, false
 			tr.turnEndedAt = now
-			te := TurnEnd{ID: id, Reason: "idle", At: now}
-			fires = append(fires, fire{fns: m.takeWaiters(tr), te: te})
+			te := TurnEnd{ID: id, Reason: "idle", At: now, Start: tr.turnStart, Prompt: tr.prompt}
+			fires = append(fires, fire{fns: append(m.takeWaiters(tr), m.listeners...), te: te})
 		}
 
 		st, code := t.State()
@@ -313,12 +320,22 @@ func (m *Monitor) ResetTurn(id string) {
 	tr.turnEndedAt = time.Time{}
 }
 
-// SignalStart marks the start of a turn reported by a hook; the turn then
-// only ends with Signal (or after HookTimeout without screen changes).
-func (m *Monitor) SignalStart(id string) {
+// OnAnyTurnEnd calls fn after every turn end of every terminal (after the
+// waiters of that terminal). Register listeners before Start.
+func (m *Monitor) OnAnyTurnEnd(fn func(TurnEnd)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.listeners = append(m.listeners, fn)
+}
+
+// SignalStart marks the start of a turn reported by a hook, with the prompt
+// that started it when known; the turn then only ends with Signal (or after
+// HookTimeout without screen changes).
+func (m *Monitor) SignalStart(id, prompt string) {
 	now := time.Now()
 	m.mu.Lock()
 	tr := m.get(id)
+	tr.turnStart, tr.prompt = now, prompt
 	tr.working, tr.hookTurn = true, true
 	tr.streak = m.opts.ActiveStreak
 	tr.lastMeaningful = now
@@ -336,7 +353,13 @@ func (m *Monitor) Signal(te TurnEnd) {
 	tr := m.get(te.ID)
 	tr.working, tr.hookTurn, tr.streak = false, false, 0
 	tr.turnEndedAt = te.At
-	fns := m.takeWaiters(tr)
+	if te.Start.IsZero() {
+		te.Start = tr.turnStart
+	}
+	if te.Prompt == "" {
+		te.Prompt = tr.prompt
+	}
+	fns := append(m.takeWaiters(tr), m.listeners...)
 	m.mu.Unlock()
 	for _, fn := range fns {
 		fn(te)

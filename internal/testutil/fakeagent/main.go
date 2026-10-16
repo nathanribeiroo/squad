@@ -134,7 +134,8 @@ func hook(event string, payload string) {
 }
 
 func turn(msg string, work float64) {
-	hook("prompt", `{"hook_event_name":"UserPromptSubmit"}`)
+	prompt, _ := json.Marshal(map[string]any{"hook_event_name": "UserPromptSubmit", "prompt": msg})
+	hook("prompt", string(prompt))
 	first, _, _ := strings.Cut(msg, "\n")
 	from, id := "", ""
 	if m := envelopeRe.FindStringSubmatch(msg); m != nil {

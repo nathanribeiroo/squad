@@ -39,6 +39,8 @@ type Workspace struct {
 	// canvas; FloorConfig seeds new ones (nil: DefaultFloorConfig).
 	Floors      []Floor      `json:"floors,omitempty"`
 	FloorConfig *FloorConfig `json:"floorConfig,omitempty"`
+	// SummaryConfig: turn cards and who writes summaries (nil: the default).
+	SummaryConfig *SummaryConfig `json:"summaryConfig,omitempty"`
 }
 
 // Node is an element on the canvas.
