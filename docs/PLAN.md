@@ -152,7 +152,7 @@ Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe s
   - sem cópia instantânea no Windows, o andar recebe os arquivos versionados, uma lista de não versionados para copiar (ex.: `.env`) e um comando de preparo opcional;
   - aterrissar recusa alteração não commitada; sem mesclar (remove a cópia e guarda o branch) ou mesclando no branch base, com a lista de conflitos; descartar apaga tudo;
   - `squad floor create/list/land` para o gerente.
-- **R5, andares (interface):** o seletor no topo, criar e alternar, alterações pendentes e o diálogo de aterrissar.
+- **R5, andares (interface):** o seletor no topo, criar e alternar, alterações pendentes e o diálogo de aterrissar. Depois, as instruções do Planejador ganharam a regra de um andar por frente paralela.
 - **R6, resumos de turno:** cartão ao fim do turno (o que fez e 3 próximos passos) e resumo do workspace, a partir da mensagem final dos hooks ou da tela. Desligado por padrão; o modelo é decidido antes de começar.
 - **R7, portal Android:** `adb` com os mesmos comandos `squad portal` e imagem ao vivo.
 - **R8, terminais remotos:** terminal por SSH (ou WSL/Docker) com túnel de volta para o Squad. O escopo de "uso remoto" é confirmado antes de começar.
