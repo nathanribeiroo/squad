@@ -37,6 +37,12 @@
 .tn-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .tn-agent { font-weight: 500; font-size: 10.5px; line-height: 16px; color: var(--text-2); border: 1px solid var(--line-2); border-radius: var(--radius-chip); padding: 0 5px; flex: none; }
 .tn-role { height: 20px; padding: 0 7px 0 5px; border-radius: var(--radius-chip); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; }
+/* Manager mode (squad new) and who created a node. */
+.tn-manager { height: 20px; padding: 0 7px 0 5px; border-radius: var(--radius-chip); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; color: var(--text-2); border: 1px solid var(--line-2); }
+.tn-creator { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.tn-creator i { width: 7px; height: 7px; border-radius: 2px; display: block; }
+.pn-creator { font-size: 11px; color: var(--text-3); white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 5px; }
+.pn-creator i { width: 7px; height: 7px; border-radius: 2px; display: block; }
 .tn-kbd-here { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; }
 .state-pill { height: 22px; padding: 0 8px 0 6px; border-radius: 11px; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; white-space: nowrap; flex: none; }
 .state-pill.compact { height: 20px; font-size: 11px; padding: 0 7px 0 5px; }

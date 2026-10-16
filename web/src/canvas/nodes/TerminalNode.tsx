@@ -4,7 +4,7 @@ import { api } from '../../api/client';
 import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { Icon } from '../../components/Icon';
 import { STATE_META, elapsed, stateLabel } from '../../lib/model';
-import { ROLE_AGENTS, changeRole, roleColor, roleIcon, useRole, useRoleLookup } from '../../lib/roles';
+import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, useRole, useRoleLookup } from '../../lib/roles';
 import { shortPath, terminalCwd } from '../../lib/paths';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
@@ -121,7 +121,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
         <XTermView id={id} zoom={zoom} />
         {(rt?.status === 'failed' || rt?.status === 'exited' || rt?.status === 'stopped') && <StoppedOverlay rt={rt} />}
       </TermBody>
-      <LiveFooter id={id} t={t} />
+      <LiveFooter id={id} t={t} createdBy={data.node.createdBy} />
     </div>
   );
 }
@@ -168,6 +168,7 @@ function TermBody({ id, children }: { id: string; children: React.ReactNode }) {
 function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData; rt?: TerminalRuntime; state: UIState; focused: boolean }) {
   const role = useRole(t.role);
   const roles = useSquad((s) => s.roles);
+  const manager = isManager(t, role);
   const running = rt?.status === 'running' || rt?.status === 'starting';
   const act = (a: 'start' | 'stop' | 'restart') => api.nodeAction(id, a).catch((e: Error) => toast(e.message));
   const remove = () => {
@@ -179,6 +180,16 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
       : { icon: 'play_circle', label: 'Iniciar', action: () => act('start') },
     { icon: 'restart_alt', label: 'Reiniciar', action: () => act('restart') },
     { icon: 'tune', label: 'Configurar…', action: () => useSquad.getState().setEditTerm(id) },
+    ...(ROLE_AGENTS.has(t.agent)
+      ? [
+          {
+            icon: 'groups' as const,
+            label: 'Modo gerente',
+            checked: manager,
+            action: () => api.updateNode(id, { terminal: { ...t, manager: !manager } }).catch((e: Error) => toast(e.message)),
+          },
+        ]
+      : []),
     'divider',
     // Shells have no role (docs/design_handoff_squad/brief.md).
     ...(t.agent === 'shell'
@@ -209,6 +220,12 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
           {role.name}
         </span>
       )}
+      {manager && (
+        <span className="tn-manager" title="Modo gerente: cria e liga terminais (squad new). Desligue no menu ⋯">
+          <Icon name="groups" size={15} />
+          gerente
+        </span>
+      )}
       <span className="tn-spacer" />
       {focused && (
         <span className="tn-kbd-here" title="⌥Esc devolve o teclado ao canvas">
@@ -222,9 +239,10 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
   );
 }
 
-function LiveFooter({ id, t }: { id: string; t: TerminalData }) {
+function LiveFooter({ id, t, createdBy }: { id: string; t: TerminalData; createdBy?: string }) {
   const cwd = useSquad((s) => terminalCwd(t.cwd, s.workspace?.cwd));
   const inbox = useInbox(id);
+  const creator = useCreator(createdBy);
   return (
     <footer className="tn-foot mono">
       <span>⎇ main</span>
@@ -232,6 +250,12 @@ function LiveFooter({ id, t }: { id: string; t: TerminalData }) {
         {t.cols || 80}×{t.rows || 24}
       </span>
       {inbox > 0 && <span style={{ color: 'var(--st-wait)' }}>caixa {inbox}</span>}
+      {creator && (
+        <span className="tn-creator" title={`${creator.name} criou este terminal (squad new)`}>
+          <i style={{ background: `var(--r-${creator.color})` }} />
+          criado por {creator.name}
+        </span>
+      )}
       <span className="tn-spacer" />
       <span className="tn-cwd" title={cwd}>
         <bdi>{shortPath(cwd)}</bdi>

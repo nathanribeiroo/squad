@@ -77,3 +77,31 @@ export async function changeRole(nodeId: string, t: TerminalData, roleId: string
     toast((e as Error).message);
   }
 }
+
+/** Whether a terminal is in manager mode: its own setting, else its role's. */
+export function isManager(t: TerminalData, role?: RoleDef): boolean {
+  return ROLE_AGENTS.has(t.agent) && (t.manager ?? !!role?.manager);
+}
+
+/** The node (terminal) that created a node, for "criado por". */
+export function useCreator(createdBy?: string): { name: string; color: string } | null {
+  return useSquad((s) => {
+    if (!createdBy) return null;
+    const n = s.workspace?.nodes.find((x) => x.id === createdBy);
+    if (!n?.terminal) return null;
+    const role = n.terminal.role ? s.roles.find((r) => r.id === n.terminal!.role) : undefined;
+    return creatorCache(n.terminal.name, roleColor(role));
+  });
+}
+
+// useSquad selectors must return stable objects.
+const creators = new Map<string, { name: string; color: string }>();
+function creatorCache(name: string, color: string) {
+  const key = `${name}\u0000${color}`;
+  let v = creators.get(key);
+  if (!v) {
+    v = { name, color };
+    creators.set(key, v);
+  }
+  return v;
+}

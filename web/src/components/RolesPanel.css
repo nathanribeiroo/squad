@@ -90,6 +90,9 @@
 }
 .roles-icon:hover { background: var(--surface-2); }
 .roles-icon.on { border-color: transparent; }
+.roles-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text-2); line-height: 1.45; cursor: pointer; }
+.roles-check input { margin-top: 2px; accent-color: var(--text); }
+.roles-check b { color: var(--text); font-weight: 600; }
 .roles-prompt { flex: 1; min-height: 160px; }
 .roles-prompt textarea { flex: 1; min-height: 140px; }
 

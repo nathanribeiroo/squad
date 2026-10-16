@@ -12,6 +12,8 @@ export interface TerminalData {
   cwd?: string;
   /** Id of a role in the library (RoleDef). */
   role?: string;
+  /** Manager mode (squad new); unset follows the role. */
+  manager?: boolean;
   cols?: number;
   rows?: number;
 }
@@ -44,6 +46,8 @@ export interface WNode {
   terminal?: TerminalData;
   note?: NoteData;
   portal?: PortalData;
+  /** The terminal whose agent created this node (squad new, squad portal create). */
+  createdBy?: string;
 }
 
 export interface WEdge {
@@ -112,6 +116,8 @@ export interface RoleDef {
   /** --r-<color> / --rb-<color> */
   color: string;
   icon: string;
+  /** Its terminals may create and connect terminals (squad new). */
+  manager?: boolean;
   builtin?: boolean;
   /** A built-in role that differs from its default. */
   edited?: boolean;
