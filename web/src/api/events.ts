@@ -20,6 +20,7 @@ export function connectEvents(): () => void {
         if (ev.type === 'hello') {
           retry = 0;
           useSquad.getState().setConnection('connected');
+          useSquad.getState().loadSummaries();
         }
         useSquad.getState().apply(ev);
       } catch {

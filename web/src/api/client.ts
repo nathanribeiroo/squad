@@ -7,6 +7,9 @@ import type {
   FloorConfig,
   FloorStatusResponse,
   LandResult,
+  SummarySettings,
+  TurnCard,
+  WorkspaceOverview,
   RoleDef,
   ShellOption,
   StateResponse,
@@ -89,6 +92,11 @@ export const api = {
   floorChanges: (id: string) => req<FloorChanges>('GET', wsPath(`/api/floors/${encodeURIComponent(id)}/changes`)),
   landFloor: (id: string, b: { merge?: boolean; into?: string }) => req<LandResult>('POST', wsPath(`/api/floors/${encodeURIComponent(id)}/land`), b),
   discardFloor: (id: string) => req<void>('DELETE', wsPath(`/api/floors/${encodeURIComponent(id)}`)),
+  cards: () => req<{ cards: TurnCard[] }>('GET', wsPath('/api/summary')),
+  summarize: (id: string) => req<TurnCard>('POST', wsPath(`/api/nodes/${id}/summarize`)),
+  overview: () => req<WorkspaceOverview>('POST', wsPath('/api/summary/workspace')),
+  summarySettings: () => req<SummarySettings>('GET', wsPath('/api/summary/settings')),
+  setSummarySettings: (s: Pick<SummarySettings, 'cards' | 'engine'>) => req<SummarySettings>('PUT', wsPath('/api/summary/settings'), s),
   floorLog: async (id: string) => {
     const res = await fetch(wsPath(`/api/floors/${encodeURIComponent(id)}/log`), { credentials: 'same-origin' });
     if (!res.ok) throw new ApiError(res.statusText, res.status, {});

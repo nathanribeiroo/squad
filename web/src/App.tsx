@@ -11,6 +11,7 @@ import { ComposerPill } from './components/ComposerPill';
 import { FloorDialogs } from './components/FloorDialogs';
 import { FloorEmpty } from './components/FloorEmpty';
 import { RolesPanel } from './components/RolesPanel';
+import { SummaryDialogs } from './components/SummaryDialogs';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
 import { Toast, toast } from './lib/toast';
@@ -122,6 +123,7 @@ function Stage() {
       <ActivityDrawer />
       <RolesPanel />
       <FloorDialogs />
+      <SummaryDialogs />
       <Toast />
     </main>
   );

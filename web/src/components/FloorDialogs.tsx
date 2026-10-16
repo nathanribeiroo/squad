@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import type { Floor, FloorChanges, WNode } from '../api/types';
 import { GROUND, plural, slugify, useBranch } from '../lib/floors';
-import type { IconName } from '../lib/icons';
 import { shortPath } from '../lib/paths';
 import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
 import { expectGone } from './FloorBar';
+import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import './FloorDialogs.css';
 
@@ -21,54 +21,6 @@ export function FloorDialogs() {
   if (d.kind === 'land') return <LandFloor key={floor.id} floor={floor} onClose={close} />;
   if (d.kind === 'discard') return <DiscardFloor key={floor.id} floor={floor} onClose={close} />;
   return <FloorLog key={floor.id} floor={floor} onClose={close} />;
-}
-
-function Dialog({
-  icon,
-  title,
-  sub,
-  onClose,
-  children,
-  foot,
-  wide,
-}: {
-  icon: IconName;
-  title: string;
-  sub?: React.ReactNode;
-  onClose: () => void;
-  children: React.ReactNode;
-  foot?: React.ReactNode;
-  wide?: boolean;
-}) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', esc, true);
-    return () => window.removeEventListener('keydown', esc, true);
-  }, [onClose]);
-  return (
-    <div className="fl-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`fl-dialog${wide ? ' wide' : ''}`} role="dialog" aria-label={title}>
-        <header className="fl-head">
-          <Icon name={icon} size={20} />
-          <div>
-            <strong>{title}</strong>
-            {sub && <span>{sub}</span>}
-          </div>
-          <span className="tn-spacer" />
-          <button className="icon-btn" onClick={onClose} aria-label="Fechar">
-            <Icon name="close" size={18} />
-          </button>
-        </header>
-        <div className="fl-body">{children}</div>
-        {foot && <footer className="fl-foot">{foot}</footer>}
-      </div>
-    </div>
-  );
 }
 
 /** Patterns typed as "a, b" or one per line. */
