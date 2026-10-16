@@ -187,12 +187,12 @@ func runInstallSkill(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
 	}
-	var targets []string
+	var targets, missing []string
 	switch *agent {
 	case "":
-		targets = installedAgents()
+		targets, missing = installedAgents()
 		if *dir != "" {
-			targets = []string{"claude"}
+			targets, missing = []string{"claude"}, nil
 		}
 	case "all":
 		targets = []string{"claude", "devin"}
@@ -206,6 +206,7 @@ func runInstallSkill(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "squad: -dir takes one agent (-agent claude or -agent devin)")
 		return 2
 	}
+	fmt.Fprintln(stdout, "squad", versionString())
 	for _, a := range targets {
 		d := *dir
 		if d == "" {
@@ -231,28 +232,44 @@ func runInstallSkill(args []string, stdout, stderr io.Writer) int {
 			}
 		}
 	}
+	for _, a := range missing {
+		fmt.Fprintf(stdout, "%s não encontrado nesta máquina (%s). Para instalar nele mesmo assim: squad install-skill -agent %s\n", agentLabel[a], agentHint(a), a)
+	}
 	return 0
 }
 
 var agentLabel = map[string]string{"claude": "Claude Code", "devin": "Devin"}
 
-// installedAgents are the agents with a skill format found on this machine
-// (their CLI on the PATH, or their configuration folder); Claude Code when
-// none is.
-func installedAgents() []string {
-	var found []string
+// installedAgents splits the agents with a skill format into those found on
+// this machine (their CLI on the PATH, or their configuration folder) and the
+// others; Claude Code counts as found when none is.
+func installedAgents() (found, missing []string) {
 	home, _ := os.UserHomeDir()
-	if _, err := exec.LookPath("claude"); err == nil || isDir(filepath.Join(home, ".claude")) {
-		found = append(found, "claude")
-	}
 	d, _ := agents.DevinConfigDir()
-	if _, err := exec.LookPath("devin"); err == nil || (d != "" && isDir(d)) {
-		found = append(found, "devin")
+	for _, a := range []string{"claude", "devin"} {
+		dir := filepath.Join(home, ".claude")
+		if a == "devin" {
+			dir = d
+		}
+		if _, err := exec.LookPath(a); err == nil || (dir != "" && isDir(dir)) {
+			found = append(found, a)
+		} else {
+			missing = append(missing, a)
+		}
 	}
 	if len(found) == 0 {
-		found = []string{"claude"}
+		found, missing = []string{"claude"}, []string{"devin"}
 	}
-	return found
+	return found, missing
+}
+
+// agentHint says where install-skill looked for an agent.
+func agentHint(a string) string {
+	if a == "devin" {
+		d, _ := agents.DevinConfigDir()
+		return "nem devin no PATH nem a pasta " + d
+	}
+	return "nem claude no PATH nem a pasta ~/.claude"
 }
 
 func isDir(p string) bool {

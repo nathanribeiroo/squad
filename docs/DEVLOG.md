@@ -2,6 +2,12 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, instalação da versão certa
+
+- **O que aconteceu:** no Windows, o `squad install-skill` instalou só a skill do Claude, e com `-agent devin` não registrou o MCP. A causa não era o código: o `go install …@main` passa pelo proxy do Go, que ainda respondia com o commit anterior (o merge do PR #15) quase uma hora depois do merge do PR #16. O usuário instalou a versão antiga.
+- **Correção na instrução:** `GONOPROXY=github.com/nathanribeiroo/squad go install github.com/nathanribeiroo/squad/cmd/squad@main` busca o Squad direto do GitHub e o resto pelo proxy. Testei aqui: com o proxy em cache, essa forma instalou o commit novo. Um commit exato (`@b0350d2`) também funciona. O README trocou o `@latest`, que pega a tag antiga v0.1.0.
+- **`install-skill` mais claro:** a primeira linha mostra a versão do `squad`, e ele avisa qual agente não encontrou e como instalar nele mesmo assim (`-agent devin`).
+
 ## 2026-10-16, paridade do Devin
 
 - **Pedido do usuário:** tudo o que o Squad faz tem que valer para o Devin tanto quanto para o Claude (e para os outros agentes quando der). Ele usa os dois.
