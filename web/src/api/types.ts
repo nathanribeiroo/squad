@@ -73,6 +73,45 @@ export interface Floor {
   missing?: boolean;
 }
 
+/** How new floors are seeded: untracked files to copy and a setup command. */
+export interface FloorConfig {
+  copy: string[];
+  setup?: string;
+}
+
+/** A floor's (or the ground floor's) git state, for the selector. */
+export interface FloorGit {
+  branch: string;
+  changes: number;
+  ahead?: number;
+  missing?: boolean;
+}
+
+/** GET /api/floors/status. */
+export interface FloorStatusResponse {
+  repo: boolean;
+  ground: FloorGit;
+  floors: Record<string, FloorGit>;
+}
+
+/** GET /api/floors/{id}/changes: what landing would take. */
+export interface FloorChanges {
+  files: { path: string; status: string }[];
+  ahead: number;
+  behind: number;
+  commits: { hash: string; subject: string }[];
+  missing?: boolean;
+}
+
+export interface LandResult {
+  floor: string;
+  branch: string;
+  merged: boolean;
+  into?: string;
+  commit?: string;
+  upToDate?: boolean;
+}
+
 export interface WEdge {
   id: string;
   a: string;
@@ -89,6 +128,7 @@ export interface Workspace {
   nodes: WNode[];
   edges: WEdge[];
   floors?: Floor[];
+  floorConfig?: FloorConfig;
 }
 
 export interface TerminalRuntime {

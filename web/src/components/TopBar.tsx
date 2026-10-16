@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useActiveFloor, useBranch } from '../lib/floors';
 import { shortPath } from '../lib/paths';
 import { useNow } from '../lib/useNow';
 import { wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
+import { FloorBar } from './FloorBar';
 import { Icon } from './Icon';
 import { WorkspaceMenu } from './WorkspaceMenu';
 import './TopBar.css';
@@ -36,6 +38,9 @@ export function TopBar() {
   const index = workspaces.findIndex((w) => w.id === activeWs);
   const elsewhere = workspaces.some((w) => w.id !== activeWs && (w.active > 0 || w.pending > 0));
   useEffect(() => setWsMenu(false), [activeWs]); // switched (⌥1–9 or the list)
+  const floor = useActiveFloor();
+  const branch = useBranch(floor?.id ?? '');
+  const cwd = floor?.cwd ?? ws?.cwd ?? '';
 
   const sendTimes = useSquad((s) => s.sendTimes);
   const now = useNow(5000, sendTimes.length > 0);
@@ -65,24 +70,18 @@ export function TopBar() {
         {wsMenu && <WorkspaceMenu onClose={() => setWsMenu(false)} />}
       </div>
       <Icon name="chevron_right" size={18} style={{ color: 'var(--text-3)' }} />
-      <div className="tb-floors" role="tablist" aria-label="Andares">
-        <button className="tb-floor active" role="tab" aria-selected="true">
-          <Icon name="layers" size={15} />
-          <span className="tb-floor-name">main</span>
-          <span className="tb-floor-sub mono">limpo</span>
-        </button>
-        <button className="tb-floor-add" title="Novo andar (em breve)" disabled>
-          <Icon name="add" size={18} />
-        </button>
-      </div>
-      <span className="tb-path mono">⎇ main · {ws ? shortPath(ws.cwd) : ''}</span>
+      <FloorBar />
+      <span className="tb-path mono" title={cwd}>
+        {branch && `⎇ ${branch} · `}
+        {shortPath(cwd)}
+      </span>
       <span className="tb-spacer" />
       <span className="tb-rate" title="Pedidos entre agentes no último minuto">
         <Icon name="swap_horiz" size={18} />
         <span className="mono">
           {rate}/{extra.limits.perMinute}
         </span>
-        <span>pedidos por min</span>
+        <span className="tb-rate-label">pedidos por min</span>
       </span>
       <button className="btn" onClick={togglePause} title={extra.paused ? 'Retomar conversas (⌥P)' : 'Pausar conversas (⌥P)'}>
         <Icon name={extra.paused ? 'play_arrow' : 'pause'} />

@@ -1,0 +1,113 @@
+.fl-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgb(0 0 0 / 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.fl-dialog {
+  width: min(460px, 100%);
+  max-height: min(640px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.fl-dialog.wide { width: min(600px, 100%); }
+.fl-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.fl-head div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fl-head strong { font-size: 14px; }
+.fl-head span { font-size: 12px; color: var(--text-2); }
+.fl-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; font-size: 12.5px; }
+.fl-foot { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
+
+.fl-form { display: flex; flex-direction: column; gap: 12px; }
+.fl-form .field-hint { margin: -4px 0 0; }
+.fl-form .field-hint b { color: var(--text); font-weight: 600; }
+.fl-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+.fl-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+  min-width: 0;
+}
+.fl-toggle-sub { font-size: 11px; font-weight: 400; color: var(--text-3); margin-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-prep { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.fl-prep .field-hint { margin: 0; }
+
+.fl-section { display: flex; flex-direction: column; gap: 6px; }
+.fl-section-title { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.fl-muted { font-weight: 400; color: var(--text-2); }
+.fl-commits, .fl-files { list-style: none; margin: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); font-size: 11.5px; max-height: 150px; overflow-y: auto; }
+.fl-commits li, .fl-files li { padding: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-hash { color: var(--st-work); }
+.fl-file-st { display: inline-block; width: 22px; color: var(--st-wait); }
+.fl-more { color: var(--text-3); }
+
+.fl-options { display: flex; flex-direction: column; gap: 6px; }
+.fl-option { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.fl-option.on { border-color: var(--line-2); background: var(--surface-2); }
+.fl-option input { margin-top: 2px; accent-color: var(--text); }
+.fl-option > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fl-option b { font-weight: 600; }
+.fl-option select { height: 26px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text); padding: 0 6px; font-size: 12px; max-width: 260px; }
+.fl-option-sub { font-size: 11.5px; color: var(--text-2); }
+
+.fl-warn, .fl-error { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.45; }
+.fl-warn { background: color-mix(in srgb, var(--st-wait) 12%, transparent); border: 1px solid color-mix(in srgb, var(--st-wait) 35%, transparent); }
+.fl-error { background: color-mix(in srgb, var(--st-err) 12%, transparent); border: 1px solid color-mix(in srgb, var(--st-err) 35%, transparent); }
+.fl-warn .fl-files, .fl-error .fl-files { background: var(--surface); }
+
+.fl-consequences { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; line-height: 1.45; }
+.fl-consequences b { color: var(--st-err); font-weight: 600; }
+.fl-sure { display: flex; gap: 8px; align-items: center; font-size: 12px; cursor: pointer; }
+.fl-sure input { accent-color: var(--st-err); }
+.fl-btn-danger { color: var(--st-err); border-color: color-mix(in srgb, var(--st-err) 50%, transparent); }
+.fl-btn-danger:not(:disabled):hover { background: color-mix(in srgb, var(--st-err) 12%, transparent); }
+
+.fl-log { margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); font-size: 11.5px; line-height: 1.5; max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+
+/* A floor with nothing on it (FloorEmpty), over the empty canvas. */
+.fl-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 5; }
+.fl-empty-card {
+  pointer-events: auto;
+  width: min(440px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 24px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.fl-empty-card > .msi { color: var(--text-3); }
+.fl-empty-card strong { font-size: 15px; color: var(--text); }
+.fl-empty-card p { margin: 4px 0; }
+.fl-empty-path { font-size: 11px; color: var(--text-3); }
+.fl-empty-state { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; color: var(--st-wait); }
+.fl-empty-state.err { color: var(--st-err); }

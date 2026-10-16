@@ -32,12 +32,13 @@ import './nodes/nodes.css';
 const nodeTypes = { terminal: TerminalNode, note: NoteNode, portal: PortalNode };
 const edgeTypes = { wire: WireEdge };
 
-// Each workspace keeps its own pan and zoom.
-const viewportKey = (ws: string | null) => `squad.viewport.${ws ?? ''}`;
+// Each workspace, and each of its floors, keeps its own pan and zoom.
+const viewportKey = (ws: string | null, floor: string) => `squad.viewport.${ws ?? ''}${floor ? `.${floor}` : ''}`;
 
-function savedViewport(ws: string | null): Viewport {
+function savedViewport(ws: string | null, floor: string): Viewport {
   try {
-    const v = JSON.parse(localStorage.getItem(viewportKey(ws)) ?? localStorage.getItem('squad.viewport') ?? '') as Viewport;
+    const legacy = floor ? null : localStorage.getItem('squad.viewport');
+    const v = JSON.parse(localStorage.getItem(viewportKey(ws, floor)) ?? legacy ?? '') as Viewport;
     if (Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.zoom)) return v;
   } catch {
     /* default below */
@@ -68,22 +69,25 @@ export function Canvas() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const activeWs = useSquad((s) => s.activeWs);
-  const defaultViewport = useMemo(() => savedViewport(activeWs), [activeWs]);
+  const floor = useSquad((s) => s.activeFloor);
+  const defaultViewport = useMemo(() => savedViewport(activeWs, floor), [activeWs, floor]);
 
   // The server is the source of truth; local state only adds React Flow's
-  // own fields (selection, measured size, drag). The canvas shows the ground
-  // floor; nodes on floors (git worktrees) have their own canvases.
+  // own fields (selection, measured size, drag). The canvas shows the floor
+  // on screen; each floor (a git worktree) has its own nodes.
+  const onScreen = useCallback((n: WNode) => (n.floor ?? '') === floor, [floor]);
   useEffect(() => {
     setNodes((prev) => {
       const byId = new Map(prev.map((n) => [n.id, n]));
-      return (ws?.nodes ?? []).filter((n) => !n.floor).map((n) => toFlow(n, byId.get(n.id)));
+      return (ws?.nodes ?? []).filter(onScreen).map((n) => toFlow(n, byId.get(n.id)));
     });
     if (ws) pruneSessions(new Set(ws.nodes.filter((n) => n.kind === 'terminal').map((n) => n.id)));
-  }, [ws?.nodes]);
+  }, [ws?.nodes, onScreen]);
   useEffect(() => useSquad.getState().setZoom(defaultViewport.zoom, true), [defaultViewport]);
-  // Wires show when both ends are on the canvas; the key changes only when
-  // the set of shown nodes does (not on every drag).
-  const shownKey = useMemo(() => (ws?.nodes ?? []).filter((n) => !n.floor).map((n) => n.id).join(' '), [ws?.nodes]);
+  // Wires show when both ends are on the canvas (wires to other floors show
+  // as a tag on the node); the key changes only when the set of shown nodes
+  // does, not on every drag.
+  const shownKey = useMemo(() => (ws?.nodes ?? []).filter(onScreen).map((n) => n.id).join(' '), [ws?.nodes, onScreen]);
   useEffect(() => {
     setEdges((prev) => {
       const byId = new Map(prev.map((e) => [e.id, e]));
@@ -147,21 +151,34 @@ export function Canvas() {
     window.clearTimeout(settle.current);
     settle.current = window.setTimeout(() => useSquad.getState().setZoom(v.zoom, true), 120);
     try {
-      localStorage.setItem(viewportKey(useSquad.getState().activeWs), JSON.stringify(v));
+      const st = useSquad.getState();
+      localStorage.setItem(viewportKey(st.activeWs, st.activeFloor), JSON.stringify(v));
     } catch {
       /* storage may be unavailable */
     }
   }, []);
 
   const rf = useReactFlow();
-  // Another workspace on screen: back to where its canvas was left
+  // Another workspace or floor on screen: back to where its canvas was left
   // (defaultViewport only applies on the first render).
-  const shownWs = useRef(activeWs);
+  const shown = useRef(`${activeWs}/${floor}`);
   useEffect(() => {
-    if (shownWs.current === activeWs) return;
-    shownWs.current = activeWs;
+    if (shown.current === `${activeWs}/${floor}`) return;
+    shown.current = `${activeWs}/${floor}`;
     void rf.setViewport(defaultViewport);
-  }, [activeWs, defaultViewport, rf]);
+  }, [activeWs, floor, defaultViewport, rf]);
+  // A wire's tag on another floor asked to show this node: center it once
+  // it is on the canvas.
+  const focusRequest = useSquad((s) => s.focusRequest);
+  useEffect(() => {
+    if (!focusRequest || !nodes.some((n) => n.id === focusRequest)) return;
+    const t = window.setTimeout(() => {
+      useSquad.getState().clearFocusRequest();
+      void rf.fitView({ nodes: [{ id: focusRequest }], duration: 300, maxZoom: 1, padding: 0.3 });
+      useSquad.getState().setSelectedNode(focusRequest);
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [focusRequest, nodes, rf]);
   // Double-clicking a wire adds a bend point there.
   const onEdgeDoubleClick = useCallback(
     (e: React.MouseEvent, edge: Edge) => {

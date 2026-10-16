@@ -1,7 +1,20 @@
 // REST client. The session cookie (set by /?token=…) authenticates requests.
 // A workspace's API lives under /w/<id>/ (the one on screen: setWorkspace);
 // the workspace list is at the root.
-import type { RoleDef, ShellOption, StateResponse, WEdge, WNode, StateExtra, WorkspaceSummary } from './types';
+import type {
+  Floor,
+  FloorChanges,
+  FloorConfig,
+  FloorStatusResponse,
+  LandResult,
+  RoleDef,
+  ShellOption,
+  StateResponse,
+  WEdge,
+  WNode,
+  StateExtra,
+  WorkspaceSummary,
+} from './types';
 
 let base = '';
 
@@ -15,6 +28,18 @@ export function wsPath(p: string): string {
   return base + p;
 }
 
+/** A refused request: the server's message, its status and the whole body
+ * (a refused land carries "files" or "conflicts"). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly body: Record<string, unknown>,
+  ) {
+    super(message);
+  }
+}
+
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
     method,
@@ -24,13 +49,14 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   });
   if (!res.ok) {
     let msg = res.statusText;
+    let data: Record<string, unknown> = {};
     try {
-      const j = await res.json();
-      msg = j.error ?? msg;
+      data = await res.json();
+      msg = (data.error as string) ?? msg;
     } catch {
       /* not JSON */
     }
-    throw new Error(msg);
+    throw new ApiError(msg, res.status, data);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -51,8 +77,23 @@ export const api = {
   resume: () => req<StateExtra>('POST', wsPath('/api/conversations/resume')),
   note: (id: string) => req<{ id: string; file: string; title: string; locked: boolean; content: string }>('GET', wsPath(`/api/notes/${id}`)),
   saveNote: (id: string, content: string) => req<{ ok: boolean }>('PUT', wsPath(`/api/notes/${id}`), { content }),
-  dirs: (path: string) => req<{ suggestions: string[] }>('GET', wsPath(`/api/dirs?path=${encodeURIComponent(path)}`)),
+  /** Folder suggestions, relative to the workspace folder or to a floor's copy of it. */
+  dirs: (path: string, floor?: string) =>
+    req<{ suggestions: string[] }>('GET', wsPath(`/api/dirs?path=${encodeURIComponent(path)}${floor ? `&floor=${encodeURIComponent(floor)}` : ''}`)),
   shells: () => req<{ shells: ShellOption[] }>('GET', wsPath('/api/shells')),
+
+  floorStatus: () => req<FloorStatusResponse>('GET', wsPath('/api/floors/status')),
+  branches: () => req<{ branches: string[] }>('GET', wsPath('/api/branches')),
+  createFloor: (b: { name: string; branch?: string; existing?: boolean }) => req<Floor>('POST', wsPath('/api/floors'), b),
+  floorConfig: (c: FloorConfig) => req<FloorConfig>('PUT', wsPath('/api/floors/config'), c),
+  floorChanges: (id: string) => req<FloorChanges>('GET', wsPath(`/api/floors/${encodeURIComponent(id)}/changes`)),
+  landFloor: (id: string, b: { merge?: boolean; into?: string }) => req<LandResult>('POST', wsPath(`/api/floors/${encodeURIComponent(id)}/land`), b),
+  discardFloor: (id: string) => req<void>('DELETE', wsPath(`/api/floors/${encodeURIComponent(id)}`)),
+  floorLog: async (id: string) => {
+    const res = await fetch(wsPath(`/api/floors/${encodeURIComponent(id)}/log`), { credentials: 'same-origin' });
+    if (!res.ok) throw new ApiError(res.statusText, res.status, {});
+    return res.text();
+  },
 };
 
 /** The workspace list (not tied to the workspace on screen). */

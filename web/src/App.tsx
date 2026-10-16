@@ -8,6 +8,8 @@ import { Canvas } from './canvas/Canvas';
 import { ActivityDrawer } from './components/ActivityDrawer';
 import { Composer } from './components/Composer';
 import { ComposerPill } from './components/ComposerPill';
+import { FloorDialogs } from './components/FloorDialogs';
+import { FloorEmpty } from './components/FloorEmpty';
 import { RolesPanel } from './components/RolesPanel';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
@@ -54,7 +56,8 @@ function Stage() {
       const w = kind === 'note' ? 400 : 560;
       const h = kind === 'note' ? 350 : 420;
       const c = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-      const body: Partial<WNode> = { kind, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2) };
+      const floor = useSquad.getState().activeFloor;
+      const body: Partial<WNode> = { kind, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), floor: floor || undefined };
       if (kind === 'note') body.note = { title: 'Nota', file: '' };
       api.addNode(body).catch((e: Error) => toast(e.message));
     },
@@ -112,11 +115,13 @@ function Stage() {
   return (
     <main className="stage">
       <Canvas />
+      <FloorEmpty />
       <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
       <ComposerPill />
       <Composer />
       <ActivityDrawer />
       <RolesPanel />
+      <FloorDialogs />
       <Toast />
     </main>
   );

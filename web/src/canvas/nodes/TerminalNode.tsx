@@ -5,6 +5,7 @@ import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/ty
 import { Icon } from '../../components/Icon';
 import { STATE_META, elapsed, stateLabel } from '../../lib/model';
 import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, useRole, useRoleLookup } from '../../lib/roles';
+import { useBranch } from '../../lib/floors';
 import { shortPath, terminalCwd } from '../../lib/paths';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
@@ -121,7 +122,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
         <XTermView id={id} zoom={zoom} />
         {(rt?.status === 'failed' || rt?.status === 'exited' || rt?.status === 'stopped') && <StoppedOverlay rt={rt} />}
       </TermBody>
-      <LiveFooter id={id} t={t} createdBy={data.node.createdBy} />
+      <LiveFooter id={id} t={t} createdBy={data.node.createdBy} floor={data.node.floor ?? ''} />
     </div>
   );
 }
@@ -239,13 +240,15 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
   );
 }
 
-function LiveFooter({ id, t, createdBy }: { id: string; t: TerminalData; createdBy?: string }) {
-  const cwd = useSquad((s) => terminalCwd(t.cwd, s.workspace?.cwd));
+function LiveFooter({ id, t, createdBy, floor }: { id: string; t: TerminalData; createdBy?: string; floor: string }) {
+  // Relative folders start from the workspace folder, or its floor's copy.
+  const cwd = useSquad((s) => terminalCwd(t.cwd, floor ? s.workspace?.floors?.find((f) => f.id === floor)?.cwd : s.workspace?.cwd));
+  const branch = useBranch(floor);
   const inbox = useInbox(id);
   const creator = useCreator(createdBy);
   return (
     <footer className="tn-foot mono">
-      <span>⎇ main</span>
+      {branch && <span title="Branch do andar">⎇ {branch}</span>}
       <span>
         {t.cols || 80}×{t.rows || 24}
       </span>

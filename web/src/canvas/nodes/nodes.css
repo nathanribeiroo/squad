@@ -10,8 +10,41 @@
   box-shadow: var(--shadow);
   position: relative;
 }
-.tnode > :not(.react-flow__handle):not(.node-menu),
-.pnode > :not(.react-flow__handle) { overflow: hidden; }
+.tnode > :not(.react-flow__handle):not(.node-menu):not(.xfloor),
+.pnode > :not(.react-flow__handle):not(.xfloor) { overflow: hidden; }
+
+/* Wires to other floors (CrossFloorLinks): tags hanging under the node. */
+.xfloor {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+  transform-origin: 0 0;
+  z-index: 1;
+}
+.xfloor-tag {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-radius: 11px;
+  border: 1px dashed var(--wire);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.xfloor-tag:hover { color: var(--text); border-style: solid; }
+.xfloor-icon { color: var(--text-3); }
+.xfloor-name { font-weight: 600; color: var(--text); }
+.xfloor-floor { color: var(--text-3); }
+.xfloor-tag.busy { border-color: var(--st-wait); border-style: solid; animation: xfloor-pulse 1.2s ease-in-out infinite; }
+@keyframes xfloor-pulse { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--st-wait) 30%, transparent); } }
 .nnode { background: var(--note-bg); }
 .tnode.focused { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }
 .tnode.selected, .nnode.selected, .pnode.selected { border-color: var(--text-3); }
