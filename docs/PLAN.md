@@ -36,7 +36,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | R4 Andares: servidor | `feat/floors` | concluído |
 | R5 Andares: interface | `feat/floors-ui` | concluído |
 | R6 Resumos de turno | `feat/summaries` | concluído (PR) |
-| R7 Portal Android | — | planejado |
+| R7 Portal Android | — | cortado (decisão do usuário) |
 | R8 Terminais remotos | — | planejado |
 | R9 Playwright opcional | — | planejado |
 
@@ -154,7 +154,7 @@ Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe s
   - `squad floor create/list/land` para o gerente.
 - **R5, andares (interface):** o seletor no topo, criar e alternar, alterações pendentes e o diálogo de aterrissar. Depois, as instruções do Planejador ganharam a regra de um andar por frente paralela.
 - **R6, resumos de turno:** cartão ao fim do turno com a mensagem final (dos hooks, ou da tela), de graça; "Resumir" (até 3 próximos passos) e resumo do workspace sob demanda, escritos pela CLI do próprio agente (`claude -p`, `devin -p`, `codex exec`, `gemini -p`). Decidido com o usuário: sem modelo pago fixo.
-- **R7, portal Android:** `adb` com os mesmos comandos `squad portal` e imagem ao vivo.
+- **R7, portal Android:** cortado em 2026-10-16; o usuário não precisa dele. Seria o `adb` com os mesmos comandos `squad portal` e a imagem ao vivo.
 - **R8, terminais remotos:** terminal por SSH (ou WSL/Docker) com túnel de volta para o Squad. O escopo de "uso remoto" é confirmado antes de começar.
 - **R9, Playwright opcional:** segundo motor do portal (Firefox e WebKit). Pode ser cortado.
 

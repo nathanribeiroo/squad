@@ -77,4 +77,4 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
   - R8: o que é "uso remoto";
   - R9: manter ou cortar o Playwright.
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo, R7 (portal Android):** traga o plano detalhado antes de começar. O portal web (CDP, `internal/portal` e `internal/browser`) é a referência dos comandos `squad portal`.
+- **Próximo passo, R8 (terminais remotos):** confirme o escopo de "uso remoto" e traga o plano detalhado antes de começar. O R7 (portal Android) foi cortado pelo usuário.

@@ -2,6 +2,10 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, portal Android (R7) cortado
+
+- **Decisão do usuário:** o portal Android não é necessário, e o R7 sai da rodada. O próximo passo é o R8 (terminais remotos), depois de confirmar o que é "uso remoto".
+
 ## 2026-10-16, resumos de turno (R6)
 
 - **Decisão do usuário:** cartões automáticos com a mensagem final do agente, de graça (opção A), e resumo sob demanda escrito por uma CLI de agente (opção C), sem nota. O texto de um terminal fica com o agente dele; numa máquina só com Devin, o Devin resume.
