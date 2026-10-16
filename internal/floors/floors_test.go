@@ -307,3 +307,44 @@ func TestSubfolderSetupFailureAndNoRepo(t *testing.T) {
 		t.Fatalf("no repo: %v", err)
 	}
 }
+
+func TestStatusAndBranches(t *testing.T) {
+	repo, svc, _ := newRepo(t)
+	ctx := context.Background()
+	s := svc.Status(ctx)
+	// The untracked .env of newRepo is the ground floor's one change.
+	if !s.Repo || s.Ground.Branch != "main" || s.Ground.Changes != 1 || len(s.Floors) != 0 {
+		t.Fatalf("ground: %+v", s)
+	}
+	f, err := svc.Create(ctx, CreateRequest{Name: "ui"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fs := svc.Status(ctx).Floors["ui"]; fs.Branch != "ui" || fs.Changes != 0 || fs.Ahead != 0 {
+		t.Fatalf("new floor (the copied .env doesn't count): %+v", fs)
+	}
+	write(t, filepath.Join(f.Path, "a.txt"), "a")
+	write(t, filepath.Join(f.Path, "b.txt"), "b")
+	if fs := svc.Status(ctx).Floors["ui"]; fs.Changes != 2 {
+		t.Fatalf("two files: %+v", fs)
+	}
+	sh(t, f.Path, "add", "a.txt", "b.txt")
+	sh(t, f.Path, "commit", "-q", "-m", "ab")
+	if fs := svc.Status(ctx).Floors["ui"]; fs.Changes != 0 || fs.Ahead != 1 {
+		t.Fatalf("committed: %+v", fs)
+	}
+	b, err := svc.Branches(ctx)
+	if err != nil || strings.Join(b, ",") != "main,ui" {
+		t.Fatalf("branches: %v %v", b, err)
+	}
+	os.RemoveAll(f.Path)
+	if fs := svc.Status(ctx).Floors["ui"]; !fs.Missing {
+		t.Fatalf("missing folder: %+v", fs)
+	}
+	_ = repo
+
+	st2, _ := store.Open(filepath.Join(t.TempDir(), "w.json"), store.Workspace{ID: "p", Cwd: t.TempDir()})
+	if s := New(Options{Canvas: canvas{st2, events.NewBus()}}).Status(ctx); s.Repo {
+		t.Fatal("a plain folder is not a repository")
+	}
+}

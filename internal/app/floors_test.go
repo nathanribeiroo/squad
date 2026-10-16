@@ -166,6 +166,13 @@ func TestManagerUsesFloors(t *testing.T) {
 		t.Fatal("floor folder left behind")
 	}
 
+	if code, body := e.api("GET", "/api/floors/status", ""); code != 200 || body["ground"].(map[string]any)["branch"] != "main" {
+		t.Fatalf("status: %d %v", code, body)
+	}
+	if code, body := e.api("GET", "/api/branches", ""); code != 200 || len(body["branches"].([]any)) != 2 {
+		t.Fatalf("branches: %d %v", code, body)
+	}
+
 	// The user discards through the API.
 	if code, body := e.api("POST", "/api/floors", `{"name":"Rascunho"}`); code != 201 || body["branch"] != "rascunho" {
 		t.Fatalf("API create: %d %v", code, body)

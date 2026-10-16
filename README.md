@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre no navegador.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP e o servidor dos andares (git worktree). Em seguida, a interface dos andares (veja o plano). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP e os andares (git worktree), com seletor no topo. Em seguida, resumos de turno (veja o plano). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -107,12 +107,16 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - Qualquer agente pode abrir um portal: `squad portal create localhost:5173 "App"` cria o portal ligado a quem pediu (até 3 por agente).
 - Pelo MCP (abaixo), o gerente trabalha sem pedir aprovação a cada passo. Pela CLI, cada comando `squad` pede aprovação no Claude Code como qualquer outro comando.
 
-**Andares:** cópias isoladas do repositório do workspace, para frentes de trabalho em paralelo que mexem nos mesmos arquivos. Por enquanto pela CLI, pelo MCP e pela API; o seletor no topo chega no R5.
+**Andares:** cópias isoladas do repositório do workspace, para frentes de trabalho em paralelo que mexem nos mesmos arquivos.
 - Cada andar é um `git worktree` num branch próprio, com um canvas próprio. A pasta fica **fora do projeto**, como no Maestri: `<pasta-pai do repositório>/.squad/floors/<projeto>--<andar>`.
-- Ele parte do último commit (alterações não commitadas ficam no térreo). Recebe os arquivos versionados, mais os não versionados da lista de cópia do workspace (padrão `.env*`), e roda o comando de preparo, se houver (ex.: `npm install`). A lista e o comando ficam em `PUT /w/<id>/api/floors/config` (`{"copy": [".env*"], "setup": "npm install"}`). O preparo roda no shell padrão (Git Bash no Windows), e a saída fica em `GET /w/<id>/api/floors/<andar>/log`.
+- **Na interface:** o seletor no topo tem o térreo (o branch atual) e uma aba por andar, cada uma com "limpo", "● 3 alterações", "2 commits", "preparando" ou "preparo falhou". Um ponto azul marca agentes trabalhando ali. O `+` cria um andar. Clicar no andar aberto abre o menu: aterrissar, log do preparo, copiar o caminho e descartar. O andar aberto fica na URL (`&floor=`), e cada andar guarda o próprio zoom.
+- Terminal, nota e portal criados na tela vão para o andar aberto. O rodapé de cada terminal mostra o branch e a pasta de verdade.
+- Um fio para um nó de outro andar aparece como etiqueta embaixo do nó (`⇄ Plano · térreo`). Ela pulsa enquanto um pedido passa por ele, e um clique leva ao outro andar, centrado no nó.
+- O andar parte do último commit (alterações não commitadas ficam no térreo). Recebe os arquivos versionados, mais os não versionados da lista de cópia do workspace (padrão `.env*`), e roda o comando de preparo, se houver (ex.: `npm install`). A lista e o comando ficam em Novo andar → Preparação (ou `PUT /w/<id>/api/floors/config`). O preparo roda no shell padrão (Git Bash no Windows), e a saída fica no "Log do preparo".
 - Os terminais do andar abrem na cópia; pastas relativas, e mesmo uma pasta do térreo dada por inteiro, apontam para a cópia. Fios podem ligar terminais de andares diferentes: o gerente no térreo conversa com quem está no andar.
 - **Aterrissar** fecha os terminais e portais do andar e apaga a pasta; as notas descem para o térreo. O branch fica. Com `--merge`, antes mescla o branch no branch de origem (`--into outro` para outro), com commit de merge. Se o branch de destino não estiver aberto em nenhuma pasta, a mescla acontece sem tocar em pasta nenhuma. É recusado se o andar tiver alteração não commitada, se a pasta de destino tiver alteração em arquivo versionado, ou se o branch do andar tiver commitado um arquivo copiado do térreo (como o `.env`, que pode ter segredos). Com conflito, nada muda, e a resposta lista os arquivos.
-- **Descartar** (`DELETE /w/<id>/api/floors/<andar>`, só pelo usuário) apaga tudo: terminais, pasta (mesmo com trabalho não commitado) e o branch, se foi o andar que o criou.
+- O diálogo de aterrissar mostra os commits do andar, as alterações que ainda impedem e onde mesclar, e diz o que fecha. Num conflito, ele lista os arquivos.
+- **Descartar** (só pelo usuário, no menu do andar) apaga tudo: terminais, pasta (mesmo com trabalho não commitado) e o branch, se foi o andar que o criou.
 - Gerentes criam e aterrissam andares (só os que eles criaram); qualquer agente lista. Pelo MCP, `floors` (listar, criar) vem liberada, e `floor_land` pede aprovação.
 - Um workspace com andares não pode ser removido nem mudar de pasta antes de aterrissar ou descartar os andares.
 

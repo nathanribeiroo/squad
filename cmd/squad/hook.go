@@ -134,6 +134,9 @@ removes one you created.
    is no longer needed. Leave the rest for the user to see.
 
 Agents you create can't create others, and there is a limit per manager.
+When one of them stops at a permission prompt (Claude Code's "Do you want to
+proceed?"), don't answer it for them with keys: tell the user, who sees that
+terminal on the canvas (on its floor) and decides.
 
 ## Floors (managers)
 

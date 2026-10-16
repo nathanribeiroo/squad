@@ -124,14 +124,17 @@ type change struct {
 	Status string `json:"status"` // the two porcelain letters: " M", "??", "A "…
 }
 
-// status lists uncommitted changes in a worktree (untracked files included
-// unless tracked is set).
-func status(ctx context.Context, dir string, trackedOnly bool) ([]change, error) {
-	untracked := "--untracked-files=all"
-	if trackedOnly {
-		untracked = "--untracked-files=no"
-	}
-	r, err := run(ctx, dir, nil, "status", "--porcelain=v1", "-z", untracked)
+// Untracked files in status: each one, none, or untracked folders as one
+// entry (cheaper, for counting).
+const (
+	untrackedAll    = "all"
+	untrackedNone   = "no"
+	untrackedFolded = "normal"
+)
+
+// status lists uncommitted changes in a worktree.
+func status(ctx context.Context, dir, untracked string) ([]change, error) {
+	r, err := run(ctx, dir, nil, "status", "--porcelain=v1", "-z", "--untracked-files="+untracked)
 	if err != nil {
 		return nil, err
 	}

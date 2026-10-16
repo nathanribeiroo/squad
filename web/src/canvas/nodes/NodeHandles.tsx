@@ -1,11 +1,13 @@
 import { Handle, Position, useConnection } from '@xyflow/react';
 import { useSquad } from '../../state/store';
+import { CrossFloorLinks } from './CrossFloorLinks';
 
 /**
  * Connection handles shared by every node. Edges are undirected and drawn
  * between facing sides (see geometry.ts), so handles only start and receive
  * drags: four side dots start one, and while a drag is in progress the whole
- * body of another node becomes a drop target.
+ * body of another node becomes a drop target. Wires to other floors show as
+ * tags under the node (CrossFloorLinks).
  */
 export function NodeHandles({ id }: { id: string }) {
   const target = useConnectTarget(id);
@@ -23,6 +25,7 @@ export function NodeHandles({ id }: { id: string }) {
       <Handle type="source" id="r" position={Position.Right} className="side-handle" />
       <Handle type="source" id="t" position={Position.Top} className="side-handle" />
       <Handle type="source" id="b" position={Position.Bottom} className="side-handle" />
+      <CrossFloorLinks id={id} />
     </>
   );
 }

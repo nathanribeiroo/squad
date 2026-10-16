@@ -15,6 +15,7 @@
     "block",
     "bug_report",
     "build",
+    "call_merge",
     "call_received",
     "check",
     "check_box",
@@ -24,6 +25,8 @@
     "chevron_right",
     "close",
     "code",
+    "commit",
+    "content_copy",
     "dark_mode",
     "database",
     "delete",
@@ -33,6 +36,7 @@
     "error",
     "expand_more",
     "fit_screen",
+    "flight_land",
     "gesture",
     "groups",
     "hourglass_top",
@@ -76,6 +80,7 @@
     "terminal",
     "tune",
     "undo",
-    "view_timeline"
+    "view_timeline",
+    "warning"
   ]
 }

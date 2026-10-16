@@ -33,8 +33,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | R1 Papéis com instruções | `feat/roles` | concluído |
 | R2 Agente gerente e portais criados por agentes | `feat/manager` | concluído |
 | R3 MCP (`squad mcp`) | `feat/mcp` | concluído |
-| R4 Andares: servidor | `feat/floors` | concluído (PR) |
-| R5 Andares: interface | — | planejado |
+| R4 Andares: servidor | `feat/floors` | concluído |
+| R5 Andares: interface | `feat/floors-ui` | concluído (PR) |
 | R6 Resumos de turno | — | planejado |
 | R7 Portal Android | — | planejado |
 | R8 Terminais remotos | — | planejado |

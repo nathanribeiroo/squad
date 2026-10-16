@@ -17,6 +17,7 @@ export const ICONS = [
   'block',
   'bug_report',
   'build',
+  'call_merge',
   'call_received',
   'check',
   'check_box',
@@ -26,6 +27,8 @@ export const ICONS = [
   'chevron_right',
   'close',
   'code',
+  'commit',
+  'content_copy',
   'dark_mode',
   'database',
   'delete',
@@ -35,6 +38,7 @@ export const ICONS = [
   'error',
   'expand_more',
   'fit_screen',
+  'flight_land',
   'gesture',
   'groups',
   'hourglass_top',
@@ -79,6 +83,7 @@ export const ICONS = [
   'tune',
   'undo',
   'view_timeline',
+  'warning',
 ] as const;
 
 export type IconName = (typeof ICONS)[number];

@@ -2,6 +2,56 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-16, andares: interface (R5)
+
+- **Seletor no topo** (o item 5 do design, que era só um marcador):
+  - a aba do térreo mostra o branch atual; cada andar ganha uma aba com "limpo", "● N alterações", "N commits" (ainda não aterrissados), "preparando" ou "preparo falhou";
+  - um ponto azul marca agentes trabalhando naquele andar;
+  - o `+` cria um andar;
+  - clicar no andar aberto abre o menu: aterrissar, log do preparo, copiar o caminho, descartar;
+  - com muitos andares, as abas rolam, e o `+` fica sempre visível. Quando falta espaço, o caminho no topo encolhe primeiro e o texto "pedidos por min" some abaixo de 1500 px.
+- **Estado:**
+  - o andar aberto fica por workspace, no navegador e na URL (`&floor=`);
+  - cada andar guarda o próprio zoom e posição;
+  - um andar que some (aterrissado pelo gerente) leva a tela de volta ao térreo, com aviso.
+- **Canvas por andar:**
+  - o canvas mostra só os nós do andar aberto;
+  - terminal, nota e portal criados na tela vão para o andar aberto. As sugestões de pasta do formulário vêm da cópia (`/api/dirs?floor=`);
+  - o rodapé do terminal mostra o branch e a pasta reais; antes, "⎇ main" era fixo;
+  - um andar vazio mostra um cartão: branch, pasta, estado do preparo (com o log), o comando para o gerente e o botão "Novo terminal neste andar".
+- **Fios entre andares** (o design não cobre; escolha reversível): viram etiquetas embaixo do nó, `⇄ Plano · térreo`. A etiqueta pulsa enquanto um pedido passa pelo fio, e um clique leva ao outro andar, centrado no nó. Com o zoom afastado, ela mantém um tamanho legível.
+- **Diálogos:**
+  - **criar:** nome; o branch vem do nome e pode ser editado, e um branch que já existe abre como está. Mostra de onde o andar parte. "Preparação" (recolhida) edita a lista de cópia e o comando de preparo do workspace;
+  - **aterrissar:**
+    - mostra os commits do andar e quantos commits novos a origem tem;
+    - lista as alterações não commitadas, que desabilitam o botão;
+    - oferece "Mesclar em [branch]" (a origem por padrão; desmarcado quando não há commits) ou "Só guardar o branch";
+    - diz o que fecha e o que desce para o térreo;
+    - num conflito ou com o destino sujo, mostra os arquivos no próprio diálogo, com o que fazer;
+  - **descartar:** lista o que se perde (pasta com alterações, branch com commits não mesclados). Se houver trabalho a perder, pede para marcar "Entendo que esse trabalho se perde";
+  - **log do preparo:** a saída do comando, atualizada a cada 2 s enquanto ele roda.
+- **Servidor:**
+  - `GET /api/floors/status` traz o branch do térreo e, para o térreo e cada andar, as alterações e os commits à frente. A interface consulta ao abrir, a cada 10 s com a aba visível, quando os andares mudam e logo depois de um agente terminar um turno;
+  - `GET /api/branches` lista os branches.
+- **Skill:** quando um agente criado pelo gerente para numa pergunta de permissão, o gerente avisa o usuário em vez de responder com `keys`. No teste real, o Planejador tentou aprovar a pergunta da Bia com `keys`. A aprovação do `keys` segurou, e eu recusei como usuário.
+- **Ícones novos:** `call_merge`, `commit`, `content_copy`, `flight_land`, `warning`.
+- **Testes:**
+  - Go: `Status` e `Branches` com git real (alterações sem contar os copiados, commits à frente, pasta sumida, pasta sem repositório). Os endpoints também passaram pelo teste de integração;
+  - `make check`, `tsc` e o build.
+- **Na interface, com o Claude real** (num worktree de teste do próprio Squad, pelo Chromium):
+  - o Planejador criou o andar Login e a Bia nele;
+  - abri o andar pela URL e vi a pergunta de permissão da Bia na tela. Aprovei clicando no terminal e apertando Enter, duas vezes (arquivo e commit);
+  - a aba passou de "1 alteração" a "1 commit";
+  - no térreo, o Plano mostrou a etiqueta `⇄ Bia · Login`, e o Login mostrou `⇄ Plano · térreo`;
+  - pelo `+`, criei o andar Cadastro com um comando de preparo lento: a aba e o cartão mostraram "preparando", e o log mostrou a saída;
+  - aterrissei o Login pelo diálogo:
+    - com um rascunho não commitado, o botão ficou desabilitado e o arquivo listado;
+    - sem o rascunho, "Mesclar e aterrissar" fez o commit de merge com dois pais, fechou a Bia e voltou ao térreo;
+  - o Cadastro, com o mesmo trecho do README mudado nos dois lados, mostrou o conflito no `README.md`, e o térreo não mudou;
+  - "Novo terminal neste andar" abriu um Claude na cópia (o processo tinha a pasta da cópia como cwd), sem pergunta de confiança;
+  - o descarte pela interface pediu a confirmação e apagou a pasta e o branch.
+- **Precisa de você (Windows):** o seletor e os diálogos com um andar de verdade, e o preparo pelo Git Bash.
+
 ## 2026-10-16, andares: servidor (R4)
 
 - **O que é:** um andar é uma cópia isolada do repositório do workspace (um `git worktree` num branch próprio), com um canvas próprio. Serve para frentes de trabalho em paralelo que mexem nos mesmos arquivos.

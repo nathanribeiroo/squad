@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { api } from '../api/client';
 import type { ShellOption, WNode } from '../api/types';
@@ -49,7 +49,12 @@ function baseName(p: string): string {
 export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => void }) {
   const rf = useReactFlow();
   const taken = useNodes();
-  const wsCwd = useSquad((s) => s.workspace?.cwd ?? '');
+  // A new terminal goes on the floor on screen; its folder is relative to
+  // that floor's copy of the workspace folder.
+  const activeFloor = useSquad((s) => s.activeFloor);
+  const floor = node ? (node.floor ?? '') : activeFloor;
+  const wsCwd = useSquad((s) => (floor ? s.workspace?.floors?.find((f) => f.id === floor)?.cwd : s.workspace?.cwd) ?? '');
+  const suggestDirs = useCallback((p: string) => api.dirs(p, floor), [floor]);
   const shells = useShells();
   const t = node?.terminal;
   const [agent, setAgent] = useState(t?.agent ?? 'claude');
@@ -96,6 +101,7 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
           x: Math.round(center.x - 280),
           y: Math.round(center.y - 220),
           terminal: { ...fields, name: name.trim() || uniqueName(DEFAULT_NAMES[agent], names) },
+          floor: floor || undefined,
         });
       }
       onClose();
@@ -148,7 +154,7 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
         </label>
         <label className="field">
           Pasta (opcional)
-          <DirInput value={cwd} onChange={setCwd} placeholder={shortPath(wsCwd) || 'pasta do workspace'} />
+          <DirInput value={cwd} onChange={setCwd} placeholder={shortPath(wsCwd) || 'pasta do workspace'} suggest={suggestDirs} />
         </label>
         <label className="field">
           Shell

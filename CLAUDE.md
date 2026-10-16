@@ -77,4 +77,4 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
   - R8: o que é "uso remoto";
   - R9: manter ou cortar o Playwright.
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo, R5 (andares, interface):** traga o plano detalhado antes de começar. O servidor já está pronto (R4, veja o DEVLOG): API `/api/floors`, evento `floors.updated` e o campo `floor` nos nós. Hoje o canvas mostra só o térreo. A barra do topo tem o marcador estático "main · limpo" do design, que vira o seletor.
+- **Próximo passo, R6 (resumos de turno):** pergunte primeiro qual modelo usar (está nas decisões acima) e traga o plano detalhado antes de começar.

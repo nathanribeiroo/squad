@@ -1,7 +1,21 @@
 // Global client state, fed by /ws/events.
 import { create } from 'zustand';
 import { setWorkspace } from '../api/client';
-import type { Floor, PendingRequest, RoleDef, ServerEvent, StateExtra, StateResponse, TerminalRuntime, WEdge, WNode, Workspace, WorkspaceSummary } from '../api/types';
+import type {
+  Floor,
+  FloorConfig,
+  FloorStatusResponse,
+  PendingRequest,
+  RoleDef,
+  ServerEvent,
+  StateExtra,
+  StateResponse,
+  TerminalRuntime,
+  WEdge,
+  WNode,
+  Workspace,
+  WorkspaceSummary,
+} from '../api/types';
 
 export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note';
 
@@ -64,6 +78,9 @@ export interface NoteEdit {
 
 export type ZoomLevel = 'live' | 'mini' | 'card';
 
+/** A floor dialog: create one, land or discard a floor, read its setup log. */
+export type FloorDialog = { kind: 'create' } | { kind: 'land' | 'discard' | 'log'; id: string };
+
 /** Zoom level with ±0.03 hysteresis around 0.6 and 0.35 (handoff §2). */
 export function levelFor(z: number, prev: ZoomLevel): ZoomLevel {
   const h = 0.03;
@@ -82,6 +99,13 @@ interface SquadState {
   rolesPanel: false | string | null;
   /** The workspace on screen. */
   activeWs: string | null;
+  /** The floor on screen ("" is the ground floor). */
+  activeFloor: string;
+  /** Git state of the floors (GET /api/floors/status, polled by the selector). */
+  floorStatus: FloorStatusResponse | null;
+  floorDialog: FloorDialog | null;
+  /** A node to center once its floor is on screen (a wire to another floor). */
+  focusRequest: string | null;
   workspace: Workspace | null;
   runtime: Record<string, TerminalRuntime>;
   extra: StateExtra;
@@ -115,6 +139,11 @@ interface SquadState {
   openRoles(id?: string | null): void;
   closeRoles(): void;
   switchWorkspace(id: string): void;
+  /** Shows a floor ("" the ground floor), optionally centering a node of it. */
+  setFloor(id: string, focus?: string): void;
+  setFloorStatus(s: FloorStatusResponse | null): void;
+  setFloorDialog(d: FloorDialog | null): void;
+  clearFocusRequest(): void;
   load(s: StateResponse): void;
   apply(ev: ServerEvent): void;
   setConnection(c: SquadState['connection']): void;
@@ -184,15 +213,44 @@ const perWorkspace = {
   editTermId: null,
   focusedTerminal: null,
   selectedNode: null,
+  floorStatus: null,
+  floorDialog: null,
+  focusRequest: null,
 } satisfies Partial<SquadState>;
 
 const WS_KEY = 'squad.ws';
+const floorKey = (ws: string) => `squad.floor.${ws}`;
+
+/** The floor to show when a workspace opens: the URL's (when it is that
+ * workspace's), then the last one shown here. */
+function initialFloor(ws: string): string {
+  const q = new URLSearchParams(location.search);
+  if (q.get('ws') === ws && q.has('floor')) return q.get('floor') ?? '';
+  return stored(floorKey(ws), '');
+}
+
+/** Keeps the floor on screen in the URL (and out of it on the ground floor). */
+function floorToURL(floor: string) {
+  const url = new URL(location.href);
+  if (floor) url.searchParams.set('floor', floor);
+  else url.searchParams.delete('floor');
+  history.replaceState(null, '', url);
+}
+
+/** The floor on screen, unless the workspace no longer has it. */
+function validFloor(floor: string, floors?: Floor[]): string {
+  return floor && floors?.some((f) => f.id === floor) ? floor : '';
+}
 
 export const useSquad = create<SquadState>((set, get) => ({
   workspaces: [],
   roles: [],
   rolesPanel: false,
   activeWs: null,
+  activeFloor: '',
+  floorStatus: null,
+  floorDialog: null,
+  focusRequest: null,
   workspace: null,
   runtime: {},
   extra: emptyExtra,
@@ -237,11 +295,27 @@ export const useSquad = create<SquadState>((set, get) => ({
     // server keeps their screens for when we come back).
     setWorkspace(id);
     persist(WS_KEY, id);
+    const activeFloor = initialFloor(id);
     const url = new URL(location.href);
     url.searchParams.set('ws', id);
     history.replaceState(null, '', url);
-    set({ ...perWorkspace, activeWs: id });
+    floorToURL(activeFloor);
+    set({ ...perWorkspace, activeWs: id, activeFloor });
   },
+
+  setFloor: (id, focus) => {
+    const st = get();
+    if (st.activeWs) persist(floorKey(st.activeWs), id);
+    floorToURL(id);
+    if (id === st.activeFloor) {
+      if (focus) set({ focusRequest: focus });
+      return;
+    }
+    set({ activeFloor: id, focusRequest: focus ?? null, selectedNode: null, focusedTerminal: null, newTermOpen: false, editTermId: null });
+  },
+  setFloorStatus: (floorStatus) => set({ floorStatus }),
+  setFloorDialog: (floorDialog) => set({ floorDialog }),
+  clearFocusRequest: () => set({ focusRequest: null }),
 
   load: (s) => {
     const pending: Record<string, Flight> = {};
@@ -251,6 +325,10 @@ export const useSquad = create<SquadState>((set, get) => ({
     // The server only reports a count; spread it as "now" so it decays.
     const sendTimes = Array.from({ length: s.extra?.rate ?? 0 }, () => Date.now());
     set({ workspace: s.workspace, runtime: s.runtime ?? {}, extra: s.extra ?? emptyExtra, flights: pending, sendTimes });
+    // A floor landed while we were away (or a stale link): the ground floor.
+    const st = get();
+    const floor = validFloor(st.activeFloor, s.workspace.floors);
+    if (floor !== st.activeFloor) st.setFloor(floor);
   },
 
   apply: (ev) => {
@@ -374,9 +452,14 @@ export const useSquad = create<SquadState>((set, get) => ({
       case 'workspace.updated':
         if (ws) set({ workspace: { ...ws, name: d.name, cwd: d.cwd, color: d.color } });
         return;
-      case 'floors.updated':
-        if (ws) set({ workspace: { ...ws, floors: d.floors as Floor[] } });
+      case 'floors.updated': {
+        if (!ws) return;
+        const floors = d.floors as Floor[];
+        const activeFloor = validFloor(st.activeFloor, floors);
+        if (activeFloor !== st.activeFloor) st.setFloor(activeFloor);
+        set({ workspace: { ...ws, floors, floorConfig: d.config as FloorConfig } });
         return;
+      }
       case 'note.edited': {
         const author = d.author === 'external' ? 'Edição externa' : d.author === 'user' ? 'Você' : d.author;
         set({
