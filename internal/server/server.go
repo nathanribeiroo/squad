@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"log/slog"
 	"net"
 	"net/http"
@@ -237,9 +238,20 @@ func Session(token string, next http.Handler) http.Handler {
 	})
 }
 
+// SessionMaxAge keeps the session cookie for a year: the token survives
+// restarts (config.SessionToken), so an app window stays logged in.
+const SessionMaxAge = 365 * 24 * 60 * 60
+
+// PublicFiles are served without a session: the icons and the web app
+// manifest, which browsers fetch without cookies.
+var PublicFiles = map[string]bool{
+	"/favicon.svg": true, "/icon-192.png": true, "/icon-512.png": true,
+	"/apple-touch-icon.png": true, "/manifest.webmanifest": true,
+}
+
 // UI accepts ?token= once, sets the session cookie and redirects to the URL
 // without it (other parameters, like ?ws=, are kept); without a session it
-// shows a hint instead of the app.
+// shows a page to paste the URL that `squad serve` printed.
 func UI(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Registered as "/" (a "GET /" pattern would clash with "/api/").
@@ -247,14 +259,18 @@ func UI(token string, next http.Handler) http.Handler {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if PublicFiles[r.URL.Path] {
+			next.ServeHTTP(w, r)
+			return
+		}
 		q := r.URL.Query()
 		if tok := q.Get("token"); tok != "" {
 			if subtle.ConstantTimeCompare([]byte(tok), []byte(token)) != 1 {
-				http.Error(w, "invalid token", http.StatusUnauthorized)
+				loginPage(w, "Esse link é de uma sessão antiga ou está incompleto.")
 				return
 			}
 			http.SetCookie(w, &http.Cookie{
-				Name: SessionCookie, Value: token, Path: "/",
+				Name: SessionCookie, Value: token, Path: "/", MaxAge: SessionMaxAge,
 				HttpOnly: true, SameSite: http.SameSiteStrictMode,
 			})
 			q.Del("token")
@@ -266,15 +282,46 @@ func UI(token string, next http.Handler) http.Handler {
 			return
 		}
 		if !ValidSession(r, token) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprint(w, `<!doctype html><meta charset="utf-8"><title>Squad</title>`+
-				`<p style="font:14px system-ui;margin:20vh auto;max-width:520px">Abra o Squad pela URL com token que o comando <code>squad serve</code> mostrou no terminal.</p>`)
+			loginPage(w, "")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
+
+// loginPage asks for the URL with the token. An app window has no address
+// bar, so the page takes it in a field instead.
+func loginPage(w http.ResponseWriter, problem string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusUnauthorized)
+	if problem != "" {
+		problem = `<p class="err">` + html.EscapeString(problem) + `</p>`
+	}
+	fmt.Fprint(w, strings.Replace(loginHTML, "{{problem}}", problem, 1))
+}
+
+const loginHTML = `<!doctype html><html lang="pt-BR" translate="no"><meta charset="utf-8"><title>Squad</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.svg">
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#111214;color:#e8e9ec;font:14px/1.5 system-ui,sans-serif}
+main{max-width:480px;padding:24px}h1{font:700 18px ui-monospace,monospace;margin:0 0 12px}p{color:#a9acb3;margin:0 0 14px}
+code{color:#e8e9ec}.err{color:#f0a35e}form{display:flex;gap:8px}
+input{flex:1;min-width:0;height:32px;padding:0 10px;border-radius:6px;border:1px solid #3c3f46;background:#1a1b1e;color:inherit;font:inherit}
+button{height:32px;padding:0 14px;border-radius:6px;border:1px solid #3c3f46;background:#2b2d32;color:inherit;font:inherit;cursor:pointer}
+</style>
+<main><h1>squad</h1>{{problem}}
+<p>Para entrar, rode <code>squad serve</code> no terminal: ele abre o Squad já com o login. Ou cole aqui a URL que ele mostrou.</p>
+<form id="f"><input id="u" placeholder="http://127.0.0.1:…/?token=…" autofocus><button>Entrar</button></form></main>
+<script>
+document.getElementById('f').onsubmit = function (e) {
+  e.preventDefault();
+  var v = document.getElementById('u').value.trim(), q = new URLSearchParams();
+  try { var u = new URL(v); q.set('token', u.searchParams.get('token') || ''); if (u.searchParams.get('ws')) q.set('ws', u.searchParams.get('ws')); }
+  catch (_) { q.set('token', v); }
+  if (q.get('token')) location.href = '/?' + q.toString();
+};
+</script></html>`
 
 type ctxKey int
 

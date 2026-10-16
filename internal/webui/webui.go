@@ -5,6 +5,7 @@ package webui
 import (
 	"embed"
 	"io/fs"
+	"mime"
 	"net/http"
 	"path"
 	"strings"
@@ -12,6 +13,10 @@ import (
 
 //go:embed all:dist
 var dist embed.FS
+
+func init() {
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
 
 // Handler serves the embedded UI; unknown paths fall back to index.html so
 // client-side routes work.

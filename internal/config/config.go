@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // DefaultPort is used by `squad serve` unless SQUAD_PORT or -port says otherwise.
@@ -45,6 +46,44 @@ func Port() int {
 		return p
 	}
 	return DefaultPort
+}
+
+// SessionToken returns the browser session token kept in Home, creating it
+// with gen the first time. It survives restarts, so an app window (or the
+// Safari web app in the Dock) stays logged in; deleting the file logs every
+// browser out on the next start.
+func SessionToken(gen func() string) (string, error) {
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(h, 0o700); err != nil {
+		return "", fmt.Errorf("create %s: %w", h, err)
+	}
+	p := filepath.Join(h, "session-token")
+	if data, err := os.ReadFile(p); err == nil {
+		if tok := strings.TrimSpace(string(data)); validToken(tok) {
+			return tok, nil
+		}
+	}
+	tok := gen()
+	if err := WriteFileAtomic(p, []byte(tok+"\n"), 0o600); err != nil {
+		return "", err
+	}
+	return tok, nil
+}
+
+// validToken accepts what ids.Token makes: 32 or more hex digits.
+func validToken(s string) bool {
+	if len(s) < 32 {
+		return false
+	}
+	for _, c := range s {
+		if !strings.ContainsRune("0123456789abcdef", c) {
+			return false
+		}
+	}
+	return true
 }
 
 // ServerInfo is written by `squad serve` so local clients can find it.

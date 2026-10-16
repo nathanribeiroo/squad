@@ -39,6 +39,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
     - **`/home/user/squad`** como pasta do workspace já é confiada pelo Claude, então ele não pergunta;
   - crie nós e fios pela API (`POST /w/<ws>/api/nodes`, `/api/edges`, com `Authorization: Bearer <token>`; o token sai no log do `serve`);
   - para agir como um terminal, leia as variáveis `SQUAD_*` do processo bash dele em `/proc/<pid>/environ` e rode o `squad` com elas. Assim dá para usar `squad ask` ou dar uma tarefa a um Claude real.
+- **Janela de app (`-open app`, o padrão do `serve`):** suba um display virtual (`Xvfb :99 -screen 0 1600x1000x24 &`) e rode o `serve` com `DISPLAY=:99`. Como root, o Chromium precisa de `--no-sandbox`: aponte o `SQUAD_BROWSER` para um script que chama `/opt/pw-browsers/chromium --no-sandbox --test-type "$@"`. A captura sai com `DISPLAY=:99 import -window root out.png`. Sem gerenciador de janelas, não há barra de título.
 - **Capturas de tela:** use um programa Go pequeno com `chromedp` (já é dependência), com o Chromium em `/opt/pw-browsers/chromium`. Ele abre `http://127.0.0.1:<porta>/?token=…&ws=…`, executa passos (clicar, duplo clique, digitar, teclas, roda com ctrl para zoom, `eval`, esperar) e salva PNGs.
   - Ele não está no repositório: recrie no scratchpad.
   - Em 1440×900, o botão de ajustar à tela fica perto de (1405, 867).
@@ -51,7 +52,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 
 | Onde | O quê |
 |---|---|
-| `cmd/squad` | CLI: `serve`, comandos de terminal (`list`, `ask`, `note`, `portal`, `new`…), `hook`, `mcp`, `install-skill` |
+| `cmd/squad` | CLI: `serve` (e a janela de app, `window.go`), comandos de terminal (`list`, `ask`, `note`, `portal`, `new`…), `hook`, `mcp`, `install-skill` |
 | `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/ws/workspaces`, roteamento de `/cli` e `/hooks` |
 | `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe |
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |

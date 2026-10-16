@@ -1,0 +1,15 @@
+{
+  "name": "Squad",
+  "short_name": "Squad",
+  "description": "Agentes de código em terminais reais, num canvas.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111214",
+  "theme_color": "#1a1b1e",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
