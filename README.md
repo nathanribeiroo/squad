@@ -110,7 +110,26 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 
 **Atalhos:**
 - canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal;
-- globais: `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥1`–`⌥9` workspaces.
+- globais: `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥1`–`⌥9` workspaces;
+- com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
+
+**PRIORIDADE (o voo pede você):** um agente parado num pedido de permissão (rodar um comando, editar um arquivo, usar uma ferramenta MCP) ou numa pergunta com opções deixa de aparecer como "No ar":
+- **no voo:** contorno âmbar com halo, a faixa de estado âmbar piscando, "PEDE VOCÊ 0:24" no lugar do estado e, em cima da tela, a frase do pedido com o que está em jogo ("QUER EXECUTAR UM COMANDO · npm run e2e");
+- **RESPONDER**, embaixo do voo: **Autorizar** (1), **Sempre** (2), **Negar** (3) e **Abrir tela**. Com o voo selecionado, as teclas 1, 2 e 3 respondem. "Sempre" só aparece quando a opção do agente é "não perguntar de novo" (nunca uma que troque o modo de permissão);
+- **fora da tela:** a faixa "PRIORIDADE · TST em FL1 quer executar um comando · IR ATÉ ELE ⌥⏎" no topo do canvas, um ponto âmbar piscando na aba do nível, o número no título da janela ("(1) squad · Torre") e, em outro workspace, o ponto do botão de workspaces fica âmbar e o seletor diz "1 pede você";
+- **⌥⏎** vai para o voo que pede há mais tempo: abre o nível, centra o voo e dá a ele o teclado;
+- **no Rádio:** o pedido fica preso no topo ("TST → VOCÊ · Pede você · 0:24"), com os mesmos botões e "Ver no espaço", e o filtro **Pedem você**. Depois de respondido, fica a linha "Pediu você · respondido em 0:46";
+- responder direto na tela do voo funciona igual: o estado sai quando o pedido some da tela;
+- **um pedido de outro voo espera:** a Torre não cola uma mensagem num voo que está perguntando (o texto viraria a resposta do pedido); ela entra depois que você responde.
+
+| Agente | Como a Torre sabe | Responder pela Torre |
+|---|---|---|
+| Claude Code | hook `PermissionRequest` (a ferramenta e o comando) e a pergunta na tela | sim: a tecla da opção, conferida com o Claude Code 2.1.302 |
+| Devin | hook `PermissionRequest` e a tela | ainda não: só **Abrir tela** (as teclas do Devin precisam ser conferidas com uma conta) |
+| Codex, Gemini | a pergunta na tela (opções numeradas com o cursor) | ainda não: só **Abrir tela** |
+| Shell, comando próprio | não se aplica | — |
+
+O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pela interface é uma rota só da interface (`POST /w/<id>/api/nodes/<id>/attention/respond`, com `{"choice": "allow" | "always" | "deny"}`), que agentes não alcançam nem pela CLI nem pelo MCP; ela só digita num agente e só quando a pergunta na tela ainda é a mesma que a interface mostrou.
 
 **Confirmações:** remover um voo, uma NOTAM, uma sessão, um workspace ou um papel, começar uma conversa nova, trocar o papel de um voo, reiniciar quem usa um papel, descartar um nível e trocar de sessão com voos no ar abrem um diálogo da Torre:
 - o título é a pergunta ("Remover o voo PLN?"), a lista diz o que se perde (✕) e o que fica (✓), e o botão é o verbo ("Remover voo", "Trocar mesmo assim");

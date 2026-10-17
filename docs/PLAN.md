@@ -54,7 +54,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Torre F0b Base visual e vocabulário | `feat/torre-f0b-visual` → `feat/torre` | concluído |
 | Torre F1 Redesenho do que existe | `feat/torre-f1-redesenho` → `feat/torre` | concluído |
 | Torre F2 Confirmações, vazios e erros | `feat/torre-f2-confirmacoes` → `feat/torre` | concluído |
-| Torre F3 PRIORIDADE | `feat/torre-f3-prioridade` → `feat/torre` | pendente |
+| Torre F3 PRIORIDADE | `feat/torre-f3-prioridade` → `feat/torre` | concluído |
 | Torre F4a Configurações | `feat/torre-f4a-configuracoes` → `feat/torre` | pendente |
 | Torre F4b Sinóptico | `feat/torre-f4b-sinoptico` → `feat/torre` | pendente |
 | Torre F4c Primeira abertura | `feat/torre-f4c-primeira-abertura` → `feat/torre` | pendente |
@@ -243,6 +243,8 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **"✓ testes · ✓ revisão" na fila de pouso** (item 6): não existem; poderiam vir de um agente marcando o nível (`torre floor ready --check testes`).
 - **Modelo no boletim** ("por claude -p · haiku", quadro 08): o resumo só sabe a CLI que usou, não o modelo.
 - **Autor dos commits por indicativo** (quadro 14): no git o autor é a pessoa; seria preciso marcar os commits de cada voo.
+- **Responder pela Torre no Devin, no Codex e no Gemini** (F3, `internal/attention`, `verified`): hoje eles entram em PRIORIDADE (o Devin pelo hook, os outros pela tela) e mostram só "Abrir tela". Para liberar AUTORIZAR/SEMPRE/NEGAR em cada um, conferir com a CLI real (o Devin com conta) que tecla escolhe a opção e se confirma sozinha, e pôr o agente em `verified`.
+- **Pergunta de "Notification" sem permissão** (F3): o hook `Notification` do Claude também avisa quando ele está ocioso há 60 s esperando uma mensagem; isso não virou PRIORIDADE (todo voo que termina um turno pediria você). Se quiser, pode virar uma opção em Configurações → Avisos.
 - **Cartão "ESPERA GERAL · LAÇO"** (`TELAS.md`, quadro 21): mostraria a cadeia de um laço de pedidos (A → B → A). O barramento já solta a espera de um ciclo (`agentbus/ask.go`), mas não guarda nem publica a cadeia; precisa de um evento novo.
 - **Mais erros com `code`** (F2, `internal/apierr`): os da interface que mais aparecem já têm (pasta, nomes, siglas, níveis, sessões, cópia, git, resumos). Os que só os agentes veem (CLI e MCP) continuam em inglês de propósito; os raros da interface que faltam (portal, NOTAM travada, cores) mostram a mensagem em inglês.
 - **Trocar a sigla de um papel renomeia os voos dele?** (F1, DEVLOG): hoje o indicativo é dado quando o voo é criado ou troca de papel; mudar a sigla em Papéis vale para os próximos. Renomear os voos abertos mexe no que os outros agentes já conhecem.
