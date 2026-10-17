@@ -4,7 +4,7 @@ A torre de controle dos seus agentes de código. Antes se chamava **Squad** (vej
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
-> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada em fases (F0–F5). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você), o Sinóptico, foco e encaixe, e planos de voo. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
