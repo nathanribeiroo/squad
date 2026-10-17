@@ -101,6 +101,7 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 | Gemini | escolhe o id ao abrir, nas versões com `--session-id` | `gemini --resume <id>` |
 
 - se o agente não acha a conversa (apagada, ou de outra pasta), a própria linha de comando começa uma nova (`retomar || começar`), e a tela avisa "Não deu para retomar a conversa";
+- uma conversa em que ninguém escreveu ainda não tem o que retomar: o agente que ainda não recebeu nenhuma mensagem começa uma conversa nova, sem aviso;
 - **Nova conversa**, no menu `⋯`, reinicia o agente sem o contexto (a conversa antiga continua guardada no agente). Trocar o papel também começa uma conversa nova, para o papel valer desde o início;
 - **Copiar comando de retomada**, no mesmo menu, copia `claude --resume <id>` (ou o do agente): rodado na pasta do terminal, abre a mesma conversa fora do Squad;
 - **trabalho interrompido:** se o Squad fechar com um agente no meio de um turno, ao reabrir aparece "Claude foi interrompido no meio do trabalho". **Continuar** manda "continue de onde parou" a cada um; **Dispensar** esquece. O que o agente estava escrevendo naquele instante se perde, e ele refaz esse passo. Funciona no Claude e no Devin, que avisam o início e o fim de cada turno;
@@ -193,7 +194,19 @@ Cada workspace tem sessões, e cada sessão é um canvas inteiro: terminais, not
 - **Arquivos:** os do projeto são um só para todas as sessões. Voltar a uma sessão não desfaz o que outra mudou.
 - **No disco:** cada sessão fica em `~/.squad/workspaces/<id>/sessions/<sessão>/`, com o canvas, as notas, os anexos e os cartões. Um workspace de antes das sessões vira a "Sessão 1" na primeira abertura.
 
-A tela das sessões vem no próximo PR (S3). Até lá, pela API (com `Authorization: Bearer <token>`):
+**Na tela:**
+- **No topo:** ao lado do workspace aparece a sessão aberta (ex.: "squad › Login novo ▾"). Clicando nela, abre o painel de sessões.
+- **Painel de sessões:**
+  - cada sessão mostra o nome, quando foi criada e aberta pela última vez, quantos terminais, notas, portais e andares tem, e os agentes dela; a aberta tem a marca "atual";
+  - **Abrir**, **Renomear** (o lápis; Enter salva, Esc desiste) e **Remover** (a lixeira; não aparece na sessão aberta e fica desligada numa sessão com andares);
+  - **Nova sessão:** nome opcional e a caixa "Começar com os mesmos terminais, sem as conversas". **Criar e abrir** guarda a sessão atual e abre a nova.
+- **Agentes trabalhando:** abrir outra sessão (ou criar uma) com agentes no meio de um turno mostra quem está trabalhando, com **Cancelar** ou **Trocar mesmo assim**. Trocando, o trabalho para no meio, e o agente volta como interrompido, com "Continuar", quando você reabrir a sessão.
+- **Seletor de workspaces:** passe o mouse num workspace (ou clique na seta com o número de sessões) para ver as sessões dele ao lado; clicar numa delas abre a sessão e mostra aquele workspace.
+- **Novo workspace:** o formulário tem o campo "Nome da sessão (opcional)", o nome da primeira sessão.
+- **Uma sessão sem nome** aparece em cinza ("Nova sessão · 17/10 14:32") até o agente dar o título.
+- **O enquadramento do canvas** (posição e zoom) fica guardado por sessão.
+
+**Pela API** (com `Authorization: Bearer <token>`):
 
 | Rota | O que faz |
 |---|---|
@@ -203,7 +216,7 @@ A tela das sessões vem no próximo PR (S3). Até lá, pela API (com `Authorizat
 | `PATCH /api/workspaces/<id>/sessions/<sessão>` `{"name"}` | renomeia |
 | `DELETE /api/workspaces/<id>/sessions/<sessão>` | manda a pasta da sessão para a lixeira (a aberta, ou uma com andares, não pode) |
 
-Sem `confirm`, sair de uma sessão com agentes trabalhando ou pedidos esperando resposta é recusado (409, com a lista de quem trabalha). Com `confirm`, eles param no meio do turno e voltam como interrompidos quando a sessão abrir de novo. A tela se atualiza sozinha ao trocar de sessão.
+Sem `confirm`, sair de uma sessão com agentes trabalhando ou pedidos esperando resposta é recusado (409, com a lista de quem trabalha). Com `confirm`, eles param no meio do turno e voltam como interrompidos quando a sessão abrir de novo. A tela se atualiza sozinha ao trocar de sessão, também quando a troca vem de outra janela ou da API.
 
 ### Testar a conversa sem a interface (pela API)
 

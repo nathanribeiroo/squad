@@ -73,7 +73,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 | `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |
 | `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `squad floor`, `/api/floors` |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
-| `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` |
+| `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas`, sessões em `src/components/SessionsMenu.tsx` |
 
 ## Segurança (já decidido)
 
@@ -84,4 +84,4 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 ## Pendências
 
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo:** as sessões (S1–S4, no PLAN), aprovadas pelo usuário nessa ordem; depois do S2, siga com o S3 (a interface das sessões).
+- **Próximo passo:** as sessões (S1–S4, no PLAN), aprovadas pelo usuário nessa ordem; depois do S3, siga com o S4 (a sessão numa cópia isolada).
