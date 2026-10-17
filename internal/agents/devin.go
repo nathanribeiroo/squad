@@ -16,6 +16,9 @@ var devinHooks = map[string]string{
 	"Stop":             "devin-stop",
 	"UserPromptSubmit": "devin-prompt",
 	"SessionStart":     "devin-session-start", // the role, as context
+	// A permission prompt: the flight asks the user (PRIORIDADE). The hook
+	// only reports it; Torre never answers it.
+	"PermissionRequest": "devin-permission",
 }
 
 // DevinConfigDir is Devin CLI's user configuration folder: devin under

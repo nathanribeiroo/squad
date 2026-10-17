@@ -164,12 +164,19 @@ func (b *Bus) onFinalTurnEnd(id string, hooked bool, fn func(activity.TurnEnd)) 
 // lately, which extends a wait for its turn end.
 func (b *Bus) active(id string, t *terminal.Terminal) bool {
 	_, last := t.Output()
-	return (b.mon != nil && b.mon.Working(id)) || (!last.IsZero() && time.Since(last) < b.limits.ActiveWindow)
+	// A flight waiting for the user (PRIORIDADE) is still in its turn.
+	return (b.mon != nil && (b.mon.Working(id) || b.mon.Asking(id))) || (!last.IsZero() && time.Since(last) < b.limits.ActiveWindow)
 }
 
 func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Terminal, tn store.Node, msg string) Result {
 	shell := tn.Terminal.Agent == "shell"
 	hooked := b.hasHooks(tn.Terminal.Agent)
+	// A flight waiting for the user would take the message as the answer to
+	// its prompt: it gets it once the prompt is answered (and the end of
+	// that turn doesn't count as this request's).
+	if r, done := b.holdWhileAsking(ctx, p, tn.ID); done {
+		return r
+	}
 	if b.mon != nil {
 		b.mon.ResetTurn(tn.ID)
 		defer b.onFinalTurnEnd(tn.ID, hooked, func(te activity.TurnEnd) {
@@ -211,7 +218,7 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 			b.resolve(p, Result{Code: 499, Body: "torre: caller went away", Source: "cancelled"})
 			return <-p.done
 		case <-quick.C:
-			if useFallback && b.mon != nil && !b.mon.Working(tn.ID) && b.mon.StableFor(tn.ID) >= b.limits.Stable {
+			if useFallback && b.mon != nil && !b.mon.Working(tn.ID) && !b.mon.Asking(tn.ID) && b.mon.StableFor(tn.ID) >= b.limits.Stable {
 				b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()), Source: "screen"})
 				continue
 			}
@@ -232,6 +239,32 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 			b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()) + "\n[torre: " + note + "]", Source: "timeout"})
 		}
 	}
+}
+
+// holdWhileAsking waits while the target asks the user something (until
+// MaxWait); done is true when the request ended meanwhile, with its result.
+func (b *Bus) holdWhileAsking(ctx context.Context, p *Pending, id string) (Result, bool) {
+	if b.mon == nil || !b.mon.Asking(id) {
+		return Result{}, false
+	}
+	tick := time.NewTicker(250 * time.Millisecond)
+	defer tick.Stop()
+	limit := time.NewTimer(time.Until(p.SentAt.Add(b.limits.MaxWait)))
+	defer limit.Stop()
+	for b.mon.Asking(id) {
+		select {
+		case r := <-p.done:
+			return r, true
+		case <-ctx.Done():
+			b.resolve(p, Result{Code: 499, Body: "torre: caller went away", Source: "cancelled"})
+			return <-p.done, true
+		case <-limit.C:
+			b.resolve(p, Result{Code: 200, Body: fmt.Sprintf("[torre: %s waited for the user at a prompt the whole time; the message was not delivered]", quote(p.ToName)), Source: "timeout"})
+			return <-p.done, true
+		case <-tick.C:
+		}
+	}
+	return Result{}, false
 }
 
 func screenBody(p *Pending, snapshot string) string {

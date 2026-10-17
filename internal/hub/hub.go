@@ -78,10 +78,11 @@ type Options struct {
 type Summary struct {
 	store.Meta
 	Terminals int     `json:"terminals"`
-	Active    int     `json:"active"`   // agents working or waiting for a reply
-	Pending   int     `json:"pending"`  // requests waiting for a reply
-	Session   Session `json:"session"`  // the open session
-	Sessions  int     `json:"sessions"` // how many it has
+	Active    int     `json:"active"`    // agents working or waiting for a reply
+	Pending   int     `json:"pending"`   // requests waiting for a reply
+	Attention int     `json:"attention"` // flights asking the user (PRIORIDADE)
+	Session   Session `json:"session"`   // the open session
+	Sessions  int     `json:"sessions"`  // how many it has
 }
 
 // workspace is a workspace with its open session's app; opening another
@@ -305,8 +306,11 @@ func summarize(w *workspace) Summary {
 	w.s.mu.Unlock()
 	for _, id := range st.TerminalIDs() {
 		s.Terminals++
-		if state, _ := a.Monitor.State(id); state == activity.Work || state == activity.Wait {
+		switch state, _ := a.Monitor.State(id); state {
+		case activity.Work, activity.Wait:
 			s.Active++
+		case activity.Ask:
+			s.Attention++
 		}
 	}
 	return s

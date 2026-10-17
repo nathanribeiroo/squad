@@ -134,6 +134,9 @@ func NewLauncher(cliPath string) (*Launcher, error) {
 		"StopFailure":      "claude-stop-failure",
 		"UserPromptSubmit": "claude-prompt",
 		"SessionStart":     "claude-session-start",
+		// A permission prompt: the flight asks the user (PRIORIDADE). The
+		// hook only reports it; Torre never answers it.
+		"PermissionRequest": "claude-permission",
 	}, map[string]any{"permissions": map[string]any{"allow": allow}}); err != nil {
 		return nil, err
 	}

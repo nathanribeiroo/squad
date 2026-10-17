@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/apierr"
+	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -72,6 +73,7 @@ type Server struct {
 	launchHook   LaunchHook
 	stateExtra   func() map[string]any
 	activityOf   func(id string) (string, time.Time)
+	attentionOf  func(id string) *attention.Attention
 	extraRoutes  []route
 	prepareNode  func(*store.Node) error
 	roleAbbr     func(role string) string
@@ -108,6 +110,9 @@ func (s *Server) HandleSession(pattern string, h http.Handler) {
 
 // SetActivity installs the function giving a terminal's UI state.
 func (s *Server) SetActivity(fn func(id string) (string, time.Time)) { s.activityOf = fn }
+
+// SetAttention installs the function giving what a terminal asks the user.
+func (s *Server) SetAttention(fn func(id string) *attention.Attention) { s.attentionOf = fn }
 
 // PublishTerminalState emits terminal.state for id with its current runtime.
 func (s *Server) PublishTerminalState(id string) {
@@ -190,6 +195,8 @@ func (s *Server) APIHandler() http.Handler {
 	mux.HandleFunc("PATCH /api/nodes/{id}", s.handleUpdateNode)
 	mux.HandleFunc("DELETE /api/nodes/{id}", s.handleRemoveNode)
 	mux.HandleFunc("POST /api/nodes/{id}/{action}", s.handleNodeAction)
+	// Only the interface answers a prompt (never /cli nor MCP).
+	mux.HandleFunc("POST /api/nodes/{id}/attention/respond", s.handleRespond)
 	mux.HandleFunc("POST /api/edges", s.handleAddEdge)
 	mux.HandleFunc("PATCH /api/edges/{id}", s.handleUpdateEdge)
 	mux.HandleFunc("DELETE /api/edges/{id}", s.handleRemoveEdge)
