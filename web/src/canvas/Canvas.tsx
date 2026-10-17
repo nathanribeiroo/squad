@@ -231,7 +231,10 @@ export function Canvas() {
       onEdgeDoubleClick={onEdgeDoubleClick}
       zoomOnDoubleClick={false}
       onNodeDragStop={onNodeDragStop}
-      onSelectionChange={({ nodes: sel }) => setSelected(sel.length === 1 ? sel[0].id : null)}
+      onSelectionChange={({ nodes: sel }) => {
+        setSelected(sel.length === 1 ? sel[0].id : null);
+        useSquad.getState().setSelectedIds(sel.map((n) => n.id));
+      }}
       onPaneClick={() => setFocused(null)}
       onMove={onMove}
       onMoveEnd={onMoveEnd}

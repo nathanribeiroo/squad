@@ -15,6 +15,7 @@ import { FirstRun } from './components/FirstRun';
 import { FloorEmpty } from './components/FloorEmpty';
 import { InterruptedBar } from './components/InterruptedBar';
 import { NoLink } from './components/NoLink';
+import { PlansDialogs } from './components/PlansDialogs';
 import { PriorityBanner } from './components/PriorityBanner';
 import { ScreenPane } from './components/ScreenPane';
 import { RolesPanel } from './components/RolesPanel';
@@ -116,6 +117,13 @@ function Stage() {
         if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
           e.preventDefault();
           dockAt(e.code === 'ArrowLeft' ? 'left' : 'right');
+          return;
+        }
+        // ⌥M flight plans; ⌥⇧M saves the selection as one.
+        if (e.code === 'KeyM') {
+          e.preventDefault();
+          if (st.view !== 'space') st.setView('space');
+          st.setPlansDialog(e.shiftKey ? 'save' : st.plansDialog === 'gallery' ? null : 'gallery');
           return;
         }
         const map: Record<string, () => void> = {
@@ -228,6 +236,7 @@ function Stage() {
       <RolesPanel />
       <SettingsPanel />
       <FloorDialogs />
+      <PlansDialogs />
       <SummaryDialogs />
       <NoLink />
       <ConfirmHost />

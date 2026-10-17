@@ -42,6 +42,7 @@ export const ICONS = [
   'description',
   'dock_to_left',
   'dock_to_right',
+  'download',
   'edit',
   'edit_note',
   'edit_square',

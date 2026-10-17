@@ -2,27 +2,29 @@
 // A workspace's API lives under /w/<id>/ (the one on screen: setWorkspace);
 // the workspace list is at the root.
 import type {
+  AgentsDetection,
+  AttentionChoice,
+  DirInfo,
   Floor,
   FloorChanges,
   FloorConfig,
   FloorStatusResponse,
   LandResult,
-  SummarySettings,
-  TurnCard,
-  WorkspaceOverview,
+  Limits,
+  LimitsView,
+  Plan,
+  PlanResult,
   RoleDef,
   SessionList,
   ShellOption,
+  StateExtra,
   StateResponse,
+  SummarySettings,
+  TurnCard,
   WEdge,
   WNode,
-  StateExtra,
+  WorkspaceOverview,
   WorkspaceSummary,
-  AttentionChoice,
-  AgentsDetection,
-  DirInfo,
-  Limits,
-  LimitsView,
 } from './types';
 import { errorMessage } from './errors';
 
@@ -130,11 +132,26 @@ export const api = {
   copyChanges: () => req<FloorChanges>('GET', wsPath('/api/copy/changes')),
   mergeCopy: (into: string) => req<LandResult>('POST', wsPath('/api/copy/merge'), { into }),
   copyLog: () => text(wsPath('/api/copy/log')),
+  /** Saves the selected nodes, a level or the whole session as a flight plan. */
+  savePlan: (b: { name: string; scope: 'selection' | 'level' | 'session'; nodes?: string[]; floor?: string; notesContent?: boolean }) =>
+    req<Plan>('POST', wsPath('/api/plans'), b),
+  /** Puts a plan in the air on a level; commands are the plan's command lines the user reviewed. */
+  applyPlan: (id: string, b: { floor?: string; commands: string[] }) => req<PlanResult>('POST', wsPath(`/api/plans/${encodeURIComponent(id)}/apply`), b),
 };
 
 /** The workspace list (not tied to the workspace on screen). */
 export const hub = {
   welcome: () => req<{ firstRun: boolean }>('GET', '/api/welcome'),
+  plans: () => req<Plan[]>('GET', '/api/plans'),
+  plan: (id: string) => req<Plan>('GET', `/api/plans/${encodeURIComponent(id)}`),
+  removePlan: (id: string) => req<void>('DELETE', `/api/plans/${encodeURIComponent(id)}`),
+  /** A plan file (JSON), exported from another Torre. */
+  importPlan: (file: string) =>
+    fetch('/api/plans/import', { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }).then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new ApiError(errorMessage(data, res.statusText), res.status, data);
+      return data as Plan;
+    }),
   dirInfo: (path: string) => req<DirInfo>('GET', `/api/dirs/info?path=${encodeURIComponent(path)}`),
   agents: (refresh = false) => req<AgentsDetection>('GET', `/api/agents${refresh ? '?refresh=1' : ''}`),
   setAgentCommand: (agent: string, defaultCommand: string) => req<AgentsDetection>('PUT', `/api/agents/${encodeURIComponent(agent)}`, { defaultCommand }),

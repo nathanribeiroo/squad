@@ -175,7 +175,13 @@ function Agents({ onDone }: { onDone: () => void }) {
         </ul>
       )}
       <div className="fr-actions">
-        <button className="btn" disabled title="Os planos de voo chegam numa próxima versão">
+        <button
+          className="btn"
+          onClick={() => {
+            onDone();
+            useSquad.getState().setPlansDialog('gallery');
+          }}
+        >
           Com um plano de voo
         </button>
         <button className="btn filled" onClick={onDone}>

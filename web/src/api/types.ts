@@ -358,3 +358,53 @@ export interface DirInfo {
   /** The workspaces' folders. */
   recent?: string[];
 }
+
+/** A flight plan (internal/plans): a saved team, positions relative to the plan. */
+export interface PlanBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+export interface PlanFlight extends PlanBox {
+  key: string;
+  name: string;
+  callsign?: string;
+  agent: string;
+  role?: string;
+  manager?: boolean;
+  /** Its own command line (runs as written: reviewed before it flies). */
+  command?: string;
+  cwd?: string;
+  level?: string;
+}
+export interface PlanNote extends PlanBox {
+  key: string;
+  title: string;
+  content?: string;
+  level?: string;
+}
+export interface PlanPortal extends PlanBox {
+  key: string;
+  name: string;
+  url?: string;
+  level?: string;
+}
+export interface Plan {
+  id: string;
+  name: string;
+  createdAt: string;
+  /** Came from a file. */
+  imported?: boolean;
+  flights: PlanFlight[];
+  notes: PlanNote[];
+  portals: PlanPortal[];
+  links: [string, string][];
+  levels: { key: string; name: string; branch?: string }[];
+}
+/** What putting a plan in the air made. */
+export interface PlanResult {
+  nodes: string[];
+  floors: string[];
+  warnings: string[];
+}

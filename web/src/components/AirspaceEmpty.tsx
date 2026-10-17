@@ -4,7 +4,7 @@ import './AirspaceEmpty.css';
 
 /**
  * The runway with nothing on it (docs/torre/TELAS.md, quadro 20): how to put
- * the first team in the air. Flight plans come later (F5d).
+ * the first team in the air: a flight plan, a flight or a NOTAM.
  */
 export function AirspaceEmpty({ onNote }: { onNote: () => void }) {
   const empty = useSquad((s) => !!s.workspace && !s.activeFloor && !s.workspace.nodes.some((n) => !n.floor));
@@ -16,7 +16,7 @@ export function AirspaceEmpty({ onNote }: { onNote: () => void }) {
         <span className="label-caps">Espaço aéreo vazio · {name}</span>
         <h1>Ponha a primeira equipe no ar.</h1>
         <div className="ae-actions">
-          <button className="ae-btn" disabled title="Os planos de voo chegam numa próxima versão">
+          <button className="ae-btn" onClick={() => useSquad.getState().setPlansDialog('gallery')}>
             <Icon name="flight_class" size={20} />
             <span>Usar um plano de voo</span>
             <span className="kbd">⌥M</span>

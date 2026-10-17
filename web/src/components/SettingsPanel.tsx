@@ -313,6 +313,7 @@ const SHORTCUTS: [string, string][] = [
   ['⌥⇧← · ⌥⇧→', 'Encaixar o voo numa borda, com o canvas ao lado (de novo, desencaixa)'],
   ['Tab · ⇧Tab', 'Próximo · anterior nó, na ordem de leitura'],
   ['⏎', 'Dar o teclado ao voo selecionado'],
+  ['⌥M · ⌥⇧M', 'Planos de voo · Salvar a seleção como plano'],
   ['⌥1…⌥9', 'Trocar de workspace'],
   ['⌥Esc', 'Devolver o teclado ao canvas'],
   ['Delete', 'Desligar a frequência selecionada'],
