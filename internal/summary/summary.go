@@ -492,10 +492,10 @@ func (s *Service) describe(n store.Node) string {
 	}
 	if n.Floor != "" {
 		if f, ok := s.o.Canvas.Store().Floor(n.Floor); ok {
-			parts = append(parts, fmt.Sprintf("andar %s (branch %s)", f.Name, f.Branch))
+			parts = append(parts, fmt.Sprintf("nível %s (branch %s)", f.Name, f.Branch))
 		}
 	} else {
-		parts = append(parts, "térreo")
+		parts = append(parts, "pista")
 	}
 	if s.o.State != nil {
 		parts = append(parts, stateNames[s.o.State(n.ID)])

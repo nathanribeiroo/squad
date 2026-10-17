@@ -220,7 +220,7 @@ func TestClaudeCommandAndOverview(t *testing.T) {
 			t.Fatalf("claude args lack %q:\n%s", want, args)
 		}
 	}
-	if !strings.Contains(stdin, `"Bia" (agente devin, papel Implementador, térreo)`) || !strings.Contains(stdin, "Criei LOGIN.md.") {
+	if !strings.Contains(stdin, `"Bia" (agente devin, papel Implementador, pista)`) || !strings.Contains(stdin, "Criei LOGIN.md.") {
 		t.Fatalf("overview material:\n%s", stdin)
 	}
 }
