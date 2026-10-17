@@ -27,6 +27,7 @@ const (
 	RequestCancelled    = "request.cancelled"
 	RequestHeld         = "request.held" // paused or rate limited
 	ConversationsPaused = "conversations.paused"
+	LimitsChanged       = "limits.changed"
 	NoteEdited          = "note.edited"
 	MessageSent         = "message.sent" // the user sent a Composer message to a terminal
 	ServerStatus        = "server.status"

@@ -11,7 +11,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/store"
 )
 
-// fakeCommand is a launch line for the fake agent, for squad new --command.
+// fakeCommand is a launch line for the fake agent, for torre new --command.
 func (e *env) fakeCommand(name string) string {
 	return "FAKEAGENT_LOG=" + filepath.Join(e.dir, name+".log") + " " + filepath.Join(binDir, "fakeagent")
 }
@@ -37,7 +37,7 @@ func TestManagerBuildsTeam(t *testing.T) {
 		t.Fatalf("list:\n%s", r.Body)
 	}
 
-	// squad new: next to the manager, connected, with the role, started and
+	// torre new: next to the manager, connected, with the role, started and
 	// ready (it waits for the agent's screen to settle).
 	start := time.Now()
 	r := e.run(plan, "new", "Bia", "--role", "Implementador", "--agent=gemini", "--command", e.fakeCommand("Bia"))

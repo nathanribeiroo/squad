@@ -9,10 +9,15 @@ export interface MenuItem {
   danger?: boolean;
   disabled?: boolean;
   checked?: boolean;
+  /** Said after the label, smaller ("vai ao hangar"). */
+  hint?: string;
 }
 
+/** A divider, or a label over the items that follow ("Papel"). */
+export type MenuEntry = MenuItem | 'divider' | { section: string };
+
 /** The `more_horiz` menu in node headers. */
-export function NodeMenu({ items }: { items: (MenuItem | 'divider')[] }) {
+export function NodeMenu({ items }: { items: MenuEntry[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -33,6 +38,10 @@ export function NodeMenu({ items }: { items: (MenuItem | 'divider')[] }) {
           {items.map((it, i) =>
             it === 'divider' ? (
               <span key={i} className="node-menu-div" />
+            ) : 'section' in it ? (
+              <span key={i} className="node-menu-section">
+                {it.section}
+              </span>
             ) : (
               <button
                 key={it.label}
@@ -46,6 +55,7 @@ export function NodeMenu({ items }: { items: (MenuItem | 'divider')[] }) {
               >
                 <Icon name={it.icon} size={17} />
                 <span>{it.label}</span>
+                {it.hint && <span className="node-menu-hint mono">{it.hint}</span>}
                 {it.checked && <Icon name="check" size={16} style={{ marginLeft: 'auto' }} />}
               </button>
             ),

@@ -1,6 +1,6 @@
 package browser
 
-// What agents do with a page (squad portal …): read it as a list of elements
+// What agents do with a page (torre portal …): read it as a list of elements
 // with refs (@e1, @e2…), act on refs or coordinates, and wait for the page to
 // settle before answering.
 
@@ -149,6 +149,54 @@ func (p *Page) Snapshot() (string, error) {
 		fmt.Fprintf(&sb, "… and %d more elements; scroll or use eval to look further.\n", more)
 	}
 	return sb.String(), nil
+}
+
+// Box is a ref of the last snapshot where it is now, in viewport CSS px
+// (the portal's @ELEMENTOS layer draws it).
+type Box struct {
+	Ref  string  `json:"ref"`
+	Role string  `json:"role"`
+	Name string  `json:"name"`
+	X    float64 `json:"x"`
+	Y    float64 `json:"y"`
+	W    float64 `json:"w"`
+	H    float64 `json:"h"`
+}
+
+// Boxes returns the refs of the last snapshot with their boxes now (the page
+// may have scrolled), in ref order; refs no longer rendered are left out.
+// ok is false when there is no snapshot (none yet, or the page changed).
+func (p *Page) Boxes() (boxes []Box, ok bool) {
+	p.mu.Lock()
+	els := make([]Element, 0, len(p.refs))
+	for _, e := range p.refs {
+		els = append(els, e)
+	}
+	ok = p.refs != nil
+	p.mu.Unlock()
+	if !ok {
+		return nil, false
+	}
+	sort.Slice(els, func(i, j int) bool { return refNum(els[i].Ref) < refNum(els[j].Ref) })
+	c, done := p.call()
+	defer done()
+	boxes = []Box{}
+	for _, e := range els {
+		box, err := chromedp.Call(c, dom.GetBoxModel, dom.GetBoxModelParams{BackendNodeID: e.backend})
+		if err != nil || box.Model == nil || len(box.Model.Border) < 8 {
+			continue
+		}
+		q := box.Model.Border
+		if w, h := q[2]-q[0], q[5]-q[1]; w > 0 && h > 0 {
+			boxes = append(boxes, Box{Ref: e.Ref, Role: e.Role, Name: e.Name, X: q[0], Y: q[1], W: w, H: h})
+		}
+	}
+	return boxes, true
+}
+
+func refNum(ref string) int {
+	n, _ := strconv.Atoi(strings.TrimPrefix(ref, "@e"))
+	return n
 }
 
 // oneLine collapses whitespace and caps the length of names and values.

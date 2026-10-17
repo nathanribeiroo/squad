@@ -20,14 +20,14 @@ func (e *env) setRole(n store.Node, role string) {
 	}
 }
 
-// hook runs `squad hook <name>` as a terminal's agent would.
+// hook runs `torre hook <name>` as a terminal's agent would.
 func (e *env) hook(n store.Node, name, payload string) string {
 	e.t.Helper()
-	cmd := exec.Command(filepath.Join(binDir, "squad"), "hook", name, payload)
+	cmd := exec.Command(filepath.Join(binDir, "torre"), "hook", name, payload)
 	cmd.Env = append(os.Environ(), "SQUAD_URL="+e.app.Server.URL(), "SQUAD_TERMINAL_ID="+n.ID, "SQUAD_TOKEN="+e.app.Server.TerminalToken(n.ID))
 	out, err := cmd.Output()
 	if err != nil {
-		e.t.Fatalf("squad hook %s: %v", name, err)
+		e.t.Fatalf("torre hook %s: %v", name, err)
 	}
 	return string(out)
 }
@@ -40,7 +40,7 @@ func TestRolesReachAgents(t *testing.T) {
 	e.setRole(bia, "rev")
 	e.connect(ana, bia)
 
-	// squad list names the roles.
+	// torre list names the roles.
 	r := e.run(ana, "list")
 	if !strings.Contains(r.Body, `name: "Ana", agent: custom, role: "Testador"`) || !strings.Contains(r.Body, `name: "Bia", agent: devin, role: "Revisor"`) {
 		t.Fatalf("list:\n%s", r.Body)
@@ -52,7 +52,7 @@ func TestRolesReachAgents(t *testing.T) {
 	}
 	got := e.hook(bia, "devin-session-start", `{"hook_event_name":"SessionStart","source":"startup"}`)
 	if json.Unmarshal([]byte(got), &out) != nil || out.HookSpecificOutput.HookEventName != "SessionStart" ||
-		!strings.Contains(out.HookSpecificOutput.AdditionalContext, `terminal "Bia" do Squad, com o papel "Revisor"`) ||
+		!strings.Contains(out.HookSpecificOutput.AdditionalContext, `terminal "Bia" da Torre, com o papel "Revisor"`) ||
 		!strings.Contains(out.HookSpecificOutput.AdditionalContext, "Você revisa mudanças de código") {
 		t.Fatalf("devin session start:\n%s", got)
 	}

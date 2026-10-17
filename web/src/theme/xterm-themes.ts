@@ -1,20 +1,21 @@
 import type { ITheme } from '@xterm/xterm';
 
-// Fonte do terminal: 'Geist Mono', 11px, lineHeight 15px (≈1.36). Tamanho mínimo útil: 80×24.
+// Torre (docs/torre/tokens/xterm-themes-torre.ts). The terminal font stays
+// Geist Mono 11/15 (--font-term in tokens.css). Minimum useful size: 80×24.
 export const noite: ITheme = {
-  background: '#0d0e10', foreground: '#d7d9de',
-  cursor: '#f4f5f7', cursorAccent: '#0d0e10', selectionBackground: '#2c3a52',
-  black: '#1c1e22', red: '#f0767a', green: '#7fcf8e', yellow: '#e6c26a',
-  blue: '#7aa7f0', magenta: '#c79af0', cyan: '#6fcfd6', white: '#c9ccd2',
-  brightBlack: '#5d626b', brightRed: '#ff9a9c', brightGreen: '#a2e3ae', brightYellow: '#f4d68e',
-  brightBlue: '#a0c2ff', brightMagenta: '#ddbcff', brightCyan: '#96e3e8', brightWhite: '#f4f5f7',
+  background: '#040806', foreground: '#d6dfe9',
+  cursor: '#d6dfe9', cursorAccent: '#040806', selectionBackground: '#1f3a29', selectionForeground: '#ffffff',
+  black: '#0b1710', red: '#f08a84', green: '#8fd19e', yellow: '#e9c46a',
+  blue: '#8fb4f0', magenta: '#c9a0f0', cyan: '#7fd0d6', white: '#d6dfe9',
+  brightBlack: '#7f8a7a', brightRed: '#ffaaa5', brightGreen: '#b3e6bf', brightYellow: '#ffd27a',
+  brightBlue: '#a9c8ff', brightMagenta: '#dcbcff', brightCyan: '#9be6ea', brightWhite: '#f3f8f5',
 };
 
 export const papel: ITheme = {
-  background: '#fbfbf9', foreground: '#2a2c30',
-  cursor: '#17181a', cursorAccent: '#fbfbf9', selectionBackground: '#d6e2f7',
-  black: '#2a2c30', red: '#c4373d', green: '#2f7d43', yellow: '#8a6a00',
-  blue: '#2f5fc4', magenta: '#8b44b8', cyan: '#1b7a84', white: '#6b6e74',
-  brightBlack: '#80838a', brightRed: '#d9474d', brightGreen: '#3a9152', brightYellow: '#a07c00',
-  brightBlue: '#3d70d9', brightMagenta: '#9f55cf', brightCyan: '#238f9a', brightWhite: '#111214',
+  background: '#fbf8ee', foreground: '#2b2a22',
+  cursor: '#1b1a14', cursorAccent: '#fbf8ee', selectionBackground: '#e3dabb', selectionForeground: '#1b1a14',
+  black: '#1b1a14', red: '#b3261e', green: '#1f6b3a', yellow: '#8a5a00',
+  blue: '#1f4f9f', magenta: '#7b3fb0', cyan: '#11727a', white: '#d9d0b2',
+  brightBlack: '#8a836c', brightRed: '#d43c33', brightGreen: '#2e8a50', brightYellow: '#a86f00',
+  brightBlue: '#3466c0', brightMagenta: '#9455cc', brightCyan: '#178a92', brightWhite: '#fffbea',
 };

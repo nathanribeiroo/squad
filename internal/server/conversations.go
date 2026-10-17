@@ -10,7 +10,7 @@ import (
 // (the launch hook builds the line), once it has had a turn (Empty until
 // then: an agent can't continue a conversation where nothing was said).
 // Busy marks an agent in the middle of a turn, from its hooks; one that
-// starts again while busy was interrupted (Squad closed or restarted) and
+// starts again while busy was interrupted (Torre closed or restarted) and
 // shows as such until it works again, the user continues it or dismisses
 // the notice.
 
@@ -18,7 +18,7 @@ import (
 func (s *Server) startedConversation(n store.Node, before store.TerminalData, resumed bool) {
 	conv := n.Terminal.Conversation
 	busy := before.Busy && resumed
-	// A new id from Squad (Claude, Gemini) is a new, empty conversation.
+	// A new id from Torre (Claude, Gemini) is a new, empty conversation.
 	empty := !resumed && conv != "" && (conv != before.Conversation || before.Empty)
 	if conv != before.Conversation || busy != before.Busy || empty != before.Empty {
 		if m, err := s.store.UpdateNode(n.ID, func(m *store.Node) error {

@@ -1,5 +1,5 @@
-// Package server is Squad's local HTTP server: the REST API for the canvas,
-// WebSockets for events and terminal I/O, the endpoint used by the `squad`
+// Package server is Torre's local HTTP server: the REST API for the canvas,
+// WebSockets for events and terminal I/O, the endpoint used by the `torre`
 // CLI from inside terminals, and the embedded web UI. It only listens on
 // loopback and checks Host/Origin to defend against DNS rebinding.
 package server
@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
+	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -27,15 +29,20 @@ import (
 	"github.com/nathanribeiroo/squad/internal/webui"
 )
 
-// SessionCookie holds the browser session token.
-const SessionCookie = "squad_session"
+// SessionCookie holds the browser session token. LegacySessionCookie is
+// its name before Squad became Torre: still accepted, so nobody has to log
+// in again (the UI replaces it with the new one).
+const (
+	SessionCookie       = "torre_session"
+	LegacySessionCookie = "squad_session"
+)
 
 // Options configure a Server.
 type Options struct {
 	Port    int          // loopback port the server listens on
 	Token   string       // session token for the browser and admin clients
 	Store   *store.Store // the workspace
-	CLIPath string       // absolute path of the squad binary (put on terminals' PATH)
+	CLIPath string       // absolute path of the torre binary (put on terminals' PATH)
 	Logger  *slog.Logger
 }
 
@@ -66,13 +73,29 @@ type Server struct {
 	launchHook   LaunchHook
 	stateExtra   func() map[string]any
 	activityOf   func(id string) (string, time.Time)
+	attentionOf  func(id string) *attention.Attention
 	extraRoutes  []route
 	prepareNode  func(*store.Node) error
+	roleAbbr     func(role string) string
 }
 
 // SetNodePreparer installs a function that completes new nodes before they
 // are stored (e.g. the notes service assigns a file to a new note).
 func (s *Server) SetNodePreparer(fn func(*store.Node) error) { s.prepareNode = fn }
+
+// SetRoleAbbr tells the server each role's abbreviation, which gives the
+// terminals with that role their callsigns. It also gives one to each
+// terminal saved without it.
+func (s *Server) SetRoleAbbr(fn func(role string) string) {
+	s.roleAbbr = fn
+	for _, n := range s.store.Snapshot().Nodes {
+		if n.Terminal != nil && n.Terminal.Callsign == "" {
+			if _, err := s.store.AssignCallsign(n.ID, fn(n.Terminal.Role)); err != nil {
+				s.log.Warn("callsign", "terminal", n.Terminal.Name, "err", err)
+			}
+		}
+	}
+}
 
 type route struct {
 	pattern string
@@ -87,6 +110,9 @@ func (s *Server) HandleSession(pattern string, h http.Handler) {
 
 // SetActivity installs the function giving a terminal's UI state.
 func (s *Server) SetActivity(fn func(id string) (string, time.Time)) { s.activityOf = fn }
+
+// SetAttention installs the function giving what a terminal asks the user.
+func (s *Server) SetAttention(fn func(id string) *attention.Attention) { s.attentionOf = fn }
 
 // PublishTerminalState emits terminal.state for id with its current runtime.
 func (s *Server) PublishTerminalState(id string) {
@@ -169,6 +195,8 @@ func (s *Server) APIHandler() http.Handler {
 	mux.HandleFunc("PATCH /api/nodes/{id}", s.handleUpdateNode)
 	mux.HandleFunc("DELETE /api/nodes/{id}", s.handleRemoveNode)
 	mux.HandleFunc("POST /api/nodes/{id}/{action}", s.handleNodeAction)
+	// Only the interface answers a prompt (never /cli nor MCP).
+	mux.HandleFunc("POST /api/nodes/{id}/attention/respond", s.handleRespond)
 	mux.HandleFunc("POST /api/edges", s.handleAddEdge)
 	mux.HandleFunc("PATCH /api/edges/{id}", s.handleUpdateEdge)
 	mux.HandleFunc("DELETE /api/edges/{id}", s.handleRemoveEdge)
@@ -226,6 +254,8 @@ func ValidSession(r *http.Request, token string) bool {
 	tok := ""
 	if c, err := r.Cookie(SessionCookie); err == nil {
 		tok = c.Value
+	} else if c, err := r.Cookie(LegacySessionCookie); err == nil {
+		tok = c.Value
 	}
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		tok = strings.TrimPrefix(h, "Bearer ")
@@ -257,7 +287,7 @@ var PublicFiles = map[string]bool{
 
 // UI accepts ?token= once, sets the session cookie and redirects to the URL
 // without it (other parameters, like ?ws=, are kept); without a session it
-// shows a page to paste the URL that `squad serve` printed.
+// shows a page to paste the URL that `torre serve` printed.
 func UI(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Registered as "/" (a "GET /" pattern would clash with "/api/").
@@ -275,10 +305,7 @@ func UI(token string, next http.Handler) http.Handler {
 				loginPage(w, "Esse link é de uma sessão antiga ou está incompleto.")
 				return
 			}
-			http.SetCookie(w, &http.Cookie{
-				Name: SessionCookie, Value: token, Path: "/", MaxAge: SessionMaxAge,
-				HttpOnly: true, SameSite: http.SameSiteStrictMode,
-			})
+			setSessionCookie(w, token)
 			q.Del("token")
 			dest := r.URL.Path
 			if len(q) > 0 {
@@ -291,7 +318,18 @@ func UI(token string, next http.Handler) http.Handler {
 			loginPage(w, "")
 			return
 		}
+		if _, err := r.Cookie(SessionCookie); err != nil {
+			setSessionCookie(w, token) // logged in with the cookie from before Torre
+			http.SetCookie(w, &http.Cookie{Name: LegacySessionCookie, Path: "/", MaxAge: -1})
+		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+func setSessionCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: SessionCookie, Value: token, Path: "/", MaxAge: SessionMaxAge,
+		HttpOnly: true, SameSite: http.SameSiteStrictMode,
 	})
 }
 
@@ -307,18 +345,33 @@ func loginPage(w http.ResponseWriter, problem string) {
 	fmt.Fprint(w, strings.Replace(loginHTML, "{{problem}}", problem, 1))
 }
 
-const loginHTML = `<!doctype html><html lang="pt-BR" translate="no"><meta charset="utf-8"><title>Squad</title>
+const loginHTML = `<!doctype html><html lang="pt-BR" translate="no"><meta charset="utf-8"><title>Torre</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.svg">
 <style>
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#111214;color:#e8e9ec;font:14px/1.5 system-ui,sans-serif}
-main{max-width:480px;padding:24px}h1{font:700 18px ui-monospace,monospace;margin:0 0 12px}p{color:#a9acb3;margin:0 0 14px}
-code{color:#e8e9ec}.err{color:#f0a35e}form{display:flex;gap:8px}
-input{flex:1;min-width:0;height:32px;padding:0 10px;border-radius:6px;border:1px solid #3c3f46;background:#1a1b1e;color:inherit;font:inherit}
-button{height:32px;padding:0 14px;border-radius:6px;border:1px solid #3c3f46;background:#2b2d32;color:inherit;font:inherit;cursor:pointer}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#030705;color:#cfeedd;font:14px/1.5 system-ui,sans-serif;overflow:hidden}
+.radar{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.radar svg{width:min(130vh,130vw);height:auto}
+main{position:relative;width:min(520px,calc(100vw - 32px))}
+.steps{display:flex;gap:18px;font:700 10.5px/1 ui-monospace,monospace;letter-spacing:.12em;color:#3f6b52;margin:0 0 14px}
+.steps .on{color:#cfeedd}
+.card{background:#07100b;border:1.5px solid #2c5a3d;padding:22px 24px 20px}
+h1{display:flex;align-items:center;gap:10px;font:700 15px/1 system-ui,sans-serif;letter-spacing:.14em;margin:0 0 6px}
+h2{font:700 12px/1 system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#9fc4ae;margin:18px 0 10px}
+p{color:#9fc4ae;margin:0 0 14px}code{color:#cfeedd;font-family:ui-monospace,monospace}.err{color:#ffd27a;border-left:3px solid #e0a526;background:#1a1407;padding:8px 10px}
+form{display:flex;gap:8px}
+input{flex:1;min-width:0;height:36px;padding:0 10px;border-radius:0;border:1px solid #2c5a3d;background:#030705;color:inherit;font:13px ui-monospace,monospace}
+input:focus{outline:none;border-color:#cfeedd}
+button{height:36px;padding:0 18px;border-radius:0;border:0;background:#cfeedd;color:#030705;font:700 12px system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.foot{margin:14px 0 0;font:11px ui-monospace,monospace;color:#3f6b52}
 </style>
-<main><h1>squad</h1>{{problem}}
-<p>Para entrar, rode <code>squad serve</code> no terminal: ele abre o Squad já com o login. Ou cole aqui a URL que ele mostrou.</p>
-<form id="f"><input id="u" placeholder="http://127.0.0.1:…/?token=…" autofocus><button>Entrar</button></form></main>
+<div class="radar" aria-hidden="true"><svg viewBox="0 0 600 600"><g fill="none" stroke="#0e2015"><circle cx="300" cy="300" r="290"/><circle cx="300" cy="300" r="218"/><circle cx="300" cy="300" r="145"/><circle cx="300" cy="300" r="72"/><path d="M10 300H590M300 10V590"/></g></svg></div>
+<main><div class="steps"><span class="on">1 ENLACE</span><span>2 PASTA</span><span>3 AGENTES</span></div>
+<div class="card"><h1><svg width="16" height="20" viewBox="0 0 56 64" aria-hidden="true"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#cfeedd"/><path d="M10 26 H46 L40 12 H16 Z" fill="#cfeedd"/><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"/><circle cx="28" cy="4" r="3" fill="#e05a2b"/></svg>TORRE</h1>
+<p>A torre de controle dos seus agentes de código.</p>{{problem}}
+<h2>Enlace</h2>
+<p>Rode <code>torre serve</code> no terminal: ele abre a Torre já com o enlace. Ou cole aqui a URL que ele mostrou.</p>
+<form id="f"><input id="u" placeholder="http://127.0.0.1:…/?token=…" autofocus aria-label="URL do torre serve"><button>Entrar</button></form>
+<p class="foot">só 127.0.0.1 · o token fica num cookie</p></div></main>
 <script>
 document.getElementById('f').onsubmit = function (e) {
   e.preventDefault();
@@ -334,16 +387,19 @@ type ctxKey int
 const callerKey ctxKey = 0
 
 // terminalAuth authenticates calls from inside a terminal: X-Terminal-ID
-// plus that terminal's X-Squad-Token.
+// plus that terminal's X-Torre-Token.
 func (s *Server) terminalAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Terminal-ID")
-		tok := r.Header.Get("X-Squad-Token")
+		tok := r.Header.Get("X-Torre-Token")
+		if tok == "" {
+			tok = r.Header.Get("X-Squad-Token") // a squad binary from before the rename
+		}
 		s.mu.Lock()
 		want, ok := s.termTokens[id]
 		s.mu.Unlock()
 		if id == "" || !ok || subtle.ConstantTimeCompare([]byte(tok), []byte(want)) != 1 {
-			writeText(w, http.StatusUnauthorized, "squad: this command only works inside a Squad terminal (missing or invalid terminal credentials)")
+			writeText(w, http.StatusUnauthorized, "torre: this command only works inside a Torre terminal (missing or invalid terminal credentials)")
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), callerKey, id)))
@@ -358,7 +414,7 @@ func CallerID(r *http.Request) string {
 
 func (s *Server) handleCLI(w http.ResponseWriter, r *http.Request) {
 	if s.cliHandler == nil {
-		writeText(w, http.StatusNotImplemented, "squad: CLI not available yet")
+		writeText(w, http.StatusNotImplemented, "torre: CLI not available yet")
 		return
 	}
 	s.cliHandler.ServeHTTP(w, r)
@@ -366,7 +422,7 @@ func (s *Server) handleCLI(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 	if s.hookHandler == nil {
-		writeText(w, http.StatusNotImplemented, "squad: hooks not available yet")
+		writeText(w, http.StatusNotImplemented, "torre: hooks not available yet")
 		return
 	}
 	s.hookHandler.ServeHTTP(w, r)
@@ -388,6 +444,11 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 func writeError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+// writeErr answers err, with its code for the interface (apierr).
+func writeErr(w http.ResponseWriter, code int, err error) {
+	writeJSON(w, code, apierr.Body(err))
 }
 
 func writeText(w http.ResponseWriter, code int, msg string) {

@@ -84,7 +84,7 @@ func TestNoteNames(t *testing.T) {
 		t.Fatalf("note list: %s", r.Body)
 	}
 	if r := e.run(a, "list"); !strings.Contains(r.Body, `formerly: "Plano de testes"`) {
-		t.Fatalf("squad list: %s", r.Body)
+		t.Fatalf("torre list: %s", r.Body)
 	}
 
 	// A former name stays taken; renaming back to it is fine.
@@ -128,7 +128,7 @@ func TestNoteNames(t *testing.T) {
 	if n := node(d2.ID); n.Note.Draft || n.Note.File != "nota-2.md" || !exists("nota-2.md") {
 		t.Fatalf("draft after a write: %+v", n.Note)
 	}
-	// …when Squad starts (the watcher) and when it's connected.
+	// …when Torre starts (the watcher) and when it's connected.
 	d3 := draft()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

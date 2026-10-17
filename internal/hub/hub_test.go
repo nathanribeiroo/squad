@@ -180,8 +180,8 @@ func TestCreateOpenUpdateRemove(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, b.ID)); !os.IsNotExist(err) {
 		t.Fatalf("B's folder still in root: %v", err)
 	}
-	if code, _ := h.do("DELETE", "/api/workspaces/"+a.ID, nil, nil); code != 400 {
-		t.Fatalf("removing the last workspace: %d", code)
+	if code, data := h.do("DELETE", "/api/workspaces/"+a.ID, nil, nil); code != 400 || !strings.Contains(string(data), `"code":"workspace.last"`) {
+		t.Fatalf("removing the last workspace: %d %s", code, data)
 	}
 
 	// A new hub on the same root loads what is left.
@@ -238,12 +238,12 @@ func TestRoutingByWorkspaceAndTerminal(t *testing.T) {
 		_ = h.hub.App(map[string]string{otherA.ID: a.ID, otherB.ID: b.ID}[n.ID]).Server.Terminals().Get(n.ID).Input([]byte("echo " + marker + "\r"))
 	}
 	tok := h.hub.App(a.ID).Server.TerminalToken(shellA.ID)
-	cli := map[string]string{"X-Terminal-ID": shellA.ID, "X-Squad-Token": tok}
+	cli := map[string]string{"X-Terminal-ID": shellA.ID, "X-Torre-Token": tok}
 	waitFor(t, "check Other from A", func() bool {
 		code, data := h.do("POST", "/cli", map[string]any{"args": []string{"check", "Other"}}, cli)
 		return code == 200 && strings.Contains(string(data), "screen-of-"+otherA.ID[:4]) && !strings.Contains(string(data), "screen-of-"+otherB.ID[:4])
 	})
-	if code, _ := h.do("POST", "/cli", map[string]any{"args": []string{"list"}}, map[string]string{"X-Terminal-ID": shellA.ID, "X-Squad-Token": "wrong"}); code != 401 {
+	if code, _ := h.do("POST", "/cli", map[string]any{"args": []string{"list"}}, map[string]string{"X-Terminal-ID": shellA.ID, "X-Torre-Token": "wrong"}); code != 401 {
 		t.Fatalf("wrong terminal token: %d", code)
 	}
 	if code, _ := h.do("POST", "/cli", map[string]any{"args": []string{"list"}}, map[string]string{"X-Terminal-ID": "nope"}); code != 401 {
@@ -340,7 +340,11 @@ func TestRolesAPI(t *testing.T) {
 		return r
 	}
 	ux := role("POST", "/api/roles", roles.Role{Name: "Revisão de UX", Prompt: "Olhe a interface.", Color: "teal", Icon: "palette"}, http.StatusCreated)
-	role("POST", "/api/roles", roles.Role{Name: "revisão de ux"}, http.StatusBadRequest)
+	// The interface translates the error by its code.
+	if code, data := h.do("POST", "/api/roles", roles.Role{Name: "revisão de ux"}, nil); code != http.StatusBadRequest ||
+		!strings.Contains(string(data), `"code":"role.name_taken","error":"there is already a role named \"Revisão de UX\"","params":{"name":"Revisão de UX"}`) {
+		t.Fatalf("duplicate role: %d %s", code, data)
+	}
 	ux.Prompt = "Olhe a interface com calma."
 	if r := role("PUT", "/api/roles/"+ux.ID, ux, http.StatusOK); r.Prompt != ux.Prompt {
 		t.Fatalf("update: %+v", r)

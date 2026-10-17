@@ -8,7 +8,7 @@ import { useSquad } from '../../state/store';
 import { NodeHandles, connectClass, useConnectTarget } from './NodeHandles';
 import { NodeMenu } from './NodeMenu';
 import { actionVerb, usePortalAction } from './portalAction';
-import { useCreator } from '../../lib/roles';
+import { roleColor, useCreator } from '../../lib/roles';
 import { BUTTONS, mods, usePortalStream, type PortalStream } from './portalStream';
 
 export type PortalFlowNode = Node<{ node: WNode }, 'portal'>;
@@ -17,7 +17,7 @@ export type PortalFlowNode = Node<{ node: WNode }, 'portal'>;
  * Browser portal (design handoff §4): the page, rendered by a headless
  * browser on the server, streamed as images. Click the page to use it (the
  * keyboard goes to the page until ⌥Esc); the address bar navigates. Agents
- * wired to it use it too (squad portal …): their cursor shows on the page.
+ * wired to it use it too (torre portal …): their cursor shows on the page.
  */
 export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
   const portal: PortalData = data.node.portal ?? { url: '' };
@@ -25,24 +25,25 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
   const target = useConnectTarget(id);
   const level = useSquad((s) => s.zoomLevel);
   // Only stream while readable on screen; smaller zoom keeps the last frame.
-  const stream = usePortalStream(id, !!url && level === 'live');
+  // @ELEMENTOS: the refs agents use (torre portal snapshot), outlined on the page.
+  const [layer, setLayer] = useState(false);
+  const stream = usePortalStream(id, !!url && level === 'live', layer);
   const [focused, setFocused] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const creator = useCreator(data.node.createdBy);
-  const remove = () => api.removeNode(id).catch((e: Error) => toast(e.message));
+  const remove = () => api.removeNode(id).catch((e: Error) => toast(e.message, 'err'));
 
   const onResizeEnd = (_: unknown, p: ResizeParams) => {
     useSquad.getState().moveNodeLocal(id, Math.round(p.x), Math.round(p.y));
     api
       .updateNode(id, { x: Math.round(p.x), y: Math.round(p.y), w: Math.round(p.width), h: Math.round(p.height) })
-      .catch((e: Error) => toast(e.message));
+      .catch((e: Error) => toast(e.message, 'err'));
   };
 
   return (
     <div className={`pnode${selected ? ' selected' : ''}${focused ? ' focused' : ''}${connectClass(target)}`}>
       <NodeResizer isVisible={selected && !focused} minWidth={320} minHeight={240} onResizeEnd={onResizeEnd} />
       <NodeHandles id={id} />
-      <div className="node-stripe" style={{ background: 'var(--line-2)' }} />
       <header className="pn-head node-drag">
         <Icon name="public" size={18} style={{ color: 'var(--text-2)' }} />
         {renaming ? (
@@ -50,16 +51,16 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
         ) : (
           <span
             className="pn-title"
-            title={`${stream.state?.title ? `${stream.state.title}\n` : ''}Os agentes usam este nome: squad portal "${portal.name || 'Portal'}" … (duplo clique para renomear)`}
+            title={`${stream.state?.title ? `${stream.state.title}\n` : ''}Os voos usam este nome: torre portal "${portal.name || 'Portal'}" … (duplo clique para renomear)`}
             onDoubleClick={() => setRenaming(true)}
           >
             {portal.name || 'Portal'}
           </span>
         )}
         {creator && (
-          <span className="pn-creator" title={`${creator.name} abriu este portal (squad portal create)`}>
+          <span className="pn-creator" title={`${creator.name} abriu este portal (torre portal create)`}>
             <i style={{ background: `var(--r-${creator.color})` }} />
-            por {creator.name}
+            por {creator.callsign}
           </span>
         )}
         <span className="pn-nav nodrag">
@@ -74,10 +75,20 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
           </button>
         </span>
         <AddressBar id={id} portal={portal} url={stream.state?.url || url} />
+        {url && (
+          <button
+            className={`pn-elements nodrag${layer ? ' on' : ''}`}
+            onClick={() => setLayer(!layer)}
+            aria-pressed={layer}
+            title="Os elementos que os voos veem (@e1, @e2…) no último torre portal snapshot"
+          >
+            <Icon name="data_object" size={14} />@ ELEMENTOS
+          </button>
+        )}
         {focused ? (
           <span className="tn-kbd-here" title="⌥Esc devolve o teclado ao canvas">
-            <Icon name="keyboard" size={15} />
-            teclado aqui
+            <Icon name="keyboard" size={14} />
+            teclado
           </span>
         ) : (
           <LiveBadge stream={stream} hasUrl={!!url} paused={level !== 'live'} />
@@ -94,7 +105,7 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
           ]}
         />
       </header>
-      <PortalScreen id={id} stream={stream} url={url} onFocusChange={setFocused} />
+      <PortalScreen id={id} stream={stream} url={url} onFocusChange={setFocused} creatorColor={creator?.color} />
     </div>
   );
 }
@@ -113,7 +124,7 @@ function NameInput({ id, portal, onDone }: { id: string; portal: PortalData; onD
       toast(`Já existe um portal chamado "${name}"`);
       return;
     }
-    api.updateNode(id, { portal: { ...portal, name } }).catch((e: Error) => toast(e.message));
+    api.updateNode(id, { portal: { ...portal, name } }).catch((e: Error) => toast(e.message, 'err'));
   };
   return (
     <input
@@ -144,7 +155,7 @@ function AddressBar({ id, portal, url }: { id: string; portal: PortalData; url: 
     setEditing(false);
     let next = draft.trim();
     if (next && !/^[a-z]+:\/\//i.test(next)) next = `${/^(localhost|127\.|\[::1\])/.test(next) ? 'http' : 'https'}://${next}`;
-    if (next && next !== url) api.updateNode(id, { portal: { ...portal, url: next } }).catch((e: Error) => toast(e.message));
+    if (next && next !== url) api.updateNode(id, { portal: { ...portal, url: next } }).catch((e: Error) => toast(e.message, 'err'));
   };
   return editing ? (
     <input
@@ -183,17 +194,17 @@ function LiveBadge({ stream, hasUrl, paused }: { stream: PortalStream; hasUrl: b
   let text = 'sem transmissão';
   let color = 'var(--text-3)';
   if (paused && stream.frame) {
-    text = 'pausado'; // zoomed out: the last frame, not streaming
+    text = 'pausado · zoom'; // zoomed out: the last frame, not streaming
   } else if (stream.noBrowser) {
     text = 'sem navegador';
-    color = 'var(--st-err)';
+    color = 'var(--stt-err)';
   } else if (stream.state?.loading) {
     text = 'carregando…';
-    color = 'var(--st-work)';
+    color = 'var(--stt-work)';
   } else if (stream.connected && stream.frame) {
     const slow = (stream.latency ?? 0) > 400;
     text = `ao vivo${stream.latency != null ? ` · ${stream.latency} ms` : ''}`;
-    color = slow ? 'var(--st-wait)' : 'var(--st-done)';
+    color = slow ? 'var(--stt-wait)' : 'var(--stt-done)';
   } else if (hasUrl && stream.connected) {
     text = 'abrindo…';
   }
@@ -208,7 +219,8 @@ function LiveBadge({ stream, hasUrl, paused }: { stream: PortalStream; hasUrl: b
 /** Keys the canvas keeps while the page has the keyboard (see term/session). */
 function canvasKey(e: React.KeyboardEvent): boolean {
   if (!e.altKey || e.ctrlKey || e.metaKey) return false;
-  return e.code === 'KeyA' || e.code === 'KeyP' || e.code === 'KeyK' || e.key === 'Escape' || /^Digit[1-9]$/.test(e.code);
+  if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return true; // dock
+  return e.code === 'KeyA' || e.code === 'KeyP' || e.code === 'KeyK' || e.code === 'KeyF' || e.code === 'KeyM' || e.key === 'Escape' || /^Digit[1-9]$/.test(e.code);
 }
 
 /**
@@ -216,7 +228,19 @@ function canvasKey(e: React.KeyboardEvent): boolean {
  * zoom) to page pixels; plain wheel scrolls the page, pinch or ⌘/ctrl + wheel
  * zooms the canvas.
  */
-function PortalScreen({ id, stream, url, onFocusChange }: { id: string; stream: PortalStream; url: string; onFocusChange: (f: boolean) => void }) {
+function PortalScreen({
+  id,
+  stream,
+  url,
+  onFocusChange,
+  creatorColor,
+}: {
+  id: string;
+  stream: PortalStream;
+  url: string;
+  onFocusChange: (f: boolean) => void;
+  creatorColor?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const rf = useReactFlow();
   const moveQueued = useRef<MouseEvent | null>(null);
@@ -288,10 +312,10 @@ function PortalScreen({ id, stream, url, onFocusChange }: { id: string; stream: 
   let overlay: React.ReactNode = null;
   if (stream.noBrowser) {
     overlay = (
-      <div className="pn-msg">
+      <div className="pn-msg err">
         <Icon name="public_off" size={28} />
-        <span>Nenhum navegador encontrado para mostrar a página.</span>
-        <span className="pn-hint">Instale o Chrome ou o Edge, ou defina SQUAD_BROWSER com o caminho do executável, e reinicie o Squad.</span>
+        <span>Nenhum Chrome, Edge ou Chromium no servidor.</span>
+        <span className="pn-hint">Instale um deles ou defina TORRE_BROWSER com o caminho do executável, e reinicie a Torre.</span>
       </div>
     );
   } else if (stream.error) {
@@ -344,7 +368,86 @@ function PortalScreen({ id, stream, url, onFocusChange }: { id: string; stream: 
       {stream.frame && <img src={stream.frame} alt="" draggable={false} />}
       {st?.error && stream.frame && <div className="pn-error mono">Não foi possível abrir: {st.error}</div>}
       {overlay}
+      {stream.frame && stream.elements && <ElementsLayer id={id} elements={stream.elements} width={st?.width} height={st?.height} creatorColor={creatorColor} />}
       {stream.frame && <AgentCursor id={id} width={st?.width} height={st?.height} />}
+    </div>
+  );
+}
+
+// How an element's role reads on its tag ("@e4 botão").
+const ROLE_PT: Record<string, string> = {
+  button: 'botão',
+  link: 'link',
+  textbox: 'campo',
+  searchbox: 'busca',
+  checkbox: 'caixa',
+  radio: 'opção',
+  combobox: 'lista',
+  listbox: 'lista',
+  option: 'item',
+  menuitem: 'menu',
+  tab: 'aba',
+  switch: 'chave',
+  slider: 'controle',
+  heading: 'título',
+  img: 'imagem',
+  navigation: 'navegação',
+  dialog: 'diálogo',
+  alert: 'alerta',
+  status: 'status',
+};
+
+/**
+ * @ELEMENTOS (TELAS.md, quadro 10): dashed outlines with the ref, in the
+ * darkened color of the role that last used the page. They don't take
+ * clicks: the page under them works as before.
+ */
+function ElementsLayer({
+  id,
+  elements,
+  width,
+  height,
+  creatorColor,
+}: {
+  id: string;
+  elements: NonNullable<PortalStream['elements']>;
+  width?: number;
+  height?: number;
+  creatorColor?: string;
+}) {
+  // The role of the agent that last used the page, else of one on its frequency.
+  const roleKey = useSquad((s) => {
+    const ws = s.workspace;
+    const linked = ws?.edges.flatMap((e) => (e.a === id ? [e.b] : e.b === id ? [e.a] : [])) ?? [];
+    const user = [s.portalActions[id]?.by, ...linked]
+      .map((x) => ws?.nodes.find((n) => n.id === x)?.terminal)
+      .find((t) => t?.role);
+    return user ? roleColor(s.roles.find((r) => r.id === user.role)) : null;
+  });
+  const key = roleKey ?? creatorColor;
+  const color = key ? `var(--r-${key})` : 'var(--text-2)';
+  if (!elements.snapshot || !width || !height) {
+    return (
+      <div className="pn-elements-note mono">
+        {!elements.snapshot ? 'Sem refs: eles aparecem quando um voo lê a página (torre portal snapshot).' : ''}
+      </div>
+    );
+  }
+  return (
+    <div className="pn-layer" style={{ '--el': `color-mix(in srgb, ${color} 75%, black)` } as React.CSSProperties}>
+      {elements.items.map((e) => (
+        <div
+          key={e.ref}
+          className="pn-el"
+          style={{ left: `${(e.x / width) * 100}%`, top: `${(e.y / height) * 100}%`, width: `${(e.w / width) * 100}%`, height: `${(e.h / height) * 100}%` }}
+          title={`${e.ref} ${e.role} "${e.name}"`}
+        >
+          <span className="pn-el-tag mono">
+            {e.ref} {ROLE_PT[e.role] ?? e.role}
+          </span>
+        </div>
+      ))}
+      {elements.items.length === 0 && <div className="pn-elements-note mono">O último snapshot não achou elementos nesta tela.</div>}
     </div>
   );
 }

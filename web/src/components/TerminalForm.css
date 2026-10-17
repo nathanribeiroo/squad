@@ -1,0 +1,83 @@
+/* Novo voo and Configurar (docs/torre/TELAS.md, quadro 16): 420 wide, beside
+   the toolbar. */
+.new-term {
+  left: 64px;
+  top: 58px;
+  width: 420px;
+  max-height: calc(100vh - 80px);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.nt-head { display: flex; align-items: center; gap: 8px; height: 48px; flex: none; padding: 0 8px 0 14px; border-bottom: 1px solid var(--line); }
+.nt-head strong { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
+.nt-where { font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.nt-where::before { content: '· '; }
+.nt-body { display: grid; gap: 14px; padding: 14px; overflow-y: auto; min-height: 0; }
+
+.nt-agents { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.nt-agent {
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 10px;
+  border: 1px solid var(--line-3);
+  background: var(--bg);
+  color: var(--text-2);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.nt-agent:hover { border-color: var(--text-3); color: var(--text); }
+.nt-agent.on { border-color: var(--text); color: var(--text); box-shadow: inset 0 0 0 1px var(--text); background: var(--surface-2); }
+.nt-agent-name { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.nt-agent-st { font-size: 10px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.nt-agent-st.ok { color: var(--stt-done); }
+.nt-agent-st.err { color: var(--stt-err); }
+
+.nt-row { display: grid; grid-template-columns: 1fr 110px; gap: 10px; }
+.nt-cs { letter-spacing: 0.12em; font-weight: 700; }
+.nt-select { position: relative; display: flex; }
+.nt-select select { flex: 1; min-width: 0; }
+.nt-select i { position: absolute; left: 10px; top: 50%; width: 8px; height: 8px; margin-top: -4px; pointer-events: none; }
+.nt-select i + select { padding-left: 26px; }
+
+.nt-adv {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  justify-self: start;
+}
+.nt-adv:hover { color: var(--text); }
+.nt-adv .msi { transition: transform 0.12s; }
+.nt-adv.open .msi { transform: rotate(90deg); }
+.nt-adv-body { display: grid; gap: 12px; padding-left: 12px; border-left: 1px solid var(--line-3); }
+.nt-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text-2); line-height: 1.45; cursor: pointer; }
+.nt-check input { margin-top: 2px; accent-color: var(--text); }
+.nt-check b { color: var(--text); }
+
+.nt-error { color: var(--stt-err); font-size: 12px; }
+.nt-relaunch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--stb-wait);
+  border-left: 3px solid var(--st-wait);
+  font-size: 12px;
+}
+.nt-relaunch .msi { color: var(--stt-wait); }
+.nt-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); flex: none; }

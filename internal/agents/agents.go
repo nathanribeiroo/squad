@@ -1,16 +1,16 @@
 // Package agents adapts known agent CLIs: how each one is launched inside a
-// Squad terminal and how it tells Squad that a turn ended (its native hook),
+// Torre terminal and how it tells Torre that a turn ended (its native hook),
 // so replies come from the agent's final message instead of the screen.
 //
 //   - Claude Code: a settings file passed with --settings adds Stop,
-//     StopFailure, UserPromptSubmit and SessionStart hooks that run `squad
+//     StopFailure, UserPromptSubmit and SessionStart hooks that run `torre
 //     hook …`. Hooks from settings files are merged, so the user's own hooks
 //     keep working.
-//   - Codex: -c notify=[…] runs `squad hook codex-notify <json>` on
+//   - Codex: -c notify=[…] runs `torre hook codex-notify <json>` on
 //     agent-turn-complete (not tested against a real Codex account).
-//   - Devin CLI: --config replaces the user's config.json, so Squad passes
+//   - Devin CLI: --config replaces the user's config.json, so Torre passes
 //     a copy of it with Stop, UserPromptSubmit and SessionStart hooks added
-//     (Claude Code's format) that run `squad hook devin-…` (writeDevinConfig;
+//     (Claude Code's format) that run `torre hook devin-…` (writeDevinConfig;
 //     the hooks themselves not tested against a real Devin account).
 //   - Gemini, shells and custom commands: no hook; screen heuristics only.
 //
@@ -20,19 +20,19 @@
 // Gemini, which has no such option, as its first prompt (-i). Shells and
 // custom commands get none: typing instructions into them could run them.
 //
-// Squad's commands also reach agents as MCP tools (squad mcp): Claude Code
+// Torre's commands also reach agents as MCP tools (torre mcp): Claude Code
 // gets them with --mcp-config and pre-approves the safe ones (SafeMCPTools),
 // Codex with mcp_servers config overrides. Devin reads MCP servers only from
-// its mcp_config.json, where squad install-skill registers squad; its config
+// its mcp_config.json, where torre install-skill registers torre; its config
 // copy pre-approves the same safe tools.
 //
 // Each terminal continues its agent's conversation when it starts again
-// (conversation.go): Squad remembers the conversation id, from the launch line
+// (conversation.go): Torre remembers the conversation id, from the launch line
 // or the hooks.
 //
 // On a floor or in a session's copy (git worktrees), Devin skips its
 // workspace trust prompt: they are copies of the repository the user opened
-// in Squad. Claude Code doesn't ask there.
+// in Torre. Claude Code doesn't ask there.
 package agents
 
 import (
@@ -76,7 +76,7 @@ func Lookup(agent string) Info {
 // HasHooks reports whether an agent type signals turn ends explicitly.
 func HasHooks(agent string) bool { return Lookup(agent).Hooks }
 
-// SafeMCPTools are the squad mcp tools an agent may use without asking the
+// SafeMCPTools are the torre mcp tools an agent may use without asking the
 // user: in their calls the server refuses anything that would run a command
 // (keys typed into a terminal, a message to a shell, a new terminal with a
 // command line, JavaScript in a page). keys, new_shell, portal_eval and
@@ -84,14 +84,14 @@ func HasHooks(agent string) bool { return Lookup(agent).Hooks }
 // user approves each call.
 var SafeMCPTools = []string{"list", "ask", "ask_batch", "check", "wait", "reply", "note", "portal", "new", "connect", "close", "floors", "roles"}
 
-// mcpEnv is what squad mcp needs from the terminal's environment.
-var mcpEnv = []string{"SQUAD_URL", "SQUAD_TERMINAL_ID", "SQUAD_TOKEN"}
+// mcpEnv is what torre mcp needs from the terminal's environment.
+var mcpEnv = []string{"TORRE_URL", "TORRE_TERMINAL_ID", "TORRE_TOKEN"}
 
 // Launcher prepares launch lines for agents.
 type Launcher struct {
-	SquadPath      string // absolute path of the squad binary
+	CLIPath        string // absolute path of the torre binary
 	ClaudeSettings string // path of the generated Claude settings file
-	ClaudeMCP      string // path of the generated Claude MCP config (squad mcp)
+	ClaudeMCP      string // path of the generated Claude MCP config (torre mcp)
 	DevinConfig    string // path of the generated Devin config file
 	// DevinUserConfig is the user's Devin config.json, copied into
 	// DevinConfig ("" when unknown).
@@ -108,14 +108,14 @@ type Launcher struct {
 	devinMu sync.Mutex
 }
 
-// NewLauncher writes the Claude hooks and MCP files under ~/.squad/run; the
+// NewLauncher writes the Claude hooks and MCP files under ~/.torre/run; the
 // Devin config is written at each Devin launch (Prepare).
-func NewLauncher(squadPath string) (*Launcher, error) {
+func NewLauncher(cliPath string) (*Launcher, error) {
 	dir, err := config.Dir("run")
 	if err != nil {
 		return nil, err
 	}
-	l := &Launcher{SquadPath: squadPath,
+	l := &Launcher{CLIPath: cliPath,
 		ClaudeSettings: filepath.Join(dir, "claude-hooks.json"),
 		ClaudeMCP:      filepath.Join(dir, "claude-mcp.json"),
 		DevinConfig:    filepath.Join(dir, "devin-config.json"),
@@ -126,14 +126,17 @@ func NewLauncher(squadPath string) (*Launcher, error) {
 	_ = os.Remove(filepath.Join(dir, "devin-hooks.json")) // before: hooks only, without the user's config
 	allow := make([]string, len(SafeMCPTools))
 	for i, t := range SafeMCPTools {
-		allow[i] = "mcp__squad__" + t
+		allow[i] = "mcp__torre__" + t
 	}
-	servers := map[string]any{"squad": map[string]any{"command": squadPath, "args": []string{"mcp"}}}
+	servers := map[string]any{"torre": map[string]any{"command": cliPath, "args": []string{"mcp"}}}
 	if err := l.writeHooks(l.ClaudeSettings, map[string]string{
 		"Stop":             "claude-stop",
 		"StopFailure":      "claude-stop-failure",
 		"UserPromptSubmit": "claude-prompt",
 		"SessionStart":     "claude-session-start",
+		// A permission prompt: the flight asks the user (PRIORIDADE). The
+		// hook only reports it; Torre never answers it.
+		"PermissionRequest": "claude-permission",
 	}, map[string]any{"permissions": map[string]any{"allow": allow}}); err != nil {
 		return nil, err
 	}
@@ -144,9 +147,9 @@ func NewLauncher(squadPath string) (*Launcher, error) {
 }
 
 // hookCommand is the command line Claude Code (or Devin) runs for a hook
-// (through a shell), with the squad path quoted.
+// (through a shell), with the torre path quoted.
 func (l *Launcher) hookCommand(name string) string {
-	return fmt.Sprintf(`"%s" hook %s`, l.SquadPath, name)
+	return fmt.Sprintf(`"%s" hook %s`, l.CLIPath, name)
 }
 
 type claudeHook struct {
@@ -160,7 +163,7 @@ type claudeMatcher struct {
 }
 
 // writeHooks writes a settings file whose "hooks" key maps each event to
-// `squad hook <name>`, plus the extra keys (Claude Code's --settings; Devin's
+// `torre hook <name>`, plus the extra keys (Claude Code's --settings; Devin's
 // config copy uses the same hook format).
 func (l *Launcher) writeHooks(path string, events map[string]string, extra map[string]any) error {
 	hooks := map[string][]claudeMatcher{}
@@ -183,7 +186,7 @@ func writeJSON(path string, v any) error {
 }
 
 // Prepare rewrites a terminal spec before start: default command for the
-// agent type plus the flags that install Squad's hooks, pass its role and
+// agent type plus the flags that install Torre's hooks, pass its role and
 // start or continue its conversation (conversation.go). It sets
 // n.Terminal.Conversation to the conversation the terminal is in ("" when
 // the agent picks the id and reports it later) and reports whether the line
@@ -194,7 +197,7 @@ func (l *Launcher) Prepare(n *store.Node, spec *terminal.Spec) (resumed bool, er
 	}
 	info := Lookup(spec.Agent)
 	if strings.TrimSpace(spec.Command) == "" {
-		spec.Command = info.DefaultCommand
+		spec.Command = DefaultCommand(spec.Agent) // the user's, in Configurações → Agentes
 	}
 	if spec.Command == "" {
 		return false, nil
@@ -247,9 +250,9 @@ func (l *Launcher) Prepare(n *store.Node, spec *terminal.Spec) (resumed bool, er
 			if spec.Env == nil {
 				spec.Env = map[string]string{}
 			}
-			spec.Env["SQUAD_ROLE"] = role
+			spec.Env["TORRE_ROLE"] = role
 			// The first prompt: a continued conversation already has it.
-			tail = " -i " + envRef(fam, "SQUAD_ROLE")
+			tail = " -i " + envRef(fam, "TORRE_ROLE")
 		}
 	}
 	if user {
@@ -305,7 +308,7 @@ func TOMLString(s string) string {
 // codexNotify returns the TOML override for Codex's notify program; TOML
 // basic strings share JSON's escaping, so JSON-encoded strings are valid.
 func (l *Launcher) codexNotify() string {
-	parts := []string{l.SquadPath, "hook", "codex-notify"}
+	parts := []string{l.CLIPath, "hook", "codex-notify"}
 	enc := make([]string, len(parts))
 	for i, p := range parts {
 		b, _ := json.Marshal(p)
@@ -314,7 +317,7 @@ func (l *Launcher) codexNotify() string {
 	return "notify=[" + strings.Join(enc, ",") + "]"
 }
 
-// codexMCP returns the config overrides that give Codex squad mcp: Codex
+// codexMCP returns the config overrides that give Codex torre mcp: Codex
 // passes stdio servers only a few environment variables unless listed, and
 // waits 60 s for a tool by default (an ask may take minutes).
 func (l *Launcher) codexMCP() []string {
@@ -323,10 +326,10 @@ func (l *Launcher) codexMCP() []string {
 		vars[i] = TOMLString(v)
 	}
 	return []string{
-		"mcp_servers.squad.command=" + TOMLString(l.SquadPath),
-		`mcp_servers.squad.args=["mcp"]`,
-		"mcp_servers.squad.env_vars=[" + strings.Join(vars, ",") + "]",
-		"mcp_servers.squad.tool_timeout_sec=1800",
+		"mcp_servers.torre.command=" + TOMLString(l.CLIPath),
+		`mcp_servers.torre.args=["mcp"]`,
+		"mcp_servers.torre.env_vars=[" + strings.Join(vars, ",") + "]",
+		"mcp_servers.torre.tool_timeout_sec=1800",
 	}
 }
 

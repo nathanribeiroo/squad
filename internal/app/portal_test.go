@@ -30,7 +30,7 @@ func newPortalEnv(t *testing.T) *env {
 	t.Helper()
 	path := browser.Find()
 	if path == "" {
-		t.Skip("no Chromium-based browser (set SQUAD_BROWSER)")
+		t.Skip("no Chromium-based browser (set TORRE_BROWSER)")
 	}
 	br := browser.New(browser.Options{ExecPath: path, Profile: t.TempDir()})
 	t.Cleanup(br.Shutdown)
@@ -44,7 +44,7 @@ func newPortalEnv(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	a, err := New(Options{
-		Server:   server.Options{Port: port, Token: "tok", Store: st, CLIPath: filepath.Join(binDir, "squad")},
+		Server:   server.Options{Port: port, Token: "tok", Store: st, CLIPath: filepath.Join(binDir, "torre")},
 		Activity: fastActivity, Limits: fastLimits, Browser: br,
 	})
 	if err != nil {
@@ -106,7 +106,7 @@ func TestPortalCommands(t *testing.T) {
 	}
 	e.connect(a, p1)
 	if r := e.run(a, "list"); !strings.Contains(r.Body, `name: "Portal", url: `+site.URL) {
-		t.Fatalf("squad list: %s", r.Body)
+		t.Fatalf("torre list: %s", r.Body)
 	}
 	if r := e.run(a, "portal", "list"); !strings.Contains(r.Body, `- name: "Portal"`) {
 		t.Fatalf("portal list: %s", r.Body)

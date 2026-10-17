@@ -1,6 +1,6 @@
 package portal
 
-// squad portal …: agents use the portals connected to them.
+// torre portal …: agents use the portals connected to them.
 
 import (
 	"context"
@@ -35,19 +35,19 @@ type Action struct {
 }
 
 const portalUsage = `Usage (portals connected to you; name one first when several are):
-  squad portal list                           connected portals
-  squad portal create URL ["Name"]            open a new portal, connected to you
-  squad portal close ["Name"]                 remove a portal you created
-  squad portal [Name] snapshot                the page as elements with refs (@e1, @e2…)
-  squad portal [Name] click @e3               click an element (or: click X Y, in viewport px)
-  squad portal [Name] fill @e2 "text"         replace a field's text
-  squad portal [Name] type "text"             type at the focused element
-  squad portal [Name] key Enter               press a key or combination (Escape, Tab, Control+a…)
-  squad portal [Name] scroll [down|up] [px]   scroll the page (default: down 600)
-  squad portal [Name] goto URL                open a page (also: back, forward, reload)
-  squad portal [Name] screenshot              save a PNG of the page and print its path
-  squad portal [Name] eval "js"               run JavaScript in the page (10 s limit)
-  squad portal [Name] console [n]             the page's last console messages and errors
+  torre portal list                           connected portals
+  torre portal create URL ["Name"]            open a new portal, connected to you
+  torre portal close ["Name"]                 remove a portal you created
+  torre portal [Name] snapshot                the page as elements with refs (@e1, @e2…)
+  torre portal [Name] click @e3               click an element (or: click X Y, in viewport px)
+  torre portal [Name] fill @e2 "text"         replace a field's text
+  torre portal [Name] type "text"             type at the focused element
+  torre portal [Name] key Enter               press a key or combination (Escape, Tab, Control+a…)
+  torre portal [Name] scroll [down|up] [px]   scroll the page (default: down 600)
+  torre portal [Name] goto URL                open a page (also: back, forward, reload)
+  torre portal [Name] screenshot              save a PNG of the page and print its path
+  torre portal [Name] eval "js"               run JavaScript in the page (10 s limit)
+  torre portal [Name] console [n]             the page's last console messages and errors
 Refs expire when the page changes: take a new snapshot after navigating.`
 
 var commands = map[string]bool{
@@ -72,7 +72,7 @@ func (s *Service) connected(caller string) []store.Node {
 	return out
 }
 
-// Extension handles `squad portal …` for the agent bus.
+// Extension handles `torre portal …` for the agent bus.
 func (s *Service) Extension(ctx context.Context, caller string, args []string) (agentbus.Result, bool) {
 	if len(args) == 0 || args[0] != "portal" {
 		return agentbus.Result{}, false
@@ -103,9 +103,9 @@ func (s *Service) Extension(ctx context.Context, caller string, args []string) (
 		}
 		if !found {
 			if len(portals) == 0 {
-				return res(404, fmt.Sprintf("squad: no portal named %q is connected to you, and %q is not a portal command.\n\n%s", rest[0], rest[0], portalUsage)), true
+				return res(404, fmt.Sprintf("torre: no portal named %q is connected to you, and %q is not a portal command.\n\n%s", rest[0], rest[0], portalUsage)), true
 			}
-			return res(404, fmt.Sprintf("squad: no connected portal named %q (connected: %s)", rest[0], names(portals))), true
+			return res(404, fmt.Sprintf("torre: no connected portal named %q (connected: %s)", rest[0], names(portals))), true
 		}
 		rest = rest[1:]
 		if len(rest) == 0 {
@@ -114,15 +114,15 @@ func (s *Service) Extension(ctx context.Context, caller string, args []string) (
 	case len(portals) == 1:
 		target = portals[0]
 	case len(portals) == 0:
-		return res(404, "squad: no portal is connected to you. Ask the user to connect one to you on the canvas."), true
+		return res(404, "torre: no portal is connected to you. Ask the user to connect one to you on the canvas."), true
 	default:
-		return res(400, fmt.Sprintf("squad: several portals are connected to you (%s): name one, e.g. squad portal %q %s", names(portals), portals[0].Portal.Name, rest[0])), true
+		return res(400, fmt.Sprintf("torre: several portals are connected to you (%s): name one, e.g. torre portal %q %s", names(portals), portals[0].Portal.Name, rest[0])), true
 	}
 	if s.browser == nil {
-		return res(503, "squad: portals are disabled in this server"), true
+		return res(503, "torre: portals are disabled in this server"), true
 	}
 	if rest[0] == "eval" && agentbus.Safe(ctx) {
-		return res(403, "squad: running JavaScript in a page needs the user's approval: use the portal_eval tool."), true
+		return res(403, "torre: running JavaScript in a page needs the user's approval: use the portal_eval tool."), true
 	}
 	return s.run(caller, target, rest[0], rest[1:]), true
 }
@@ -172,7 +172,7 @@ func (s *Service) ready(n store.Node) (*browser.Page, error) {
 func (s *Service) run(caller string, n store.Node, cmd string, args []string) agentbus.Result {
 	p, err := s.ready(n)
 	if err != nil {
-		return res(503, "squad: "+err.Error())
+		return res(503, "torre: "+err.Error())
 	}
 	me, _ := s.store.Node(caller)
 	act := Action{Portal: n.ID, By: caller, Kind: cmd}
@@ -200,7 +200,7 @@ func (s *Service) run(caller string, n store.Node, cmd string, args []string) ag
 	case "snapshot":
 		out, err := p.Snapshot()
 		if err != nil {
-			return res(500, "squad: snapshot: "+err.Error())
+			return res(500, "torre: snapshot: "+err.Error())
 		}
 		return res(200, out)
 
@@ -211,49 +211,49 @@ func (s *Service) run(caller string, n store.Node, cmd string, args []string) ag
 			if errX == nil && errY == nil {
 				show(fmt.Sprintf("%.0f,%.0f", x, y), x, y, true)
 				if err := p.ClickAt(x, y); err != nil {
-					return res(500, "squad: click: "+err.Error())
+					return res(500, "torre: click: "+err.Error())
 				}
 				return after(fmt.Sprintf("Clicked at %.0f,%.0f.", x, y))
 			}
 		}
 		if len(args) != 1 {
-			return res(400, "Usage: squad portal click @e3   (or: click X Y)")
+			return res(400, "Usage: torre portal click @e3   (or: click X Y)")
 		}
 		e, x, y, err := p.Click(args[0])
 		if err != nil {
-			return res(400, "squad: "+err.Error())
+			return res(400, "torre: "+err.Error())
 		}
 		show(e.Label(), x, y, true)
 		return after(fmt.Sprintf("Clicked %s %s.", e.Ref, e.Label()))
 
 	case "fill":
 		if len(args) < 2 {
-			return res(400, `Usage: squad portal fill @e2 "text"`)
+			return res(400, `Usage: torre portal fill @e2 "text"`)
 		}
 		e, x, y, err := p.Fill(args[0], strings.Join(args[1:], " "))
 		if err != nil {
-			return res(400, "squad: "+err.Error())
+			return res(400, "torre: "+err.Error())
 		}
 		show(e.Label(), x, y, true)
 		return after(fmt.Sprintf("Filled %s %s.", e.Ref, e.Label()))
 
 	case "type":
 		if len(args) == 0 {
-			return res(400, `Usage: squad portal type "text"`)
+			return res(400, `Usage: torre portal type "text"`)
 		}
 		show("", 0, 0, false)
 		if err := p.InsertText(strings.Join(args, " ")); err != nil {
-			return res(500, "squad: type: "+err.Error())
+			return res(500, "torre: type: "+err.Error())
 		}
 		return after("Typed.")
 
 	case "key":
 		if len(args) != 1 {
-			return res(400, "Usage: squad portal key Enter   (or Escape, Tab, Control+a…)")
+			return res(400, "Usage: torre portal key Enter   (or Escape, Tab, Control+a…)")
 		}
 		show(args[0], 0, 0, false)
 		if err := p.Press(args[0]); err != nil {
-			return res(400, "squad: "+err.Error())
+			return res(400, "torre: "+err.Error())
 		}
 		return after("Pressed " + args[0] + ".")
 
@@ -267,26 +267,26 @@ func (s *Service) run(caller string, n store.Node, cmd string, args []string) ag
 			default:
 				v, err := strconv.ParseFloat(a, 64)
 				if err != nil {
-					return res(400, "Usage: squad portal scroll [down|up] [px]")
+					return res(400, "Usage: torre portal scroll [down|up] [px]")
 				}
 				dy = v * sign(dy)
 			}
 		}
 		show("", 0, 0, false)
 		if err := p.Scroll(dy); err != nil {
-			return res(500, "squad: scroll: "+err.Error())
+			return res(500, "torre: scroll: "+err.Error())
 		}
 		time.Sleep(200 * time.Millisecond)
 		return res(200, fmt.Sprintf("Scrolled %s %.0f px. Take a new snapshot to see what is on screen.", map[bool]string{true: "down", false: "up"}[dy > 0], abs(dy)))
 
 	case "goto", "open":
 		if len(args) != 1 {
-			return res(400, "Usage: squad portal goto URL")
+			return res(400, "Usage: torre portal goto URL")
 		}
 		url := NormalizeURL(args[0])
 		show(url, 0, 0, false)
 		if err := p.Navigate(url); err != nil {
-			return res(500, "squad: goto: "+err.Error())
+			return res(500, "torre: goto: "+err.Error())
 		}
 		before = ""
 		return after("Opened " + url + ".")
@@ -303,33 +303,33 @@ func (s *Service) run(caller string, n store.Node, cmd string, args []string) ag
 			err = p.Reload()
 		}
 		if err != nil {
-			return res(500, "squad: "+cmd+": "+err.Error())
+			return res(500, "torre: "+cmd+": "+err.Error())
 		}
 		return after(strings.ToUpper(cmd[:1]) + cmd[1:] + " done.")
 
 	case "screenshot":
 		png, err := p.Screenshot()
 		if err != nil {
-			return res(500, "squad: screenshot: "+err.Error())
+			return res(500, "torre: screenshot: "+err.Error())
 		}
 		dir := filepath.Join(filepath.Dir(s.store.Path()), "attachments")
 		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return res(500, "squad: "+err.Error())
+			return res(500, "torre: "+err.Error())
 		}
 		path := filepath.Join(dir, fmt.Sprintf("portal-%s-%s.png", slug(n.Portal.Name), time.Now().Format("20060102-150405.000")))
 		if err := os.WriteFile(path, png, 0o600); err != nil {
-			return res(500, "squad: "+err.Error())
+			return res(500, "torre: "+err.Error())
 		}
 		st := p.State()
 		return res(200, fmt.Sprintf("%s\n(%dx%d of %s — %q)", path, st.Width, st.Height, st.URL, st.Title))
 
 	case "eval":
 		if len(args) == 0 {
-			return res(400, `Usage: squad portal eval "document.title"`)
+			return res(400, `Usage: torre portal eval "document.title"`)
 		}
 		out, err := p.Evaluate(strings.Join(args, " "), 10*time.Second)
 		if err != nil {
-			return res(400, "squad: eval: "+err.Error())
+			return res(400, "torre: eval: "+err.Error())
 		}
 		return res(200, out)
 
@@ -438,20 +438,21 @@ func (s *Service) nameUnnamed() {
 	}
 }
 
-// MaxCreated is how many portals one agent may have created at a time.
+// MaxCreated is how many portals one agent may have created at a time,
+// unless the workspace's limits say otherwise (SetMaxCreated).
 const MaxCreated = 3
 
 // create opens a portal next to the calling terminal, connected to it.
 func (s *Service) create(caller string, args []string) agentbus.Result {
 	if len(args) < 1 || len(args) > 2 || strings.TrimSpace(args[0]) == "" {
-		return res(400, `Usage: squad portal create URL ["Name"]   e.g. squad portal create localhost:5173 "App"`)
+		return res(400, `Usage: torre portal create URL ["Name"]   e.g. torre portal create localhost:5173 "App"`)
 	}
 	if s.canvas == nil {
-		return res(503, "squad: agents can't create portals in this server")
+		return res(503, "torre: agents can't create portals in this server")
 	}
 	me, ok := s.store.Node(caller)
 	if !ok || me.Terminal == nil {
-		return res(400, "squad: unknown calling terminal")
+		return res(400, "torre: unknown calling terminal")
 	}
 	url := NormalizeURL(args[0])
 	name := ""
@@ -468,31 +469,31 @@ func (s *Service) create(caller string, args []string) agentbus.Result {
 			mine++
 		}
 		if name != "" && strings.EqualFold(n.Portal.Name, name) {
-			return res(409, fmt.Sprintf("squad: there is already a portal named %q; pick another name", n.Portal.Name))
+			return res(409, fmt.Sprintf("torre: there is already a portal named %q; pick another name", n.Portal.Name))
 		}
 	}
-	if mine >= MaxCreated {
-		return res(409, fmt.Sprintf("squad: you already created %d portals, the limit; close one with squad portal close \"Name\", or navigate one with goto", mine))
+	if mine >= s.MaxCreated() {
+		return res(409, fmt.Sprintf("torre: you already created %d portals, the limit; close one with torre portal close \"Name\", or navigate one with goto", mine))
 	}
 	w, h := 560.0, 420.0 // a new portal's size on the canvas
 	x, y := store.FreeSpot(store.OnFloor(nodes, me.Floor), me, w, h)
 	n, err := s.canvas.AddNode(store.Node{Kind: store.KindPortal, X: x, Y: y, W: w, H: h, CreatedBy: caller, Floor: me.Floor, Portal: &store.PortalData{URL: url, Name: name}})
 	if err != nil {
-		return res(400, "squad: "+err.Error())
+		return res(400, "torre: "+err.Error())
 	}
 	if _, err := s.canvas.AddEdge(caller, n.ID, nil); err != nil {
-		return res(500, "squad: created the portal but could not connect it: "+err.Error())
+		return res(500, "torre: created the portal but could not connect it: "+err.Error())
 	}
-	return res(200, fmt.Sprintf("Created portal %q at %s, connected to you. Read the page with squad portal %q snapshot.", n.Portal.Name, n.Portal.URL, n.Portal.Name))
+	return res(200, fmt.Sprintf("Created portal %q at %s, connected to you. Read the page with torre portal %q snapshot.", n.Portal.Name, n.Portal.URL, n.Portal.Name))
 }
 
 // closePortal removes a portal the caller created.
 func (s *Service) closePortal(caller string, args []string) agentbus.Result {
 	if len(args) > 1 {
-		return res(400, `Usage: squad portal close ["Name"]`)
+		return res(400, `Usage: torre portal close ["Name"]`)
 	}
 	if s.canvas == nil {
-		return res(503, "squad: agents can't close portals in this server")
+		return res(503, "torre: agents can't close portals in this server")
 	}
 	var mine []store.Node
 	for _, n := range s.store.Snapshot().Nodes {
@@ -502,14 +503,14 @@ func (s *Service) closePortal(caller string, args []string) agentbus.Result {
 	}
 	switch {
 	case len(mine) == 0 && len(args) == 1:
-		return res(404, fmt.Sprintf("squad: you didn't create a portal named %q (only portals you created can be closed)", args[0]))
+		return res(404, fmt.Sprintf("torre: you didn't create a portal named %q (only portals you created can be closed)", args[0]))
 	case len(mine) == 0:
-		return res(404, "squad: you didn't create any portal")
+		return res(404, "torre: you didn't create any portal")
 	case len(mine) > 1:
-		return res(400, fmt.Sprintf("squad: you created several portals (%s): name one", names(mine)))
+		return res(400, fmt.Sprintf("torre: you created several portals (%s): name one", names(mine)))
 	}
 	if err := s.canvas.RemoveNode(mine[0].ID); err != nil {
-		return res(500, "squad: "+err.Error())
+		return res(500, "torre: "+err.Error())
 	}
 	return res(200, fmt.Sprintf("Closed portal %q.", mine[0].Portal.Name))
 }

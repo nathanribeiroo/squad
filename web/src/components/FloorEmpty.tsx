@@ -1,4 +1,4 @@
-import { useActiveFloor, useBranch } from '../lib/floors';
+import { flightLevel, useActiveFloor, useBranch } from '../lib/floors';
 import { shortPath } from '../lib/paths';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -18,8 +18,10 @@ export function FloorEmpty() {
   return (
     <div className="fl-empty">
       <div className="fl-empty-card">
-        <Icon name="layers" size={24} />
-        <strong>Andar {floor.name}</strong>
+        <span className="label-caps">Nível vazio</span>
+        <strong>
+          {flightLevel(floor)} · {floor.name}
+        </strong>
         <span className="mono fl-empty-path">
           ⎇ {branch || floor.branch} · {shortPath(floor.cwd)}
         </span>
@@ -30,6 +32,7 @@ export function FloorEmpty() {
               Preparando{setup ? ': ' : '…'}
               {setup && <span className="mono">{setup}</span>}
             </span>
+            <span style={{ flex: 1 }} />
             <button className="link-btn" onClick={() => open('log')}>
               ver log
             </button>
@@ -38,19 +41,20 @@ export function FloorEmpty() {
         {floor.status === 'failed' && (
           <span className="fl-empty-state err">
             <Icon name="error" size={15} />
-            O preparo falhou; o andar funciona, mas pode faltar dependência.
+            <span>O preparo falhou; o nível funciona, mas pode faltar dependência.</span>
+            <span style={{ flex: 1 }} />
             <button className="link-btn" onClick={() => open('log')}>
               ver log
             </button>
           </span>
         )}
         <p>
-          Os terminais daqui trabalham nessa cópia, no branch dela. Crie um terminal (<span className="kbd">T</span>), ou peça a um gerente:{' '}
-          <span className="mono">squad new "Bia" --role impl --floor "{floor.name}"</span>.
+          Ponha voos aqui com <span className="kbd">T</span>, ou peça a um líder:
         </p>
-        <button className="btn" onClick={() => useSquad.getState().setNewTerm(true)}>
-          <Icon name="terminal" />
-          Novo terminal neste andar
+        <code className="fl-empty-cmd mono">torre new "Bia" --role impl --floor "{floor.name}"</code>
+        <button className="btn filled fl-empty-btn" onClick={() => useSquad.getState().setNewTerm(true)}>
+          <Icon name="flight_takeoff" />
+          Novo voo neste nível
         </button>
       </div>
     </div>

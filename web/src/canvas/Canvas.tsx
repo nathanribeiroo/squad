@@ -35,11 +35,11 @@ const edgeTypes = { wire: WireEdge };
 // Each session of a workspace (a canvas of its own), and each of its floors,
 // keeps its own pan and zoom; before sessions, the workspace kept it.
 const viewportKey = (ws: string | null, session: string | null, floor: string) =>
-  `squad.viewport.${ws ?? ''}${session ? `.s.${session}` : ''}${floor ? `.${floor}` : ''}`;
+  `torre.viewport.${ws ?? ''}${session ? `.s.${session}` : ''}${floor ? `.${floor}` : ''}`;
 
 function savedViewport(ws: string | null, session: string | null, floor: string): Viewport {
   try {
-    const legacy = floor ? null : localStorage.getItem('squad.viewport');
+    const legacy = floor ? null : localStorage.getItem('torre.viewport');
     const saved = localStorage.getItem(viewportKey(ws, session, floor)) ?? localStorage.getItem(viewportKey(ws, null, floor));
     const v = JSON.parse(saved ?? legacy ?? '') as Viewport;
     if (Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.zoom)) return v;
@@ -117,8 +117,8 @@ export function Canvas() {
       if (!c.source || !c.target || c.source === c.target) return;
       api
         .addEdge(c.source, c.target)
-        .then(() => toast(`${name(c.source)} ↔ ${name(c.target)} ligados`))
-        .catch((e: Error) => toast(e.message));
+        .then(() => toast(`${name(c.source)} ↔ ${name(c.target)} na mesma frequência`))
+        .catch((e: Error) => toast(e.message, 'err'));
     },
     [],
   );
@@ -131,7 +131,7 @@ export function Canvas() {
       api
         .removeEdge(e.id)
         .then(() => toast(`${name(e.source)} ↔ ${name(e.target)} desligados`))
-        .catch((err: Error) => toast(err.message));
+        .catch((err: Error) => toast(err.message, 'err'));
     }
   }, []);
 
@@ -141,7 +141,7 @@ export function Canvas() {
       const x = Math.round(n.position.x);
       const y = Math.round(n.position.y);
       st.moveNodeLocal(n.id, x, y);
-      api.updateNode(n.id, { x, y }).catch((e: Error) => toast(e.message));
+      api.updateNode(n.id, { x, y }).catch((e: Error) => toast(e.message, 'err'));
     }
   }, []);
 
@@ -183,6 +183,23 @@ export function Canvas() {
     }, 60);
     return () => window.clearTimeout(t);
   }, [focusRequest, nodes, rf]);
+  // Tab: select a node, and bring it into view when it is off screen (at the
+  // same zoom).
+  const selectRequest = useSquad((s) => s.selectRequest);
+  useEffect(() => {
+    if (!selectRequest) return;
+    useSquad.getState().requestSelect(null);
+    setNodes((ns) => ns.map((n) => (n.selected === (n.id === selectRequest) ? n : { ...n, selected: n.id === selectRequest })));
+    useSquad.getState().setSelectedNode(selectRequest);
+    const n = rf.getInternalNode(selectRequest);
+    const pane = document.querySelector('.react-flow')?.getBoundingClientRect();
+    if (!n || !pane) return;
+    const a = rf.flowToScreenPosition(n.internals.positionAbsolute);
+    const b = rf.flowToScreenPosition({ x: n.internals.positionAbsolute.x + (n.measured.width ?? 0), y: n.internals.positionAbsolute.y + (n.measured.height ?? 0) });
+    if (a.x >= pane.left && a.y >= pane.top && b.x <= pane.right && b.y <= pane.bottom) return;
+    const z = rf.getZoom();
+    void rf.fitView({ nodes: [{ id: selectRequest }], duration: 250, minZoom: z, maxZoom: z });
+  }, [selectRequest, rf]);
   // Double-clicking a wire adds a bend point there.
   const onEdgeDoubleClick = useCallback(
     (e: React.MouseEvent, edge: Edge) => {
@@ -192,7 +209,7 @@ export function Canvas() {
       if (!a || !b || !we) return;
       const rect = (n: typeof a) => ({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: n.measured.width ?? 0, h: n.measured.height ?? 0 });
       const p = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      api.updateEdge(edge.id, insertRopePoint(rect(a), rect(b), we.ropePoints ?? [], p)).catch((err: Error) => toast(err.message));
+      api.updateEdge(edge.id, insertRopePoint(rect(a), rect(b), we.ropePoints ?? [], p)).catch((err: Error) => toast(err.message, 'err'));
     },
     [rf],
   );
@@ -214,7 +231,10 @@ export function Canvas() {
       onEdgeDoubleClick={onEdgeDoubleClick}
       zoomOnDoubleClick={false}
       onNodeDragStop={onNodeDragStop}
-      onSelectionChange={({ nodes: sel }) => setSelected(sel.length === 1 ? sel[0].id : null)}
+      onSelectionChange={({ nodes: sel }) => {
+        setSelected(sel.length === 1 ? sel[0].id : null);
+        useSquad.getState().setSelectedIds(sel.map((n) => n.id));
+      }}
       onPaneClick={() => setFocused(null)}
       onMove={onMove}
       onMoveEnd={onMoveEnd}

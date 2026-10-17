@@ -65,15 +65,15 @@ func TestTranscriptFallback(t *testing.T) {
 }
 
 func TestPrepareLaunchLines(t *testing.T) {
-	t.Setenv("SQUAD_HOME", t.TempDir())
+	t.Setenv("TORRE_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir()) // no user Devin config
 	t.Setenv("APPDATA", t.TempDir())
-	l, err := NewLauncher("/opt/squad/bin/squad")
+	l, err := NewLauncher("/opt/torre/bin/torre")
 	if err != nil {
 		t.Fatal(err)
 	}
 	settings, err := os.ReadFile(l.ClaudeSettings)
-	if err != nil || !strings.Contains(string(settings), `\"/opt/squad/bin/squad\" hook claude-stop`) {
+	if err != nil || !strings.Contains(string(settings), `\"/opt/torre/bin/torre\" hook claude-stop`) {
 		t.Fatalf("settings file: %v\n%s", err, settings)
 	}
 	spec := terminal.Spec{Agent: "claude", Shell: "/bin/sh"}
@@ -84,7 +84,7 @@ func TestPrepareLaunchLines(t *testing.T) {
 		!strings.Contains(spec.Command, " --mcp-config "+terminal.Quote(terminal.ShellPOSIX, l.ClaudeMCP)) {
 		t.Fatalf("claude command: %s", spec.Command)
 	}
-	// squad mcp for Claude Code, with the safe tools pre-approved and the
+	// torre mcp for Claude Code, with the safe tools pre-approved and the
 	// others (keys, new_shell, portal_eval) left to the user.
 	var mcpCfg struct {
 		MCPServers map[string]struct {
@@ -93,24 +93,24 @@ func TestPrepareLaunchLines(t *testing.T) {
 		} `json:"mcpServers"`
 	}
 	if data, err := os.ReadFile(l.ClaudeMCP); err != nil || json.Unmarshal(data, &mcpCfg) != nil ||
-		mcpCfg.MCPServers["squad"].Command != "/opt/squad/bin/squad" || strings.Join(mcpCfg.MCPServers["squad"].Args, " ") != "mcp" {
+		mcpCfg.MCPServers["torre"].Command != "/opt/torre/bin/torre" || strings.Join(mcpCfg.MCPServers["torre"].Args, " ") != "mcp" {
 		t.Fatalf("claude mcp config: %v %+v", err, mcpCfg)
 	}
 	var cs struct {
 		Permissions struct{ Allow []string }
 	}
 	_ = json.Unmarshal(settings, &cs)
-	if !slices.Contains(cs.Permissions.Allow, "mcp__squad__ask") || !slices.Contains(cs.Permissions.Allow, "mcp__squad__portal") ||
-		slices.Contains(cs.Permissions.Allow, "mcp__squad__keys") || slices.Contains(cs.Permissions.Allow, "mcp__squad__new_shell") ||
-		slices.Contains(cs.Permissions.Allow, "mcp__squad__portal_eval") || slices.Contains(cs.Permissions.Allow, "mcp__squad__floor_land") ||
-		!slices.Contains(cs.Permissions.Allow, "mcp__squad__floors") {
+	if !slices.Contains(cs.Permissions.Allow, "mcp__torre__ask") || !slices.Contains(cs.Permissions.Allow, "mcp__torre__portal") ||
+		slices.Contains(cs.Permissions.Allow, "mcp__torre__keys") || slices.Contains(cs.Permissions.Allow, "mcp__torre__new_shell") ||
+		slices.Contains(cs.Permissions.Allow, "mcp__torre__portal_eval") || slices.Contains(cs.Permissions.Allow, "mcp__torre__floor_land") ||
+		!slices.Contains(cs.Permissions.Allow, "mcp__torre__floors") {
 		t.Fatalf("pre-approved tools: %v", cs.Permissions.Allow)
 	}
 	spec = terminal.Spec{Agent: "codex", Command: "codex --model x", Shell: "/bin/sh"}
 	_, _ = l.Prepare(&store.Node{}, &spec)
-	want := `codex --model x -c 'notify=["/opt/squad/bin/squad","hook","codex-notify"]'` +
-		` -c 'mcp_servers.squad.command="/opt/squad/bin/squad"' -c 'mcp_servers.squad.args=["mcp"]'` +
-		` -c 'mcp_servers.squad.env_vars=["SQUAD_URL","SQUAD_TERMINAL_ID","SQUAD_TOKEN"]' -c mcp_servers.squad.tool_timeout_sec=1800`
+	want := `codex --model x -c 'notify=["/opt/torre/bin/torre","hook","codex-notify"]'` +
+		` -c 'mcp_servers.torre.command="/opt/torre/bin/torre"' -c 'mcp_servers.torre.args=["mcp"]'` +
+		` -c 'mcp_servers.torre.env_vars=["TORRE_URL","TORRE_TERMINAL_ID","TORRE_TOKEN"]' -c mcp_servers.torre.tool_timeout_sec=1800`
 	if spec.Command != want {
 		t.Fatalf("codex command:\n got %s\nwant %s", spec.Command, want)
 	}
@@ -120,7 +120,7 @@ func TestPrepareLaunchLines(t *testing.T) {
 		t.Fatalf("devin command:\n got %s\nwant %s", spec.Command, want)
 	}
 	devinCfg, err := os.ReadFile(l.DevinConfig)
-	if err != nil || !strings.Contains(string(devinCfg), `\"/opt/squad/bin/squad\" hook devin-stop`) || strings.Contains(string(devinCfg), `"mcpServers"`) ||
+	if err != nil || !strings.Contains(string(devinCfg), `\"/opt/torre/bin/torre\" hook devin-stop`) || strings.Contains(string(devinCfg), `"mcpServers"`) ||
 		!strings.Contains(string(devinCfg), `hook devin-prompt`) || strings.Contains(string(devinCfg), "StopFailure") {
 		t.Fatalf("devin config: %v\n%s", err, devinCfg)
 	}
@@ -149,14 +149,14 @@ func TestPrepareLaunchLines(t *testing.T) {
 }
 
 func TestRoleDelivery(t *testing.T) {
-	t.Setenv("SQUAD_HOME", t.TempDir())
+	t.Setenv("TORRE_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("APPDATA", t.TempDir())
-	l, err := NewLauncher("/opt/squad/bin/squad")
+	l, err := NewLauncher("/opt/torre/bin/torre")
 	if err != nil {
 		t.Fatal(err)
 	}
-	const text = "# Papel no Squad: Testador\n\nUse `squad ask \"Nome\"`; 100% $HOME! 'ok' ção \U0001F600\n"
+	const text = "# Papel na Torre: Testador\n\nUse `torre ask \"Nome\"`; 100% $HOME! 'ok' ção \U0001F600\n"
 	asked := 0
 	l.Role = func(n store.Node) (string, bool) {
 		asked++
@@ -215,8 +215,8 @@ func TestRoleDelivery(t *testing.T) {
 	// Gemini: the role is the first prompt, from the environment.
 	spec = terminal.Spec{Agent: "gemini", Shell: "/bin/sh"}
 	_, _ = l.Prepare(node("t3", "test"), &spec)
-	if spec.Command != `gemini -i "$SQUAD_ROLE"` || spec.Env["SQUAD_ROLE"] != text {
-		t.Fatalf("gemini: %s %q", spec.Command, spec.Env["SQUAD_ROLE"])
+	if spec.Command != `gemini -i "$TORRE_ROLE"` || spec.Env["TORRE_ROLE"] != text {
+		t.Fatalf("gemini: %s %q", spec.Command, spec.Env["TORRE_ROLE"])
 	}
 	if envRef(terminal.ShellPowerShell, "X") != "$env:X" || envRef(terminal.ShellCmd, "X") != `"%X%"` {
 		t.Fatal("envRef")
@@ -312,10 +312,10 @@ func TestHookConversation(t *testing.T) {
 // A terminal starts a new conversation, or continues the one it remembers;
 // when the agent can't find it, the launch line itself starts a new one.
 func TestConversationLines(t *testing.T) {
-	t.Setenv("SQUAD_HOME", t.TempDir())
+	t.Setenv("TORRE_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("APPDATA", t.TempDir())
-	l, err := NewLauncher("/opt/squad/bin/squad")
+	l, err := NewLauncher("/opt/torre/bin/torre")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestConversationLines(t *testing.T) {
 		return spec.Command, n.Terminal.Conversation, resumed
 	}
 
-	// Claude: Squad picks the id, so it's known before the first prompt.
+	// Claude: Torre picks the id, so it's known before the first prompt.
 	line, conv, resumed := prepare("claude", "", "")
 	if !ValidConversation(conv) || len(conv) != 36 || conv != strings.ToLower(conv) || resumed || !strings.HasSuffix(line, " --session-id "+conv) {
 		t.Fatalf("claude, new: %s (%s, %v)", line, conv, resumed)
@@ -347,7 +347,7 @@ func TestConversationLines(t *testing.T) {
 	if line, conv, _ := prepare("claude", "", "-r; rm -rf ~"); strings.Contains(line, "rm") || !ValidConversation(conv) {
 		t.Fatalf("claude, bad id: %s %s", line, conv)
 	}
-	// The user's own line picks the conversation: Squad leaves it alone.
+	// The user's own line picks the conversation: Torre leaves it alone.
 	if line, conv, resumed := prepare("claude", "claude --continue", "c-1"); strings.Contains(line, "--session-id") || strings.Contains(line, "--resume") || conv != "c-1" || resumed {
 		t.Fatalf("claude --continue: %s %s", line, conv)
 	}
@@ -375,14 +375,14 @@ func TestConversationLines(t *testing.T) {
 	// Gemini: like Claude when it has --session-id; the role is the first
 	// prompt of a new conversation only.
 	line, conv, _ = prepare("gemini", "", "")
-	if line != "gemini --session-id "+conv+` -i "$SQUAD_ROLE"` {
+	if line != "gemini --session-id "+conv+` -i "$TORRE_ROLE"` {
 		t.Fatalf("gemini, new: %s", line)
 	}
-	if line, _, resumed := prepare("gemini", "", "g-1"); line != `gemini --resume g-1 || gemini --session-id g-1 -i "$SQUAD_ROLE"` || !resumed {
+	if line, _, resumed := prepare("gemini", "", "g-1"); line != `gemini --resume g-1 || gemini --session-id g-1 -i "$TORRE_ROLE"` || !resumed {
 		t.Fatalf("gemini, continued: %s", line)
 	}
 	gemini = false // an older Gemini CLI
-	if line, conv, resumed := prepare("gemini", "", "g-1"); line != `gemini -i "$SQUAD_ROLE"` || conv != "" || resumed {
+	if line, conv, resumed := prepare("gemini", "", "g-1"); line != `gemini -i "$TORRE_ROLE"` || conv != "" || resumed {
 		t.Fatalf("older gemini: %s %q", line, conv)
 	}
 }

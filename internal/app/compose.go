@@ -107,17 +107,17 @@ func (a *App) Send(id string, req ComposeRequest) error {
 func mentionRef(m store.Node) string {
 	switch {
 	case m.Terminal != nil:
-		return fmt.Sprintf("@%s = terminal ligado (squad ask %q \"…\")", m.Terminal.Name, m.Terminal.Name)
+		return fmt.Sprintf("@%s = terminal ligado (torre ask %q \"…\")", m.Terminal.Name, m.Terminal.Name)
 	case m.Note != nil && m.Note.File == "": // a draft: its name is all it has
-		return fmt.Sprintf("@%s = nota ligada (squad note read %q)", m.Note.Title, m.Note.Title)
+		return fmt.Sprintf("@%s = nota ligada (torre note read %q)", m.Note.Title, m.Note.Title)
 	case m.Note != nil:
-		return fmt.Sprintf("@%s = nota ligada %s (squad note read %q)", m.Note.Title, m.Note.File, m.Note.File)
+		return fmt.Sprintf("@%s = nota ligada %s (torre note read %q)", m.Note.Title, m.Note.File, m.Note.File)
 	case m.Portal != nil:
 		name := m.Label()
 		if m.Portal.URL != "" {
-			return fmt.Sprintf("@%s = portal (navegador) ligado em %s (squad portal %q snapshot)", name, m.Portal.URL, name)
+			return fmt.Sprintf("@%s = portal (navegador) ligado em %s (torre portal %q snapshot)", name, m.Portal.URL, name)
 		}
-		return fmt.Sprintf("@%s = portal (navegador) ligado (squad portal %q goto URL)", name, name)
+		return fmt.Sprintf("@%s = portal (navegador) ligado (torre portal %q goto URL)", name, name)
 	}
 	return "@" + m.ID
 }

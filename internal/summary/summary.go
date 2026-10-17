@@ -153,7 +153,7 @@ func (s *Service) load() {
 		return
 	}
 	for _, c := range list {
-		c.Summarizing = false // that run ended with the last Squad
+		c.Summarizing = false // that run ended with the last Torre process
 		s.cards[c.Terminal] = &c
 	}
 }
@@ -492,10 +492,10 @@ func (s *Service) describe(n store.Node) string {
 	}
 	if n.Floor != "" {
 		if f, ok := s.o.Canvas.Store().Floor(n.Floor); ok {
-			parts = append(parts, fmt.Sprintf("andar %s (branch %s)", f.Name, f.Branch))
+			parts = append(parts, fmt.Sprintf("nível %s (branch %s)", f.Name, f.Branch))
 		}
 	} else {
-		parts = append(parts, "térreo")
+		parts = append(parts, "pista")
 	}
 	if s.o.State != nil {
 		parts = append(parts, stateNames[s.o.State(n.ID)])
@@ -506,8 +506,9 @@ func (s *Service) describe(n store.Node) string {
 // stateNames say a terminal's state as the engine should read it.
 var stateNames = map[activity.State]string{
 	activity.Boot: "iniciando", activity.Idle: "ocioso", activity.Work: "trabalhando agora",
-	activity.Wait: "esperando a resposta de outro agente", activity.Done: "terminou o turno há pouco",
-	activity.Err: "parou com erro", activity.Off: "parado",
+	activity.Wait: "esperando a resposta de outro agente", activity.Ask: "esperando a permissão ou a resposta do usuário",
+	activity.Done: "terminou o turno há pouco",
+	activity.Err:  "parou com erro", activity.Off: "parado",
 }
 
 // clip keeps the first n characters of s (rune-safe), marking the cut.

@@ -43,34 +43,44 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .mono { font-family: var(--font-mono); }
 
+/* Section labels in capitals (ESPAÇO AÉREO, PASTA DO PROJETO…). */
+.label-caps { font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+
 .kbd {
   font-family: var(--font-mono);
   font-size: 10px;
   line-height: 14px;
-  border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border: 1px solid var(--line-3);
   padding: 0 4px;
-  color: var(--text-2);
+  color: var(--text-3);
   white-space: nowrap;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
+/* Buttons: square, in capitals; .filled is the main action (light on dark). */
 .btn {
   height: 30px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0 10px;
-  border-radius: var(--radius-control);
-  border: 1px solid var(--line-2);
+  padding: 0 12px;
+  border: 1px solid var(--line-3);
   background: transparent;
-  font-size: 12.5px;
-  font-weight: 600;
+  color: var(--text);
+  font-size: var(--fs-button);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
 }
-.btn:hover { background: var(--surface-2); }
-.btn.filled { background: var(--text); color: var(--surface); border-color: var(--text); }
-.btn .msi { font-size: 18px; }
+.btn:hover:not(:disabled) { background: var(--surface-2); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.filled { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.btn.filled:hover:not(:disabled) { background: var(--primary); filter: brightness(1.08); }
+.btn.filled .kbd { color: inherit; border-color: currentColor; opacity: 0.7; }
+.btn .msi { font-size: 17px; }
 
 .icon-btn {
   display: inline-flex;
@@ -78,53 +88,66 @@ input, select, textarea { font: inherit; color: inherit; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-control);
   border: 0;
   background: transparent;
-  color: var(--text-2);
+  color: var(--text-3);
   cursor: pointer;
 }
-.icon-btn:hover { background: var(--surface-2); color: var(--text); }
+.icon-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+.icon-btn:disabled { opacity: 0.4; cursor: default; }
 
+:focus-visible { outline: var(--focus-ring-w) solid var(--focus); outline-offset: 1px; }
+
+/* Short notices at the bottom center (TELAS.md, quadro 21): confirmation
+   light, waiting amber, error red, always with an icon. */
 .toast {
   position: fixed;
   left: 50%;
   bottom: 70px;
   transform: translateX(-50%);
-  background: var(--text);
-  color: var(--surface);
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  z-index: 50;
-  box-shadow: var(--shadow);
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  max-width: min(720px, calc(100vw - 32px));
+  background: var(--primary);
+  color: var(--on-primary);
+  border: 1px solid var(--primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  z-index: 80;
+  box-shadow: var(--shadow-pop);
+  white-space: nowrap;
 }
+.toast span { overflow: hidden; text-overflow: ellipsis; }
+.toast.wait { background: var(--pill-wait-bg); border-color: var(--st-wait); color: var(--stt-wait); }
+.toast.err { background: var(--pill-err-bg); border-color: var(--st-err); color: var(--stt-err-2, var(--stt-err)); }
 
 .popover {
   position: absolute;
   background: var(--surface);
-  border: 1px solid var(--line-2);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--line-3);
+  box-shadow: var(--shadow-pop);
   z-index: 40;
 }
 
-.field { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--text-2); }
+/* Fields: a label in capitals above a square input. */
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+.field > :not(.field-row) { letter-spacing: normal; text-transform: none; font-weight: 400; }
 .field input, .field select {
-  height: 30px;
-  border-radius: 6px;
-  border: 1px solid var(--line-2);
-  background: var(--surface-2);
-  padding: 0 8px;
-  font-size: 12.5px;
+  height: 34px;
+  border: 1px solid var(--line-3);
+  background: var(--bg);
+  padding: 0 10px;
+  font-size: 13px;
   color: var(--text);
 }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--focus); }
 .field textarea {
-  border-radius: 6px;
-  border: 1px solid var(--line-2);
-  background: var(--surface-2);
-  padding: 8px;
+  border: 1px solid var(--line-3);
+  background: var(--bg);
+  padding: 8px 10px;
   font: inherit;
   font-size: 12.5px;
   line-height: 1.5;
@@ -132,10 +155,16 @@ input, select, textarea { font: inherit; color: inherit; }
   resize: none;
 }
 .field-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.field-hint { font-size: 11px; color: var(--text-3); line-height: 1.4; }
-.link-btn { border: 0; background: transparent; padding: 0; font: inherit; font-size: 11px; font-weight: 600; color: var(--st-work); cursor: pointer; }
-.link-btn:hover { text-decoration: underline; }
+.field-hint { font-size: 11.5px; color: var(--text-3); line-height: 1.45; font-weight: 400; letter-spacing: normal; text-transform: none; }
+.link-btn { border: 0; background: transparent; padding: 0; font: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--stt-work); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.link-btn:hover { color: var(--text); }
+
+input[type='checkbox'], input[type='radio'] { accent-color: var(--primary); }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0s !important; transition-duration: 0s !important; }
 }
+
+/* The action that loses work (ConfirmDialog, Descartar). */
+.btn.danger { background: var(--st-err); border-color: var(--st-err); color: #fff; }
+.btn.danger:not(:disabled):hover { filter: brightness(1.1); }

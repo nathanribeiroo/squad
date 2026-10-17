@@ -32,7 +32,7 @@ const site = `<!doctype html><html><head><title>Teste</title></head><body style=
 
 type harness struct {
 	t    *testing.T
-	base string // squad server
+	base string // torre server
 	site string // test web site
 	st   *store.Store
 	br   *browser.Manager
@@ -44,7 +44,7 @@ func newHarness(t *testing.T, withBrowser bool) *harness {
 	if withBrowser {
 		path := browser.Find()
 		if path == "" {
-			t.Skip("no Chromium-based browser (set SQUAD_BROWSER)")
+			t.Skip("no Chromium-based browser (set TORRE_BROWSER)")
 		}
 		br = browser.New(browser.Options{ExecPath: path, Profile: t.TempDir()})
 		t.Cleanup(br.Shutdown)
@@ -116,13 +116,19 @@ func (h *harness) dial(id string) *websocket.Conn {
 
 // stream reads a portal socket in the background.
 type stream struct {
-	states chan browser.State
-	errs   chan string
-	frames chan []byte
+	states   chan browser.State
+	errs     chan string
+	frames   chan []byte
+	elements chan elementsMsg
+}
+
+type elementsMsg struct {
+	Elements []browser.Box
+	Snapshot bool
 }
 
 func read(c *websocket.Conn) *stream {
-	s := &stream{states: make(chan browser.State, 64), errs: make(chan string, 4), frames: make(chan []byte, 64)}
+	s := &stream{states: make(chan browser.State, 64), errs: make(chan string, 4), frames: make(chan []byte, 64), elements: make(chan elementsMsg, 16)}
 	go func() {
 		for {
 			typ, data, err := c.Read(context.Background())
@@ -140,10 +146,13 @@ func read(c *websocket.Conn) *stream {
 				Type  string
 				State browser.State
 				Error string
+				elementsMsg
 			}
 			_ = json.Unmarshal(data, &m)
 			if m.Type == "error" {
 				s.errs <- m.Error
+			} else if m.Type == "elements" {
+				s.elements <- m.elementsMsg
 			} else {
 				s.states <- m.State
 			}
@@ -165,6 +174,17 @@ func (s *stream) waitState(t *testing.T, what string, cond func(browser.State) b
 			t.Fatalf("timeout waiting for %s", what)
 		}
 	}
+}
+
+func waitElements(t *testing.T, s *stream) elementsMsg {
+	t.Helper()
+	select {
+	case m := <-s.elements:
+		return m
+	case <-time.After(10 * time.Second):
+		t.Fatal("no elements message")
+	}
+	return elementsMsg{}
 }
 
 func send(t *testing.T, c *websocket.Conn, v any) {
@@ -227,6 +247,19 @@ func TestPortalStreamInputAndAddress(t *testing.T) {
 	clickAt(t, c, 70, 95)
 	waitFor(t, "clicked", func() bool { return js(`document.getElementById('saida').textContent`) == "clicado: ok!" })
 
+	// @ELEMENTOS: nothing until an agent reads the page, then its refs.
+	send(t, c, map[string]any{"type": "elements", "on": true})
+	if m := waitElements(t, s); m.Snapshot {
+		t.Fatalf("elements before a snapshot: %+v", m)
+	}
+	if _, err := p.Snapshot(); err != nil {
+		t.Fatal(err)
+	}
+	if m := waitElements(t, s); !m.Snapshot || len(m.Elements) == 0 || m.Elements[0].Ref != "@e1" || m.Elements[0].W <= 0 {
+		t.Fatalf("elements after a snapshot: %+v", m)
+	}
+	send(t, c, map[string]any{"type": "elements", "on": false})
+
 	// Navigating inside the page updates the portal's address on the canvas.
 	js(`location.href = '/2'`)
 	waitFor(t, "address saved", func() bool { n2, _ := h.st.Node(n.ID); return n2.Portal.URL == h.site+"/2" })
@@ -274,7 +307,7 @@ func TestNormalizeURL(t *testing.T) {
 		"http://example.com":   "http://example.com",
 		"https://a.b/c?d=1":    "https://a.b/c?d=1",
 		"about:blank":          "about:blank",
-		"  docs.squad.dev/a  ": "https://docs.squad.dev/a",
+		"  docs.torre.dev/a  ": "https://docs.torre.dev/a",
 		"":                     "",
 	} {
 		if got := NormalizeURL(in); got != want {

@@ -5,11 +5,13 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/nathanribeiroo/squad/internal/activity"
+	"github.com/nathanribeiroo/squad/internal/attention"
 )
 
-// HookEvent is what an agent hook means for Squad.
+// HookEvent is what an agent hook means for Torre.
 type HookEvent struct {
 	TurnStart    bool   // the agent started working on a prompt
 	Prompt       string // that prompt (when TurnStart)
@@ -22,11 +24,14 @@ type HookEvent struct {
 	// (SessionStart): startup, resume, clear, compact.
 	Conversation string
 	Source       string
+	// Attention: the agent asks the user's permission for a tool.
+	Attention *attention.Attention
 }
 
 // ParseHook interprets the payload of a named hook ("claude-stop",
 // "claude-stop-failure", "claude-prompt", "claude-session-start",
-// "codex-notify", "devin-stop", "devin-prompt", "devin-session-start").
+// "claude-permission", "codex-notify", "devin-stop", "devin-prompt",
+// "devin-session-start", "devin-permission").
 func ParseHook(name string, body []byte) (HookEvent, bool) {
 	var common struct {
 		SessionID string `json:"session_id"`
@@ -66,6 +71,20 @@ func ParseHook(name string, body []byte) (HookEvent, bool) {
 			ev.Message = strings.TrimSpace("error: " + p.Error + " " + p.ErrorDetails)
 		}
 		return ev, true
+	case "claude-permission", "devin-permission":
+		var p struct {
+			ToolName  string         `json:"tool_name"`
+			ToolInput map[string]any `json:"tool_input"`
+		}
+		if json.Unmarshal(body, &p) != nil || p.ToolName == "" {
+			return HookEvent{}, false
+		}
+		kind := attention.Permission
+		if p.ToolName == "AskUserQuestion" {
+			kind = attention.Question
+		}
+		return HookEvent{Conversation: common.SessionID,
+			Attention: &attention.Attention{Kind: kind, Tool: p.ToolName, Detail: toolDetail(p.ToolInput)}}, true
 	case "codex-notify":
 		var p struct {
 			Type                 string `json:"type"`
@@ -126,6 +145,10 @@ func HookHandler(o HookOptions) http.Handler {
 				"hookEventName": "SessionStart", "additionalContext": text,
 			}})
 			return
+		case ev.Attention != nil:
+			// Shown to the user; the hook's answer stays empty, so the agent
+			// asks as it always does (Torre never decides a permission).
+			o.Monitor.Raise(id, *ev.Attention)
 		case ev.TurnStart:
 			o.Monitor.SignalStart(id, ev.Prompt)
 			if o.Busy != nil {
@@ -139,4 +162,28 @@ func HookHandler(o HookOptions) http.Handler {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+}
+
+// toolDetail is what a permission request puts at stake: the command, the
+// file, the address; else the input in short.
+func toolDetail(in map[string]any) string {
+	for _, k := range []string{"command", "file_path", "notebook_path", "path", "url", "pattern", "query"} {
+		if v, ok := in[k].(string); ok && strings.TrimSpace(v) != "" {
+			return clip(strings.TrimSpace(v))
+		}
+	}
+	if len(in) == 0 {
+		return ""
+	}
+	b, _ := json.Marshal(in)
+	return clip(string(b))
+}
+
+// clip shortens s to 300 characters.
+func clip(s string) string {
+	if utf8.RuneCountInString(s) <= 300 {
+		return s
+	}
+	r := []rune(s)
+	return string(r[:299]) + "…"
 }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
-import type { Floor } from '../api/types';
-import { GROUND, gitSummary, useFloors } from '../lib/floors';
+import type { Floor, FloorGit } from '../api/types';
+import { shortPath } from '../lib/paths';
+import { flightLevel, gitSummary, plural, useFloors } from '../lib/floors';
 import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -83,7 +84,7 @@ function useGoneNotice(floors: Floor[]) {
       for (const f of prev.current) {
         if (floors.some((x) => x.id === f.id)) continue;
         if (expectedGone.delete(f.id)) continue;
-        toast(`O andar ${f.name} foi aterrissado (branch ${f.branch})`);
+        toast(`${f.name} pousou (branch ${f.branch})`);
       }
     }
     prev.current = floors;
@@ -116,6 +117,8 @@ export function FloorBar() {
   const setDialog = useSquad((s) => s.setFloorDialog);
   const status = useSquad((s) => s.floorStatus);
   const busy = useBusyFloors();
+  // Levels where a flight asks you (PRIORIDADE): an amber dot on the tab.
+  const askFloors = useSquad((s) => s.askingIds.map((id) => '|' + (s.workspace?.nodes.find((n) => n.id === id)?.floor ?? '') + '|').join(''));
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   useFloorStatus();
@@ -132,7 +135,7 @@ export function FloorBar() {
   if (copy && !status?.ground.missing) ground = prepSummary(copy) ?? ground;
   const notRepo = status !== null && !status.repo;
 
-  const tab = (id: string, label: string, sub: { text: string; dirty?: boolean; err?: boolean; spin?: boolean } | null, title: string) => {
+  const tab = (id: string, level: string, label: string, sub: { text: string; dirty?: boolean; err?: boolean; spin?: boolean } | null, title: string) => {
     const on = id === active;
     return (
       <button
@@ -143,21 +146,26 @@ export function FloorBar() {
         title={title}
         onClick={(e) => {
           if (!on) return setFloor(id);
-          if (!id && !copy) return; // the ground floor's menu is the session copy's
+          if (!id && !copy) return; // the runway's menu is the session copy's
           const r = e.currentTarget.getBoundingClientRect();
           setMenu(menu ? null : { id, x: r.left, y: r.bottom + 6 });
         }}
       >
-        {on && <Icon name="layers" size={15} />}
+        <span className="tb-floor-level">{level}</span>
         <span className="tb-floor-name">{label}</span>
-        {busy[id] > 0 && <span className="tb-floor-busy" title={`${busy[id]} trabalhando`} />}
         {sub && (
-          <span className={`tb-floor-sub mono${sub.dirty ? ' dirty' : ''}${sub.err ? ' err' : ''}`}>
+          <span className={`tb-floor-sub${sub.dirty ? ' dirty' : ''}${sub.err ? ' err' : ''}`}>
             {sub.spin && <Icon name="progress_activity" size={13} className="spin" />}
             {sub.text}
           </span>
         )}
-        {on && (id || copy) && <Icon name="expand_more" size={16} />}
+        {busy[id] > 0 && (
+          <span className="tb-floor-air" title={`${busy[id]} no ar`} aria-label={`${busy[id]} no ar`}>
+            ▲
+          </span>
+        )}
+        {askFloors.includes(`|${id}|`) && <span className="tb-floor-ask" title="Um voo deste nível pede você" aria-label="pede você" />}
+        {on && (id || copy) && <Icon name="expand_more" size={15} className="tb-caret" />}
       </button>
     );
   };
@@ -165,23 +173,24 @@ export function FloorBar() {
   return (
     <>
       <div className="tb-floors">
-        <div className="tb-floor-tabs" role="tablist" aria-label="Andares" ref={tabsRef}>
+        <div className="tb-floor-tabs" role="tablist" aria-label="Níveis de voo" ref={tabsRef}>
           {tab(
             '',
-            status?.repo ? status.ground.branch || 'HEAD' : GROUND,
+            'PISTA',
+            status?.repo ? status.ground.branch || 'HEAD' : '—',
             ground,
-            copy ? `Térreo da sessão: a cópia em ${copy.cwd}, branch ${copy.branch}` : 'Térreo: a pasta do workspace',
+            copy ? `Pista da sessão: a cópia em ${copy.cwd}, branch ${copy.branch}` : 'Pista: a pasta do workspace',
           )}
           {floors.map((f) => {
             const g = status?.floors[f.id];
             const sub = prepSummary(f) ?? gitSummary(g);
-            return tab(f.id, f.name, sub, `Andar ${f.name}: branch ${g?.branch || f.branch}, em ${f.cwd}`);
+            return tab(f.id, flightLevel(f), f.name, sub, `${flightLevel(f)} · ${f.name}: branch ${g?.branch || f.branch}, em ${f.cwd}`);
           })}
         </div>
         <button
           className="tb-floor-add"
-          title={notRepo ? 'Andares são cópias de um repositório git, e a pasta deste workspace não é um' : 'Novo andar'}
-          aria-label="Novo andar"
+          title={notRepo ? 'Níveis de voo são cópias de um repositório git, e a pasta deste workspace não é um' : 'Novo nível de voo'}
+          aria-label="Novo nível de voo"
           disabled={notRepo}
           onClick={() => setDialog({ kind: 'create' })}
         >
@@ -228,6 +237,7 @@ function copyPath(path: string) {
 /** The ground floor's menu in a session that works in a copy. */
 function CopyMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void }) {
   const copy = useSquad((s) => s.workspace?.copy);
+  const git = useSquad((s) => s.floorStatus?.ground);
   const setDialog = useSquad((s) => s.setFloorDialog);
   const ref = useMenuClose(onClose);
   if (!copy) return null;
@@ -237,12 +247,10 @@ function CopyMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void
   };
   return (
     <div className="popover tb-menu fl-menu" ref={ref} style={{ position: 'fixed', left: x, top: y }} role="menu">
-      <div className="tb-menu-title">
-        Cópia da sessão · <span className="mono">⎇ {copy.branch}</span>
-      </div>
+      <FloorMenuHead level="PISTA" name="cópia da sessão" branch={copy.branch} cwd={copy.cwd} git={git} />
       <button className="tb-menu-item" onClick={() => open('merge-copy')}>
         <Icon name="call_merge" size={18} />
-        Mesclar…
+        Pedir pouso…
       </button>
       <button className="tb-menu-item" onClick={() => open('copy-log')}>
         <Icon name="description" size={18} />
@@ -264,21 +272,24 @@ function CopyMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void
 
 function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; onClose: () => void }) {
   const floor = useSquad((s) => s.workspace?.floors?.find((f) => f.id === id));
+  const git = useSquad((s) => s.floorStatus?.floors[id]);
   const setDialog = useSquad((s) => s.setFloorDialog);
   const ref = useMenuClose(onClose);
   if (!floor) return null;
-  const open = (kind: 'land' | 'discard' | 'log') => {
+  const open = (kind: 'land' | 'discard' | 'log' | 'rename') => {
     onClose();
     setDialog({ kind, id });
   };
   return (
     <div className="popover tb-menu fl-menu" ref={ref} style={{ position: 'fixed', left: x, top: y }} role="menu">
-      <div className="tb-menu-title">
-        Andar {floor.name} · <span className="mono">⎇ {floor.branch}</span>
-      </div>
+      <FloorMenuHead level={flightLevel(floor)} name={floor.name} branch={floor.branch} cwd={floor.cwd} git={git} />
       <button className="tb-menu-item" onClick={() => open('land')}>
         <Icon name="flight_land" size={18} />
-        Aterrissar…
+        Pedir pouso…
+      </button>
+      <button className="tb-menu-item" onClick={() => open('rename')}>
+        <Icon name="edit" size={18} />
+        Renomear…
       </button>
       <button className="tb-menu-item" onClick={() => open('log')}>
         <Icon name="description" size={18} />
@@ -298,6 +309,22 @@ function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; on
         <Icon name="delete" size={18} />
         Descartar…
       </button>
+    </div>
+  );
+}
+
+/** "FL1 · Login · ⎇ feat/login · 2 commits · 3 alt." and the folder, atop a level's menu. */
+function FloorMenuHead({ level, name, branch, cwd, git }: { level: string; name: string; branch: string; cwd: string; git?: FloorGit }) {
+  const parts = [`⎇ ${git?.branch || branch}`];
+  if (git?.ahead) parts.push(plural(git.ahead, 'commit', 'commits'));
+  if (git?.changes) parts.push(`${git.changes} alt.`);
+  return (
+    <div className="fl-menu-head">
+      <b>
+        {level} · {name}
+      </b>
+      <span>{parts.join(' · ')}</span>
+      <span title={cwd}>{shortPath(cwd)}</span>
     </div>
   );
 }

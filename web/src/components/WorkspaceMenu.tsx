@@ -8,7 +8,8 @@ import { WS_COLORS, wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
 import { DirInput } from './DirInput';
 import { Icon } from './Icon';
-import { BusyConfirm, useLeave } from './SessionsMenu';
+import { confirmDialog, confirmOpen } from './ConfirmDialog';
+import { useLeave } from './SessionsMenu';
 import './SessionsMenu.css';
 import './WorkspaceMenu.css';
 
@@ -16,12 +17,13 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** "2 ativos · 1 pendente", or how many terminals when idle. */
+/** "2 no ar · 1 pendente", or how many flights when idle. */
 export function wsActivity(w: WorkspaceSummary): string {
   const parts = [];
-  if (w.active) parts.push(plural(w.active, 'ativo', 'ativos'));
+  if (w.attention) parts.push(`${w.attention} pede${w.attention > 1 ? 'm' : ''} você`);
+  if (w.active) parts.push(`${w.active} no ar`);
   if (w.pending) parts.push(plural(w.pending, 'pendente', 'pendentes'));
-  if (!parts.length) parts.push(w.terminals ? plural(w.terminals, 'terminal', 'terminais') : 'sem terminais');
+  if (!parts.length) parts.push(w.terminals ? plural(w.terminals, 'voo', 'voos') : 'sem voos');
   return parts.join(' · ');
 }
 
@@ -49,9 +51,10 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const away = (e: PointerEvent) => {
       // The top bar button toggles the menu itself.
-      if (!ref.current?.contains(e.target as Node) && !(e.target as Element).closest?.('.tb-workspace')) onClose();
+      const t = e.target as Element;
+      if (!ref.current?.contains(t) && !t.closest?.('.tb-workspace, .dlg-backdrop')) onClose();
     };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && !confirmOpen() && onClose();
     window.addEventListener('pointerdown', away, true);
     window.addEventListener('keydown', esc);
     return () => {
@@ -84,15 +87,17 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
                 >
                   <span className="ws-dot" style={{ background: wsColor(w.color) }} />
                   <span className="ws-row-text">
-                    <span className="ws-row-name">{w.name}</span>
+                    <span className="ws-row-name">
+                      <span className="ws-row-label">{w.name}</span>
+                      {i < 9 && <span className="kbd">⌥{i + 1}</span>}
+                    </span>
                     <span className="ws-row-sub">
-                      <span className="mono ws-row-path" title={w.cwd}>
+                      <span className="ws-row-path" title={w.cwd}>
                         <bdi>{shortPath(w.cwd)}</bdi>
                       </span>
-                      <span className={w.active || w.pending ? 'ws-busy' : ''}>{wsActivity(w)}</span>
+                      <span className={w.attention ? 'ws-ask' : w.pending ? 'ws-wait' : w.active ? 'ws-busy' : ''}>{wsActivity(w)}</span>
                     </span>
                   </span>
-                  {i < 9 && <span className="kbd">⌥{i + 1}</span>}
                 </button>
                 <button className="icon-btn ws-row-edit" onClick={() => setMode({ kind: 'edit', ws: w })} aria-label={`Editar ${w.name}`} title="Editar">
                   <Icon name="edit" size={16} />
@@ -148,7 +153,7 @@ function SessionsPeek({ ws, top, onDone }: { ws: WorkspaceSummary; top: number; 
       onDone();
       return;
     }
-    leave.run(s.id, async (confirm) => {
+    leave.run(async (confirm) => {
       useSquad.getState().setSessions(await hub.openSession(ws.id, s.id, confirm));
       switchTo(ws.id);
       onDone();
@@ -170,7 +175,6 @@ function SessionsPeek({ ws, top, onDone }: { ws: WorkspaceSummary; top: number; 
                 {s.current ? 'aberta agora' : ago(s.openedAt, now)} · {contents(s)}
               </span>
             </button>
-            {leave.busy?.target === s.id && <BusyConfirm why={leave.busy.why} onConfirm={leave.busy.confirm} onCancel={leave.cancel} />}
           </div>
         ))}
         {!list && !error && <div className="ses-empty">Carregando…</div>}
@@ -215,10 +219,24 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
     });
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!ws) return;
-    const msg = `Remover o workspace "${ws.name}"?\n\nOs terminais dele são encerrados, e o canvas e as notas vão para a lixeira do Squad (~/.squad/trash).`;
-    if (!window.confirm(msg)) return;
+    const ok = await confirmDialog({
+      title: `Remover o workspace ${ws.name}?`,
+      tone: 'danger',
+      lose: [
+        ws.terminals ? `${ws.terminals === 1 ? 'O voo dele é encerrado' : `Os ${ws.terminals} voos dele são encerrados`}` : '',
+        `${ws.sessions === 1 ? 'A sessão sai' : `As ${ws.sessions} sessões saem`} da lista: o canvas e as NOTAMs vão para a lixeira da Torre (~/.torre/trash)`,
+      ],
+      keep: [
+        <>
+          A pasta do projeto, <span className="mono">{shortPath(ws.cwd)}</span>, como está
+        </>,
+        'As conversas, guardadas nos agentes',
+      ],
+      action: 'Remover workspace',
+    });
+    if (!ok) return;
     void run(async () => {
       await hub.remove(ws.id);
       const st = useSquad.getState();
@@ -249,7 +267,7 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
       {!ws && (
         <label className="field">
           Nome da sessão (opcional)
-          <input value={session} maxLength={60} placeholder="sem nome, o agente sugere um" onChange={(e) => setSession(e.target.value)} />
+          <input value={session} maxLength={60} placeholder="sem nome, o voo líder sugere um" onChange={(e) => setSession(e.target.value)} />
         </label>
       )}
       <div className="field">
@@ -269,7 +287,7 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
           ))}
         </div>
       </div>
-      {moved && <div className="ws-note">Os terminais abertos continuam na pasta antiga até serem reiniciados.</div>}
+      {moved && <div className="ws-note">Os voos abertos continuam na pasta antiga até serem reiniciados.</div>}
       {error && <div className="ws-error">{error}</div>}
       <button className="btn filled" type="submit" disabled={busy || !cwd.trim()} style={{ justifyContent: 'center' }}>
         {ws ? 'Salvar' : 'Criar e abrir'}

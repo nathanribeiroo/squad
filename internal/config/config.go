@@ -1,4 +1,4 @@
-// Package config resolves Squad's on-disk locations and the discovery file
+// Package config resolves Torre's on-disk locations and the discovery file
 // that lets the CLI find the running server.
 package config
 
@@ -12,19 +12,100 @@ import (
 	"strings"
 )
 
-// DefaultPort is used by `squad serve` unless SQUAD_PORT or -port says otherwise.
+// DefaultPort is used by `torre serve` unless TORRE_PORT or -port says otherwise.
 const DefaultPort = 7420
 
-// Home returns the data directory: $SQUAD_HOME, or ~/.squad.
+// Getenv returns the environment variable TORRE_<name>, or SQUAD_<name>
+// (its name before Squad became Torre) when that one isn't set.
+func Getenv(name string) string {
+	if v := os.Getenv("TORRE_" + name); v != "" {
+		return v
+	}
+	return os.Getenv("SQUAD_" + name)
+}
+
+// Env returns vars (names without a prefix) as environment variables for
+// a terminal or a setup command: TORRE_<name>, plus SQUAD_<name> for the
+// scripts and agents from before Squad became Torre.
+func Env(vars map[string]string) map[string]string {
+	env := make(map[string]string, 2*len(vars))
+	for k, v := range vars {
+		env["TORRE_"+k] = v
+		env["SQUAD_"+k] = v
+	}
+	return env
+}
+
+// LegacyEnv lists the settings the user still gives with the old SQUAD_
+// prefix (serve warns about them; they keep working).
+func LegacyEnv() []string {
+	var old []string
+	for _, n := range []string{"HOME", "PORT", "SHELL", "BROWSER", "DEBUG"} {
+		if os.Getenv("TORRE_"+n) == "" && os.Getenv("SQUAD_"+n) != "" {
+			old = append(old, "SQUAD_"+n)
+		}
+	}
+	return old
+}
+
+// Home returns the data directory: $TORRE_HOME (or $SQUAD_HOME), else
+// ~/.torre. Until MigrateHome moves it, an existing ~/.squad (the folder
+// from before Squad became Torre) is still used.
 func Home() (string, error) {
-	if h := os.Getenv("SQUAD_HOME"); h != "" {
+	if h := Getenv("HOME"); h != "" {
 		return h, nil
 	}
+	torre, old, err := homes()
+	if err != nil {
+		return "", err
+	}
+	if !isDir(torre) && isDir(old) {
+		return old, nil
+	}
+	return torre, nil
+}
+
+func homes() (torre, old string, err error) {
 	u, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("resolve home directory: %w", err)
+		return "", "", fmt.Errorf("resolve home directory: %w", err)
 	}
-	return filepath.Join(u, ".squad"), nil
+	return filepath.Join(u, ".torre"), filepath.Join(u, ".squad"), nil
+}
+
+func isDir(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
+}
+
+// ErrOldServer: a server started before the rename still runs from
+// ~/.squad, so the folder can't move yet.
+var ErrOldServer = errors.New("a server started before Squad became Torre is still running from ~/.squad")
+
+// MigrateHome moves ~/.squad to ~/.torre, once: only when neither
+// TORRE_HOME nor SQUAD_HOME is set, ~/.torre doesn't exist and no server
+// runs from ~/.squad (alive reports whether a pid is running). It returns
+// the folders it moved (empty when there was nothing to do). When the move
+// fails (on Windows, a file still open), Home keeps using ~/.squad and the
+// next start tries again.
+func MigrateHome(alive func(pid int) bool) (from, to string, err error) {
+	if Getenv("HOME") != "" {
+		return "", "", nil
+	}
+	torre, old, err := homes()
+	if err != nil || isDir(torre) || !isDir(old) {
+		return "", "", err
+	}
+	if data, err := os.ReadFile(filepath.Join(old, "run", "server.json")); err == nil {
+		var info ServerInfo
+		if json.Unmarshal(data, &info) == nil && info.PID > 0 && info.PID != os.Getpid() && alive(info.PID) {
+			return "", "", fmt.Errorf("%w (pid %d)", ErrOldServer, info.PID)
+		}
+	}
+	if err := os.Rename(old, torre); err != nil {
+		return "", "", fmt.Errorf("move %s to %s: %w", old, torre, err)
+	}
+	return old, torre, nil
 }
 
 // Dir joins path elements under Home and makes sure the directory exists.
@@ -40,9 +121,9 @@ func Dir(elem ...string) (string, error) {
 	return d, nil
 }
 
-// Port returns the port from $SQUAD_PORT, or DefaultPort.
+// Port returns the port from $TORRE_PORT (or $SQUAD_PORT), or DefaultPort.
 func Port() int {
-	if p, err := strconv.Atoi(os.Getenv("SQUAD_PORT")); err == nil && p > 0 {
+	if p, err := strconv.Atoi(Getenv("PORT")); err == nil && p > 0 {
 		return p
 	}
 	return DefaultPort
@@ -86,7 +167,7 @@ func validToken(s string) bool {
 	return true
 }
 
-// ServerInfo is written by `squad serve` so local clients can find it.
+// ServerInfo is written by `torre serve` so local clients can find it.
 type ServerInfo struct {
 	URL   string `json:"url"`
 	Port  int    `json:"port"`
@@ -124,7 +205,7 @@ func ReadServerInfo() (ServerInfo, error) {
 	}
 	data, err := os.ReadFile(p)
 	if errors.Is(err, os.ErrNotExist) {
-		return info, errors.New("squad server is not running (no discovery file); start it with `squad serve`")
+		return info, errors.New("torre server is not running (no discovery file); start it with `torre serve`")
 	}
 	if err != nil {
 		return info, err

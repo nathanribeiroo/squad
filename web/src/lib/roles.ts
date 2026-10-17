@@ -5,6 +5,8 @@ import { api } from '../api/client';
 import type { RoleDef, TerminalData } from '../api/types';
 import { useSquad } from '../state/store';
 import type { IconName } from './icons';
+import { confirmDialog } from '../components/ConfirmDialog';
+import { callsign } from './model';
 import { toast } from './toast';
 
 /** Same lists as internal/roles (the server refuses others). */
@@ -68,8 +70,16 @@ export async function changeRole(nodeId: string, t: TerminalData, roleId: string
   const restart = running && ROLE_AGENTS.has(t.agent);
   if (restart) {
     const name = useSquad.getState().roles.find((r) => r.id === roleId)?.name;
-    const what = roleId ? `Dar o papel "${name}" a ${t.name}?` : `Tirar o papel de ${t.name}?`;
-    if (!window.confirm(`${what} O agente reinicia para receber as instruções, e a sessão atual é encerrada.`)) return;
+    const cs = callsign(t);
+    const ok = await confirmDialog({
+      title: roleId ? `Dar o papel ${name} a ${cs}?` : `Tirar o papel de ${cs}?`,
+      icon: 'badge',
+      tone: 'warn',
+      lose: ['O contexto da conversa atual: o voo começa uma nova, para o papel valer desde o início'],
+      keep: ['A conversa atual, guardada no agente'],
+      action: 'Trocar e reiniciar',
+    });
+    if (!ok) return;
   }
   try {
     await api.updateNode(nodeId, { terminal: { ...t, role: roleId || undefined } });
@@ -77,7 +87,7 @@ export async function changeRole(nodeId: string, t: TerminalData, roleId: string
     // only when a conversation begins).
     if (restart) await api.nodeAction(nodeId, 'new-conversation');
   } catch (e) {
-    toast((e as Error).message);
+    toast((e as Error).message, 'err');
   }
 }
 
@@ -87,23 +97,23 @@ export function isManager(t: TerminalData, role?: RoleDef): boolean {
 }
 
 /** The node (terminal) that created a node, for "criado por". */
-export function useCreator(createdBy?: string): { name: string; color: string } | null {
+export function useCreator(createdBy?: string): { name: string; callsign: string; color: string } | null {
   return useSquad((s) => {
     if (!createdBy) return null;
     const n = s.workspace?.nodes.find((x) => x.id === createdBy);
     if (!n?.terminal) return null;
     const role = n.terminal.role ? s.roles.find((r) => r.id === n.terminal!.role) : undefined;
-    return creatorCache(n.terminal.name, roleColor(role));
+    return creatorCache(n.terminal.name, callsign(n.terminal), roleColor(role));
   });
 }
 
 // useSquad selectors must return stable objects.
-const creators = new Map<string, { name: string; color: string }>();
-function creatorCache(name: string, color: string) {
-  const key = `${name}\u0000${color}`;
+const creators = new Map<string, { name: string; callsign: string; color: string }>();
+function creatorCache(name: string, cs: string, color: string) {
+  const key = `${name}\u0000${cs}\u0000${color}`;
   let v = creators.get(key);
   if (!v) {
-    v = { name, color };
+    v = { name, callsign: cs, color };
     creators.set(key, v);
   }
   return v;

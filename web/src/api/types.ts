@@ -2,21 +2,41 @@
 
 export type NodeKind = 'terminal' | 'note' | 'portal';
 export type AgentType = 'claude' | 'codex' | 'devin' | 'gemini' | 'shell' | 'custom';
-export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'done' | 'err' | 'off';
+export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'ask' | 'done' | 'err' | 'off';
+
+/** An answer the RESPONDER bar sends (internal/attention). */
+export type AttentionChoice = 'allow' | 'always' | 'deny';
+
+/** What a flight asks the user (activity "ask", PRIORIDADE). */
+export interface Attention {
+  kind: 'permission' | 'question';
+  /** Bash, Edit, WebFetch, mcp__… (from the agent's hook). */
+  tool?: string;
+  /** The agent's question on screen ("Do you want to proceed?"). */
+  text?: string;
+  /** What is at stake: the command, the file. */
+  detail?: string;
+  source: 'hook' | 'screen';
+  since: string;
+  /** The answers the interface may send; empty: open the terminal. */
+  choices?: AttentionChoice[];
+}
 
 export interface TerminalData {
   name: string;
+  /** Short code shown with the name (PLN, IMP, IM2…), unique in the canvas. */
+  callsign?: string;
   agent: AgentType | string;
   command?: string;
   shell?: string;
   cwd?: string;
   /** Id of a role in the library (RoleDef). */
   role?: string;
-  /** Manager mode (squad new); unset follows the role. */
+  /** Manager mode (torre new); unset follows the role. */
   manager?: boolean;
   cols?: number;
   rows?: number;
-  /** The agent's id for the conversation the terminal continues (Squad keeps it). */
+  /** The agent's id for the conversation the terminal continues (Torre keeps it). */
   conversation?: string;
   /** Nothing was said in it yet: there is nothing to continue. */
   empty?: boolean;
@@ -43,7 +63,7 @@ export interface NoteData {
 
 export interface PortalData {
   url: string;
-  /** How agents refer to it (squad portal "Name" …). */
+  /** How agents refer to it (torre portal "Name" …). */
   name?: string;
 }
 
@@ -57,7 +77,7 @@ export interface WNode {
   terminal?: TerminalData;
   note?: NoteData;
   portal?: PortalData;
-  /** The terminal whose agent created this node (squad new, squad portal create). */
+  /** The terminal whose agent created this node (torre new, torre portal create). */
   createdBy?: string;
   /** The floor the node is on (a Floor id); absent on the ground floor. */
   floor?: string;
@@ -67,6 +87,8 @@ export interface WNode {
 export interface Floor {
   id: string;
   name: string;
+  /** The flight level: FL1, FL2…, in creation order, never given again. */
+  number?: number;
   branch: string;
   /** Branch it started from (landing merges there by default). */
   base?: string;
@@ -112,6 +134,8 @@ export interface FloorChanges {
   behind: number;
   commits: { hash: string; subject: string }[];
   missing?: boolean;
+  /** Files a merge into the base would conflict in; null when git can't tell. */
+  conflicts?: string[] | null;
 }
 
 /** An agent's last turn (internal/summary): its final message, and a summary on demand. */
@@ -172,6 +196,8 @@ export interface Workspace {
   edges: WEdge[];
   floors?: Floor[];
   floorConfig?: FloorConfig;
+  /** The last flight level given (FL1, FL2…); the next floor is one more. */
+  floorSeq?: number;
   /** The session works in a copy of the repository, on a branch of its own
    * (internal/floors copy.go); its terminals and floors start there. */
   copy?: Floor;
@@ -185,8 +211,10 @@ export interface TerminalRuntime {
   error?: string;
   activity: UIState;
   activitySince: string;
-  /** Continued a conversation it was in the middle of (Squad closed or restarted). */
+  /** Continued a conversation it was in the middle of (Torre closed or restarted). */
   interrupted?: boolean;
+  /** What it asks the user (activity "ask"). */
+  attention?: Attention;
 }
 
 export interface PendingRequest {
@@ -223,12 +251,14 @@ export interface ServerEvent<T = any> {
 export interface RoleDef {
   id: string;
   name: string;
+  /** Three letters (PLN, IMP…): the callsign of its flights. */
+  abbr?: string;
   /** The instructions the agent receives. */
   prompt: string;
   /** --r-<color> / --rb-<color> */
   color: string;
   icon: string;
-  /** Its terminals may create and connect terminals (squad new). */
+  /** Its terminals may create and connect terminals (torre new). */
   manager?: boolean;
   builtin?: boolean;
   /** A built-in role that differs from its default. */
@@ -247,6 +277,8 @@ export interface WorkspaceSummary {
   active: number;
   /** Requests waiting for a reply. */
   pending: number;
+  /** Flights asking the user (PRIORIDADE). */
+  attention?: number;
   /** The open session (internal/hub sessions.go). */
   session: Session;
   /** How many sessions the workspace has. */
@@ -282,4 +314,97 @@ export interface SessionList {
   workspace: string;
   current: string;
   sessions: SessionSummary[];
+}
+
+/** GET /api/agents: an agent found (or not) on this computer. */
+export interface AgentInfo {
+  agent: 'claude' | 'codex' | 'devin' | 'gemini';
+  found: boolean;
+  version?: string;
+  path?: string;
+  defaultCommand: string;
+  /** The user changed the command. */
+  custom: boolean;
+  installHint?: string;
+}
+
+export interface AgentsDetection {
+  agents: AgentInfo[];
+  browser: { found: boolean; path?: string };
+}
+
+/** A workspace's conversation limits (GET/PUT /w/<id>/api/limits). */
+export interface Limits {
+  maxHops: number;
+  perMinute: number;
+  maxTeam: number;
+  portalsPerAgent: number;
+}
+
+export interface LimitsView {
+  limits: Limits;
+  defaults: Limits;
+}
+
+/** GET /api/dirs/info: a folder, for the first open (step 2, Pasta). */
+export interface DirInfo {
+  path: string;
+  exists: boolean;
+  git: boolean;
+  branch?: string;
+  commits: boolean;
+  changes: number;
+  envFiles: string[];
+  /** The workspaces' folders. */
+  recent?: string[];
+}
+
+/** A flight plan (internal/plans): a saved team, positions relative to the plan. */
+export interface PlanBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+export interface PlanFlight extends PlanBox {
+  key: string;
+  name: string;
+  callsign?: string;
+  agent: string;
+  role?: string;
+  manager?: boolean;
+  /** Its own command line (runs as written: reviewed before it flies). */
+  command?: string;
+  cwd?: string;
+  level?: string;
+}
+export interface PlanNote extends PlanBox {
+  key: string;
+  title: string;
+  content?: string;
+  level?: string;
+}
+export interface PlanPortal extends PlanBox {
+  key: string;
+  name: string;
+  url?: string;
+  level?: string;
+}
+export interface Plan {
+  id: string;
+  name: string;
+  createdAt: string;
+  /** Came from a file. */
+  imported?: boolean;
+  flights: PlanFlight[];
+  notes: PlanNote[];
+  portals: PlanPortal[];
+  links: [string, string][];
+  levels: { key: string; name: string; branch?: string }[];
+}
+/** What putting a plan in the air made. */
+export interface PlanResult {
+  nodes: string[];
+  floors: string[];
+  warnings: string[];
 }

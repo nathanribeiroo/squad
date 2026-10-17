@@ -2,23 +2,31 @@
 // A workspace's API lives under /w/<id>/ (the one on screen: setWorkspace);
 // the workspace list is at the root.
 import type {
+  AgentsDetection,
+  AttentionChoice,
+  DirInfo,
   Floor,
   FloorChanges,
   FloorConfig,
   FloorStatusResponse,
   LandResult,
-  SummarySettings,
-  TurnCard,
-  WorkspaceOverview,
+  Limits,
+  LimitsView,
+  Plan,
+  PlanResult,
   RoleDef,
   SessionList,
   ShellOption,
+  StateExtra,
   StateResponse,
+  SummarySettings,
+  TurnCard,
   WEdge,
   WNode,
-  StateExtra,
+  WorkspaceOverview,
   WorkspaceSummary,
 } from './types';
+import { errorMessage } from './errors';
 
 let base = '';
 
@@ -44,19 +52,20 @@ export class ApiError extends Error {
   }
 }
 
-async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function req<T>(method: string, path: string, body?: unknown, keepalive?: boolean): Promise<T> {
   const res = await fetch(path, {
     method,
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
     credentials: 'same-origin',
+    keepalive,
   });
   if (!res.ok) {
     let msg = res.statusText;
     let data: Record<string, unknown> = {};
     try {
       data = await res.json();
-      msg = (data.error as string) ?? msg;
+      msg = errorMessage(data, msg);
     } catch {
       /* not JSON */
     }
@@ -75,9 +84,13 @@ async function text(path: string): Promise<string> {
 export const api = {
   state: () => req<StateResponse>('GET', wsPath('/api/state')),
   addNode: (n: Partial<WNode>) => req<WNode>('POST', wsPath('/api/nodes'), n),
-  updateNode: (id: string, patch: Partial<WNode>) => req<WNode>('PATCH', wsPath(`/api/nodes/${id}`), patch),
+  updateNode: (id: string, patch: Partial<WNode>, keepalive?: boolean) => req<WNode>('PATCH', wsPath(`/api/nodes/${id}`), patch, keepalive),
   removeNode: (id: string) => req<void>('DELETE', wsPath(`/api/nodes/${id}`)),
   nodeAction: (id: string, action: 'start' | 'stop' | 'restart' | 'new-conversation') => req<unknown>('POST', wsPath(`/api/nodes/${id}/${action}`)),
+  /** Answers the prompt on a flight's screen (only the interface can). */
+  limits: () => req<LimitsView>('GET', wsPath('/api/limits')),
+  setLimits: (l: Partial<Limits>) => req<LimitsView>('PUT', wsPath('/api/limits'), l),
+  respond: (id: string, choice: AttentionChoice) => req<void>('POST', wsPath(`/api/nodes/${id}/attention/respond`), { choice }),
   /** Agents interrupted mid-turn: send them "continue", or forget it (all, or ids). */
   interrupted: (action: 'continue' | 'dismiss', ids?: string[]) => req<{ ids: string[] }>('POST', wsPath(`/api/interrupted/${action}`), { ids }),
   addEdge: (a: string, b: string) => req<WEdge>('POST', wsPath('/api/edges'), { a, b }),
@@ -85,6 +98,10 @@ export const api = {
   removeEdge: (id: string) => req<void>('DELETE', wsPath(`/api/edges/${id}`)),
   send: (id: string, body: { text: string; mentions: string[]; images: { name: string; data: string }[] }) =>
     req<{ ok: boolean }>('POST', wsPath(`/api/nodes/${id}/send`), body),
+  /** A recent request's full message (the Rádio shows a preview). */
+  requestText: (id: string) => req<{ id: string; text: string }>('GET', wsPath(`/api/requests/${id}`)),
+  /** Ends a request for the user: the agent that asked gets its answer now. */
+  cancelRequest: (id: string) => req<void>('POST', wsPath(`/api/requests/${id}/cancel`)),
   pause: () => req<StateExtra>('POST', wsPath('/api/conversations/pause')),
   resume: () => req<StateExtra>('POST', wsPath('/api/conversations/resume')),
   note: (id: string) => req<{ id: string; file: string; title: string; locked: boolean; content: string }>('GET', wsPath(`/api/notes/${id}`)),
@@ -103,6 +120,8 @@ export const api = {
   floorChanges: (id: string) => req<FloorChanges>('GET', wsPath(`/api/floors/${encodeURIComponent(id)}/changes`)),
   landFloor: (id: string, b: { merge?: boolean; into?: string }) => req<LandResult>('POST', wsPath(`/api/floors/${encodeURIComponent(id)}/land`), b),
   discardFloor: (id: string) => req<void>('DELETE', wsPath(`/api/floors/${encodeURIComponent(id)}`)),
+  /** Another name for a level; its branch and folder stay. */
+  renameFloor: (id: string, name: string) => req<Floor>('PATCH', wsPath(`/api/floors/${encodeURIComponent(id)}`), { name }),
   cards: () => req<{ cards: TurnCard[] }>('GET', wsPath('/api/summary')),
   summarize: (id: string) => req<TurnCard>('POST', wsPath(`/api/nodes/${id}/summarize`)),
   overview: () => req<WorkspaceOverview>('POST', wsPath('/api/summary/workspace')),
@@ -113,10 +132,29 @@ export const api = {
   copyChanges: () => req<FloorChanges>('GET', wsPath('/api/copy/changes')),
   mergeCopy: (into: string) => req<LandResult>('POST', wsPath('/api/copy/merge'), { into }),
   copyLog: () => text(wsPath('/api/copy/log')),
+  /** Saves the selected nodes, a level or the whole session as a flight plan. */
+  savePlan: (b: { name: string; scope: 'selection' | 'level' | 'session'; nodes?: string[]; floor?: string; notesContent?: boolean }) =>
+    req<Plan>('POST', wsPath('/api/plans'), b),
+  /** Puts a plan in the air on a level; commands are the plan's command lines the user reviewed. */
+  applyPlan: (id: string, b: { floor?: string; commands: string[] }) => req<PlanResult>('POST', wsPath(`/api/plans/${encodeURIComponent(id)}/apply`), b),
 };
 
 /** The workspace list (not tied to the workspace on screen). */
 export const hub = {
+  welcome: () => req<{ firstRun: boolean }>('GET', '/api/welcome'),
+  plans: () => req<Plan[]>('GET', '/api/plans'),
+  plan: (id: string) => req<Plan>('GET', `/api/plans/${encodeURIComponent(id)}`),
+  removePlan: (id: string) => req<void>('DELETE', `/api/plans/${encodeURIComponent(id)}`),
+  /** A plan file (JSON), exported from another Torre. */
+  importPlan: (file: string) =>
+    fetch('/api/plans/import', { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }).then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new ApiError(errorMessage(data, res.statusText), res.status, data);
+      return data as Plan;
+    }),
+  dirInfo: (path: string) => req<DirInfo>('GET', `/api/dirs/info?path=${encodeURIComponent(path)}`),
+  agents: (refresh = false) => req<AgentsDetection>('GET', `/api/agents${refresh ? '?refresh=1' : ''}`),
+  setAgentCommand: (agent: string, defaultCommand: string) => req<AgentsDetection>('PUT', `/api/agents/${encodeURIComponent(agent)}`, { defaultCommand }),
   list: () => req<WorkspaceSummary[]>('GET', '/api/workspaces'),
   /** session names the workspace's first session. */
   create: (b: { name?: string; cwd: string; color?: string; session?: string }) => req<WorkspaceSummary>('POST', '/api/workspaces', b),

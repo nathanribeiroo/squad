@@ -2,7 +2,7 @@
 // copies of its git repository, each a git worktree on its own branch with
 // its own canvas, so agents can work in parallel without touching the same
 // files. A floor lives outside the project, like Maestri's, in
-// <parent of the repository>/.squad/floors/<repository>--<floor>. A session
+// <parent of the repository>/.torre/floors/<repository>--<floor>. A session
 // may work in a copy of its own, made the same way (copy.go); its floors are
 // made from that copy.
 //
@@ -30,6 +30,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
+	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -99,7 +101,7 @@ type Options struct {
 	// IsManager tells which terminals may create and land floors.
 	IsManager func(store.Node) bool
 	// SetupTimeout stops a setup command (30 min); ReadyWait is how long
-	// squad floor create waits for it (45 s, within the CLI's 60 s).
+	// torre floor create waits for it (45 s, within the CLI's 60 s).
 	SetupTimeout time.Duration
 	ReadyWait    time.Duration
 }
@@ -145,7 +147,7 @@ func (s *Service) Start() {
 	for _, f := range st.Floors() {
 		if f.Status == store.FloorPreparing {
 			_, _ = st.UpdateFloor(f.ID, func(f *store.Floor) {
-				f.Status, f.Error = store.FloorFailed, "the setup command was interrupted (Squad stopped)"
+				f.Status, f.Error = store.FloorFailed, "the setup command was interrupted (Torre stopped)"
 			})
 		}
 	}
@@ -227,24 +229,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (store.Floor, e
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	name := strings.TrimSpace(req.Name)
-	switch {
-	case name == "":
-		return store.Floor{}, invalidError("a floor needs a name")
-	case utf8.RuneCountInString(name) > MaxName:
-		return store.Floor{}, invalidError(fmt.Sprintf("floor names have at most %d characters", MaxName))
-	case store.IsGround(name):
-		return store.Floor{}, invalidError(fmt.Sprintf("%q is the ground floor; pick another name", name))
-	}
-	id := ids.Slug(name)
-	if id == "" {
-		return store.Floor{}, invalidError("a floor name needs a letter or a digit")
+	id, err := s.checkName(name, "")
+	if err != nil {
+		return store.Floor{}, err
 	}
 	st := s.o.Canvas.Store()
-	for _, f := range st.Floors() {
-		if f.ID == id || strings.EqualFold(f.Name, name) {
-			return store.Floor{}, invalidError(fmt.Sprintf("there is already a floor named %q", f.Name))
-		}
-	}
 	cwd := st.Workdir()
 	root, err := repoRoot(ctx, cwd)
 	if err != nil {
@@ -253,10 +242,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (store.Floor, e
 	main := mainRoot(ctx, root)
 	parent := filepath.Dir(main)
 	if parent == main {
-		return store.Floor{}, invalidError("floors live next to the repository, which can't be the root of a drive")
+		return store.Floor{}, apierr.With(invalidError("floors live next to the repository, which can't be the root of a drive"), "level.drive_root")
 	}
 	if !hasRef(ctx, root, "HEAD") {
-		return store.Floor{}, invalidError("the repository has no commit yet: a floor starts from the last commit")
+		return store.Floor{}, apierr.With(invalidError("the repository has no commit yet: a floor starts from the last commit"), "git.no_commit")
 	}
 	baseCommit, err := git(ctx, cwd, "rev-parse", "HEAD")
 	if err != nil {
@@ -276,14 +265,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (store.Floor, e
 	exists := hasRef(ctx, root, "refs/heads/"+branch)
 	switch {
 	case exists && !req.Existing:
-		return store.Floor{}, invalidError(fmt.Sprintf("a branch named %q already exists: open it on a floor with --existing, or pick another name", branch))
+		return store.Floor{}, apierr.With(invalidError(fmt.Sprintf("a branch named %q already exists: open it on a floor with --existing, or pick another name", branch)), "git.branch_exists", "branch", branch)
 	case !exists && req.Existing:
-		return store.Floor{}, invalidError(fmt.Sprintf("there is no branch named %q", branch))
+		return store.Floor{}, apierr.With(invalidError(fmt.Sprintf("there is no branch named %q", branch)), "git.no_branch", "branch", branch)
 	}
 	// Next to the repository; a session's copy names its floors after it.
-	path := filepath.Join(parent, ".squad", "floors", filepath.Base(root)+"--"+id)
+	path := filepath.Join(parent, ".torre", "floors", filepath.Base(root)+"--"+id)
 	if _, err := os.Stat(path); err == nil {
-		return store.Floor{}, invalidError(fmt.Sprintf("the folder %s already exists (left by an older floor?): remove it or pick another name", path))
+		return store.Floor{}, apierr.With(invalidError(fmt.Sprintf("the folder %s already exists (left by an older floor?): remove it or pick another name", path)), "level.folder_exists", "folder", path)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return store.Floor{}, err
@@ -342,12 +331,59 @@ type Changes struct {
 	Behind  int      `json:"behind"`            // commits on the base not on the floor's branch
 	Commits []Commit `json:"commits"`           // the floor's commits, newest first (20 at most)
 	Missing bool     `json:"missing,omitempty"` // the floor's folder is gone
+	// Conflicts are the files a merge into the base would conflict in:
+	// empty when it would merge cleanly, null when git couldn't tell
+	// (older than 2.38).
+	Conflicts []string `json:"conflicts"`
 }
 
 // Commit is one line of git log.
 type Commit struct {
 	Hash    string `json:"hash"`
 	Subject string `json:"subject"`
+}
+
+// checkName validates a floor name, free but for floor except, and returns
+// its slug (a new floor's id).
+func (s *Service) checkName(name, except string) (string, error) {
+	switch {
+	case name == "":
+		return "", apierr.With(invalidError("a floor needs a name"), "level.name_required")
+	case utf8.RuneCountInString(name) > MaxName:
+		return "", apierr.With(invalidError(fmt.Sprintf("floor names have at most %d characters", MaxName)), "level.name_too_long", "max", fmt.Sprint(MaxName))
+	case store.IsGround(name):
+		return "", apierr.With(invalidError(fmt.Sprintf("%q is the ground floor; pick another name", name)), "level.name_ground")
+	}
+	id := ids.Slug(name)
+	if id == "" {
+		return "", apierr.With(invalidError("a floor name needs a letter or a digit"), "level.name_letter")
+	}
+	for _, f := range s.o.Canvas.Store().Floors() {
+		if f.ID != except && (f.ID == id || strings.EqualFold(f.Name, name)) {
+			return "", apierr.With(invalidError(fmt.Sprintf("there is already a floor named %q", f.Name)), "level.name_taken", "name", f.Name)
+		}
+	}
+	return id, nil
+}
+
+// Rename gives a floor another name. Its id, branch and folder stay.
+func (s *Service) Rename(id, name string) (store.Floor, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	st := s.o.Canvas.Store()
+	if _, ok := st.Floor(id); !ok {
+		return store.Floor{}, ErrNotFound
+	}
+	name = strings.TrimSpace(name)
+	if _, err := s.checkName(name, id); err != nil {
+		return store.Floor{}, err
+	}
+	f, err := st.UpdateFloor(id, func(f *store.Floor) { f.Name = name })
+	if err != nil {
+		return store.Floor{}, err
+	}
+	s.publish()
+	return f, nil
 }
 
 // Changes reports a floor's uncommitted changes and its commits.
@@ -379,6 +415,10 @@ func changes(ctx context.Context, f store.Floor) (Changes, error) {
 	head := "refs/heads/" + f.Branch
 	out.Ahead = count(ctx, f.Path, base+".."+head)
 	out.Behind = count(ctx, f.Path, head+".."+base)
+	out.Conflicts = []string{}
+	if out.Ahead > 0 && out.Behind > 0 {
+		out.Conflicts = conflicts(ctx, f.Path, base, head)
+	}
 	log, err := git(ctx, f.Path, "log", "--format=%h%x00%s", "-n", "20", base+".."+head)
 	if err == nil {
 		for _, line := range strings.Split(log, "\n") {
@@ -418,7 +458,7 @@ func (s *Service) Land(ctx context.Context, id string, req LandRequest) (LandRes
 		return LandResult{}, ErrNotFound
 	}
 	if s.preparing(f.ID) {
-		return LandResult{}, invalidError("the floor's setup command is still running; wait for it to finish (or discard the floor)")
+		return LandResult{}, apierr.With(invalidError("the floor's setup command is still running; wait for it to finish (or discard the floor)"), "level.setup_running")
 	}
 	root, err := repoRoot(ctx, st.Workdir())
 	if err != nil {
@@ -426,12 +466,12 @@ func (s *Service) Land(ctx context.Context, id string, req LandRequest) (LandRes
 	}
 	if isDir(f.Path) {
 		if op := operationInProgress(ctx, f.Path); op != "" {
-			return LandResult{}, invalidError(fmt.Sprintf("the floor has %s in progress: finish or abort it first", op))
+			return LandResult{}, apierr.With(invalidError(fmt.Sprintf("the floor has %s in progress: finish or abort it first", op)), "git.in_progress", "op", op)
 		}
 		if br, err := currentBranch(ctx, f.Path); err != nil {
 			return LandResult{}, err
 		} else if br != f.Branch {
-			return LandResult{}, invalidError(fmt.Sprintf("the floor's folder is not on its branch %s: switch back before landing", f.Branch))
+			return LandResult{}, apierr.With(invalidError(fmt.Sprintf("the floor's folder is not on its branch %s: switch back before landing", f.Branch)), "level.off_branch", "branch", f.Branch)
 		}
 		files, err := status(ctx, f.Path, untrackedAll)
 		if err != nil {
@@ -448,10 +488,10 @@ func (s *Service) Land(ctx context.Context, id string, req LandRequest) (LandRes
 			into = f.Base
 		}
 		if into == "" {
-			return LandResult{}, invalidError("the floor started from a detached HEAD: say which branch to merge into")
+			return LandResult{}, apierr.With(invalidError("the floor started from a detached HEAD: say which branch to merge into"), "git.detached")
 		}
 		if leaked := committedCopies(ctx, root, f); len(leaked) > 0 {
-			return LandResult{}, invalidError(fmt.Sprintf("the floor's branch commits files copied from the ground floor, which may hold secrets: %s. Remove them from the branch on the floor (git rm --cached, then commit) before merging", strings.Join(leaked, ", ")))
+			return LandResult{}, apierr.With(invalidError(fmt.Sprintf("the floor's branch commits files copied from the ground floor, which may hold secrets: %s. Remove them from the branch on the floor (git rm --cached, then commit) before merging", strings.Join(leaked, ", "))), "level.leaked", "files", strings.Join(leaked, ", "))
 		}
 		commit, upToDate, err := mergeInto(ctx, root, f, into)
 		if err != nil {
@@ -517,17 +557,36 @@ func committedCopies(ctx context.Context, root string, f store.Floor) []string {
 	return files
 }
 
+// conflicts lists the files merging head into base would conflict in,
+// without touching any folder (merge-tree); nil when git can't tell.
+func conflicts(ctx context.Context, dir, base, head string) []string {
+	r, err := run(ctx, dir, []int{1}, "merge-tree", "--write-tree", "--name-only", "--no-messages", base, head)
+	if err != nil {
+		return nil
+	}
+	files := []string{}
+	if r.code == 1 {
+		for _, l := range strings.Split(strings.TrimRight(r.out, "\n"), "\n")[1:] {
+			if l == "" {
+				break
+			}
+			files = append(files, l)
+		}
+	}
+	return files
+}
+
 // mergeInto merges the floor's branch into another one: in the folder where
 // that branch is checked out, or without any folder (merge-tree).
 func mergeInto(ctx context.Context, root string, f store.Floor, into string) (commit string, upToDate bool, err error) {
 	if into == f.Branch {
-		return "", false, invalidError(fmt.Sprintf("%s can't be merged into itself", f.Branch))
+		return "", false, apierr.With(invalidError(fmt.Sprintf("%s can't be merged into itself", f.Branch)), "git.merge_self", "branch", f.Branch)
 	}
 	if err := checkBranchName(ctx, root, into); err != nil {
 		return "", false, err
 	}
 	if !hasRef(ctx, root, "refs/heads/"+into) {
-		return "", false, invalidError(fmt.Sprintf("there is no branch %q to merge into", into))
+		return "", false, apierr.With(invalidError(fmt.Sprintf("there is no branch %q to merge into", into)), "git.no_target", "branch", into)
 	}
 	from := "refs/heads/" + f.Branch
 	if count(ctx, root, "refs/heads/"+into+".."+from) == 0 {
@@ -540,7 +599,7 @@ func mergeInto(ctx context.Context, root string, f store.Floor, into string) (co
 	}
 	if wt != "" {
 		if op := operationInProgress(ctx, wt); op != "" {
-			return "", false, invalidError(fmt.Sprintf("%s has %s in progress: finish or abort it first", wt, op))
+			return "", false, apierr.With(invalidError(fmt.Sprintf("%s has %s in progress: finish or abort it first", wt, op)), "git.target_in_progress", "folder", wt, "op", op)
 		}
 		files, err := status(ctx, wt, untrackedNone)
 		if err != nil {
@@ -588,7 +647,7 @@ func mergeInto(ctx context.Context, root string, f store.Floor, into string) (co
 	if err != nil {
 		return "", false, err
 	}
-	if _, err := git(ctx, root, "update-ref", "-m", "squad: land floor "+f.Name, "refs/heads/"+into, commit, old); err != nil {
+	if _, err := git(ctx, root, "update-ref", "-m", "torre: land floor "+f.Name, "refs/heads/"+into, commit, old); err != nil {
 		return "", false, err
 	}
 	return commit, false, nil
@@ -656,7 +715,7 @@ func removeWorktree(ctx context.Context, root, path string) error {
 	return nil
 }
 
-// removeEmptyParents removes .squad/floors (or .squad/sessions) and .squad
+// removeEmptyParents removes .torre/floors (or .torre/sessions) and .torre
 // next to the repository when nothing else is in them.
 func removeEmptyParents(path string) {
 	floors := filepath.Dir(path)
@@ -865,7 +924,7 @@ func (s *Service) startSetup(key string, f store.Floor, cmdline, logPath string,
 		err := runSetup(ctx, f, cmdline, logPath, s.o.SetupTimeout)
 		cancelled := errors.Is(ctx.Err(), context.Canceled)
 		cancel()
-		if !cancelled { // a discarded floor (or Squad stopping) leaves it be
+		if !cancelled { // a discarded floor (or Torre stopping) leaves it be
 			uerr := update(func(f *store.Floor) {
 				f.Status, f.Error = store.FloorReady, ""
 				if err != nil {
@@ -902,7 +961,7 @@ func runSetup(ctx context.Context, f store.Floor, cmdline, logPath string, timeo
 		argv := commandArgv(sh, cmdline)
 		cmd := exec.Command(argv[0], argv[1:]...)
 		cmd.Dir = f.Cwd
-		env := map[string]string{"SQUAD_FLOOR": f.Name} // the copy's branch for a session's copy
+		env := config.Env(map[string]string{"FLOOR": f.Name}) // the copy's branch for a session's copy
 		for k, v := range sh.Env {
 			env[k] = v
 		}

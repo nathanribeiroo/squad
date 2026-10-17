@@ -1,9 +1,9 @@
 // Package roles is the library of roles: reusable instructions that a
 // terminal's agent receives when it starts. The built-in roles always
 // exist; the user may edit them (and restore their default) or add new ones.
-// The library is global, shared by every workspace (~/.squad/roles.json),
+// The library is global, shared by every workspace (~/.torre/roles.json),
 // which stores only new roles and edited built-in ones, so a built-in role
-// nobody edited follows the defaults of newer Squad versions.
+// nobody edited follows the defaults of newer Torre versions.
 package roles
 
 import (
@@ -15,18 +15,22 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/ids"
 )
 
 // Role is one entry of the library. A terminal refers to it by ID.
 type Role struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Abbr: three letters (PLN, IMP…) that give its terminals their
+	// callsigns; made from the name when not given.
+	Abbr   string `json:"abbr,omitempty"`
 	Prompt string `json:"prompt"` // the instruction the agent receives
 	Color  string `json:"color"`  // one of Colors
 	Icon   string `json:"icon"`   // one of Icons
-	// Manager: its terminals may create and connect terminals (squad new),
+	// Manager: its terminals may create and connect terminals (torre new),
 	// unless a terminal turns it off.
 	Manager bool `json:"manager,omitempty"`
 	Builtin bool `json:"builtin,omitempty"`
@@ -94,6 +98,9 @@ func Open(path string) (*Library, error) {
 	for _, r := range f.Roles {
 		if i := l.index(r.ID); i >= 0 && l.roles[i].Builtin {
 			if r.Builtin { // an edited built-in role
+				if r.Abbr == "" { // edited before roles had abbreviations
+					r.Abbr = l.roles[i].Abbr
+				}
 				r.Edited = true
 				l.roles[i] = r
 				continue
@@ -104,7 +111,10 @@ func Open(path string) (*Library, error) {
 			continue
 		}
 		r.Builtin, r.Edited = false, false
-		// A built-in role added by a newer Squad may take the name of one the
+		if r.Abbr == "" { // made before roles had abbreviations
+			r.Abbr = l.freeAbbr(ids.Callsign(r.Name), r.ID)
+		}
+		// A built-in role added by a newer Torre may take the name of one the
 		// user made (e.g. "Arquiteto"): theirs keeps its id and instructions
 		// under another name, so --role and the role picker stay unambiguous.
 		for l.nameTaken(r.Name) {
@@ -190,7 +200,7 @@ func (l *Library) Update(id string, r Role) (Role, error) {
 		}
 		r.ID, r.Builtin, r.Edited = id, l.roles[i].Builtin, false
 		if d, ok := defaultOf(id); ok && r.Builtin {
-			r.Edited = r.Name != d.Name || r.Prompt != d.Prompt || r.Color != d.Color || r.Icon != d.Icon || r.Manager != d.Manager
+			r.Edited = r.Name != d.Name || r.Abbr != d.Abbr || r.Prompt != d.Prompt || r.Color != d.Color || r.Icon != d.Icon || r.Manager != d.Manager
 		}
 		l.roles[i] = r
 		return r, nil
@@ -275,17 +285,27 @@ func (l *Library) check(r *Role, except string) error {
 	r.Prompt = strings.TrimSpace(strings.ReplaceAll(r.Prompt, "\r\n", "\n"))
 	switch n := utf8.RuneCountInString(r.Name); {
 	case n == 0:
-		return invalidError("a role needs a name")
+		return apierr.With(invalidError("a role needs a name"), "role.name_required")
 	case n > MaxName:
-		return invalidError(fmt.Sprintf("role names have at most %d characters", MaxName))
+		return apierr.With(invalidError(fmt.Sprintf("role names have at most %d characters", MaxName)), "role.name_too_long", "max", fmt.Sprint(MaxName))
 	}
 	if utf8.RuneCountInString(r.Prompt) > MaxPrompt {
-		return invalidError(fmt.Sprintf("role instructions have at most %d characters", MaxPrompt))
+		return apierr.With(invalidError(fmt.Sprintf("role instructions have at most %d characters", MaxPrompt)), "role.prompt_too_long", "max", fmt.Sprint(MaxPrompt))
 	}
 	for _, o := range l.roles {
 		if o.ID != except && strings.EqualFold(o.Name, r.Name) {
-			return invalidError(fmt.Sprintf("there is already a role named %q", o.Name))
+			return apierr.With(invalidError(fmt.Sprintf("there is already a role named %q", o.Name)), "role.name_taken", "name", o.Name)
 		}
+	}
+	if r.Abbr = ids.CleanCallsign(r.Abbr); r.Abbr != "" {
+		if len(r.Abbr) > 3 {
+			return apierr.With(invalidError("a role's abbreviation has at most 3 letters"), "role.abbr_too_long")
+		}
+		if o := l.abbrOwner(r.Abbr, except); o != "" {
+			return apierr.With(invalidError(fmt.Sprintf("the role %q already has the abbreviation %s", o, r.Abbr)), "role.abbr_taken", "role", o, "abbr", r.Abbr)
+		}
+	} else {
+		r.Abbr = l.freeAbbr(ids.Callsign(r.Name), except)
 	}
 	if r.Color == "" {
 		r.Color = Colors[len(l.roles)%len(Colors)]
@@ -300,6 +320,30 @@ func (l *Library) check(r *Role, except string) error {
 		return invalidError("unknown role icon " + r.Icon)
 	}
 	return nil
+}
+
+// abbrOwner is the name of the role (other than except) whose abbreviation
+// is abbr, "" when none.
+func (l *Library) abbrOwner(abbr, except string) string {
+	for _, o := range l.roles {
+		if o.ID != except && strings.EqualFold(o.Abbr, abbr) {
+			return o.Name
+		}
+	}
+	return ""
+}
+
+// freeAbbr is base, numbered when another role has it (RVS, RV2…).
+func (l *Library) freeAbbr(base, except string) string {
+	if base == "" {
+		base = "PPL"
+	}
+	abbr := base
+	for i := 2; i < 100 && l.abbrOwner(abbr, except) != ""; i++ {
+		n := fmt.Sprint(i)
+		abbr = base[:max(1, min(len(base), 3)-len(n))] + n
+	}
+	return abbr
 }
 
 // freeID turns a name into a readable id that no role uses yet.
@@ -352,6 +396,6 @@ func Summary(r Role) string {
 // Instructions is what an agent receives for its role: a header that names
 // the terminal and the role, then the role's prompt.
 func Instructions(r Role, terminal string) string {
-	return fmt.Sprintf("# Papel no Squad: %s\n\nVocê está no terminal %q do Squad, com o papel %q. Siga estas instruções do papel:\n\n%s\n",
+	return fmt.Sprintf("# Papel na Torre: %s\n\nVocê está no terminal %q da Torre, com o papel %q. Siga estas instruções do papel:\n\n%s\n",
 		r.Name, terminal, r.Name, r.Prompt)
 }

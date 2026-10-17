@@ -86,7 +86,7 @@ func TestManagerUsesFloors(t *testing.T) {
 		t.Fatalf("create: %d %s", r.Code, r.Body)
 	}
 	f, ok := e.app.Server.Store().FindFloor("login")
-	if !ok || f.Path != filepath.Join(e.dir, ".squad", "floors", "repo--login") {
+	if !ok || f.Path != filepath.Join(e.dir, ".torre", "floors", "repo--login") {
 		t.Fatalf("floor: %+v", f)
 	}
 
@@ -117,7 +117,7 @@ func TestManagerUsesFloors(t *testing.T) {
 	if r := e.run(bia, "list"); !strings.Contains(r.Body, `floor: "Login" (branch login`) || !strings.Contains(r.Body, `name: "Plano", agent: custom, role: "Planejador", floor: "ground"`) {
 		t.Fatalf("Bia's list:\n%s", r.Body)
 	}
-	if r := e.run(bia, "floor", "list"); !strings.Contains(r.Body, `You are on floor "Login"`) || !strings.Contains(r.Body, `"Login": branch login (from main), ready, 3 terminal(s)`) {
+	if r := e.run(bia, "floor", "list"); !strings.Contains(r.Body, `You are on floor "Login"`) || !strings.Contains(r.Body, `"Login" (FL1): branch login (from main), ready, 3 terminal(s)`) {
 		t.Fatalf("floor list:\n%s", r.Body)
 	}
 	// Nodes an agent on the floor creates stay on it.

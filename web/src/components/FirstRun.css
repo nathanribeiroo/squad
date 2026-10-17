@@ -1,0 +1,23 @@
+/* The first open (docs/torre/TELAS.md, quadro 19). */
+.fr { position: fixed; inset: 0; z-index: 80; background: #030705; display: flex; align-items: center; justify-content: center; overflow: auto; }
+.fr-radar { position: fixed; width: min(130vh, 130vw); pointer-events: none; }
+.fr-main { position: relative; width: min(560px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 14px; }
+.fr-steps { display: flex; gap: 18px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #3f6b52; }
+.fr-steps .on { color: var(--text); }
+.fr-steps .done { color: var(--stt-done); }
+.fr-card { background: var(--bg); border: 1.5px solid var(--line-3); padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
+.fr-card h1 { margin: 0; font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; }
+.fr-card p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-2); }
+.fr-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.fr-checks .ok { color: var(--stt-done); }
+.fr-checks .off { color: var(--text-3); }
+.fr-checks .bad { color: var(--stt-err); }
+.fr-recent { display: flex; flex-direction: column; gap: 4px; }
+.fr-recent-item { text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text-2); padding: 6px 0; font-size: 12px; cursor: pointer; }
+.fr-recent-item:hover { color: var(--text); }
+.fr-agents { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.fr-agents li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.fr-agents .ok { color: var(--stt-done); font-size: 11.5px; }
+.fr-agents .off { color: var(--text-3); font-size: 11px; text-align: right; }
+.fr-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.fr-skip { align-self: center; color: var(--text-3); }

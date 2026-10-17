@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
+	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/store"
 	"github.com/nathanribeiroo/squad/internal/terminal"
@@ -52,13 +54,13 @@ func (s *Server) startTerminal(id string, fresh bool) error {
 		ID: id, Name: n.Terminal.Name, Agent: n.Terminal.Agent,
 		Command: n.Terminal.Command, Shell: n.Terminal.Shell, Cwd: cwd,
 		Cols: n.Terminal.Cols, Rows: n.Terminal.Rows,
-		Env: map[string]string{
-			"SQUAD_URL":           s.URL(),
-			"SQUAD_TERMINAL_ID":   id,
-			"SQUAD_TERMINAL_NAME": n.Terminal.Name,
-			"SQUAD_TOKEN":         tok,
-			"SQUAD_CLI":           s.opts.CLIPath,
-		},
+		Env: config.Env(map[string]string{
+			"URL":           s.URL(),
+			"TERMINAL_ID":   id,
+			"TERMINAL_NAME": n.Terminal.Name,
+			"TOKEN":         tok,
+			"CLI":           s.opts.CLIPath,
+		}),
 	}
 	resumed := false
 	if s.launchHook != nil {
@@ -128,7 +130,7 @@ func checkTerminalDir(t *store.TerminalData, resolve func(string) string) error 
 	}
 	dir := resolve(t.Cwd)
 	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
-		return invalidError("folder not found: " + dir)
+		return apierr.With(invalidError("folder not found: "+dir), "dir.not_found", "folder", dir)
 	}
 	return nil
 }

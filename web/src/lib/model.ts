@@ -1,19 +1,20 @@
-// Labels, icons and tokens for states (docs/design_handoff_squad §2); roles: lib/roles.ts.
+// Labels, icons and tokens for states (docs/torre/RENOMEACAO.md §2, "Estados"); roles: lib/roles.ts.
 import type { UIState } from '../api/types';
 import type { IconName } from './icons';
 
 export const STATE_META: Record<UIState, { label: string; icon: IconName }> = {
-  boot: { label: 'Iniciando', icon: 'progress_activity' },
-  idle: { label: 'Ocioso', icon: 'radio_button_unchecked' },
-  work: { label: 'Trabalhando', icon: 'autorenew' },
-  wait: { label: 'Esperando resposta', icon: 'hourglass_top' },
-  done: { label: 'Terminou', icon: 'check_circle' },
-  err: { label: 'Parado · erro', icon: 'error' },
-  off: { label: 'Descarregado', icon: 'bedtime' },
+  boot: { label: 'Taxiando', icon: 'progress_activity' },
+  idle: { label: 'Pátio', icon: 'radio_button_unchecked' },
+  work: { label: 'No ar', icon: 'flight' },
+  wait: { label: 'Aguarda', icon: 'hourglass_top' },
+  ask: { label: 'Pede você', icon: 'front_hand' },
+  done: { label: 'Em solo', icon: 'flight_land' },
+  err: { label: 'Pane', icon: 'error' },
+  off: { label: 'Hangar', icon: 'bedtime' },
 };
 
 export function stateLabel(state: UIState, exitCode?: number): string {
-  if (state === 'err' && exitCode && exitCode > 0) return `Parado · saída ${exitCode}`;
+  if (state === 'err' && exitCode && exitCode > 0) return `Pane · saída ${exitCode}`;
   return STATE_META[state].label;
 }
 
@@ -44,3 +45,11 @@ export const AGENTS: { value: string; label: string }[] = [
   { value: 'shell', label: 'Shell' },
   { value: 'custom', label: 'Comando próprio' },
 ];
+
+/** A flight's callsign: its own, else three letters of its name. */
+export function callsign(t: { name: string; callsign?: string }): string {
+  if (t.callsign) return t.callsign;
+  const letters = t.name.normalize('NFD').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const cons = letters.replace(/[AEIOU0-9]/g, '');
+  return (cons + letters.replace(/[^AEIOU0-9]/g, '')).slice(0, 3) || 'VOO';
+}

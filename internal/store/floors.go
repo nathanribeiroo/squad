@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/nathanribeiroo/squad/internal/apierr"
 )
 
 // Floor statuses: its setup command is running, it is ready, or the setup
@@ -19,8 +21,11 @@ const (
 // its own branch) with its own canvas: the nodes whose Floor is its id.
 // Wires may cross floors.
 type Floor struct {
-	ID     string `json:"id"`     // slug of the name: "login"
-	Name   string `json:"name"`   // "Login"
+	ID   string `json:"id"`   // slug of the name: "login"
+	Name string `json:"name"` // "Login"
+	// Number: the flight level, FL1, FL2…, in the order floors were
+	// created in this canvas (never given again).
+	Number int    `json:"number,omitempty"`
 	Branch string `json:"branch"` // the floor's branch
 	// Base is the branch the floor started from, where landing merges by
 	// default ("" when the ground floor was on a detached HEAD); BaseCommit
@@ -95,12 +100,16 @@ func (s *Store) AddFloor(f Floor) (Floor, error) {
 	}
 	for _, o := range s.ws.Floors {
 		if o.ID == f.ID || strings.EqualFold(o.Name, f.Name) {
-			return Floor{}, fmt.Errorf("%w: a floor named %q", ErrDuplicate, o.Name)
+			return Floor{}, apierr.With(fmt.Errorf("%w: a floor named %q", ErrDuplicate, o.Name), "level.name_taken", "name", o.Name)
 		}
 	}
+	seq := s.ws.FloorSeq
+	s.ws.FloorSeq++
+	f.Number = s.ws.FloorSeq
 	s.ws.Floors = append(s.ws.Floors, cloneFloor(f))
 	if err := s.save(); err != nil {
 		s.ws.Floors = s.ws.Floors[:len(s.ws.Floors)-1]
+		s.ws.FloorSeq = seq
 		return Floor{}, err
 	}
 	return cloneFloor(f), nil
@@ -208,7 +217,7 @@ func (s *Store) MoveNode(id, floor string, x, y float64) (Node, error) {
 // IsGround reports whether a floor name means the ground floor.
 func IsGround(name string) bool {
 	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "ground", "térreo", "terreo":
+	case "ground", "pista", "térreo", "terreo":
 		return true
 	}
 	return false

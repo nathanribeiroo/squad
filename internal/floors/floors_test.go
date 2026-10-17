@@ -90,7 +90,7 @@ func TestCreateCommitAndLandWithMerge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPath := filepath.Join(filepath.Dir(repo), ".squad", "floors", "app--pagina-de-login")
+	wantPath := filepath.Join(filepath.Dir(repo), ".torre", "floors", "app--pagina-de-login")
 	if f.ID != "pagina-de-login" || f.Branch != "pagina-de-login" || f.Base != "main" || f.Path != wantPath || f.Cwd != wantPath || !f.NewBranch || f.CreatedBy != "T1" {
 		t.Fatalf("floor: %+v", f)
 	}
@@ -159,8 +159,8 @@ func TestCreateCommitAndLandWithMerge(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(repo, "login.go")); err != nil {
 		t.Fatal("merged file missing on the ground floor")
 	}
-	if isDir(f.Path) || isDir(filepath.Join(filepath.Dir(repo), ".squad")) {
-		t.Fatal("floor folder (or the empty .squad) left behind")
+	if isDir(f.Path) || isDir(filepath.Join(filepath.Dir(repo), ".torre")) {
+		t.Fatal("floor folder (or the empty .torre) left behind")
 	}
 	if sh(t, repo, "branch", "--list", f.Branch) == "" {
 		t.Fatal("landing deleted the branch")
@@ -219,6 +219,10 @@ func TestConflictsChangeNothing(t *testing.T) {
 		sh(t, repo, "commit", "-q", "-am", "ground edit")
 		if !checkedOut {
 			sh(t, repo, "checkout", "-q", "-b", "other")
+		}
+		// The land dialog sees the conflict before trying.
+		if ch, err := svc.Changes(ctx, f.ID); err != nil || len(ch.Conflicts) != 1 || ch.Conflicts[0] != "README.md" {
+			t.Fatalf("checked out %v: precheck: %+v %v", checkedOut, ch, err)
 		}
 		before := sh(t, repo, "rev-parse", "main")
 		var conflict *ConflictError
@@ -346,5 +350,50 @@ func TestStatusAndBranches(t *testing.T) {
 	st2, _ := store.Open(filepath.Join(t.TempDir(), "w.json"), store.Workspace{ID: "p", Cwd: t.TempDir()})
 	if s := New(Options{Canvas: canvas{st2, events.NewBus()}}).Status(ctx); s.Repo {
 		t.Fatal("a plain folder is not a repository")
+	}
+}
+
+func TestRenameAndCleanPrecheck(t *testing.T) {
+	repo, svc, st := newRepo(t)
+	ctx := context.Background()
+	a, err := svc.Create(ctx, CreateRequest{Name: "api"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Create(ctx, CreateRequest{Name: "web"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{"", "Web", "térreo", "!!"} {
+		if _, err := svc.Rename(a.ID, bad); !errors.Is(err, ErrInvalid) {
+			t.Errorf("rename to %q: %v", bad, err)
+		}
+	}
+	if _, err := svc.Rename("nope", "x"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown floor: %v", err)
+	}
+	f, err := svc.Rename(a.ID, " API v2 ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Name != "API v2" || f.ID != a.ID || f.Branch != a.Branch || f.Path != a.Path || f.Number != a.Number {
+		t.Fatalf("renamed: %+v", f)
+	}
+	if got, ok := st.FindFloor("api v2"); !ok || got.ID != a.ID {
+		t.Fatal("not found by its new name")
+	}
+	if _, err := svc.Rename(a.ID, "api"); err != nil { // its own old name is free
+		t.Fatal(err)
+	}
+
+	// Both sides moved, different files: no conflicts.
+	write(t, filepath.Join(a.Path, "api.go"), "package api\n")
+	sh(t, a.Path, "add", "api.go")
+	sh(t, a.Path, "commit", "-q", "-m", "api")
+	write(t, filepath.Join(repo, "other.txt"), "x\n")
+	sh(t, repo, "add", "other.txt")
+	sh(t, repo, "commit", "-q", "-m", "other")
+	ch, err := svc.Changes(ctx, a.ID)
+	if err != nil || ch.Ahead != 1 || ch.Behind != 1 || ch.Conflicts == nil || len(ch.Conflicts) != 0 {
+		t.Fatalf("changes: %+v %v", ch, err)
 	}
 }

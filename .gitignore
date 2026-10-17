@@ -19,3 +19,7 @@ coverage.out
 .idea/
 .vscode/
 *.tsbuildinfo
+
+# Loose binaries from `go build ./cmd/...` at the root
+/torre
+/squad

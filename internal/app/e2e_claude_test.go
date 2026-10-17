@@ -2,7 +2,7 @@
 
 // End-to-end test with the real Claude Code CLI. It costs one tiny prompt.
 // Run: go test -tags e2e -run TestRealClaude -v ./internal/app/
-// SQUAD_E2E_CWD must be a folder Claude Code already trusts (default: repo root).
+// TORRE_E2E_CWD must be a folder Claude Code already trusts (default: repo root).
 
 package app
 
@@ -15,12 +15,14 @@ import (
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/attention"
+	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
 
 func TestRealClaude(t *testing.T) {
-	r, screen := askRealClaude(t, "", "Responda apenas com a palavra: pong")
+	r, screen := askRealClaude(t, "", "Responda apenas com a palavra: pong", nil)
 	if r.Code != 200 || r.Source != "claude-stop" || !strings.Contains(strings.ToLower(r.Body), "pong") {
 		t.Fatalf("unexpected reply: code=%d source=%s\n%s\n--- screen ---\n%s", r.Code, r.Source, r.Body, screen)
 	}
@@ -28,19 +30,44 @@ func TestRealClaude(t *testing.T) {
 
 // The role's instructions reach Claude Code (--append-system-prompt-file).
 func TestRealClaudeRole(t *testing.T) {
-	r, screen := askRealClaude(t, "Responda sempre só com letras MAIÚSCULAS.", "Responda apenas com a palavra: pong")
+	r, screen := askRealClaude(t, "Responda sempre só com letras MAIÚSCULAS.", "Responda apenas com a palavra: pong", nil)
 	if r.Code != 200 || r.Source != "claude-stop" || !strings.Contains(r.Body, "PONG") {
 		t.Fatalf("the role was not followed: code=%d source=%s\n%s\n--- screen ---\n%s", r.Code, r.Source, r.Body, screen)
 	}
 }
 
+// PRIORIDADE with the real CLI: in the default permission mode, a command
+// stops at Claude Code's prompt; the flight asks the user (the hook gives the
+// command, the screen the answers), and answering from the interface runs it.
+func TestRealClaudePermission(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "allowed.txt")
+	var answered bool
+	r, screen := askRealClaude(t, "", "Use the Bash tool to run exactly this command, nothing else: touch "+file, func(e *env, id string) {
+		a := e.waitAttention(id, func(a *attention.Attention) bool { return a != nil && len(a.Choices) > 0 }, 2*time.Minute)
+		if a.Tool != "Bash" || !strings.Contains(a.Detail, file) || a.Choices[0] != attention.Allow {
+			t.Errorf("attention: %+v", a)
+		}
+		if code, body := e.respond(id, "allow"); code != 204 {
+			t.Errorf("respond: %d %s", code, body)
+		}
+		answered = true
+	}, "--permission-mode", "default")
+	if !answered || r.Code != 200 || r.Source != "claude-stop" {
+		t.Fatalf("reply: code=%d source=%s\n%s\n--- screen ---\n%s", r.Code, r.Source, r.Body, screen)
+	}
+	if _, err := os.Stat(file); err != nil {
+		t.Fatalf("the command didn't run: %v\n%s", err, screen)
+	}
+}
+
 // askRealClaude starts a Claude Code terminal (with a role, when prompt isn't
-// empty) and asks it msg from a shell.
-func askRealClaude(t *testing.T, rolePrompt, msg string) (agentbus.Result, string) {
+// empty, and extra arguments) and asks it msg from a shell; during, when
+// set, runs while the ask waits.
+func askRealClaude(t *testing.T, rolePrompt, msg string, during func(e *env, id string), args ...string) (agentbus.Result, string) {
 	if _, err := exec.LookPath("claude"); err != nil {
 		t.Skip("claude CLI not installed")
 	}
-	cwd := os.Getenv("SQUAD_E2E_CWD")
+	cwd := config.Getenv("E2E_CWD")
 	if cwd == "" {
 		cwd, _ = filepath.Abs("../..")
 	}
@@ -59,7 +86,11 @@ func askRealClaude(t *testing.T, rolePrompt, msg string) (agentbus.Result, strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	claude, err := st.AddNode(store.Node{Kind: store.KindTerminal, Terminal: &store.TerminalData{Name: "Claude", Agent: "claude", Role: role, Cwd: cwd, Cols: 120, Rows: 36}})
+	command := ""
+	if len(args) > 0 {
+		command = "claude " + strings.Join(args, " ")
+	}
+	claude, err := st.AddNode(store.Node{Kind: store.KindTerminal, Terminal: &store.TerminalData{Name: "Claude", Agent: "claude", Command: command, Role: role, Cwd: cwd, Cols: 120, Rows: 36}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,6 +125,14 @@ func askRealClaude(t *testing.T, rolePrompt, msg string) (agentbus.Result, strin
 	time.Sleep(2 * time.Second)
 
 	start := time.Now()
+	if during != nil {
+		done := make(chan agentbus.Result, 1)
+		go func() { done <- e.run(shell, "ask", "Claude", msg) }()
+		during(e, claude.ID)
+		r := <-done
+		t.Logf("ask took %v, source=%s\n%s", time.Since(start), r.Source, r.Body)
+		return r, term.Snapshot()
+	}
 	r := e.run(shell, "ask", "Claude", msg)
 	t.Logf("ask took %v, source=%s\n%s", time.Since(start), r.Source, r.Body)
 	return r, term.Snapshot()

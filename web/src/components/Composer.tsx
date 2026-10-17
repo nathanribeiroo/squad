@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { UIState, WNode } from '../api/types';
-import { STATE_META } from '../lib/model';
-import { roleColor, roleIcon, useRole, useRoleLookup } from '../lib/roles';
+import { flightLevel } from '../lib/floors';
+import { STATE_META, callsign } from '../lib/model';
+import { roleColor, useRole, useRoleLookup } from '../lib/roles';
 import { toast } from '../lib/toast';
 import { useNodes, useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -137,6 +138,16 @@ function ComposerPanel() {
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const terminals = nodes.filter((n) => n.terminal);
+  // "Todos os voos do FL1": every level with two flights or more.
+  const floors = useSquad((s) => s.workspace?.floors);
+  const levels = useMemo(() => {
+    const out: { key: string; label: string; ids: string[] }[] = [];
+    for (const f of [null, ...(floors ?? [])]) {
+      const ids = terminals.filter((n) => (n.floor ?? '') === (f?.id ?? '')).map((n) => n.id);
+      if (ids.length >= 2) out.push({ key: f?.id ?? '', label: f ? `${flightLevel(f)} · ${f.name}` : 'PISTA', ids });
+    }
+    return out;
+  }, [floors, terminals]);
 
   // Mentionable: nodes linked to every target (handoff §7).
   const { linked, unlinked } = useMemo(() => {
@@ -217,10 +228,10 @@ function ComposerPanel() {
     setBusy(false);
     const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [`${nodeName(byId.get(targets[i])!)}: ${(r.reason as Error).message}`] : []));
     if (failed.length) {
-      toast(`Não enviado · ${failed.join(' · ')}`);
+      toast(`Não transmitido · ${failed.join(' · ')}`, 'err');
       return;
     }
-    toast(targets.length === 1 ? `Enviado a ${nodeName(byId.get(targets[0])!)}` : `Enviado a ${targets.length} terminais`);
+    toast(targets.length === 1 ? `Transmitido a ${nodeName(byId.get(targets[0])!)}` : `Transmitido a ${targets.length} voos`);
     root.innerHTML = '';
     setFiles([]);
     close();
@@ -297,11 +308,11 @@ function ComposerPanel() {
   const canSend = targets.length > 0 && !busy && (!empty || files.length > 0) && !notice?.blocking;
 
   return (
-    <div className="composer" role="dialog" aria-label="Composer">
+    <div className="composer" role="dialog" aria-label="Transmitir">
       {menu && targets.length > 0 && (
         <div className="mention-menu popover">
-          <div className="mm-section">Ligados a {targets.length === 1 ? nodeName(byId.get(targets[0])!) : 'todos os destinos'}</div>
-          {matches.length === 0 && <div className="mm-empty">Nenhum nó ligado com esse nome.</div>}
+          <div className="mm-section">Na frequência de {targets.length === 1 ? nodeName(byId.get(targets[0])!) : 'todos os destinos'}</div>
+          {matches.length === 0 && <div className="mm-empty">Nada na frequência com esse nome.</div>}
           {matches.map((n, i) => (
             <button
               key={n.id}
@@ -320,9 +331,9 @@ function ComposerPanel() {
           ))}
           {others.length > 0 && (
             <>
-              <div className="mm-section">Não ligados</div>
+              <div className="mm-section">Fora da frequência</div>
               {others.slice(0, 5).map((n) => (
-                <div key={n.id} className="mm-item disabled" title="Ligue este nó ao destino para mencioná-lo">
+                <div key={n.id} className="mm-item disabled" title="Ponha este nó na frequência do destino para mencioná-lo">
                   <NodeGlyph n={n} />
                   {nodeName(n)}
                   <span className="tn-spacer" />
@@ -342,9 +353,9 @@ function ComposerPanel() {
           const role = roleOf(n.terminal.role);
           const r = roleColor(role);
           return (
-            <span key={id} className="cmp-target" style={{ background: `var(--rb-${r})`, color: `var(--r-${r})` }}>
-              <Icon name={role ? roleIcon(role) : 'terminal'} size={14} />
-              <span className="cmp-target-name">{n.terminal.name}</span>
+            <span key={id} className="cmp-target" title={role ? `${n.terminal.name} · ${role.name}` : n.terminal.name}>
+              <i style={{ background: `var(--r-${r})` }} />
+              <span className="cmp-target-name mono">{callsign(n.terminal)}</span>
               <span className="mono cmp-target-agent">{n.terminal.agent}</span>
               <button className="cmp-x" onClick={() => setTargets(targets.filter((x) => x !== id))} aria-label={`Remover ${n.terminal.name}`}>
                 <Icon name="close" size={14} />
@@ -354,12 +365,30 @@ function ComposerPanel() {
         })}
         <div style={{ position: 'relative' }}>
           <button className="cmp-add" onClick={() => setPicker(!picker)}>
-            <Icon name="add" size={15} />
-            destino
+            <Icon name="add" size={14} />
+            Destino
           </button>
           {picker && (
             <div className="popover cmp-picker" onMouseLeave={() => setPicker(false)}>
-              {terminals.filter((n) => !targets.includes(n.id)).length === 0 && <div className="mm-empty">Todos os terminais já são destino.</div>}
+              {terminals.filter((n) => !targets.includes(n.id)).length === 0 && <div className="mm-empty">Todos os voos já são destino.</div>}
+              {levels
+                .filter((l) => l.ids.some((id) => !targets.includes(id)))
+                .map((l) => (
+                  <button
+                    key={`level-${l.key}`}
+                    className="mm-item cmp-level"
+                    onClick={() => {
+                      setTargets([...targets, ...l.ids.filter((id) => !targets.includes(id))]);
+                      setPicker(false);
+                      editor.current?.focus();
+                    }}
+                  >
+                    <Icon name="layers" size={16} />
+                    Todos os voos de <b className="mono">{l.label}</b>
+                    <span className="tn-spacer" />
+                    <span className="mono cmp-level-n">{l.ids.length}</span>
+                  </button>
+                ))}
               {terminals
                 .filter((n) => !targets.includes(n.id))
                 .map((n) => (
@@ -373,6 +402,7 @@ function ComposerPanel() {
                     }}
                   >
                     <NodeGlyph n={n} />
+                    <b className="mono">{callsign(n.terminal!)}</b>
                     {n.terminal!.name}
                     <span className="tn-spacer" />
                     <MiniState state={runtime[n.id]?.activity ?? 'off'} />
@@ -382,7 +412,7 @@ function ComposerPanel() {
           )}
         </div>
         {notice && (
-          <span className="cmp-notice" style={{ color: `var(--st-${notice.state})` }}>
+          <span className="cmp-notice" style={{ color: `var(--stt-${notice.state})` }}>
             {notice.text}
           </span>
         )}
@@ -398,7 +428,7 @@ function ComposerPanel() {
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
-        data-placeholder={targets.length ? 'Escreva a mensagem… use @ para mencionar um nó ligado' : 'Escolha um destino em "+ destino"'}
+        data-placeholder={targets.length ? 'Escreva para o voo… use @ para mencionar o que está na frequência' : 'Escolha um destino em "+ destino"'}
         onInput={refresh}
         onKeyDown={onKeyDown}
         onKeyUp={(e) => (e.key.startsWith('Arrow') && !menu ? refresh() : undefined)}
@@ -431,7 +461,7 @@ function ComposerPanel() {
         <button className="icon-btn" onClick={() => fileInput.current?.click()} title="Anexar imagem (ou cole com ⌘V)">
           <Icon name="image" size={19} />
         </button>
-        <button className="icon-btn" onClick={startMention} title="Mencionar um nó ligado (@)" disabled={targets.length === 0}>
+        <button className="icon-btn" onClick={startMention} title="Mencionar o que está na frequência (@)" disabled={targets.length === 0}>
           <Icon name="alternate_email" size={19} />
         </button>
         <input
@@ -445,10 +475,10 @@ function ComposerPanel() {
             e.target.value = '';
           }}
         />
-        <span className="cmp-hint mono">⏎ enviar · ⇧⏎ nova linha · Esc fecha</span>
+        <span className="cmp-hint mono">⏎ transmitir · ⇧⏎ nova linha · Esc fecha</span>
         <span className="tn-spacer" />
         <button className="cmp-send" onClick={() => void send()} disabled={!canSend}>
-          {targets.length > 1 ? `Enviar a ${targets.length}` : 'Enviar'}
+          {targets.length > 1 ? `Transmitir a ${targets.length}` : 'Transmitir'}
           <Icon name="arrow_upward" size={17} />
         </button>
       </div>
@@ -457,10 +487,10 @@ function ComposerPanel() {
 }
 
 function targetNotice(states: UIState[], runtime: Record<string, { status?: string }>, targets: string[]): { text: string; state: UIState; blocking?: boolean } | null {
-  if (targets.some((t) => runtime[t]?.status !== 'running')) return { text: 'parado · inicie o terminal', state: 'err', blocking: true };
-  if (states.includes('work')) return { text: 'trabalhando · entra na fila', state: 'work' };
-  if (states.includes('wait')) return { text: 'esperando resposta · entra na fila', state: 'wait' };
-  if (states.includes('boot')) return { text: 'iniciando', state: 'boot' };
+  if (targets.some((t) => runtime[t]?.status !== 'running')) return { text: 'hangar · inicie o voo', state: 'err', blocking: true };
+  if (states.includes('work')) return { text: 'no ar · entra na fila', state: 'work' };
+  if (states.includes('wait')) return { text: 'aguarda · entra na fila', state: 'wait' };
+  if (states.includes('boot')) return { text: 'taxiando', state: 'boot' };
   return null;
 }
 
@@ -473,7 +503,7 @@ function NodeGlyph({ n }: { n: WNode }) {
 
 function MiniState({ state }: { state: UIState }) {
   return (
-    <span className="mm-state" style={{ color: `var(--st-${state})` }}>
+    <span className="mm-state" style={{ color: `var(--stt-${state})` }}>
       <Icon name={STATE_META[state].icon} size={14} />
       {STATE_META[state].label}
     </span>

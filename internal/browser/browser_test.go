@@ -28,7 +28,7 @@ func testManager(t *testing.T) (*Manager, string) {
 	t.Helper()
 	path := Find()
 	if path == "" {
-		t.Skip("no Chromium-based browser (set SQUAD_BROWSER)")
+		t.Skip("no Chromium-based browser (set TORRE_BROWSER)")
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -222,18 +222,19 @@ func TestCloseTabsAndIdleBrowser(t *testing.T) {
 	waitState(t, c, "c loaded", func(s State) bool { return s.Title == "Teste" })
 }
 
-func TestFindHonorsSquadBrowser(t *testing.T) {
+func TestFindHonorsTorreBrowser(t *testing.T) {
 	exe := filepath.Join(t.TempDir(), "my-chrome")
 	if err := os.WriteFile(exe, nil, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SQUAD_BROWSER", exe)
+	t.Setenv("TORRE_BROWSER", "")
+	t.Setenv("SQUAD_BROWSER", exe) // the name from before still works
 	if got := Find(); got != exe {
 		t.Fatalf("Find = %q", got)
 	}
-	t.Setenv("SQUAD_BROWSER", filepath.Join(t.TempDir(), "missing"))
+	t.Setenv("TORRE_BROWSER", filepath.Join(t.TempDir(), "missing"))
 	if got := Find(); got != "" {
-		t.Fatalf("missing SQUAD_BROWSER should give no browser, got %q", got)
+		t.Fatalf("missing TORRE_BROWSER should give no browser, got %q", got)
 	}
 	m := New(Options{})
 	if _, err := m.Page("x"); err != ErrNoBrowser {

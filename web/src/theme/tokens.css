@@ -1,45 +1,203 @@
-/* Copied from docs/design_handoff_squad/tokens/tokens.css; fonts are bundled locally (see main.tsx) instead of Google Fonts. */
-/* Squad — design tokens. Aplique data-theme="dark|light" e data-term="noite|papel" no <html>. */
+/* Torre: design tokens (docs/torre/tokens/torre-tokens.css), completed where
+   the handoff leaves gaps (marked "added"), plus aliases for the names the
+   code used before. data-theme="dark|light" and data-term="noite|papel" on
+   <html>. Dark is the reference; corners are square (radius 0). */
 
-:root{
-  --font-ui:'Geist Variable','Geist',system-ui,sans-serif;
-  --font-mono:'Geist Mono Variable','Geist Mono',ui-monospace,monospace;
-  --space-0_5:2px;--space-1:4px;--space-1_5:6px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;
-  --radius-chip:4px;--radius-control:6px;--radius-node:8px;--radius-float:12px;--radius-pill:999px;
-  --header-h:32px;--role-stripe-h:3px;--node-footer-h:22px;--strip-h:24px;--topbar-h:44px;
-  --focus-ring-w:2px;--focus-ring-offset:3px;
+:root {
+  --font-ui: 'B612', system-ui, sans-serif;
+  --font-mono: 'B612 Mono', ui-monospace, monospace;
+  /* Terminals keep Geist Mono: B612 Mono at 11px makes 80 columns 572px,
+     wider than a 560px node (the handoff's own fallback). */
+  --font-term: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
+
+  /* scale */
+  --fs-wordmark: 15px;
+  --fs-label: 11px;
+  --fs-button: 11.5px;
+  --fs-body: 13px;
+  --fs-small: 12.5px;
+  --fs-data: 11px;
+  --fs-data-min: 10.5px;
+  --fs-callsign: 13px;
+  --fs-dialog-title: 14px;
+  --fs-term: 11px;
+
+  /* spacing (from before) */
+  --space-0_5: 2px; --space-1: 4px; --space-1_5: 6px; --space-2: 8px;
+  --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
+
+  /* shape and sizes */
+  --radius-chip: 0; --radius-control: 0; --radius-node: 0; --radius-float: 0;
+  --radius-pill: 999px; /* only state dots are round */
+  --h-topbar: 48px;
+  --h-node-header: 34px;
+  --h-sender: 24px;
+  --h-sender-ask: 26px;
+  --h-node-footer: 22px;
+  --h-turn-card: 30px;
+  --w-state-band: 6px;
+  --w-role-square: 8px;
+  --w-drawer: 440px;
+  --w-composer: 680px;
+  --w-composer-pill: 500px;
+  --h-control: 32px;
+  --h-button: 36px;
+  --focus-ring-w: 2px;
+  --focus-ring-offset: 2px;
+  /* aliases (names from before) */
+  --topbar-h: var(--h-topbar);
+  --header-h: var(--h-node-header);
+  --node-footer-h: var(--h-node-footer);
+  --strip-h: var(--h-sender);
+  --role-stripe-h: 0px;
+
+  /* motion */
+  --dur-envelope: 600ms;
+  --dur-pending-dash: 1.6s;
+  --dur-ask-blink: 1s;
+  --dur-sweep: 6s;
+  --dur-reply-band: 60s;
+  --dur-toast: 4s;
 }
 
-[data-theme="dark"]{
-  --bg:#111214;--grid:#2a2c31;--surface:#1a1b1e;--surface-2:#212327;--surface-3:#2b2d32;
-  --line:#2c2e33;--line-2:#3c3f46;--text:#e8e9ec;--text-2:#a9acb3;--text-3:#8a8e96;
-  --focus:#f2f3f5;--wire:#5a5e68;--note-bg:#1d1d1b;--on-signal:#111214;
-  --shadow:0 1px 0 rgba(0,0,0,.35),0 10px 28px rgba(0,0,0,.35);
-  --st-boot:oklch(0.80 0.05 250);--st-idle:#a3a6ad;--st-work:oklch(0.77 0.13 245);--st-wait:oklch(0.83 0.14 78);
-  --st-done:oklch(0.79 0.14 152);--st-err:oklch(0.73 0.17 25);--st-off:#8a8e96;
-  --stb-boot:oklch(0.27 0.02 250);--stb-idle:#25272b;--stb-work:oklch(0.28 0.05 245);--stb-wait:oklch(0.30 0.06 78);
-  --stb-done:oklch(0.28 0.05 152);--stb-err:oklch(0.29 0.07 25);--stb-off:#202125;
-  --r-plan:oklch(0.77 0.13 300);--r-impl:oklch(0.79 0.11 200);--r-rev:oklch(0.77 0.13 350);--r-test:oklch(0.80 0.12 110);--r-none:#a9acb3;
-  --rb-plan:oklch(0.29 0.06 300);--rb-impl:oklch(0.29 0.05 200);--rb-rev:oklch(0.29 0.06 350);--rb-test:oklch(0.29 0.05 110);--rb-none:#2b2d32;
-  /* More colors for new roles (internal/roles.Colors). */
-  --r-teal:oklch(0.78 0.13 168);--r-indigo:oklch(0.76 0.12 272);--r-magenta:oklch(0.76 0.15 325);--r-orange:oklch(0.79 0.13 52);
-  --rb-teal:oklch(0.29 0.05 168);--rb-indigo:oklch(0.29 0.06 272);--rb-magenta:oklch(0.29 0.06 325);--rb-orange:oklch(0.30 0.06 52);
+:root,
+[data-theme='dark'] {
+  /* background and surfaces */
+  --bg: #030705;
+  --canvas: #050b08;
+  --canvas-dot: #15301f;
+  --surface: #07100b;
+  --surface-2: #0b1710;
+  --surface-3: #10241a;
+  --backdrop: rgba(1, 3, 2, 0.78);
+
+  /* lines */
+  --line: #16301f;
+  --line-2: #1f3a29;
+  --line-3: #2c5a3d;
+  --wire: #3f6b52;
+  --wire-wait: var(--st-wait); /* added: the light theme darkens it */
+
+  /* text */
+  --text: #cfeedd;
+  --text-2: #9fc4ae;
+  --text-3: #7fa892;
+  --text-4: #5a8a6c; /* only mono data, 10.5px and up */
+
+  /* actions */
+  --primary: #cfeedd;
+  --on-primary: #030705;
+  --focus: #cfeedd;
+
+  /* brand */
+  --brand: #e05a2b;
+  --brand-glass: #7fe0a0;
+
+  /* paper (flight strips, NOTAM) */
+  --paper: #efe8cf;
+  --paper-2: #e4dec6;
+  --paper-off: #cfc9b2;
+  --paper-line: #cfc6a6;
+  --paper-line-2: #b8ae8a;
+  --ink: #1b1a14;
+  --ink-2: #6b6450;
+  --ink-work: #1f4f9f;
+  --ink-wait: #7a4f00;
+  --ink-done: #1f6b3a;
+
+  /* states: --st-* band, --stt-* text and icon, --stb-* tinted background */
+  --st-boot: #5b7a8c;  --stt-boot: #a8c2d2;  --stb-boot: #0a1418; /* stb added */
+  --st-idle: #3a4a40;  --stt-idle: #9fb5a8;  --stb-idle: #0b1710; /* stb added */
+  --st-work: #3b74d0;  --stt-work: #a9c8ff;  --stb-work: #0b1730;
+  --st-wait: #e0a526;  --stt-wait: #ffd27a;  --stb-wait: #1a1407;  --stl-wait: #3a2c0c;
+  --st-ask:  #e0a526;  --stt-ask:  #ffd27a;  --stb-ask:  #1a1407;  --st-ask-halo: rgba(224, 165, 38, 0.16);
+  --st-done: #2e9b5b;  --stt-done: #8fe8b4;  --stb-done: #07130c;  --st-done-bright: #5fe39a; --stl-done: #1f4a30;
+  --st-err:  #d9443c;  --stt-err:  #ff9a8f;  --stb-err:  #1a0908;  --stl-err: #6a2a26; --stt-err-2: #ffc9c2;
+  --st-off:  #26332b;  --stt-off:  #7fa892;  --stb-off:  #07100b; /* stb added */
+  --wait-stripe: repeating-linear-gradient(0deg, var(--st-wait) 0 4px, transparent 4px 7px);
+
+  /* pills on a wire */
+  --pill-wait-bg: #2a1f07;
+  --pill-done-bg: #0b2416;
+  --pill-err-bg: #2a0d0b;
+
+  /* roles: --r-* color, --rt-* light text (Rádio), --rb-* sender band */
+  --r-plan: #b49cff;    --rt-plan: #cbbdff;    --rb-plan: #0f0c1c;
+  --r-indigo: #8fa2ff;  --rt-indigo: #a9b6ff;  --rb-indigo: #0c0f1f;
+  --r-impl: #6fd3d8;    --rt-impl: #9be6ea;    --rb-impl: #071a1b;
+  --r-rev: #f29ac0;     --rt-rev: #f7bcd6;     --rb-rev: #1c0a12;
+  --r-test: #c6e06a;    --rt-test: #dff09a;    --rb-test: #141a05;
+  --r-teal: #5fd6b4;    --rt-teal: #8fe6cd;    --rb-teal: #061a14;
+  --r-magenta: #e08ae8; --rt-magenta: #ecb0f1; --rb-magenta: #1a0a1c;
+  --r-orange: #f0a66a;  --rt-orange: #f6c399;  --rb-orange: #1c1007;
+  --r-none: #9fc4ae;    --rt-none: #cfeedd;    --rb-none: #0b1710; /* added: no role */
+
+  /* workspaces */
+  --ws-teal: #6fd3d8; --ws-blue: #3b74d0; --ws-purple: #b49cff; --ws-pink: #f29ac0;
+  --ws-red: #d9443c;  --ws-amber: #e0a526; --ws-lime: #c6e06a;  --ws-green: #2e9b5b;
+
+  /* shadows */
+  --shadow-pop: 0 14px 36px rgba(0, 0, 0, 0.6);
+  --shadow-dialog: 0 20px 60px rgba(0, 0, 0, 0.6);
+
+  /* aliases (names from before) */
+  --grid: var(--canvas-dot);
+  --note-bg: var(--paper);
+  --on-signal: #030705;
+  --shadow: var(--shadow-pop);
 }
 
-[data-theme="light"]{
-  --bg:#f2f2ef;--grid:#d4d4cf;--surface:#ffffff;--surface-2:#f7f7f5;--surface-3:#ebebe8;
-  --line:#e3e3df;--line-2:#cbcbc6;--text:#17181a;--text-2:#4f5258;--text-3:#666970;
-  --focus:#17181a;--wire:#9c9d99;--note-bg:#fffef8;--on-signal:#ffffff;
-  --shadow:0 1px 0 rgba(0,0,0,.04),0 6px 18px rgba(20,20,15,.08);
-  --st-boot:oklch(0.50 0.06 250);--st-idle:#5f626a;--st-work:oklch(0.50 0.15 250);--st-wait:oklch(0.53 0.12 68);
-  --st-done:oklch(0.50 0.12 150);--st-err:oklch(0.52 0.18 25);--st-off:#666970;
-  --stb-boot:oklch(0.95 0.015 250);--stb-idle:#f0f0ee;--stb-work:oklch(0.95 0.03 250);--stb-wait:oklch(0.95 0.05 80);
-  --stb-done:oklch(0.95 0.035 150);--stb-err:oklch(0.95 0.035 25);--stb-off:#f0f0ee;
-  --r-plan:oklch(0.50 0.16 300);--r-impl:oklch(0.50 0.10 210);--r-rev:oklch(0.52 0.17 355);--r-test:oklch(0.50 0.12 120);--r-none:#4f5258;
-  --rb-plan:oklch(0.95 0.03 300);--rb-impl:oklch(0.95 0.025 210);--rb-rev:oklch(0.95 0.03 355);--rb-test:oklch(0.95 0.03 120);--rb-none:#ebebe8;
-  --r-teal:oklch(0.50 0.11 168);--r-indigo:oklch(0.50 0.15 272);--r-magenta:oklch(0.50 0.17 325);--r-orange:oklch(0.55 0.14 50);
-  --rb-teal:oklch(0.95 0.03 168);--rb-indigo:oklch(0.95 0.03 272);--rb-magenta:oklch(0.95 0.03 325);--rb-orange:oklch(0.95 0.035 50);
+[data-theme='light'] {
+  --bg: #e9e3cf;
+  --canvas: #e9e3cf;
+  --canvas-dot: #cfc6a6;
+  --surface: #f6f2e4;
+  --surface-2: #fffbea;
+  --surface-3: #fffbea;
+  --backdrop: rgba(40, 36, 24, 0.35);
+  --line: #d9d0b2;
+  --line-2: #cfc6a6;
+  --line-3: #b8ae8a;
+  --wire: #9a917a;
+  --wire-wait: #c98a00;
+  --text: #1b1a14;
+  --text-2: #5b5747;
+  --text-3: #6b6450;
+  --text-4: #8a836c;
+  --primary: #1b1a14;
+  --on-primary: #f6f2e4;
+  --focus: #1b1a14;
+  --brand-glass: #2e9b5b;
+  --paper: #fffbea;
+
+  --stt-boot: #3f5b6b;  --stb-boot: #e6edf1;
+  --stt-idle: #5b5747;  --stb-idle: #f0ebd8;
+  --stt-work: #1f4f9f;  --stb-work: #e3ebfa;
+  --stt-wait: #7a4f00;  --stb-wait: #fff1c9;  --stl-wait: #e8d49a;
+  --stt-ask:  #7a4f00;  --stb-ask:  #fff1c9;
+  --stt-done: #1f6b3a;  --stb-done: #e3f3e8;
+  --stt-err:  #a3231b;  --stb-err:  #fbe4e1;
+  --st-off: #9a917a;    --stt-off: #5b5747;   --stb-off: #ece6d2;
+  --pill-wait-bg: #fff1c9;
+  --pill-done-bg: #e3f3e8;
+  --pill-err-bg: #fbe4e1;
+
+  /* the handoff gives plan, impl and rev; the others darkened the same way */
+  --r-plan: #7b5ce0;    --rt-plan: #4a3596;    --rb-plan: #ece6fb;
+  --r-indigo: #4a5fd0;  --rt-indigo: #2f3f99;  --rb-indigo: #e7eafb;
+  --r-impl: #178a92;    --rt-impl: #0e5f65;    --rb-impl: #e0f3f4;
+  --r-rev: #c4507f;     --rt-rev: #8a2f57;     --rb-rev: #fae6ef;
+  --r-test: #6d8a12;    --rt-test: #4a5e0a;    --rb-test: #eef4d6;
+  --r-teal: #178a6e;    --rt-teal: #0e5f4c;    --rb-teal: #dff3ed;
+  --r-magenta: #a8379f; --rt-magenta: #74266e; --rb-magenta: #f6e3f4;
+  --r-orange: #b8621c;  --rt-orange: #7f4313;  --rb-orange: #fbebdc;
+  --r-none: #5b5747;    --rt-none: #1b1a14;    --rb-none: #f0ebd8;
+
+  --shadow-pop: 0 10px 28px rgba(40, 36, 24, 0.18);
+  --shadow-dialog: 0 18px 50px rgba(40, 36, 24, 0.22);
+  --on-signal: #fffbea;
 }
 
-[data-term="noite"]{--term-bg:#0d0e10}
-[data-term="papel"]{--term-bg:#fbfbf9}
+/* The terminal's own theme (Noite / Papel), apart from the interface's. */
+[data-term='noite'] { --term-bg: #040806; }
+[data-term='papel'] { --term-bg: #fbf8ee; }

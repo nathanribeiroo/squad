@@ -1,4 +1,4 @@
-// An agent acting on a portal (squad portal click/fill/…): the canvas shows
+// An agent acting on a portal (torre portal click/fill/…): the canvas shows
 // its cursor on the page and what it is doing on the wire, for a moment.
 import { useEffect, useState } from 'react';
 import { roleColor } from '../../lib/roles';

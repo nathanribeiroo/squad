@@ -24,7 +24,8 @@ const themeOf = () => (useSquad.getState().termTheme === 'papel' ? papel : noite
 /** Keys the canvas owns even while a terminal has the keyboard. */
 function canvasKey(e: KeyboardEvent): boolean {
   if (!e.altKey || e.ctrlKey || e.metaKey) return false;
-  return e.code === 'KeyA' || e.code === 'KeyP' || e.code === 'KeyK' || e.key === 'Escape' || /^Digit[1-9]$/.test(e.code);
+  if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return true; // dock
+  return e.code === 'KeyA' || e.code === 'KeyP' || e.code === 'KeyK' || e.code === 'KeyF' || e.code === 'KeyM' || e.key === 'Escape' || /^Digit[1-9]$/.test(e.code);
 }
 
 let fontsReady: Promise<unknown> | null = null;

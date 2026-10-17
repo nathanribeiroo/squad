@@ -17,6 +17,7 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/plans"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -25,15 +26,16 @@ import (
 var binDir string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "squad-app-test")
+	dir, err := os.MkdirTemp("", "torre-app-test")
 	if err != nil {
 		panic(err)
 	}
 	binDir = dir
-	// Keep generated files (Claude hooks settings) out of the real ~/.squad.
-	os.Setenv("SQUAD_HOME", filepath.Join(dir, "home"))
+	// Keep generated files (Claude hooks settings) out of the real ~/.torre.
+	os.Setenv("TORRE_HOME", filepath.Join(dir, "home"))
 	for name, pkg := range map[string]string{
-		"squad":     "github.com/nathanribeiroo/squad/cmd/squad",
+		"torre":     "github.com/nathanribeiroo/squad/cmd/torre",
+		"squad":     "github.com/nathanribeiroo/squad/cmd/squad", // the name from before Torre
 		"fakeagent": "github.com/nathanribeiroo/squad/internal/testutil/fakeagent",
 	} {
 		cmd := exec.Command("go", "build", "-o", filepath.Join(dir, name), pkg)
@@ -80,8 +82,8 @@ func newEnvWith(t *testing.T, limits agentbus.Limits, act activity.Options) *env
 		t.Fatal(err)
 	}
 	a, err := New(Options{
-		Server:   server.Options{Port: port, Token: "tok", Store: st, CLIPath: filepath.Join(binDir, "squad")},
-		Activity: act, Limits: limits, Roles: lib,
+		Server:   server.Options{Port: port, Token: "tok", Store: st, CLIPath: filepath.Join(binDir, "torre")},
+		Activity: act, Limits: limits, Roles: lib, Plans: plans.Open(filepath.Join(dir, "plans")),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -220,7 +222,7 @@ func TestAskBackIsDirectReply(t *testing.T) {
 	a := e.agent("A")
 	b := e.agent("B")
 	e.connect(a, b)
-	r := e.run(a, "ask", "B", "RUN:squad ask A 'resultado final'")
+	r := e.run(a, "ask", "B", "RUN:torre ask A 'resultado final'")
 	if r.Code != 200 || r.Source != "ask-back" || !strings.Contains(r.Body, "resultado final") || !strings.Contains(r.Body, "[reply from B · request ") {
 		t.Fatalf("ask-back: code=%d source=%s body=%s", r.Code, r.Source, r.Body)
 	}
@@ -232,7 +234,7 @@ func TestReplyByID(t *testing.T) {
 	a := e.agent("A")
 	b := e.agent("B")
 	e.connect(a, b)
-	r := e.run(a, "ask", "B", "RUN:squad reply {id} feito-via-reply")
+	r := e.run(a, "ask", "B", "RUN:torre reply {id} feito-via-reply")
 	if r.Code != 200 || r.Source != "reply" || !strings.Contains(r.Body, "feito-via-reply") {
 		t.Fatalf("reply: code=%d source=%s body=%s", r.Code, r.Source, r.Body)
 	}
@@ -247,7 +249,7 @@ func TestCycleIsReleased(t *testing.T) {
 	e.connect(b, c)
 	e.connect(c, a)
 	// A asks B; B asks C; C asks A while A waits on B → A's wait is released.
-	r := e.run(a, "ask", "B", "RUN:squad ask C 'RUN:squad ask A ping-de-c'")
+	r := e.run(a, "ask", "B", "RUN:torre ask C 'RUN:torre ask A ping-de-c'")
 	if r.Code != 200 || r.Source != "ring-break" || !strings.Contains(r.Body, "deadlock") {
 		t.Fatalf("cycle: code=%d source=%s body=%s", r.Code, r.Source, r.Body)
 	}
@@ -289,7 +291,7 @@ func TestHopLimitPausesConversations(t *testing.T) {
 	c := e.agent("C")
 	e.connect(a, b)
 	e.connect(b, c)
-	r := e.run(a, "ask", "B", "RUN:squad ask C hi")
+	r := e.run(a, "ask", "B", "RUN:torre ask C hi")
 	if r.Code != 200 || !strings.Contains(r.Body, "hop limit (1) reached") {
 		t.Fatalf("hop: code=%d body=%s", r.Code, r.Body)
 	}
@@ -359,7 +361,7 @@ func TestCLIBinaryFromTerminal(t *testing.T) {
 	a := e.agent("A")
 	b := e.agent("B")
 	e.connect(a, b)
-	r := e.run(a, "ask", "B", "RUN:squad list")
+	r := e.run(a, "ask", "B", "RUN:torre list")
 	if r.Code != 200 || !strings.Contains(r.Body, `name: "B"`) {
 		t.Fatalf("cli list from B: %d %s", r.Code, r.Body)
 	}
@@ -367,7 +369,7 @@ func TestCLIBinaryFromTerminal(t *testing.T) {
 	_ = http.StatusOK
 }
 
-// A Claude-like agent reports its turn end through Squad's hook; the reply
+// A Claude-like agent reports its turn end through Torre's hook; the reply
 // is its final message, not the screen.
 func TestHookedAgentRepliesWithFinalMessage(t *testing.T) {
 	e := newEnv(t, fastLimits)
@@ -387,7 +389,7 @@ func TestHookedAgentRepliesWithFinalMessage(t *testing.T) {
 	}
 }
 
-// A Devin-like agent reports its turn end through Squad's Stop hook (Devin
+// A Devin-like agent reports its turn end through Torre's Stop hook (Devin
 // CLI's Claude-style payload) and is answered with its final message.
 func TestDevinHookRepliesWithFinalMessage(t *testing.T) {
 	e := newEnv(t, fastLimits)

@@ -1,6 +1,8 @@
 // Global client state, fed by /ws/events.
 import { create } from 'zustand';
 import { api, setWorkspace } from '../api/client';
+import { askPhrase } from '../lib/askText';
+import { noticeAsk } from '../lib/notify';
 import { toast } from '../lib/toast';
 import type {
   Floor,
@@ -21,7 +23,7 @@ import type {
   WorkspaceSummary,
 } from '../api/types';
 
-export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn';
+export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn' | 'answered';
 
 export interface ActivityItem {
   key: string;
@@ -70,6 +72,8 @@ export const PORTAL_ACTION_MS = 2500;
 /** Last reply an origin terminal got (its "reply" strip). */
 export interface LastReply {
   id: string;
+  /** The flight that answered (its node id) and its name. */
+  from?: string;
   fromName: string;
   elapsedMs: number;
   at: number;
@@ -84,7 +88,7 @@ export type ZoomLevel = 'live' | 'mini' | 'card';
 
 /** A floor dialog: create one, land or discard a floor, read its setup log;
  * merge the session's copy, read its setup log. */
-export type FloorDialog = { kind: 'create' } | { kind: 'land' | 'discard' | 'log'; id: string } | { kind: 'merge-copy' | 'copy-log' };
+export type FloorDialog = { kind: 'create' } | { kind: 'land' | 'discard' | 'log' | 'rename'; id: string } | { kind: 'merge-copy' | 'copy-log' };
 
 /** Zoom level with ±0.03 hysteresis around 0.6 and 0.35 (handoff §2). */
 export function levelFor(z: number, prev: ZoomLevel): ZoomLevel {
@@ -125,8 +129,13 @@ interface SquadState {
   composerDraft: string | null;
   workspace: Workspace | null;
   runtime: Record<string, TerminalRuntime>;
+  /** Flights asking the user (PRIORIDADE), the oldest first. */
+  askingIds: string[];
   extra: StateExtra;
   connection: 'connecting' | 'connected' | 'reconnecting';
+  /** Since when the link is down (0 while connected), and when it tries again. */
+  linkLostAt: number;
+  retryAt: number;
   activity: ActivityItem[];
   flights: Record<string, Flight>;
   noteEdits: Record<string, NoteEdit>;
@@ -148,8 +157,29 @@ interface SquadState {
   zoomLevel: ZoomLevel;
   /** Zoom content is laid out for; updated when a gesture ends. */
   renderZoom: number;
+  /** The theme on screen; themePref may follow the system. */
   theme: 'dark' | 'light';
+  themePref: 'dark' | 'light' | 'system';
   termTheme: 'noite' | 'papel';
+  /** Configurações, open on a tab (null: closed). */
+  settingsTab: SettingsTab | null;
+  /** The view: the canvas (Espaço) or the Sinóptico (⌥S). */
+  view: 'space' | 'synoptic';
+  /** The flight the Sinóptico shows on the right, and whether it stays there. */
+  synPick: string | null;
+  synPinned: boolean;
+  /** A flight docked at an edge of the Espaço (⌥⇧←/→), kept per workspace. */
+  dock: Dock | null;
+  /** The flight on the whole stage (Foco, ⌥F). */
+  focusPane: string | null;
+  /** Flights whose screen is hidden (⋯ → Ocultar a tela), kept per workspace. */
+  hiddenScreens: string[];
+  /** A node for the canvas to select (Tab), and to bring into view. */
+  selectRequest: string | null;
+  /** The nodes selected on the canvas (one or more). */
+  selectedIds: string[];
+  /** Flight plans: the gallery (⌥M) or saving one (⌥⇧M). */
+  plansDialog: 'gallery' | 'save' | null;
 
   setWorkspaces(list: WorkspaceSummary[]): void;
   /** A workspace's sessions (from the "sessions" event, or a request). */
@@ -165,7 +195,7 @@ interface SquadState {
   clearFocusRequest(): void;
   load(s: StateResponse): void;
   apply(ev: ServerEvent): void;
-  setConnection(c: SquadState['connection']): void;
+  setConnection(c: SquadState['connection'], retryAt?: number): void;
   setDrawer(open: boolean): void;
   /** Opens or closes the Composer; draft is text to start with. */
   setComposer(open: boolean, target?: string | null, draft?: string): void;
@@ -181,9 +211,47 @@ interface SquadState {
   setSelectedNode(id: string | null): void;
   setTool(t: SquadState['tool']): void;
   setZoom(z: number, settled: boolean): void;
-  setTheme(t: SquadState['theme']): void;
+  setTheme(t: SquadState['themePref']): void;
+  openSettings(tab?: SettingsTab | null): void;
+  setView(v: SquadState['view']): void;
+  setSynPick(id: string | null): void;
+  setSynPinned(pinned: boolean, id: string): void;
   setTermTheme(t: SquadState['termTheme']): void;
   moveNodeLocal(id: string, x: number, y: number): void;
+  setDock(d: Dock | null): void;
+  setFocusPane(id: string | null): void;
+  toggleHiddenScreen(id: string): void;
+  requestSelect(id: string | null): void;
+  setSelectedIds(ids: string[]): void;
+  setPlansDialog(d: SquadState['plansDialog']): void;
+}
+
+export interface Dock {
+  id: string;
+  side: 'left' | 'right';
+}
+
+const dockKey = (ws: string) => `torre.dock.${ws}`;
+const hiddenKey = (ws: string) => `torre.hidden.${ws}`;
+
+function storedDock(ws: string | null): Dock | null {
+  if (!ws) return null;
+  try {
+    const d = JSON.parse(localStorage.getItem(dockKey(ws)) ?? 'null') as Dock | null;
+    return d && typeof d.id === 'string' && (d.side === 'left' || d.side === 'right') ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+function storedHidden(ws: string | null): string[] {
+  if (!ws) return [];
+  try {
+    const v = JSON.parse(localStorage.getItem(hiddenKey(ws)) ?? '[]') as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 const emptyExtra: StateExtra = { paused: false, limits: { maxHops: 6, perMinute: 30 }, rate: 0, pending: [] };
@@ -205,6 +273,15 @@ function prefersDark(): boolean {
   return typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)').matches : true;
 }
 
+/** The theme the user chose; before Configurações had "Sistema", the one they picked. */
+function initialPref(): 'dark' | 'light' | 'system' {
+  const p = stored<'dark' | 'light' | 'system' | ''>('torre.themePref', '');
+  if (p) return p;
+  return stored<'dark' | 'light' | ''>('torre.theme', '') || 'system';
+}
+
+export type SettingsTab = 'appearance' | 'agents' | 'limits' | 'summaries' | 'shortcuts' | 'notices';
+
 function stored<T extends string>(key: string, fallback: T): T {
   try {
     return (localStorage.getItem(key) as T) || fallback;
@@ -225,8 +302,11 @@ function persist(key: string, value: string) {
 const perWorkspace = {
   workspace: null,
   runtime: {},
+  askingIds: [],
   extra: emptyExtra,
   connection: 'connecting',
+  linkLostAt: 0,
+  retryAt: 0,
   activity: [],
   flights: {},
   noteEdits: {},
@@ -247,10 +327,16 @@ const perWorkspace = {
   summarySettings: null,
   summaryDialog: null,
   composerDraft: null,
+  dock: null,
+  focusPane: null,
+  hiddenScreens: [],
+  selectRequest: null,
+  selectedIds: [],
+  plansDialog: null,
 } satisfies Partial<SquadState>;
 
-const WS_KEY = 'squad.ws';
-const floorKey = (ws: string) => `squad.floor.${ws}`;
+const WS_KEY = 'torre.ws';
+const floorKey = (ws: string) => `torre.floor.${ws}`;
 
 /** The floor to show when a workspace opens: the URL's (when it is that
  * workspace's), then the last one shown here. */
@@ -291,8 +377,11 @@ export const useSquad = create<SquadState>((set, get) => ({
   composerDraft: null,
   workspace: null,
   runtime: {},
+  askingIds: [],
   extra: emptyExtra,
   connection: 'connecting',
+  linkLostAt: 0,
+  retryAt: 0,
   activity: [],
   flights: {},
   noteEdits: {},
@@ -309,10 +398,45 @@ export const useSquad = create<SquadState>((set, get) => ({
   tool: 'select',
   zoomLevel: 'live',
   renderZoom: 1,
-  theme: stored<'dark' | 'light'>('squad.theme', prefersDark() ? 'dark' : 'light'),
-  termTheme: stored<'noite' | 'papel'>('squad.term', stored('squad.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
+  theme: initialPref() === 'system' ? (prefersDark() ? 'dark' : 'light') : stored<'dark' | 'light'>('torre.theme', prefersDark() ? 'dark' : 'light'),
+  themePref: initialPref(),
+  settingsTab: null,
+  view: stored<'space' | 'synoptic'>('torre.view', 'space'),
+  synPick: null,
+  synPinned: false,
+  dock: null,
+  focusPane: null,
+  hiddenScreens: [],
+  selectRequest: null,
+  selectedIds: [],
+  plansDialog: null,
+  termTheme: stored<'noite' | 'papel'>('torre.term', stored('torre.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
 
   setRoles: (roles) => set({ roles }),
+  openSettings: (tab = 'appearance') => set({ settingsTab: tab }),
+  setView: (view) => {
+    persist('torre.view', view);
+    set({ view, focusedTerminal: null });
+  },
+  // A pinned flight stays until unpinned; picking another only moves the selection.
+  setSynPick: (id) => set((s) => (s.synPinned ? {} : { synPick: id })),
+  setSynPinned: (synPinned, id) => set({ synPinned, synPick: id }),
+  setDock: (dock) => {
+    const ws = get().activeWs;
+    if (ws) persist(dockKey(ws), dock ? JSON.stringify(dock) : '');
+    // A flight docked leaves the Foco, and the other way around.
+    set((s) => ({ dock, focusPane: dock && s.focusPane === dock.id ? null : s.focusPane }));
+  },
+  setFocusPane: (focusPane) => set({ focusPane }),
+  toggleHiddenScreen: (id) => {
+    const st = get();
+    const hiddenScreens = st.hiddenScreens.includes(id) ? st.hiddenScreens.filter((x) => x !== id) : [...st.hiddenScreens, id];
+    if (st.activeWs) persist(hiddenKey(st.activeWs), JSON.stringify(hiddenScreens));
+    set({ hiddenScreens });
+  },
+  requestSelect: (selectRequest) => set({ selectRequest }),
+  setSelectedIds: (selectedIds) => set({ selectedIds }),
+  setPlansDialog: (plansDialog) => set({ plansDialog }),
   openRoles: (id = null) => set({ rolesPanel: id }),
   closeRoles: () => set({ rolesPanel: false }),
 
@@ -375,7 +499,29 @@ export const useSquad = create<SquadState>((set, get) => ({
     }
     // The server only reports a count; spread it as "now" so it decays.
     const sendTimes = Array.from({ length: s.extra?.rate ?? 0 }, () => Date.now());
-    set({ workspace: s.workspace, runtime: s.runtime ?? {}, extra: s.extra ?? emptyExtra, flights: pending, sendTimes });
+    const runtime = s.runtime ?? {};
+    // Requests sent before this page opened still show in the Rádio.
+    const known = new Set(get().activity.map((a) => a.key));
+    const seeded: ActivityItem[] = (s.extra?.pending ?? [])
+      .filter((p) => !known.has(`req-${p.id}`))
+      .map((p) => ({ key: `req-${p.id}`, time: p.sentAt, id: p.id, from: p.from, to: p.to, fromName: p.fromName, toName: p.toName, text: p.preview ?? '', outcome: 'pending' as const }));
+    const activity = seeded.length ? [...seeded, ...get().activity] : get().activity;
+    // The docked flight comes back with the workspace; a hidden screen stays hidden.
+    const isTerm = (id?: string | null) => !!id && s.workspace.nodes.some((n) => n.id === id && n.terminal);
+    const cur = get();
+    const dock = cur.dock && isTerm(cur.dock.id) ? cur.dock : storedDock(cur.activeWs);
+    set({
+      workspace: s.workspace,
+      runtime,
+      askingIds: askingOf(runtime, []),
+      extra: s.extra ?? emptyExtra,
+      flights: pending,
+      sendTimes,
+      activity,
+      dock: dock && isTerm(dock.id) ? dock : null,
+      focusPane: isTerm(cur.focusPane) ? cur.focusPane : null,
+      hiddenScreens: storedHidden(cur.activeWs),
+    });
     // A floor landed while we were away (or a stale link): the ground floor.
     const st = get();
     const floor = validFloor(st.activeFloor, s.workspace.floors);
@@ -396,6 +542,8 @@ export const useSquad = create<SquadState>((set, get) => ({
         return;
       case 'node.removed':
         if (ws) set({ workspace: { ...ws, nodes: ws.nodes.filter((n) => n.id !== d.id) } });
+        if (st.dock?.id === d.id) st.setDock(null);
+        if (st.focusPane === d.id) set({ focusPane: null });
         return;
       case 'edge.added':
       case 'edge.updated':
@@ -404,14 +552,45 @@ export const useSquad = create<SquadState>((set, get) => ({
       case 'edge.removed':
         if (ws) set({ workspace: { ...ws, edges: ws.edges.filter((e) => e.id !== d.id) } });
         return;
-      case 'terminal.state':
-        set({ runtime: { ...st.runtime, [d.id]: { ...st.runtime[d.id], ...(d as TerminalRuntime) } } });
+      case 'terminal.state': {
+        const prev = st.runtime[d.id];
+        const next: TerminalRuntime = { ...prev, ...(d as TerminalRuntime), attention: (d as TerminalRuntime).attention };
+        const runtime = { ...st.runtime, [d.id]: next };
+        const patch: Partial<SquadState> = { runtime, askingIds: askingOf(runtime, st.askingIds) };
+        // A new ask: a notification and a sound, as chosen in Avisos.
+        if (prev?.activity !== 'ask' && next.activity === 'ask') {
+          const t = ws?.nodes.find((n) => n.id === d.id)?.terminal;
+          if (t) noticeAsk(t.callsign || t.name, [askPhrase(next.attention), next.attention?.detail].filter(Boolean).join(': '));
+        }
+        // An answered ask goes into the Rádio, with how long it waited.
+        if (prev?.activity === 'ask' && next.activity !== 'ask' && prev.attention) {
+          const t = ws?.nodes.find((n) => n.id === d.id)?.terminal;
+          const since = Date.parse(prev.attention.since);
+          patch.activity = [
+            {
+              key: `ask-${d.id}-${prev.attention.since}`,
+              time: prev.attention.since,
+              from: d.id,
+              fromName: t?.name ?? '',
+              toName: 'Você',
+              text: [askPhrase(prev.attention), prev.attention.detail].filter(Boolean).join(': '),
+              outcome: 'answered' as const,
+              elapsedMs: Number.isFinite(since) ? Date.now() - since : undefined,
+            },
+            ...st.activity,
+          ].slice(0, 200);
+        }
+        set(patch);
+        return;
+      }
+      case 'limits.changed':
+        set({ extra: { ...st.extra, limits: { ...st.extra.limits, ...(d as Partial<StateExtra['limits']>) } } });
         return;
       case 'terminal.title':
         set({ runtime: { ...st.runtime, [d.id]: { ...st.runtime[d.id], title: d.title } } });
         return;
       case 'terminal.notice':
-        if (d.kind === 'not-resumed') toast(`Não deu para retomar a conversa de ${d.name}: começou uma nova.`);
+        if (d.kind === 'not-resumed') toast(`Não deu para retomar a conversa de ${d.name}: começou uma nova.`, 'wait');
         return;
       case 'request.sent': {
         const now = Date.now();
@@ -448,7 +627,7 @@ export const useSquad = create<SquadState>((set, get) => ({
         const flights = { ...st.flights };
         const now = Date.now();
         if (f) flights[d.id] = { ...f, phase: cancelled ? 'cancelled' : 'received', updatedAt: now, replyAt: f.replyAt ?? now, elapsedMs: d.elapsedMs };
-        const lastReply = cancelled ? st.lastReply : { ...st.lastReply, [d.from]: { id: d.id, fromName: d.toName, elapsedMs: d.elapsedMs ?? 0, at: now } };
+        const lastReply = cancelled ? st.lastReply : { ...st.lastReply, [d.from]: { id: d.id, from: d.to, fromName: d.toName, elapsedMs: d.elapsedMs ?? 0, at: now } };
         set({
           flights,
           lastReply,
@@ -471,7 +650,7 @@ export const useSquad = create<SquadState>((set, get) => ({
       case 'request.held':
         set({
           activity: [
-            { key: `held-${ev.time}`, time: ev.time, from: d.from, to: d.to, fromName: d.fromName, toName: d.toName, text: d.paused ? 'Retido: conversas pausadas' : 'Retido: limite de pedidos por minuto', outcome: 'held' as const },
+            { key: `held-${ev.time}`, time: ev.time, from: d.from, to: d.to, fromName: d.fromName, toName: d.toName, text: d.paused ? 'Retido: espera geral' : 'Retido: limite de pedidos por minuto', outcome: 'held' as const },
             ...st.activity,
           ].slice(0, 200),
         });
@@ -483,7 +662,7 @@ export const useSquad = create<SquadState>((set, get) => ({
           extra: { ...st.extra, paused: !!d.paused },
           activity: loop
             ? [
-                { key: `loop-${ev.time}`, time: ev.time, fromName: 'Squad', toName: 'todos', text: `Laço: limite de ${st.extra.limits.maxHops} saltos atingido ${reason.replace(/^hop limit \d+ reached /, '')}. Conversas pausadas até você retomar.`, outcome: 'held' as const },
+                { key: `loop-${ev.time}`, time: ev.time, fromName: 'Torre', toName: 'todos', text: `Laço: limite de ${st.extra.limits.maxHops} saltos atingido ${reason.replace(/^hop limit \d+ reached /, '')}. Espera geral até você liberar.`, outcome: 'held' as const },
                 ...st.activity,
               ].slice(0, 200)
             : st.activity,
@@ -544,7 +723,12 @@ export const useSquad = create<SquadState>((set, get) => ({
     }
   },
 
-  setConnection: (connection) => set({ connection }),
+  setConnection: (connection, retryAt) =>
+    set((s) => ({
+      connection,
+      linkLostAt: connection === 'connected' ? 0 : s.linkLostAt || Date.now(),
+      retryAt: retryAt ?? s.retryAt,
+    })),
   setDrawer: (drawerOpen) => set({ drawerOpen }),
   setComposer: (composerOpen, target, draft) =>
     set({ composerOpen, composerTarget: target === undefined ? get().composerTarget : target, composerDraft: draft ?? null }),
@@ -600,14 +784,16 @@ export const useSquad = create<SquadState>((set, get) => ({
     if (settled && z !== st.renderZoom) set({ renderZoom: z });
   },
   // The terminal palette follows the UI theme; it can still be overridden afterwards.
-  setTheme: (theme) => {
+  setTheme: (themePref) => {
+    const theme = themePref === 'system' ? (prefersDark() ? 'dark' : 'light') : themePref;
     const termTheme = theme === 'dark' ? 'noite' : 'papel';
-    persist('squad.theme', theme);
-    persist('squad.term', termTheme);
-    set({ theme, termTheme });
+    persist('torre.themePref', themePref);
+    persist('torre.theme', theme);
+    persist('torre.term', termTheme);
+    set({ theme, themePref, termTheme });
   },
   setTermTheme: (termTheme) => {
-    persist('squad.term', termTheme);
+    persist('torre.term', termTheme);
     set({ termTheme });
   },
   moveNodeLocal: (id, x, y) => {
@@ -643,4 +829,13 @@ export function useNodes(): WNode[] {
 /** Name of a node by id. */
 export function useNodeName(id?: string): string {
   return useSquad((s) => nameOf(s.workspace, id));
+}
+
+/** The ids of the flights asking the user, oldest first; prev when unchanged (a stable list for selectors). */
+function askingOf(runtime: Record<string, TerminalRuntime>, prev: string[]): string[] {
+  const ids = Object.values(runtime)
+    .filter((r) => r.activity === 'ask')
+    .sort((a, b) => Date.parse(a.attention?.since ?? a.activitySince) - Date.parse(b.attention?.since ?? b.activitySince))
+    .map((r) => r.id);
+  return ids.length === prev.length && ids.every((id, i) => id === prev[i]) ? prev : ids;
 }

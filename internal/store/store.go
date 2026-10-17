@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/ids"
 )
@@ -39,11 +41,16 @@ type Workspace struct {
 	// canvas; FloorConfig seeds new ones (nil: DefaultFloorConfig).
 	Floors      []Floor      `json:"floors,omitempty"`
 	FloorConfig *FloorConfig `json:"floorConfig,omitempty"`
+	// FloorSeq is the last floor number given (FL1, FL2…): numbers of
+	// discarded floors aren't given again.
+	FloorSeq int `json:"floorSeq,omitempty"`
 	// Copy: the canvas (a session) works in a copy of the repository instead
 	// of the workspace folder (copy.go).
 	Copy *Floor `json:"copy,omitempty"`
 	// SummaryConfig: turn cards and who writes summaries (nil: the default).
 	SummaryConfig *SummaryConfig `json:"summaryConfig,omitempty"`
+	// Limits are the workspace's conversation limits (shared by its sessions).
+	Limits *Limits `json:"limits,omitempty"`
 }
 
 // Node is an element on the canvas.
@@ -57,8 +64,8 @@ type Node struct {
 	Terminal *TerminalData `json:"terminal,omitempty"`
 	Note     *NoteData     `json:"note,omitempty"`
 	Portal   *PortalData   `json:"portal,omitempty"`
-	// CreatedBy is the terminal whose agent created this node (squad new,
-	// squad portal create); empty when the user did.
+	// CreatedBy is the terminal whose agent created this node (torre new,
+	// torre portal create); empty when the user did.
 	CreatedBy string `json:"createdBy,omitempty"`
 	// Floor is the floor the node is on (a Floor id); "" is the ground floor.
 	Floor string `json:"floor,omitempty"`
@@ -82,23 +89,26 @@ func (n Node) Label() string {
 
 // TerminalData configures a terminal node.
 type TerminalData struct {
-	Name    string `json:"name"`
-	Agent   string `json:"agent"`             // claude | codex | devin | gemini | shell | custom
-	Command string `json:"command,omitempty"` // launch line; empty = plain shell
-	Shell   string `json:"shell,omitempty"`
-	Cwd     string `json:"cwd,omitempty"`
-	Role    string `json:"role,omitempty"` // a role of the library: plan | impl | rev | test | …
-	Cols    int    `json:"cols,omitempty"`
-	Rows    int    `json:"rows,omitempty"`
-	// Manager lets the agent create and connect terminals (squad new); nil
+	Name string `json:"name"`
+	// Callsign: a short code, unique in the canvas (PLN, IMP, IM2…), that the
+	// UI shows next to the name; the store makes it unique (callsigns.go).
+	Callsign string `json:"callsign,omitempty"`
+	Agent    string `json:"agent"`             // claude | codex | devin | gemini | shell | custom
+	Command  string `json:"command,omitempty"` // launch line; empty = plain shell
+	Shell    string `json:"shell,omitempty"`
+	Cwd      string `json:"cwd,omitempty"`
+	Role     string `json:"role,omitempty"` // a role of the library: plan | impl | rev | test | …
+	Cols     int    `json:"cols,omitempty"`
+	Rows     int    `json:"rows,omitempty"`
+	// Manager lets the agent create and connect terminals (torre new); nil
 	// follows its role.
 	Manager *bool `json:"manager,omitempty"`
 	// Conversation is the agent's own id for the conversation the terminal
 	// continues when it starts again (claude/devin/gemini --resume, codex
-	// resume); empty starts a new one. Squad keeps it (Server.SetConversation).
+	// resume); empty starts a new one. Torre keeps it (Server.SetConversation).
 	Conversation string `json:"conversation,omitempty"`
 	// Busy: the agent was in the middle of a turn. A terminal that stops
-	// while busy (Squad closed or restarted) resumes as interrupted.
+	// while busy (Torre closed or restarted) resumes as interrupted.
 	Busy bool `json:"busy,omitempty"`
 	// Empty: the conversation hasn't had a turn yet, so there is nothing to
 	// continue (the agent wouldn't find it): the terminal starts a new one.
@@ -164,7 +174,7 @@ type Store struct {
 // Dir returns the directory holding a workspace's files.
 func Dir(wsID string) (string, error) { return config.Dir("workspaces", wsID) }
 
-// OpenDefault loads (or creates) the default workspace under ~/.squad.
+// OpenDefault loads (or creates) the default workspace under ~/.torre.
 func OpenDefault(cwd string) (*Store, error) {
 	dir, err := Dir("default")
 	if err != nil {
@@ -194,6 +204,9 @@ func Open(path string, def Workspace) (*Store, error) {
 	}
 	if s.ws, err = parse(path, data); err != nil {
 		return nil, err
+	}
+	if s.migrateLocked() {
+		return s, s.save()
 	}
 	return s, nil
 }
@@ -283,13 +296,15 @@ type Shared struct {
 	Meta
 	FloorConfig   *FloorConfig
 	SummaryConfig *SummaryConfig
+	Limits        *Limits
 }
 
 // Shared returns what the workspace's sessions have in common.
 func (s *Store) Shared() Shared {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return Shared{Meta: s.metaLocked(), FloorConfig: cloneFloorConfig(s.ws.FloorConfig), SummaryConfig: cloneSummaryConfig(s.ws.SummaryConfig)}
+	return Shared{Meta: s.metaLocked(), FloorConfig: cloneFloorConfig(s.ws.FloorConfig), SummaryConfig: cloneSummaryConfig(s.ws.SummaryConfig),
+		Limits: cloneLimits(s.ws.Limits)}
 }
 
 // SetShared makes this canvas take the workspace's shared part (a session
@@ -300,6 +315,7 @@ func (s *Store) SetShared(sh Shared) error {
 	old := s.ws
 	s.ws.ID, s.ws.Name, s.ws.Cwd, s.ws.Color, s.ws.CreatedAt = sh.ID, sh.Name, sh.Cwd, sh.Color, sh.CreatedAt
 	s.ws.FloorConfig, s.ws.SummaryConfig = cloneFloorConfig(sh.FloorConfig), cloneSummaryConfig(sh.SummaryConfig)
+	s.ws.Limits = cloneLimits(sh.Limits)
 	if err := s.save(); err != nil {
 		s.ws = old
 		return err
@@ -390,8 +406,13 @@ func (s *Store) AddNode(n Node) (Node, error) {
 			return Node{}, ErrDuplicate
 		}
 		if n.Terminal != nil && other.Terminal != nil && other.Terminal.Name == n.Terminal.Name {
-			return Node{}, fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name)
+			return Node{}, apierr.With(fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name), "flight.name_taken", "name", n.Terminal.Name)
 		}
+	}
+	if n.Terminal != nil {
+		t := *n.Terminal
+		t.Callsign = s.freeCallsignLocked(t.Callsign, t.Name, n.ID)
+		n.Terminal = &t
 	}
 	s.ws.Nodes = append(s.ws.Nodes, cloneNode(n))
 	return cloneNode(n), s.save()
@@ -413,8 +434,11 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 		if n.Terminal != nil {
 			for _, other := range s.ws.Nodes {
 				if other.ID != id && other.Terminal != nil && other.Terminal.Name == n.Terminal.Name {
-					return Node{}, fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name)
+					return Node{}, apierr.With(fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name), "flight.name_taken", "name", n.Terminal.Name)
 				}
+			}
+			if err := s.checkCallsignLocked(&n, s.ws.Nodes[i]); err != nil {
+				return Node{}, err
 			}
 		}
 		s.ws.Nodes[i] = n
@@ -565,6 +589,12 @@ func (s *Store) TerminalByName(name string) (Node, bool) {
 	defer s.mu.RUnlock()
 	for _, n := range s.ws.Nodes {
 		if n.Terminal != nil && n.Terminal.Name == name {
+			return cloneNode(n), true
+		}
+	}
+	// Its callsign also names it (torre ask IMP "…"); a name wins.
+	for _, n := range s.ws.Nodes {
+		if n.Terminal != nil && n.Terminal.Callsign != "" && strings.EqualFold(n.Terminal.Callsign, name) {
 			return cloneNode(n), true
 		}
 	}

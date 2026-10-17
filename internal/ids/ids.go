@@ -54,3 +54,39 @@ var unaccent = strings.NewReplacer(
 	"í", "i", "ì", "i", "î", "i", "ï", "i", "ó", "o", "ò", "o", "ô", "o", "õ", "o", "ö", "o",
 	"ú", "u", "ù", "u", "û", "u", "ü", "u", "ç", "c", "ñ", "n",
 )
+
+// Callsign turns a name into a short code of capital letters (a flight's
+// callsign, a role's abbreviation): its first three consonants, then its
+// other letters and digits when it has fewer ("Gemini" → "GMN", "Ana" →
+// "NAA"); "" when the name has no letter or digit.
+func Callsign(name string) string {
+	var cons, rest []rune
+	for _, c := range unaccent.Replace(strings.ToLower(name)) {
+		switch {
+		case c >= 'a' && c <= 'z' && !strings.ContainsRune("aeiou", c):
+			cons = append(cons, c)
+		case c >= 'a' && c <= 'z' || c >= '0' && c <= '9':
+			rest = append(rest, c)
+		}
+	}
+	out := append(cons, rest...)
+	if len(out) > 3 {
+		out = out[:3]
+	}
+	return strings.ToUpper(string(out))
+}
+
+// CleanCallsign keeps the capital letters and digits of s, at most four
+// (what a callsign or a role's abbreviation may hold).
+func CleanCallsign(s string) string {
+	var b strings.Builder
+	for _, c := range unaccent.Replace(strings.ToLower(strings.TrimSpace(s))) {
+		if c >= 'a' && c <= 'z' || c >= '0' && c <= '9' {
+			b.WriteRune(unicode.ToUpper(c))
+		}
+		if b.Len() == 4 {
+			break
+		}
+	}
+	return b.String()
+}

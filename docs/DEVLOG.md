@@ -2,6 +2,266 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre: fim da rodada (F0–F5d)
+
+- **Como andou:** cada fase numa branch a partir da `feat/torre` e mesclada nela quando ficou pronta (F0a, F0b, F1, F2, F3, F4a, F4b, F4c, F5a, F5b, F5c, F5d), sem esperar aprovação, como você pediu. Um PR leva a `feat/torre` para a `main`.
+- **Testado no fim, na `feat/torre`:** `make check` com o navegador, `TestRealClaude` e `TestRealClaudePermission` (o Claude Code real: pergunta, hook, resposta pela interface) e `TestRealDevinConfig` (o Devin real lê a configuração com o hook `PermissionRequest` e o MCP `torre`).
+- **Precisa de você:**
+  - **Windows (Git Bash):** `torre install-skill` (instala o `torre` e troca a skill `squad`), a migração de `~/.squad` para `~/.torre` na primeira subida, um Claude pedindo permissão (o cartão PRIORIDADE e AUTORIZAR pela Torre), `⌥F`/`⌥⇧←` com o Alt do Windows, e um plano de voo decolando;
+  - **Mac:** o `Torre.app` no Dock e o mesmo roteiro;
+  - **Devin com login:** a PRIORIDADE no Devin (ele entra no estado pelo hook, mas a Torre ainda não responde por ele; veja o PLAN).
+- **O que ficou para depois** está no PLAN, seção Torre, "Para depois", cada item com a referência no handoff.
+
+## 2026-10-17, Torre F5d: planos de voo
+
+- **Pacote `internal/plans`:** um plano é um JSON em `~/.torre/plans/<id>.json` com voos (agente, nome, indicativo, papel, líder, comando próprio, pasta relativa, posição e tamanho), NOTAMs (nome e, se a pessoa quiser, o conteúdo), portais (nome e endereço), frequências (pares de chaves) e níveis (nome e branch). As posições partem do canto do plano, em cada nível. `Check` valida tudo, inclusive o arquivo importado (agentes conhecidos, chaves únicas, fios para itens do plano, até 60 itens e 8 níveis, 4 MB).
+- **Rotas do hub** (planos de todos os workspaces): `GET /api/plans`, `GET`/`DELETE /api/plans/{id}` e `POST /api/plans/import`. O importado fica marcado (`imported`).
+- **Rotas do workspace**, só da interface (decolar inicia processos): `POST /w/<id>/api/plans` (a seleção, o nível aberto ou a sessão inteira) e `POST /w/<id>/api/plans/{id}/apply`.
+- **Segurança:** decolar exige `commands` com cada comando próprio do plano, a lista que a interface mostrou em "Antes de decolar"; sem ela, 409 `plan.review`. Os voos de agente rodam o comando de Configurações → Agentes, como qualquer voo novo.
+- **Decolar:** os itens vão para o nível aberto, à direita do que já existe lá (160 px depois do último nó). Os níveis do plano viram níveis novos com o nome dele ("Login 2" quando o nome, o branch ou a pasta já existem). Nomes repetidos ganham número, e o indicativo é numerado pelo store (IMP → IM2). Um papel que não existe nesta Torre, uma pasta que não existe e níveis num workspace sem git viram avisos, e o resto decola.
+- **Decisão sem consulta: o que salvar.** No canvas só dá para selecionar no nível aberto, então o diálogo oferece três escopos: a seleção, tudo no nível aberto e a sessão inteira com os níveis (o que faz o plano "duas frentes em paralelo" do mockup).
+- **Decisão sem consulta:** a galeria começa vazia, sem os planos de exemplo do mockup (ficou no PLAN).
+- **Interface:** a galeria (`⌥M`, o botão novo na barra de ferramentas, "Usar um plano de voo" no espaço vazio e "Com um plano de voo" na primeira abertura), com miniatura, composição, importar, exportar e remover (com confirmação); "Antes de decolar", com o comando de cada voo e o aviso para planos importados; e "Salvar como plano" (`⌥⇧M`).
+- **Testado aqui:** `TestPlanSaveAndApply` (salvar a sessão com o conteúdo da NOTAM, recusa sem revisão, decolar com nomes repetidos, NOTAM com conteúdo, frequências), `TestPlanLevelWithoutGit`, `TestPlanLevels` (num repositório: o nível "Login" e, na segunda vez, "Login 2"), `TestPlansImportListDelete` e, na tela, salvar a sessão de teste como "Trio com portal", importar um plano com `npm run dev`, a revisão e decolar a equipe ao lado da original.
+- **Não testado:** decolar um plano com Claude e Devin reais (os voos nascem como qualquer voo novo, pelo mesmo `AddNode`); importar pela janela de arquivo (testado pela rota).
+
+## 2026-10-17, Torre F5c: @ELEMENTOS no portal
+
+- **Servidor:** o WebSocket do portal aceita `{"type":"elements","on":true|false}`. Ligada, a camada recebe `{"type":"elements","elements":[{ref, role, name, x, y, w, h}],"snapshot":bool}` na hora e de novo a cada segundo quando algo muda (rolagem, snapshot novo, página nova). As caixas são as de agora (`Page.Boxes`, `DOM.getBoxModel` de cada ref), não as do momento do snapshot.
+- **Decisão sem consulta:** a camada mostra só as refs do último `torre portal snapshot`. Ligar a camada não tira um snapshot, porque um snapshot novo troca as refs, e o agente que está usando `@e7` passaria a clicar em outra coisa. Sem snapshot, aparece "Sem refs: eles aparecem quando um voo lê a página".
+- **Interface:** o botão "@ ELEMENTOS" no cabeçalho do portal (quadro 10) liga e desliga a camada. Os contornos são tracejados, com a etiqueta "@e7 botão" (o papel traduzido), na cor do papel do último voo que agiu na página (ou de um na frequência dele, ou de quem criou o portal), escurecida. A camada não pega cliques.
+- **Testado aqui:** `Page.Boxes` antes de qualquer snapshot (nada) e depois de rolar (o link que estava fora da tela aparece no lugar novo, sem snapshot novo), o WebSocket com a camada (antes e depois de um snapshot) e, na tela, um portal com uma página de teste lida pelo PLN (`torre portal snapshot` com o indicativo de um agente falso).
+- **Não testado:** páginas com centenas de elementos (cada segundo faz uma chamada ao Chrome por ref; o snapshot já limita a 300).
+
+## 2026-10-17, Torre F5b: foco, encaixe, ocultar e Tab
+
+- **Uma tela por voo:** o terminal tem uma tela só (um xterm), então ela fica num lugar de cada vez: no foco, senão na borda, senão no nó (`web/src/lib/screens.ts`). O nó de um voo no foco ou na borda mostra "Em foco"/"Encaixado à esquerda" com "Trazer de volta"; o retrato e a ficha continuam iguais.
+- **Foco (`⌥F`):** cobre o palco (o Espaço ou o Sinóptico), abaixo da barra do topo, e dá o teclado ao voo. `⌥F` de novo, Esc ou o botão do cabeçalho voltam; o zoom do canvas não muda. Age sobre o voo com o teclado, senão o selecionado.
+- **Encaixe (`⌥⇧←`/`⌥⇧→`):** um painel de 46% (de 420 a 1100 px) com o divisor de 2 px do quadro 04, e o canvas ao lado, com a barra de ferramentas, o Transmitir e o minimapa dentro da parte que sobra. As mesmas teclas desencaixam. **Decisão sem consulta:** um voo encaixado por vez; o encaixe fica no navegador, por workspace (como o zoom de cada nível), e volta ao abrir.
+- **Tamanho da tela:** no foco e na borda, o terminal ganha as colunas e linhas do painel (o mesmo `PATCH` do redimensionar), e volta às do nó ao sair. Ao fechar a página com o painel aberto, a volta vai num `fetch` com `keepalive`.
+- **Ocultar a tela** (menu ⋯): listras opacas, não desfoque, no nó, no retrato, no painel e no Sinóptico; "Mostrar a tela" desfaz. **Decisão sem consulta:** guardado no navegador, por workspace (o handoff deixa o `redacted` no nó como opcional; ficou no PLAN).
+- **Tab / ⇧Tab:** o próximo nó do nível, na ordem de leitura (faixas de 160 px de altura, depois da esquerda para a direita), trazido para a tela no mesmo zoom quando está fora. **Enter** dá o teclado ao voo selecionado (num zoom pequeno, aproxima antes). Só com a página em foco: um botão ou um campo com o foco ficam com o Tab e o Enter deles.
+- **Do terminal:** `⌥F` e `⌥⇧←/→` chegam à Torre mesmo com o teclado num voo ou num portal (como `⌥A`, `⌥P` e `⌥K`). No Windows, `Alt+F` deixa de ir para o shell (avançar uma palavra no readline); o PLAN lembra que trocar os atalhos ainda não existe.
+- **Testado aqui:** `tsc`, build e, no navegador com agentes falsos, encaixar o IMP (a tela foi de 80×24 para 96×53), desencaixar (voltou a 80×24), o foco em tela cheia, voltar, ocultar pelo menu e Tab passando por PLN → IMP → REV → NOTAM.
+- **Não testado:** com o Claude e o Devin reais redesenhando no tamanho novo (é o mesmo redimensionar do canto do nó, que já funcionava com os dois); o `keepalive` ao fechar uma janela de app de verdade.
+
+## 2026-10-17, Torre F5a: extras
+
+- **Indicativo na CLI e no MCP:** `torre ask IMP "…"`, `check`, `wait`, `connect` e `close` acham o voo pelo indicativo, em qualquer caixa; o nome vale primeiro. O `torre list` mostra `callsign: IMP` no fim de cada linha (no fim para não mudar o começo das linhas, que os agentes já conhecem). O texto da skill e do MCP diz isso.
+- **Renomear nível:** `PATCH /w/<id>/api/floors/{id} {name}` e "Renomear…" no menu do nível. Só o nome muda: o id, o número, o branch e a pasta ficam. As regras são as do nível novo (não pode ser "pista", nem um nome de outro nível).
+- **Cancelar pedido:** `POST /w/<id>/api/requests/{id}/cancel` e o botão no pedido aberto do Rádio. Quem pediu recebe um 409 dizendo que você cancelou e que `torre wait` pega a resposta se o outro voo continuar. **Decisão sem consulta:** o outro voo não é interrompido (interromper um agente no meio do trabalho é outra decisão, que o usuário toma na tela dele).
+- **Pedido inteiro no Rádio:** o barramento guarda o texto dos 200 últimos pedidos (`GET /w/<id>/api/requests/{id}`), e "Ver o pedido inteiro" aparece quando a prévia veio cortada. Os pedidos que já estavam abertos quando a página abriu agora também entram no Rádio (antes só apareciam no contador).
+- **NOTAM redimensionável:** pelas bordas, com mínimo de 280×200, como o portal. O servidor já guardava `w` e `h`.
+- **Transmitir a um nível:** no "+ destino", "Todos os voos de FL1 · Login" (e da PISTA) para cada nível com dois voos ou mais. Acrescenta os voos do nível aos destinos.
+- **Conflito antes do pouso:** `GET /api/floors/{id}/changes` (e o da cópia da sessão) traz `conflicts`, de `git merge-tree --write-tree` contra o branch de origem, só quando os dois lados andaram. As checagens do diálogo mostram "✓ sem conflitos" ou "✕ 1 conflito" com os arquivos. Com o git anterior ao 2.38, `conflicts` vem `null`, e o diálogo volta a dizer "checados ao pousar".
+- **Rotas só da interface:** as três rotas novas ficam nas rotas de sessão do workspace, longe do `/cli` e do MCP.
+- **Testado aqui:** `TestAskByCallsign`, `TestRequestTextAndCancel` (texto inteiro, cancelar, cancelar de novo dá `request.gone`), `TestRenameAndCleanPrecheck` e o conflito previsto em `TestConflictsChangeNothing`, `make check` com o navegador; na interface, com agentes falsos e um repositório de teste: o Rádio com o pedido inteiro e o cancelamento (o `torre ask` recebeu a mensagem de cancelado), o Composer com "Todos os voos de PISTA", renomear o FL1 pela tela, o pouso com "1 conflito · README.md" e a NOTAM redimensionada e salva.
+- **Não testado:** o indicativo com o Claude e o Devin reais (o caminho é o mesmo do nome, no servidor).
+
+## 2026-10-17, Torre F4c: primeira abertura
+
+- **Passo 1, Enlace:** a página de login do Go foi redesenhada sobre o radar, com os passos no topo, o campo da URL e "só 127.0.0.1 · o token fica num cookie". O botão continua "Entrar" (o teste do login procura o texto).
+- **Quando aparece:** o hub guarda se subiu sem nenhum workspace (`GET /api/welcome`, `firstRun`). **Decisão sem consulta:** quem já usava o Squad não vê os passos (a pasta migrada já tem workspaces); e, depois de vistos ou pulados, eles não voltam no mesmo navegador.
+- **Passo 2, Pasta** (`GET /api/dirs/info`): a pasta do `serve` já preenchida, com o git em até 3 s (repositório, branch, alterações, commit para os níveis) e os `.env*` do topo. Trocar a pasta muda a do workspace inicial, que ainda não tem voos.
+- **Passo 3, Agentes:** a busca da F4a, com o comando de instalação. "Com um plano de voo" fica desligado até a F5d.
+- **Decisão sem consulta: "Recentes"** são as pastas dos workspaces existentes. A Torre não guarda um histórico de pastas.
+- **Testado aqui:** `TestWelcomeAndDirInfo` (instalação nova e segunda subida; um repositório com commit, alterações e dois `.env`; uma pasta sem git; uma que não existe), o login (`internal/server`), e capturas dos três passos num servidor com `TORRE_HOME` novo.
+- **Não testado:** trocar a pasta no passo 2 por uma que já é de outro workspace (o hub recusa como antes; a mensagem aparece num aviso).
+
+## 2026-10-17, Torre F4b: Sinóptico
+
+- **Vista nova** (quadro 01), trocada por `⌥S` ou por ESPAÇO · SINÓPTICO na barra. A escolha fica no navegador. Tudo vem do estado que o canvas já tem; não há rota nova.
+- **Radar:** um anel por nível (a pista no centro), as posições reais do canvas escaladas dentro do anel do nível, a varredura girando em 6 s, os símbolos por estado, as linhas de pedido aberto e de resposta recente, os contadores e a legenda. Clique seleciona; duplo clique abre o voo no Espaço, centrado.
+- **Coluna do meio:** as fichas em papel (pede você › aguarda › no ar › em solo › hangar; o que o voo faz vem da pergunta, de quem ele aguarda, do título da tela ou da última mensagem do boletim), a fila de pouso (níveis com commits, com as checagens e "Autorizar pouso…") e as frequências.
+- **Coluna da direita:** o cartão PRIORIDADE (com "1 de N", a pergunta e as respostas; as teclas 1, 2 e 3 respondem a ele) e o terminal do voo selecionado, ao vivo, com o alfinete.
+- **Rodapé:** o Rádio passando (40 s por volta; parado com movimento reduzido) e o Transmitir.
+- **Decisão sem consulta:** no Sinóptico, as teclas do canvas (T, N, P…) não fazem nada; ele não tem canvas.
+- **Fila de pouso:** só o que existe (commits, alterações sem commit, voos no ar); "✓ testes · ✓ revisão" do mockup ficam no PLAN, e o conflito previsto vem na F5a.
+- **Testado aqui:** `tsc`, build e capturas com o Claude real pedindo permissão. A tecla 1 no Sinóptico autorizou e o comando rodou.
+- **Não testado:** um workspace com vários níveis e muitos voos (o radar foi visto com a pista e três voos).
+
+## 2026-10-17, Torre F4a: Configurações
+
+- **Painel de 1200×780** no lugar do menu ⚙, com abas: Aparência, Agentes, Limites, Resumos, Papéis…, Atalhos e Avisos. Fecha com Esc e clique fora.
+- **Aparência:** o tema "Sistema" é novo e segue o computador enquanto a página está aberta. Quem já tinha escolhido Escuro ou Claro continua com a escolha.
+- **Agentes** (`GET /api/agents`, `PUT /api/agents/{agent}`):
+  - a busca acha o primeiro termo do comando padrão no PATH e roda `--version` (até 4 s, em paralelo); o resultado vale 5 min, e "Procurar de novo" refaz;
+  - o comando padrão editável fica em `~/.torre/agents.json` e vale para os voos que decolarem depois, em todos os workspaces. É uma rota só da interface (decide o que roda em cada voo de agente), uma linha de até 300 caracteres;
+  - o Novo voo usa a mesma busca para o "✓ instalado". Antes vinha da busca dos resumos.
+- **Limites** (`GET/PUT /w/<id>/api/limits`):
+  - guardados no workspace e compartilhados pelas sessões, como a configuração dos níveis e a dos resumos;
+  - valem na hora: o barramento, o líder (`torre new`) e os portais (`torre portal create`) leem o valor novo;
+  - 0 volta ao padrão do servidor (6 saltos, 30 por minuto, `-max-team` do `serve` e 3 portais);
+  - o Rádio recebe o evento `limits.changed`.
+- **Avisos**, guardados por navegador: o número no título (já existia na F3, agora pode ser desligado), uma notificação do sistema quando a janela não está na frente e dois toques curtos (WebAudio, sem arquivo de som).
+- **Decisão sem consulta: os atalhos só são listados**, como na revisão do handoff (trocar fica no PLAN).
+- **Testado aqui:** o comando padrão, a busca e a linha de lançamento com um "claude" falso no PATH (`TestDefaultCommandAndDetect`), a API de limites (`TestLimitsAPI`: em vigor no barramento, no líder e nos portais, faixa recusada, volta ao padrão), a suíte inteira, `tsc`, build e capturas das abas.
+- **Não testado:** a notificação do sistema e o som num navegador de verdade (o Chromium sem tela daqui não mostra notificações); a busca no Windows (as versões vêm de `.cmd` do npm, que o Go roda).
+
+## 2026-10-17, Torre F3: PRIORIDADE, o voo pede você
+
+- **Spike com o Claude Code 2.1.302 real** (no modo de permissão padrão, num PTY):
+  - o hook `PermissionRequest` chega antes do diálogo, com `tool_name` e `tool_input` (o comando, o arquivo); o `Notification` chega junto, com `notification_type: "permission_prompt"`;
+  - a tela mostra "Do you want to proceed?" e as opções numeradas: `1. Yes`, `2. Yes, and always allow access to … from this project`, `3. Yes, and switch to auto mode`, `4. No`;
+  - a tecla do número escolhe e confirma na hora. Negar interrompe o turno **sem** o hook `Stop` nem o `PostToolUse`.
+- **Estado novo `ask`** (`internal/activity`): vem antes de `wait` (`err`/`off` > `ask` > `wait` > `work`…).
+  - **Entra:** pelo hook `PermissionRequest` (Claude e Devin; o hook só avisa e nunca devolve uma decisão), ou por um prompt lido na tela parada há 1,5 s.
+  - **O que conta como prompt** (`internal/attention`): uma pergunta terminada em "?" sobre duas ou mais opções numeradas, uma delas com o cursor, no fim da tela (abaixo, só o rodapé "Esc to cancel"). Assim, uma lista numerada na resposta do agente não conta, nem um prompt velho em cima do shell quando o agente sai.
+  - **Sai:** quando o prompt some da tela (duas amostras), quando chega o hook de começo ou fim de turno, quando o processo para, ou (sem prompt legível, como no Devin) quando o voo volta a produzir saída depois de ficar parado.
+  - Shells e comandos próprios nunca são lidos.
+  - Um turno parado esperando você não termina por silêncio, então quem fez `torre ask` continua esperando em vez de receber a tela.
+- **O que se responde:** cada opção vira `allow`, `always` ou `deny`, ou nada. "Yes, and switch to auto mode" e "allow all edits during this session" trocam o modo de permissão e **nunca** são oferecidas; SEMPRE só quando a opção é "always allow"/"don't ask again" (decisão da revisão do handoff).
+- **Rota só da interface:** `POST /w/<id>/api/nodes/<id>/attention/respond`.
+  - Só agentes; só se a pergunta na tela ainda é a mesma que a interface mostrou (senão, 409 `attention.changed`); só as teclas verificadas.
+  - **Decisão sem consulta:** só o Claude está em `verified`. O Devin, o Codex e o Gemini entram em PRIORIDADE mas mostram só "Abrir tela", até alguém conferir as teclas na CLI real (fica no PLAN). Os rótulos do Devin 3000.11.92, lidos do binário ("Yes, allow …", "Yes, always allow …", "No, deny"), já são classificados.
+- **Mensagens esperam:** o barramento não cola um pedido num voo em `ask` (o texto viraria a resposta, e "pedido 7f3a" tem dígitos que escolheriam uma opção). Ele entra depois da resposta, até o limite de espera.
+- **API:** `TerminalRuntime.attention` (`kind`, `tool`, `text`, `detail`, `source`, `since`, `choices`) e `WorkspaceSummary.attention`. **Decisão sem consulta:** a fila da prioridade não foi para o `hello`; a interface a monta do `runtime`.
+- **Interface:**
+  - no voo, o contorno âmbar com halo, a faixa piscando a 1 Hz (só esse estado pisca), "PEDE VOCÊ 0:24", a faixa de 26 px com a frase e o comando, e a barra RESPONDER embaixo, fora do nó;
+  - a faixa "PRIORIDADE · TST em FL1 quer executar um comando · IR ATÉ ELE ⌥⏎" quando o voo não está na tela, o ⌥⏎, as teclas 1/2/3 com o voo selecionado, o número no título da janela e o ponto âmbar na aba do nível, no botão de workspaces e "1 pede você" no seletor;
+  - no Rádio, o pedido preso no topo com os botões, o filtro "Pedem você" e o histórico "Pediu você · respondido em 0:46"; o briefing chama o estado de "esperando a permissão ou a resposta do usuário".
+- **Testado aqui:**
+  - `internal/attention`: os prompts do Claude (comando, edição, MCP), os do Devin, Gemini e Codex como os conhecemos, prosa e shell;
+  - com o agente falso: a transição pelo hook, a resposta pela rota (a tecla chega), o pedido de outro voo que espera e chega depois, um agente sem teclas verificadas só pela tela, um comando próprio nunca lido, e a saída do processo;
+  - **com o Claude real:** `TestRealClaudePermission` (o voo pede, a rota autoriza, o comando roda e a resposta volta pelo `Stop`); e na interface, clicando AUTORIZAR no Rádio, o arquivo foi criado;
+  - o Devin real lê a configuração com o hook novo (`TestRealDevinConfig`);
+  - capturas do voo pedindo, da faixa fora da tela, do Rádio e do depois.
+- **Não testado:** o Devin pedindo permissão numa sessão de verdade (precisa de conta); o Codex e o Gemini (não instalados aqui); notificações do sistema (vão na F4a, em Avisos).
+
+## 2026-10-17, Torre F2: confirmações, espaço vazio e erros em português
+
+- **`ConfirmDialog`** (quadro 15): substitui as 10 `window.confirm` e as confirmações embutidas nos menus.
+  - Cobre remover voo, NOTAM, sessão, workspace e papel; nova conversa; trocar o papel; reiniciar quem usa um papel; descartar as alterações de um papel; restaurar um papel; trocar de sessão com voos no ar; remover uma sessão com alterações sem commit na cópia. Descartar um nível ganhou a mesma borda e o mesmo botão.
+  - A pergunta é o título, com o indicativo ("Remover o voo PLN?"); a lista diz o que se perde (✕) e o que fica (✓); o botão é o verbo.
+  - A borda dá a gravidade: vermelha (perde trabalho), âmbar (interrompe), clara (só reinicia).
+  - "Entendo que esse trabalho se perde." só quando há trabalho sem commit; Esc cancela; Enter não confirma as vermelhas (o foco começa em Cancelar).
+  - `confirmDialog(...)` devolve uma promessa e pode ser chamada de qualquer lugar (inclusive de `lib/roles.ts`). Os menus que a abrem não fecham com o clique dentro dela, e o Esc dela não fecha o painel de baixo.
+- **Trocar de sessão com voos no ar:** era uma caixa dentro do menu; agora é o diálogo "Trocar de sessão?", com os indicativos de quem para no meio e o que volta (a arremetida, com "Continuar").
+- **Espaço vazio** (quadro 20): "ESPAÇO AÉREO VAZIO · workspace", "Ponha a primeira equipe no ar." e os botões de 52 com o atalho. **Decisão sem consulta:** "Usar um plano de voo ⌥M" aparece desligado até a F5d.
+- **Arremetida e espera geral** (quadro 21): o voo interrompido mostra o chip "arremetida" no cabeçalho, e a faixa do topo usa indicativos. Na espera geral, cada frequência ganha o quadrado de 26 com ∞ (antes era "∞ retido").
+- **Sem enlace** (quadro 19): depois de 4 s sem o servidor, um cartão "O torre serve parou? Tentando de novo em 3 s…", com a contagem da próxima tentativa. Uma queda curta só mostra "RECONECTANDO…" na barra.
+- **Erros em português:**
+  - pacote novo `internal/apierr`: um erro ganha `code` e `params`, e a resposta da API fica `{"error", "code", "params"}`. O `error` continua em inglês, porque os agentes, a CLI e os logs o leem;
+  - 57 erros marcados na origem: pasta, workspace, sessão, voo, NOTAM, papel, nível, cópia da sessão, git e resumos;
+  - a web traduz pelo `code` (`web/src/api/errors.ts`); sem `code` conhecido, mostra a mensagem do servidor.
+- **Testado aqui:** testes Go novos (`apierr`, o `code` de "papel repetido" e de "último workspace" pela API, o de "pasta não encontrada"), a suíte inteira, vet no Linux e no Windows, `tsc`, build e capturas: espaço vazio, "Remover o voo PLN?", "Já existe um voo chamado Planejador" traduzido no Novo voo e o cartão sem enlace (derrubando o servidor com a página aberta).
+- **Não testado:** o cartão de laço da espera geral (fica para depois, veja o PLAN); o Enter nas confirmações vermelhas com leitor de tela.
+
+## 2026-10-17, Torre F1: redesenho do que existe
+
+- **Indicativo do voo (`callsign`):**
+  - até 4 letras e números, único no canvas da sessão (`workspace.json`, `TerminalData.callsign`);
+  - vem da sigla do papel; o segundo voo com a mesma sigla ganha número (IMP, IM2, IM3… e IM10, cortando a sigla para caber em 4);
+  - sem papel, vem das consoantes do nome (`ids.Callsign`: Claude → CLD, Gemini → GMN, Ana → NAA);
+  - escolhido na criação, é usado como está e numerado se já existe; numa edição, um repetido é recusado (409);
+  - trocar o papel troca o indicativo junto só se ele tinha vindo da sigla ou do nome; um escolhido fica;
+  - voos de antes ganham indicativo quando o workspace abre.
+- **Sigla do papel (`RoleDef.abbr`):** até 3 letras, única. Os prontos têm PLN, ARQ, IMP, REV e TST. Um papel sem sigla ganha as consoantes do nome (numeradas se repetem); uma sigla repetida escolhida por você é recusada. Papéis de antes ganham a sigla quando a biblioteca abre.
+- **Número do nível (`Floor.number`):** FL1, FL2… por sessão (`workspace.json`, `floorSeq`); um número não volta depois que o nível pousa ou é descartado. Níveis de antes são numerados na ordem em que existem. O `torre floor list` mostra o número.
+- **Decisão sem consulta: indicativo e número por sessão**, como o plano aprovado (as sessões têm canvas próprio desde o S2). Duas sessões podem ter um IMP cada.
+- **Telas redesenhadas** (quadros 02–04, 06–17 e 22 do `docs/torre/TELAS.md`):
+  - **topo:** caminho logo › workspace › sessão › níveis; à direita, ESPERA GERAL, RÁDIO com a contagem, ENLACE e o relógio;
+  - **níveis:** abas com PISTA ou FL{n}, nome, branch, estado do git e ▲ quando há voo no ar; o cartão "Nível vazio"; Novo nível com o número; "Autorizar pouso · FL2" com as checagens; Descartar FL2;
+  - **voo:** faixa de estado à esquerda, cabeçalho com quadradinho do papel, indicativo, nome, agente, chips (líder, teclado) e estado em texto; rodapé com nível, branch, pasta e "criado por PLN"; tarja de Hangar e Pane com INICIAR; retrato (zoom < 60%) e faixa de progresso em papel (zoom < 35%);
+  - **frequências:** tracejado correndo durante um pedido, pontilhado quando retido, pílulas quadradas e DESLIGAR;
+  - **Transmitir:** a barra fechada com o indicativo do voo selecionado; aberto, com chips de destino;
+  - **Rádio:** filtros (Todos, Pendentes, um chip por voo), pedidos abertos no topo com "Ver no espaço", linhas em indicativos com o desfecho, rodapé com a taxa e o limite;
+  - **boletim** (BOLETIM · duração), **briefing** (PEDE ATENÇÃO em âmbar, POR VOO com o indicativo), **NOTAM** (etiqueta, papel e tinta), **portal**, **minimapa** com a varredura, **barra de ferramentas**, **arremetida**;
+  - **Novo voo:** 420 de largura, agentes em blocos com "✓ instalado"/"✕ não achado", NOME + INDICATIVO, PAPEL, PASTA, AVANÇADO (comando, shell, líder) e DECOLAR; em Configurar, o aviso âmbar e SALVAR E REINICIAR;
+  - **menu ⋯ do voo:** "Parar · vai ao hangar", "Nova conversa…", "Líder", a seção PAPEL e "Remover…";
+  - **Papéis:** 1200×780, lista de 280 com a sigla, editor com NOME + SIGLA, faixa verde "Salvo. PLN recebe…" com REINICIAR AGORA, rodapé "neste workspace: PLN";
+  - **workspaces e sessões:** linhas com a cor, o nome com ⌥N, a pasta e "2 no ar · 1 pendente"; ATUAL na sessão aberta.
+  - **avisos (toasts):** ok, aguarde e erro, com ícone.
+- **Decisão sem consulta: "✓ instalado" no Novo voo** vem da mesma busca no PATH que os resumos já faziam (`summary` → `engines`). A F4a traz `GET /api/agents`, com a versão.
+- **Decisão sem consulta: os chips "teclado" e "líder"** ficaram no cabeçalho (o handoff mostra os dois ali), e o estado virou texto sem fundo, com a cor do estado.
+- **README:** o texto de uso foi revisto com o vocabulário novo e ganhou "Indicativos e níveis".
+- **Testado aqui:** testes Go novos (`TestCallsigns`, `TestFloorNumbers`, `TestCallsignsFromRoles` pela API, e os de papéis com sigla), a suíte inteira, `tsc`, build da web e capturas no escuro e no claro: canvas, Novo voo (com Avançado), Papéis, workspaces, sessões, menu ⋯, Rádio e um Claude real com o papel Revisor (REV).
+- **Não testado:** o Devin real no formulário (o "instalado" depende do PATH do servidor); renderização no Windows e no Mac; o retrato e a faixa de progresso com agentes trabalhando (os estados aparecem na F3, com a PRIORIDADE).
+
+## 2026-10-17, Torre F0b: base visual e vocabulário
+
+- **Tokens:** os da Torre (`docs/torre/tokens/torre-tokens.css`) em `web/src/theme/tokens.css`:
+  - fundo `#030705`, canvas `#050b08` com pontos `#15301f`, superfícies verdes, texto `#cfeedd`, estados com faixa (`--st-*`), texto (`--stt-*`) e fundo (`--stb-*`), papel e tinta para as NOTAMs, cores de workspace (`--ws-*`) e tema claro em papel creme;
+  - cantos retos em tudo; só os pontos de estado continuam redondos.
+- **O que o arquivo do handoff não tinha** (completado aqui, marcado "added" no CSS):
+  - o fundo tingido de TAXIANDO, PÁTIO e HANGAR;
+  - as cores de papel no tema claro para Arquiteto, Testador e os papéis novos (o handoff só dá Planejador, Implementador e Revisor; os outros foram escurecidos na mesma medida);
+  - "sem papel";
+  - os nomes antigos que o código usava (`--grid`, `--note-bg`, `--shadow`, as alturas), que viraram apelidos dos novos.
+- **Texto dos estados:** onde a cor do estado era a do texto, agora é a de texto (`--stt-*`), mais clara no escuro. A faixa sólida (`--st-*`) fica para fundos e bordas, como pede o handoff.
+- **NOTAM em papel nos dois temas:** dentro dela, as cores de texto e de linha viram tinta e papel. Antes, o título sumia no escuro.
+- **Fontes:** B612 e B612 Mono (400 e 700), embutidas como o Geist era.
+- **Decisão sem consulta: os terminais continuam com Geist Mono.**
+  - A 11 px, o B612 Mono tem 7,15 px por coluna: 80 colunas dão 572 px, mais que o voo padrão de 560 px.
+  - O subconjunto latino dele não tem os símbolos dos agentes (⏺, ●, ✓, braille).
+  - É a alternativa que o próprio arquivo de tokens sugere. O resto da interface usa B612 Mono nos dados.
+- **Temas do terminal:** Noite e Papel recalibrados (handoff), ainda independentes do tema da interface.
+- **Ícones:** 25 novos (os 22 da lista do handoff mais `link`, `stop` e `sync`, que os mockups usam e a lista esquecia). A fonte foi regerada com `make icons`; são 108 ícones.
+- **Vocabulário em toda a interface:**
+  - voo, frequência, nível, pista, pousar e pedir pouso, espera geral e liberar todos;
+  - Rádio, Transmitir, NOTAM, boletim, briefing, líder, arremetida, Enlace;
+  - estados: Taxiando, Pátio, No ar, Aguarda, Em solo, Pane (com a saída), Hangar, com os ícones `flight` e `flight_land`;
+  - retido mostra o motivo ("espera geral" ou "limite por minuto"), e o fim de turno no Rádio aparece como "Em solo".
+- **Para os agentes:**
+  - as instruções prontas dos papéis falam em nível de voo, pista e pousar (os comandos continuam `torre floor create/land`), e o material do briefing também;
+  - `--floor pista` vale como `--floor ground`.
+- **README:** ganhou a tabela de vocabulário. O texto de uso inteiro é revisto na F1, quando as telas mudam.
+- **Testado aqui:** `tsc`, build da web, `go test` do `summary`, `roles` e `store`, e capturas no tema escuro e no claro (canvas, voos, frequência, NOTAM, barra e Transmitir).
+- **Não testado:** como o B612 fica no Windows e no Mac (a renderização de fonte muda); a F1 refaz cada tela com as medidas dos mockups.
+
+## 2026-10-17, Torre F0a: Squad agora é Torre
+
+- **Pedido do usuário:** trocar o nome para Torre e redesenhar a interface a partir do handoff (agora em `docs/torre/`). O plano por fases foi aprovado com as recomendações, e as fases entram na branch `feat/torre` sem esperar a aprovação de cada uma (veja o PLAN).
+- **O que a revisão do handoff achou no código** (decidido com as recomendações aprovadas):
+  - **hook `Notification`:** o handoff diz que ele "já é tratado"; não é. O Claude registra só `Stop`, `StopFailure`, `UserPromptSubmit` e `SessionStart`, e o Devin só `Stop`, `UserPromptSubmit` e `SessionStart`. O Claude 2.1.302 e o Devin 3000.11.92 têm `PermissionRequest` e `Notification`, que a F3 vai usar;
+  - **SEMPRE não é sempre a tecla 2:** neste container, a opção 2 do Claude apareceu como "Yes, and switch to auto mode". A F3 lê as opções na tela e só oferece SEMPRE quando é "não perguntar de novo";
+  - **níveis e indicativos são por sessão**, não por workspace: desde o S2, os andares são da sessão;
+  - **erros em português:** a API ganha `code` e a interface traduz; os agentes e a CLI continuam em inglês;
+  - **variáveis que o handoff não listava:** `SQUAD_PORT`, `SQUAD_DEBUG`, `SQUAD_CLI` e as que o servidor põe nos terminais;
+  - **lugares do nome fora da lista:** o app do Dock no Mac, o cookie, o backup do Devin, o zip da skill e o agente falso dos testes.
+- **Comando:**
+  - o código da CLI foi para `internal/cli`;
+  - `cmd/torre` e `cmd/squad` são dois `main` de poucas linhas. O `squad` é o mesmo comando: avisa no stderr que o nome mudou, menos em `hook` e `mcp`, que os agentes rodam;
+  - a instalação vira `go install …/cmd/...@main`, que instala os dois.
+- **Pasta de dados:**
+  - `TORRE_HOME`, depois `SQUAD_HOME`, depois `~/.torre`;
+  - o `torre serve` move `~/.squad` para `~/.torre` na primeira vez, com tudo dentro (workspaces, sessões, papéis, token de login, perfis);
+  - se um `squad serve` antigo ainda roda dali, a pasta não se move e é usada como está (o `serve` novo abre o workspace no servidor antigo, como já fazia com um servidor rodando);
+  - se mover falhar (no Windows, um arquivo aberto, como a janela de app de antes), usa `~/.squad` desta vez e tenta de novo no próximo início.
+- **Variáveis:**
+  - `TORRE_PORT`, `TORRE_SHELL`, `TORRE_BROWSER` e `TORRE_DEBUG`, com reserva nos nomes `SQUAD_…` e aviso no log;
+  - os terminais recebem `TORRE_URL`, `_TOKEN`, `_TERMINAL_ID`, `_TERMINAL_NAME` e `_CLI`, e também as `SQUAD_…`. Assim, um `squad` antigo que tenha ficado no PATH, e agentes que retomam conversas de antes, continuam funcionando. O mesmo vale para `TORRE_FLOOR` no comando de preparo;
+  - o servidor aceita o cabeçalho `X-Squad-Token` além do novo.
+- **Agentes:**
+  - servidor MCP `torre` (`mcp__torre__*`) no Claude, no Codex e no Devin; hooks chamando `torre hook`;
+  - o `install-skill` instala a skill `torre`, remove a `squad` (só se for a que o Squad escreveu) e, no Devin, troca a entrada `squad` do `mcp_config.json` pela `torre` (só se for a do Squad: o binário `squad` com o argumento `mcp`);
+  - textos da skill, dos papéis prontos, da ajuda da CLI e do MCP com `torre`.
+- **Outros:**
+  - andares e cópias de sessão novos em `<pasta-pai>/.torre/…`;
+  - `TERM_PROGRAM=Torre`;
+  - no Mac, o app do Dock `Torre.app`, ou o `Squad.app` de antes;
+  - o cookie `torre_session`: o antigo continua valendo e é trocado na primeira página.
+- **Interface:**
+  - logo da torre (SVG do handoff) com "TORRE";
+  - favicon e ícones PNG (192, 512 e 180, desenhados a partir do SVG);
+  - manifest e cor da barra de título (`#07100b` / `#f6f2e4`);
+  - título "workspace · Torre";
+  - as chaves do navegador `squad.*` (workspace, andar, posição do canvas, temas) passam para `torre.*` na primeira carga;
+  - página de login com a marca nova (a primeira abertura completa é a F4c).
+- **Decisões tomadas sem consulta:**
+  - **o atalho `squad` é um binário completo**, e não um script que chama o `torre`: funciona igual no Windows, sem depender de achar o outro no PATH;
+  - **as chaves do navegador ficam com ponto** (`torre.theme`), como eram, e não `torre:` como no handoff;
+  - **o `.squad-backup` do Devin vale como backup:** se ele existe, não se cria um `.torre-backup`, porque o original do usuário já está guardado.
+- **Testado aqui:**
+  - testes do `config`: a migração com servidor antigo rodando e sem ele, uma vez só, e os nomes antigos das variáveis;
+  - testes do `cli`: o atalho `squad` e a remoção da skill antiga;
+  - teste do Devin: a entrada antiga do MCP trocada, e uma do usuário com o mesmo nome mantida;
+  - teste do servidor: o cookie antigo aceito e trocado;
+  - `go vet` (Linux e Windows) e todos os testes, com o navegador;
+  - `TestRealClaude` e `TestRealClaudeRole` (hooks e papel pelo `torre hook`), e `TestRealDevinConfig` (o Devin vê o MCP `torre`);
+  - de ponta a ponta, com o binário: um `~/.squad` de teste foi movido para `~/.torre` no primeiro `torre serve`, com o mesmo token. Um terminal recebeu as duas famílias de variáveis, e `squad list` (com o aviso) e `torre list` funcionaram dentro dele.
+- **Não testado:** Windows (a migração com arquivo preso, `torre.exe` e `squad.exe`), o `Squad.app` no Mac, o Devin com login, Codex e Gemini.
+
 ## 2026-10-17, S4: sessão numa cópia isolada
 
 - **Pedido do usuário:** criar uma sessão nova enquanto a sessão 1 está no meio do trabalho, sem misturar os arquivos, com a opção de um branch novo a partir de um branch escolhido, e sem encher a tela de opções.

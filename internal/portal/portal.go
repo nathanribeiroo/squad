@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -34,13 +35,14 @@ const (
 
 // Service serves the portals of one workspace.
 type Service struct {
-	store   *store.Store
-	bus     *events.Bus
-	browser *browser.Manager // nil: no portals (tests, or disabled)
-	port    int
-	log     *slog.Logger
+	maxCreated atomic.Int64 // portals one agent may have created (0: MaxCreated)
+	store      *store.Store
+	bus        *events.Bus
+	browser    *browser.Manager // nil: no portals (tests, or disabled)
+	port       int
+	log        *slog.Logger
 
-	canvas Canvas // creates and removes portals for agents (squad portal create)
+	canvas Canvas // creates and removes portals for agents (torre portal create)
 
 	mu    sync.Mutex
 	pages map[string]*tab // open portals
@@ -214,10 +216,15 @@ func (s *Service) saveURL(id string, st browser.State) {
 // message is a client message on /ws/portal/{id}; mouse and key messages
 // also carry a browser.MouseEvent or browser.KeyEvent.
 type message struct {
-	Type   string `json:"type"`   // mouse, key, text, nav
+	Type   string `json:"type"`   // mouse, key, text, nav, elements
 	Action string `json:"action"` // nav: back, forward, reload
 	Text   string `json:"text"`   // text: pasted text
+	On     bool   `json:"on"`     // elements: show the refs layer
 }
+
+// elementsEvery is how often the @ELEMENTOS layer follows the page (scrolls,
+// a new snapshot) while it is on.
+const elementsEvery = time.Second
 
 // HandleWS streams a portal: {"type":"state",…} and {"type":"error",…} as
 // text, frames as binary (8-byte big-endian float64 paint time in Unix ms,
@@ -258,12 +265,24 @@ func (s *Service) HandleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The @ELEMENTOS layer: the refs of the agents' last snapshot, sent when
+	// the client turns it on and whenever they move.
+	layer := make(chan bool, 1)
 	go func() {
 		defer cancel()
 		for {
 			_, data, err := c.Read(ctx)
 			if err != nil {
 				return
+			}
+			var m message
+			if json.Unmarshal(data, &m) == nil && m.Type == "elements" {
+				select {
+				case <-layer:
+				default:
+				}
+				layer <- m.On
+				continue
 			}
 			if err := s.input(p, data); err != nil {
 				s.log.Debug("portal input", "err", err)
@@ -273,10 +292,46 @@ func (s *Service) HandleWS(w http.ResponseWriter, r *http.Request) {
 
 	ping := time.NewTicker(25 * time.Second)
 	defer ping.Stop()
+	var boxTick <-chan time.Time
+	var boxTicker *time.Ticker
+	defer func() {
+		if boxTicker != nil {
+			boxTicker.Stop()
+		}
+	}()
+	lastBoxes := ""
+	sendBoxes := func() error {
+		boxes, ok := p.Boxes()
+		b, _ := json.Marshal(map[string]any{"type": "elements", "elements": boxes, "snapshot": ok})
+		if string(b) == lastBoxes {
+			return nil
+		}
+		lastBoxes = string(b)
+		wctx, wcancel := context.WithTimeout(ctx, 10*time.Second)
+		defer wcancel()
+		return c.Write(wctx, websocket.MessageText, b)
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case on := <-layer:
+			if boxTicker != nil {
+				boxTicker.Stop()
+				boxTicker, boxTick = nil, nil
+			}
+			lastBoxes = ""
+			if on {
+				boxTicker = time.NewTicker(elementsEvery)
+				boxTick = boxTicker.C
+				if err := sendBoxes(); err != nil {
+					return
+				}
+			}
+		case <-boxTick:
+			if err := sendBoxes(); err != nil {
+				return
+			}
 		case st := <-states:
 			if err := writeJSON(ctx, c, stateMsg(st)); err != nil {
 				return
@@ -351,4 +406,16 @@ func writeJSON(ctx context.Context, c *websocket.Conn, v any) error {
 	wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	return c.Write(wctx, websocket.MessageText, b)
+}
+
+// SetMaxCreated changes how many portals one agent may have created (0:
+// MaxCreated).
+func (s *Service) SetMaxCreated(n int) { s.maxCreated.Store(int64(n)) }
+
+// MaxCreated is how many portals one agent may have created.
+func (s *Service) MaxCreated() int {
+	if n := s.maxCreated.Load(); n > 0 {
+		return int(n)
+	}
+	return MaxCreated
 }

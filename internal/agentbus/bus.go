@@ -6,6 +6,7 @@ package agentbus
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sort"
 	"sync"
@@ -29,7 +30,7 @@ type Limits struct {
 	Stable       time.Duration // screen unchanged this long → reply by screen (5 s)
 	ActiveWindow time.Duration // output within this → extend the timeout (10 s)
 	RawDelay     time.Duration // wait before reading the screen after --raw (300 ms)
-	MaxTeam      int           // terminals one manager may create (6; squad new)
+	MaxTeam      int           // terminals one manager may create (6; torre new)
 }
 
 func (l *Limits) defaults() {
@@ -92,12 +93,19 @@ type Bus struct {
 
 	mu      sync.Mutex
 	pending map[string]*Pending
-	waiters map[*waiter]bool            // callers blocked in squad wait
-	last    map[string]activity.TurnEnd // each terminal's last final turn end (squad wait)
+	waiters map[*waiter]bool            // callers blocked in torre wait
+	last    map[string]activity.TurnEnd // each terminal's last final turn end (torre wait)
 	paused  bool
 	resume  chan struct{}
 	sends   []time.Time
+	// texts keeps the full messages of the last requests (the Rádio shows a
+	// preview and asks for the rest); order is oldest first.
+	texts     map[string]string
+	textOrder []string
 }
+
+// keptTexts is how many request messages the bus remembers in full.
+const keptTexts = 200
 
 // New creates a bus. Call SetMonitor before serving.
 func New(st *store.Store, terms *terminal.Manager, ev *events.Bus, log *slog.Logger, limits Limits) *Bus {
@@ -108,7 +116,7 @@ func New(st *store.Store, terms *terminal.Manager, ev *events.Bus, log *slog.Log
 	return &Bus{limits: limits, store: st, terms: terms, events: ev, log: log,
 		hasHooks: func(string) bool { return false },
 		pending:  map[string]*Pending{}, waiters: map[*waiter]bool{}, last: map[string]activity.TurnEnd{},
-		resume: make(chan struct{})}
+		resume: make(chan struct{}), texts: map[string]string{}}
 }
 
 // SetMonitor attaches the activity monitor (before it starts).
@@ -120,10 +128,10 @@ func (b *Bus) SetMonitor(m *activity.Monitor) {
 // SetHookedAgents tells which agent types report turn ends through hooks.
 func (b *Bus) SetHookedAgents(fn func(agent string) bool) { b.hasHooks = fn }
 
-// SetSelfNote adds a line about the caller to `squad list` (manager mode).
+// SetSelfNote adds a line about the caller to `torre list` (manager mode).
 func (b *Bus) SetSelfNote(fn func(id string) string) { b.selfNote = fn }
 
-// SetRoleNames sets how `squad list` names a role id ("test" → "Testador").
+// SetRoleNames sets how `torre list` names a role id ("test" → "Testador").
 func (b *Bus) SetRoleNames(fn func(id string) string) { b.roleName = fn }
 
 func (b *Bus) roleLabel(id string) string {
@@ -136,10 +144,14 @@ func (b *Bus) roleLabel(id string) string {
 }
 
 // Limits returns the effective limits.
-func (b *Bus) Limits() Limits { return b.limits }
+func (b *Bus) Limits() Limits {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.limits
+}
 
 // IsWaiting reports whether terminal id has an outstanding request or is
-// waiting for another terminal's turn (squad wait).
+// waiting for another terminal's turn (torre wait).
 func (b *Bus) IsWaiting(id string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -170,6 +182,40 @@ func (b *Bus) Pending() []Pending {
 	return out
 }
 
+// rememberLocked keeps a request's full message for RequestText.
+func (b *Bus) rememberLocked(id, msg string) {
+	if _, ok := b.texts[id]; !ok {
+		b.textOrder = append(b.textOrder, id)
+	}
+	b.texts[id] = msg
+	for len(b.textOrder) > keptTexts {
+		delete(b.texts, b.textOrder[0])
+		b.textOrder = b.textOrder[1:]
+	}
+}
+
+// RequestText returns the full message of a recent request.
+func (b *Bus) RequestText(id string) (string, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	t, ok := b.texts[id]
+	return t, ok
+}
+
+// Cancel ends an outstanding request for the user: the agent that asked gets
+// a 409 now. The other agent isn't interrupted.
+func (b *Bus) Cancel(id string) bool {
+	b.mu.Lock()
+	p, ok := b.pending[id]
+	b.mu.Unlock()
+	if !ok {
+		return false
+	}
+	return b.resolve(p, Result{Code: 409, Source: "cancelled", Body: fmt.Sprintf(
+		"torre: the user cancelled this request to %s. Don't send it again unless the user asks; %s may still be working on it (torre wait %s gets its answer).",
+		quote(p.ToName), quote(p.ToName), quote(p.ToName))})
+}
+
 // Paused reports whether conversations are paused.
 func (b *Bus) Paused() bool {
 	b.mu.Lock()
@@ -194,14 +240,23 @@ func (b *Bus) SetPaused(p bool, reason string) {
 }
 
 // StateExtra is merged into /api/state and the events hello message.
+// SetLimits changes the hop and per-minute limits (Configurações → Limites).
+func (b *Bus) SetLimits(maxHops, perMinute int) {
+	b.mu.Lock()
+	b.limits.MaxHops, b.limits.PerMinute = maxHops, perMinute
+	b.mu.Unlock()
+	b.events.Publish(events.LimitsChanged, map[string]int{"maxHops": maxHops, "perMinute": perMinute})
+}
+
 func (b *Bus) StateExtra() map[string]any {
 	b.mu.Lock()
 	recent := b.recentSendsLocked(time.Now())
 	paused := b.paused
+	limits := map[string]int{"maxHops": b.limits.MaxHops, "perMinute": b.limits.PerMinute}
 	b.mu.Unlock()
 	return map[string]any{
 		"paused":  paused,
-		"limits":  map[string]int{"maxHops": b.limits.MaxHops, "perMinute": b.limits.PerMinute},
+		"limits":  limits,
 		"rate":    recent,
 		"pending": b.Pending(),
 	}
@@ -367,13 +422,13 @@ func (b *Bus) cancelWhere(match func(from, to string) bool, why string) {
 func (b *Bus) connectedTerminal(caller, name string) (store.Node, int, string) {
 	n, ok := b.store.TerminalByName(name)
 	if !ok {
-		return n, 404, "squad: no terminal named " + quote(name) + " (run `squad list` for exact names)"
+		return n, 404, "torre: no terminal named " + quote(name) + " (run `torre list` for exact names)"
 	}
 	if n.ID == caller {
-		return n, 400, "squad: you can't message yourself"
+		return n, 400, "torre: you can't message yourself"
 	}
 	if !b.store.Connected(caller, n.ID) {
-		return n, 403, "squad: " + quote(name) + " is not connected to you; connect the two terminals on the canvas first"
+		return n, 403, "torre: " + quote(name) + " is not connected to you; connect the two terminals on the canvas first"
 	}
 	return n, 0, ""
 }

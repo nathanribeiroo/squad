@@ -13,6 +13,7 @@ export function Dialog({
   children,
   foot,
   wide,
+  tone,
 }: {
   icon: IconName;
   title: string;
@@ -21,11 +22,13 @@ export function Dialog({
   children: React.ReactNode;
   foot?: React.ReactNode;
   wide?: boolean;
+  /** The border: danger (loses work), warn (interrupts it), info. */
+  tone?: 'danger' | 'warn' | 'info';
 }) {
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        e.stopPropagation();
+        e.stopImmediatePropagation(); // the dialog under it, or a panel, keeps open
         onClose();
       }
     };
@@ -33,8 +36,8 @@ export function Dialog({
     return () => window.removeEventListener('keydown', esc, true);
   }, [onClose]);
   return (
-    <div className="dlg-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`dlg${wide ? ' wide' : ''}`} role="dialog" aria-label={title}>
+    <div className={`dlg-backdrop${tone ? ' top' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={`dlg${wide ? ' wide' : ''}${tone ? ` tone-${tone}` : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <header className="dlg-head">
           <Icon name={icon} size={20} />
           <div>

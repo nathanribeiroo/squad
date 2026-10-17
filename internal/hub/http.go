@@ -12,6 +12,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/server"
@@ -24,6 +25,7 @@ import (
 //	/api/workspaces…, /api/dirs     the workspace list (and folder suggestions)
 //	/api/workspaces/{id}/sessions…  a workspace's sessions: list, new (in a copy, optionally), open, rename, remove
 //	/api/roles…                     the role library, shared by every workspace
+//	/api/agents…                    the agents found on this computer, and the command that starts each
 //	/ws/workspaces                  the list and the roles, live
 //	POST /cli, POST /hooks/{agent}  calls from terminals, routed by terminal id
 //	/                               the web UI
@@ -41,11 +43,19 @@ func (h *Hub) Handler() http.Handler {
 	mux.Handle("PATCH /api/workspaces/{id}/sessions/{sid}", sess(h.handleRenameSession))
 	mux.Handle("DELETE /api/workspaces/{id}/sessions/{sid}", sess(h.handleRemoveSession))
 	mux.Handle("GET /api/dirs", sess(h.handleDirs))
+	mux.Handle("GET /api/dirs/info", sess(h.handleDirInfo))
+	mux.Handle("GET /api/welcome", sess(h.handleWelcome))
 	mux.Handle("GET /api/roles", sess(h.handleRolesList))
 	mux.Handle("POST /api/roles", sess(h.handleRoleCreate))
 	mux.Handle("PUT /api/roles/{id}", sess(h.handleRoleUpdate))
 	mux.Handle("POST /api/roles/{id}/reset", sess(h.handleRoleReset))
 	mux.Handle("DELETE /api/roles/{id}", sess(h.handleRoleDelete))
+	mux.Handle("GET /api/agents", sess(h.handleAgents))
+	mux.Handle("PUT /api/agents/{agent}", sess(h.handleAgentCommand))
+	mux.Handle("GET /api/plans", sess(h.handlePlans))
+	mux.Handle("GET /api/plans/{id}", sess(h.handlePlan))
+	mux.Handle("DELETE /api/plans/{id}", sess(h.handlePlanDelete))
+	mux.Handle("POST /api/plans/import", sess(h.handlePlanImport))
 	mux.Handle("GET /ws/workspaces", sess(h.handleWorkspacesWS))
 	mux.Handle("/api/", sess(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not found (a workspace's API is under /w/<id>/api/…)")
@@ -77,7 +87,7 @@ func (h *Hub) handleTerminal(w http.ResponseWriter, r *http.Request) {
 	if ws == nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte("squad: this command only works inside a Squad terminal (missing or invalid terminal credentials)\n"))
+		_, _ = w.Write([]byte("torre: this command only works inside a Torre terminal (missing or invalid terminal credentials)\n"))
 		return
 	}
 	ws.term.ServeHTTP(w, r)
@@ -97,7 +107,7 @@ type createBody struct {
 func (h *Hub) handleCreate(w http.ResponseWriter, r *http.Request) {
 	var b createBody
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	s, err := h.Create(b.Name, b.Cwd, b.Color, b.Session)
@@ -111,7 +121,7 @@ func (h *Hub) handleCreate(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleOpen(w http.ResponseWriter, r *http.Request) {
 	var b createBody
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	s, err := h.Open(b.Cwd)
@@ -125,7 +135,7 @@ func (h *Hub) handleOpen(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	var p Patch
 	if err := readJSON(r, &p); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	s, err := h.Update(r.PathValue("id"), p)
@@ -156,7 +166,7 @@ func (h *Hub) handleSessions(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleNewSession(w http.ResponseWriter, r *http.Request) {
 	var b NewSession
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	l, err := h.NewSession(r.PathValue("id"), b)
@@ -185,7 +195,7 @@ func (h *Hub) handleRenameSession(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"name"`
 	}
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	l, err := h.RenameSession(r.PathValue("id"), r.PathValue("sid"), b.Name)
@@ -283,19 +293,28 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
 }
 
+// writeErr answers err, with its code for the interface (apierr).
+func writeErr(w http.ResponseWriter, code int, err error) {
+	writeJSON(w, code, apierr.Body(err))
+}
+
 func writeHubError(w http.ResponseWriter, err error) {
 	var busy *BusyError
 	var dirty *DirtyCopyError
 	switch {
 	case errors.As(err, &busy):
-		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "working": busy.Working, "pending": busy.Pending})
+		body := apierr.Body(err)
+		body["working"], body["pending"] = busy.Working, busy.Pending
+		writeJSON(w, http.StatusConflict, body)
 	case errors.As(err, &dirty):
-		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "files": dirty.Files})
+		body := apierr.Body(err)
+		body["files"] = dirty.Files
+		writeJSON(w, http.StatusConflict, body)
 	case errors.Is(err, ErrNotFound):
-		writeError(w, http.StatusNotFound, err.Error())
+		writeErr(w, http.StatusNotFound, err)
 	case errors.Is(err, ErrInvalid), errors.Is(err, floors.ErrInvalid):
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 	default:
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, http.StatusInternalServerError, err)
 	}
 }

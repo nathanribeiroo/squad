@@ -1,5 +1,5 @@
-// Package app assembles the Squad server: HTTP server, terminals, activity
-// monitor and the agent bus. Used by `squad serve` and integration tests.
+// Package app assembles the Torre server: HTTP server, terminals, activity
+// monitor and the agent bus. Used by `torre serve` and integration tests.
 package app
 
 import (
@@ -16,6 +16,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/notes"
+	"github.com/nathanribeiroo/squad/internal/plans"
 	"github.com/nathanribeiroo/squad/internal/portal"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
@@ -32,9 +33,10 @@ type Options struct {
 	Extensions []agentbus.Extension // extra CLI commands (notes, …)
 	Browser    *browser.Manager     // shared by the portals of every workspace; nil disables them
 	Roles      *roles.Library       // shared by every workspace; nil: roles are only labels
+	Plans      *plans.Library       // flight plans, shared by every workspace; nil: none
 }
 
-// App is a wired Squad instance.
+// App is a wired Torre instance.
 type App struct {
 	Server  *server.Server
 	Monitor *activity.Monitor
@@ -45,8 +47,11 @@ type App struct {
 	Summary *summary.Service
 	Team    *team.Service
 
-	exts   []agentbus.Extension
-	cancel context.CancelFunc
+	exts     []agentbus.Extension
+	cancel   context.CancelFunc
+	plans    *plans.Library
+	roles    *roles.Library
+	defaults store.Limits // the server's limits, before the workspace's
 }
 
 // New builds the app; call Start to begin activity sampling.
@@ -64,6 +69,15 @@ func New(o Options) (*App, error) {
 		st, since := mon.State(id)
 		return string(st), since
 	})
+	// Only agents' screens are read for prompts (PRIORIDADE).
+	mon.SetAgentOf(func(id string) (string, bool) {
+		n, ok := srv.Store().Node(id)
+		if !ok || n.Terminal == nil || !agentbus.IsAgent(n.Terminal.Agent) {
+			return "", false
+		}
+		return n.Terminal.Agent, true
+	})
+	srv.SetAttention(mon.Attention)
 	srv.SetStateExtra(bus.StateExtra)
 	srv.OnEdgeRemoved(bus.EdgeRemoved)
 	var launcher *agents.Launcher
@@ -97,6 +111,15 @@ func New(o Options) (*App, error) {
 		return ""
 	}
 	bus.SetRoleNames(roleName)
+	// Callsigns come from the role's abbreviation (PLN, IMP…).
+	srv.SetRoleAbbr(func(id string) string {
+		if o.Roles != nil && id != "" {
+			if r, ok := o.Roles.Get(id); ok {
+				return r.Abbr
+			}
+		}
+		return ""
+	})
 	// Turn cards and summaries (R6).
 	summaries = summary.New(summary.Options{
 		Canvas: srv, Logger: o.Server.Logger, IsAgent: agentbus.IsAgent, HasHooks: agents.HasHooks, RoleName: roleName,
@@ -222,7 +245,7 @@ func New(o Options) (*App, error) {
 	var app *App
 	srv.HandleSession("POST /api/nodes/{id}/send", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleSend(w, r) }))
 
-	// Agents interrupted mid-turn (Squad closed or restarted): continue them,
+	// Agents interrupted mid-turn (Torre closed or restarted): continue them,
 	// or forget it.
 	srv.HandleSession("POST /api/interrupted/{action}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		action := r.PathValue("action")
@@ -258,7 +281,34 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, exts: exts}
+	// Requests in the Rádio: the full message, and cancelling one.
+	srv.HandleSession("GET /api/requests/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		text, ok := bus.RequestText(r.PathValue("id"))
+		if !ok {
+			writeErrorCode(w, http.StatusNotFound, "request.gone", "the request is no longer kept")
+			return
+		}
+		writeJSON(w, map[string]string{"id": r.PathValue("id"), "text": text})
+	}))
+	srv.HandleSession("POST /api/requests/{id}/cancel", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !bus.Cancel(r.PathValue("id")) {
+			writeErrorCode(w, http.StatusNotFound, "request.gone", "the request already ended")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	// Flight plans: save this canvas (or part of it), and put one in the air.
+	if o.Plans != nil {
+		srv.HandleSession("POST /api/plans", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handlePlanSave(w, r) }))
+		srv.HandleSession("POST /api/plans/{id}/apply", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handlePlanApply(w, r) }))
+	}
+	// Limits (Configurações → Limites): the workspace's, else the server's.
+	srv.HandleSession("GET /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
+	srv.HandleSession("PUT /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
+	bl := bus.Limits()
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, exts: exts, plans: o.Plans, roles: o.Roles,
+		defaults: store.Limits{MaxHops: bl.MaxHops, PerMinute: bl.PerMinute, MaxTeam: teamSvc.MaxTeam(), PortalsPerAgent: portal.MaxCreated}}
+	app.applyLimits()
 	return app, nil
 }
 
@@ -299,6 +349,13 @@ func writeErrorJSON(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+// writeErrorCode writes an error with a code the web translates.
+func writeErrorCode(w http.ResponseWriter, status int, code, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": code})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

@@ -7,7 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
+	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/events"
+	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
 	"github.com/nathanribeiroo/squad/internal/terminal"
 )
@@ -24,8 +27,10 @@ type TerminalRuntime struct {
 	Activity      string    `json:"activity"`
 	ActivitySince time.Time `json:"activitySince"`
 	// Interrupted: the agent continued a conversation it was in the middle
-	// of when it stopped (Squad closed or restarted).
+	// of when it stopped (Torre closed or restarted).
 	Interrupted bool `json:"interrupted"`
+	// Attention: what the flight asks the user (activity "ask").
+	Attention *attention.Attention `json:"attention,omitempty"`
 }
 
 // StateResponse is GET /api/state.
@@ -48,6 +53,9 @@ func (s *Server) runtimeOf(id string) TerminalRuntime {
 	if s.activityOf != nil {
 		rt.Activity, rt.ActivitySince = s.activityOf(id)
 	}
+	if s.attentionOf != nil {
+		rt.Attention = s.attentionOf(id)
+	}
 	return rt
 }
 
@@ -68,13 +76,13 @@ func (s *Server) handleState(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleAddNode(w http.ResponseWriter, r *http.Request) {
 	var n store.Node
 	if err := readJSON(r, &n); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	n.ID, n.CreatedBy = "", "" // assigned by the server
 	n, err := s.AddNode(n)
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, n)
@@ -89,6 +97,9 @@ func (s *Server) AddNode(n store.Node) (store.Node, error) {
 	if n.Terminal != nil { // a new terminal starts a new conversation
 		t := *n.Terminal
 		t.Conversation, t.Busy, t.Empty = "", false, false
+		if t.Callsign == "" && s.roleAbbr != nil {
+			t.Callsign = s.roleAbbr(t.Role) // numbered by the store when taken
+		}
 		n.Terminal = &t
 	}
 	if n.W == 0 && n.H == 0 {
@@ -137,7 +148,7 @@ type nodePatch struct {
 func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 	var p nodePatch
 	if err := readJSON(r, &p); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	id := r.PathValue("id")
@@ -158,7 +169,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.Terminal != nil && n.Terminal != nil {
 			if p.Terminal.Name == "" {
-				return errors.Join(store.ErrInvalid, errors.New("terminal needs a name"))
+				return apierr.With(errors.Join(store.ErrInvalid, errors.New("terminal needs a name")), "flight.name_required")
 			}
 			if p.Terminal.Cwd != n.Terminal.Cwd {
 				if err := checkTerminalDir(p.Terminal, resolve); err != nil {
@@ -167,7 +178,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 			}
 			old := *n.Terminal
 			*n.Terminal = *p.Terminal
-			// Squad keeps the conversation; another agent or folder can't
+			// Torre keeps the conversation; another agent or folder can't
 			// continue it (agents keep conversations per folder).
 			n.Terminal.Conversation, n.Terminal.Busy, n.Terminal.Empty = old.Conversation, old.Busy, old.Empty
 			if p.Terminal.Agent != old.Agent || p.Terminal.Cwd != old.Cwd {
@@ -191,8 +202,16 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
+	}
+	// Another role brings its abbreviation, unless the callsign was chosen
+	// by hand.
+	if n.Terminal != nil && cur.Terminal != nil && s.roleAbbr != nil && n.Terminal.Role != cur.Terminal.Role &&
+		n.Terminal.Callsign == cur.Terminal.Callsign && derivedCallsign(cur.Terminal.Callsign, s.roleAbbr(cur.Terminal.Role), cur.Terminal.Name) {
+		if c, err := s.store.AssignCallsign(id, s.roleAbbr(n.Terminal.Role)); err == nil {
+			n.Terminal.Callsign = c
+		}
 	}
 	// The canvas resizes a terminal by patching its cols×rows (with the node
 	// size); a running process follows at once.
@@ -209,7 +228,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleRemoveNode(w http.ResponseWriter, r *http.Request) {
 	if err := s.RemoveNode(r.PathValue("id")); err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -277,7 +296,7 @@ func (s *Server) handleNodeAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, s.runtimeOf(id))
@@ -292,12 +311,12 @@ type edgeBody struct {
 func (s *Server) handleAddEdge(w http.ResponseWriter, r *http.Request) {
 	var b edgeBody
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	e, err := s.AddEdge(b.A, b.B, b.RopePoints)
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, e)
@@ -316,12 +335,12 @@ func (s *Server) AddEdge(a, b string, rope [][2]float64) (store.Edge, error) {
 func (s *Server) handleUpdateEdge(w http.ResponseWriter, r *http.Request) {
 	var b edgeBody
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	e, err := s.store.UpdateEdgeRope(r.PathValue("id"), b.RopePoints)
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	s.bus.Publish(events.EdgeUpdated, e)
@@ -331,7 +350,7 @@ func (s *Server) handleUpdateEdge(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRemoveEdge(w http.ResponseWriter, r *http.Request) {
 	e, err := s.store.RemoveEdge(r.PathValue("id"))
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	if s.onEdgeGone != nil {
@@ -339,4 +358,19 @@ func (s *Server) handleRemoveEdge(w http.ResponseWriter, r *http.Request) {
 	}
 	s.bus.Publish(events.EdgeRemoved, e)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// derivedCallsign reports whether callsign c came from abbr (a role's
+// abbreviation; the name's letters without one), as given or numbered
+// (IMP, IM2, I10).
+func derivedCallsign(c, abbr, name string) bool {
+	base := abbr
+	if base == "" {
+		base = ids.Callsign(name)
+	}
+	if c == base {
+		return true
+	}
+	stem := strings.TrimRight(c, "0123456789")
+	return stem != c && strings.HasPrefix(base, stem)
 }

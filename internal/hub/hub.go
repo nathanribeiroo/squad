@@ -1,4 +1,4 @@
-// Package hub runs several workspaces in one Squad server. Each workspace is
+// Package hub runs several workspaces in one Torre server. Each workspace is
 // a complete app (canvas, terminals, agent bus, notes, activity monitor),
 // mounted under /w/<id>/; the hub routes the calls made from inside
 // terminals (/cli, /hooks) to the workspace that owns the terminal, and keeps
@@ -20,10 +20,12 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/app"
 	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
+	"github.com/nathanribeiroo/squad/internal/plans"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -61,26 +63,28 @@ func invalidf(format string, a ...any) error { return invalidError(fmt.Sprintf(f
 type Options struct {
 	Port       int    // loopback port (terminals reach the server through it)
 	Token      string // browser session token
-	CLIPath    string // squad binary, put on terminals' PATH
+	CLIPath    string // torre binary, put on terminals' PATH
 	Logger     *slog.Logger
-	Root       string // one subfolder per workspace (~/.squad/workspaces)
-	Trash      string // removed workspaces are moved here (~/.squad/trash)
+	Root       string // one subfolder per workspace (~/.torre/workspaces)
+	Trash      string // removed workspaces are moved here (~/.torre/trash)
 	Activity   activity.Options
 	Limits     agentbus.Limits
 	Extensions []agentbus.Extension
 	Setup      func(*app.App) error // runs on every workspace's app before it starts
 	Browser    *browser.Manager     // the portals' browser, shared by all workspaces (nil: no portals)
-	Roles      *roles.Library       // nil: roles.json next to Root (~/.squad/roles.json)
+	Roles      *roles.Library       // nil: roles.json next to Root (~/.torre/roles.json)
+	Plans      *plans.Library       // nil: plans/ next to Root (~/.torre/plans)
 }
 
 // Summary is a workspace as the selector shows it.
 type Summary struct {
 	store.Meta
 	Terminals int     `json:"terminals"`
-	Active    int     `json:"active"`   // agents working or waiting for a reply
-	Pending   int     `json:"pending"`  // requests waiting for a reply
-	Session   Session `json:"session"`  // the open session
-	Sessions  int     `json:"sessions"` // how many it has
+	Active    int     `json:"active"`    // agents working or waiting for a reply
+	Pending   int     `json:"pending"`   // requests waiting for a reply
+	Attention int     `json:"attention"` // flights asking the user (PRIORIDADE)
+	Session   Session `json:"session"`   // the open session
+	Sessions  int     `json:"sessions"`  // how many it has
 }
 
 // workspace is a workspace with its open session's app; opening another
@@ -106,6 +110,9 @@ type Hub struct {
 	ws      map[string]*workspace
 	started bool
 	closed  bool
+	// firstRun: the hub started with no workspace saved (a new
+	// installation): the interface shows its first steps.
+	firstRun bool
 }
 
 // New loads every workspace under opts.Root (none is started yet).
@@ -125,6 +132,9 @@ func New(opts Options) (*Hub, error) {
 			return nil, err
 		}
 		opts.Roles = lib
+	}
+	if opts.Plans == nil {
+		opts.Plans = plans.Open(filepath.Join(filepath.Dir(opts.Root), "plans"))
 	}
 	h := &Hub{
 		opts: opts, log: opts.Logger, roles: opts.Roles, events: events.NewBus(),
@@ -154,6 +164,7 @@ func New(opts Options) (*Hub, error) {
 			return nil, err
 		}
 	}
+	h.firstRun = len(h.ws) == 0
 	// Workspaces from before colors (the old "default") get one, oldest first.
 	for _, s := range h.List() {
 		if s.Color == "" {
@@ -185,6 +196,7 @@ func (h *Hub) build(st *store.Store, ss *sessions) (*workspace, error) {
 		Extensions: h.opts.Extensions,
 		Browser:    h.opts.Browser,
 		Roles:      h.roles,
+		Plans:      h.opts.Plans,
 	})
 	if err != nil {
 		return nil, err
@@ -304,8 +316,11 @@ func summarize(w *workspace) Summary {
 	w.s.mu.Unlock()
 	for _, id := range st.TerminalIDs() {
 		s.Terminals++
-		if state, _ := a.Monitor.State(id); state == activity.Work || state == activity.Wait {
+		switch state, _ := a.Monitor.State(id); state {
+		case activity.Work, activity.Wait:
 			s.Active++
+		case activity.Ask:
+			s.Attention++
 		}
 	}
 	return s
@@ -373,7 +388,7 @@ func (h *Hub) Create(name, dir, color, session string) (Summary, error) {
 }
 
 // Open returns the workspace whose folder is dir, creating it if needed
-// (used by `squad serve -dir`).
+// (used by `torre serve -dir`).
 func (h *Hub) Open(dir string) (Summary, error) {
 	cwd, err := checkFolder(dir)
 	if err != nil {
@@ -405,7 +420,7 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 	m, err := w.app.Server.Store().UpdateMeta(func(m *store.Meta) error {
 		if p.Name != nil {
 			if strings.TrimSpace(*p.Name) == "" {
-				return invalidf("the name can't be empty")
+				return apierr.With(invalidf("the name can't be empty"), "workspace.name_required")
 			}
 			m.Name = strings.TrimSpace(*p.Name)
 		}
@@ -415,7 +430,7 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 				return err
 			}
 			if hasCopies && !samePath(cwd, m.Cwd) {
-				return invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions before changing its folder")
+				return apierr.With(invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions before changing its folder"), "workspace.has_copies")
 			}
 			m.Cwd = cwd
 		}
@@ -447,10 +462,10 @@ func (h *Hub) Remove(id string) error {
 		return ErrNotFound
 	case len(h.ws) == 1:
 		h.mu.Unlock()
-		return invalidf("the last workspace can't be removed")
+		return apierr.With(invalidf("the last workspace can't be removed"), "workspace.last")
 	case hasRepoCopies(w):
 		h.mu.Unlock()
-		return invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions first")
+		return apierr.With(invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions first"), "workspace.has_copies")
 	}
 	delete(h.ws, id)
 	h.mu.Unlock()
@@ -522,7 +537,7 @@ func (h *Hub) summaryLoop() {
 func checkFolder(dir string) (string, error) {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		return "", invalidf("a folder is required")
+		return "", apierr.With(invalidf("a folder is required"), "dir.required")
 	}
 	home, _ := os.UserHomeDir()
 	cwd := server.ResolveCwd(dir, home)
@@ -534,7 +549,7 @@ func checkFolder(dir string) (string, error) {
 		cwd = abs
 	}
 	if fi, err := os.Stat(cwd); err != nil || !fi.IsDir() {
-		return "", invalidf("folder not found: %s", cwd)
+		return "", apierr.With(invalidf("folder not found: %s", cwd), "dir.not_found", "folder", cwd)
 	}
 	return cwd, nil
 }

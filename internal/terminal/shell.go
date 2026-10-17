@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/nathanribeiroo/squad/internal/config"
 )
 
 // ShellFamily decides login flags and how launch lines are quoted.
@@ -50,16 +52,16 @@ func ResolveShell(pref string) ([]string, ShellFamily) {
 }
 
 // ShellCandidates lists the shells to try, best first; the list is never
-// empty. Order: the preferred shell, $SQUAD_SHELL, then the platform default:
-// on Unix the $SHELL login shell, zsh, bash, sh; on Windows Git Bash, pwsh,
-// Windows PowerShell, cmd. A terminal falls back to the next candidate when
+// empty. Order: the preferred shell, $TORRE_SHELL (or $SQUAD_SHELL), then
+// the platform default: on Unix the $SHELL login shell, zsh, bash, sh; on
+// Windows Git Bash, pwsh, Windows PowerShell, cmd. A terminal falls back to the next candidate when
 // one cannot start (e.g. PowerShell blocked by group policy).
 func ShellCandidates(pref string) []Shell {
 	if runtime.GOOS == "windows" {
-		return windowsCandidates(pref, os.Getenv("SQUAD_SHELL"), exec.LookPath, os.Getenv, isFile)
+		return windowsCandidates(pref, config.Getenv("SHELL"), exec.LookPath, os.Getenv, isFile)
 	}
 	var out []Shell
-	for _, c := range []string{pref, os.Getenv("SQUAD_SHELL"), os.Getenv("SHELL"), "/bin/zsh", "/bin/bash", "/bin/sh"} {
+	for _, c := range []string{pref, config.Getenv("SHELL"), os.Getenv("SHELL"), "/bin/zsh", "/bin/bash", "/bin/sh"} {
 		if c == "" {
 			continue
 		}
@@ -161,7 +163,7 @@ func etcShells(path string) []string {
 
 // windowsCandidates resolves the Windows shell list. A bare "bash" means Git
 // Bash: looking it up on PATH could find System32\bash.exe, the WSL launcher,
-// where the Windows squad.exe and agents don't work.
+// where the Windows torre.exe and agents don't work.
 func windowsCandidates(pref, envShell string, lookPath func(string) (string, error), getenv func(string) string, isFile func(string) bool) []Shell {
 	var out []Shell
 	for _, c := range []string{pref, envShell, "bash", "pwsh.exe", "powershell.exe", "cmd.exe"} {
@@ -183,7 +185,7 @@ func windowsCandidates(pref, envShell string, lookPath func(string) (string, err
 			out = appendShell(out, Shell{Argv: []string{p, "-NoLogo"}, Family: fam})
 		case fam == ShellPOSIX && isBash(p):
 			// CHERE_INVOKING keeps the login profile from cd-ing to $HOME;
-			// MSYS2_PATH_TYPE keeps the Windows PATH (squad.exe, agents).
+			// MSYS2_PATH_TYPE keeps the Windows PATH (torre.exe, agents).
 			out = appendShell(out, Shell{Argv: []string{p, "--login", "-i"}, Family: fam,
 				Env: map[string]string{"CHERE_INVOKING": "1", "MSYS2_PATH_TYPE": "inherit"}})
 		default:

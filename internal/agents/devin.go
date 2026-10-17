@@ -6,15 +6,19 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/nathanribeiroo/squad/internal/config"
 )
 
-// devinHooks are Squad's hooks for Devin CLI, in Claude Code's format.
+// devinHooks are Torre's hooks for Devin CLI, in Claude Code's format.
 var devinHooks = map[string]string{
 	"Stop":             "devin-stop",
 	"UserPromptSubmit": "devin-prompt",
 	"SessionStart":     "devin-session-start", // the role, as context
+	// A permission prompt: the flight asks the user (PRIORIDADE). The hook
+	// only reports it; Torre never answers it.
+	"PermissionRequest": "devin-permission",
 }
 
 // DevinConfigDir is Devin CLI's user configuration folder: devin under
@@ -37,11 +41,11 @@ func DevinConfigDir() (string, error) {
 
 // writeDevinConfig writes the file Devin gets with --config. That flag
 // replaces the user's config.json instead of adding to it, so the file is the
-// user's config, read again at each launch, plus Squad's hooks (after the
-// user's own) and the safe squad MCP tools allowed. Permissions Devin saved
-// into the file during a Squad session ("save to global config") are kept.
+// user's config, read again at each launch, plus Torre's hooks (after the
+// user's own) and the safe torre MCP tools allowed. Permissions Devin saved
+// into the file during a Torre session ("save to global config") are kept.
 // MCP servers are not in it: Devin reads them only from mcp_config.json
-// (squad install-skill registers squad there).
+// (torre install-skill registers torre there).
 func (l *Launcher) writeDevinConfig() error {
 	l.devinMu.Lock()
 	defer l.devinMu.Unlock()
@@ -49,7 +53,7 @@ func (l *Launcher) writeDevinConfig() error {
 	if l.DevinUserConfig != "" {
 		if data, err := os.ReadFile(l.DevinUserConfig); err == nil {
 			if json.Unmarshal(JSONC(data), &doc) != nil {
-				doc = map[string]any{} // unreadable: Squad's part alone, as before
+				doc = map[string]any{} // unreadable: Torre's part alone, as before
 			}
 		}
 	}
@@ -63,7 +67,7 @@ func (l *Launcher) writeDevinConfig() error {
 		items := union(list(perms[k]), list(saved[k]))
 		if k == "allow" {
 			for _, t := range SafeMCPTools {
-				items = union(items, []any{"mcp__squad__" + t})
+				items = union(items, []any{"mcp__torre__" + t})
 			}
 		}
 		if len(items) > 0 {
@@ -80,10 +84,12 @@ func (l *Launcher) writeDevinConfig() error {
 	return writeJSON(l.DevinConfig, doc)
 }
 
-// AddDevinMCP registers the squad MCP server in Devin's mcp_config.json at
-// path, keeping the other servers; the file it replaces is kept once as
-// .squad-backup. It reports whether the file changed.
-func AddDevinMCP(path, squadPath string) (bool, error) {
+// AddDevinMCP registers the torre MCP server in Devin's mcp_config.json at
+// path, keeping the other servers but the squad one Squad registered before
+// it became Torre; the file it replaces is kept once as .torre-backup
+// (unless Squad already kept it as .squad-backup). It reports whether the
+// file changed.
+func AddDevinMCP(path, cliPath string) (bool, error) {
 	doc := map[string]any{}
 	old, err := os.ReadFile(path)
 	switch {
@@ -95,13 +101,17 @@ func AddDevinMCP(path, squadPath string) (bool, error) {
 		return false, err
 	}
 	servers := object(doc["mcpServers"])
-	entry := map[string]any{"command": squadPath, "args": []any{"mcp"}}
-	if cur, err := json.Marshal(servers["squad"]); err == nil {
+	entry := map[string]any{"command": cliPath, "args": []any{"mcp"}}
+	legacy := legacyMCP(servers["squad"])
+	if cur, err := json.Marshal(servers["torre"]); err == nil && !legacy {
 		if want, _ := json.Marshal(entry); string(cur) == string(want) {
 			return false, nil
 		}
 	}
-	servers["squad"] = entry
+	if legacy {
+		delete(servers, "squad")
+	}
+	servers["torre"] = entry
 	doc["mcpServers"] = servers
 	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
@@ -111,14 +121,25 @@ func AddDevinMCP(path, squadPath string) (bool, error) {
 		return false, err
 	}
 	if len(old) > 0 {
-		backup := path + ".squad-backup"
-		if _, err := os.Stat(backup); os.IsNotExist(err) {
+		backup := path + ".torre-backup"
+		_, err := os.Stat(path + ".squad-backup")
+		if _, err2 := os.Stat(backup); os.IsNotExist(err) && os.IsNotExist(err2) {
 			if err := os.WriteFile(backup, old, 0o600); err != nil {
 				return false, err
 			}
 		}
 	}
 	return true, config.WriteFileAtomic(path, append(data, '\n'), 0o600)
+}
+
+// legacyMCP reports whether v is the entry `squad install-skill` wrote
+// before Squad became Torre: the squad binary with the single argument mcp.
+func legacyMCP(v any) bool {
+	e := object(v)
+	cmd, _ := e["command"].(string)
+	args := list(e["args"])
+	name := strings.TrimSuffix(strings.ToLower(filepath.Base(strings.ReplaceAll(cmd, `\`, "/"))), ".exe")
+	return name == "squad" && len(args) == 1 && args[0] == "mcp"
 }
 
 // object is v as a JSON object (a new one when it isn't).

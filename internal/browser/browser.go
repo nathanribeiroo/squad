@@ -17,10 +17,11 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/nathanribeiroo/squad/internal/config"
 )
 
 // ErrNoBrowser is returned when no Chromium-based browser is installed.
-var ErrNoBrowser = errors.New("no Chrome, Edge or Chromium found (install one, or set SQUAD_BROWSER to its executable)")
+var ErrNoBrowser = errors.New("no Chrome, Edge or Chromium found (install one, or set TORRE_BROWSER to its executable)")
 
 // Options configure a Manager.
 type Options struct {
@@ -55,10 +56,11 @@ func New(opts Options) *Manager {
 	return &Manager{opts: opts, log: opts.Logger, pages: map[string]*Page{}}
 }
 
-// Find returns the browser executable: $SQUAD_BROWSER, else the first
-// Chrome, Edge, Chromium or Brave found; "" when there is none.
+// Find returns the browser executable: $TORRE_BROWSER (or $SQUAD_BROWSER),
+// else the first Chrome, Edge, Chromium or Brave found; "" when there is
+// none.
 func Find() string {
-	if p := os.Getenv("SQUAD_BROWSER"); p != "" {
+	if p := config.Getenv("BROWSER"); p != "" {
 		if lp, err := exec.LookPath(p); err == nil {
 			return lp
 		}
