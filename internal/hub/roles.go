@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
@@ -37,7 +38,7 @@ func (h *Hub) handleRolesList(w http.ResponseWriter, _ *http.Request) {
 func (h *Hub) handleRoleCreate(w http.ResponseWriter, r *http.Request) {
 	var body roles.Role
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	role, err := h.roles.Create(body)
@@ -51,7 +52,7 @@ func (h *Hub) handleRoleCreate(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleRoleUpdate(w http.ResponseWriter, r *http.Request) {
 	var body roles.Role
 	if err := readJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	role, err := h.roles.Update(r.PathValue("id"), body)
@@ -76,7 +77,8 @@ func (h *Hub) handleRoleReset(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleRoleDelete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if users := h.roleUsers(id); len(users) > 0 {
-		writeError(w, http.StatusConflict, "the role is in use by "+strings.Join(users, ", ")+"; give them another role first")
+		err := errors.New("the role is in use by " + strings.Join(users, ", ") + "; give them another role first")
+		writeErr(w, http.StatusConflict, apierr.With(err, "role.in_use", "names", strings.Join(users, ", ")))
 		return
 	}
 	if err := h.roles.Delete(id); err != nil {
@@ -89,10 +91,12 @@ func (h *Hub) handleRoleDelete(w http.ResponseWriter, r *http.Request) {
 func writeRoleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, roles.ErrNotFound):
-		writeError(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, roles.ErrInvalid), errors.Is(err, roles.ErrBuiltin):
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusNotFound, err)
+	case errors.Is(err, roles.ErrBuiltin):
+		writeErr(w, http.StatusBadRequest, apierr.With(err, "role.builtin"))
+	case errors.Is(err, roles.ErrInvalid):
+		writeErr(w, http.StatusBadRequest, err)
 	default:
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, http.StatusInternalServerError, err)
 	}
 }

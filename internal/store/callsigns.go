@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/ids"
 )
 
@@ -53,7 +54,7 @@ func (s *Store) checkCallsignLocked(n *Node, old Node) error {
 	}
 	if old.Terminal == nil || !strings.EqualFold(c, old.Terminal.Callsign) {
 		if s.callsignTakenLocked(c, n.ID) {
-			return fmt.Errorf("%w: another flight has the callsign %s", ErrDuplicate, c)
+			return apierr.With(fmt.Errorf("%w: another flight has the callsign %s", ErrDuplicate, c), "flight.callsign_taken", "callsign", c)
 		}
 	}
 	n.Terminal.Callsign = c

@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/nathanribeiroo/squad/internal/apierr"
 )
 
 // Floor statuses: its setup command is running, it is ready, or the setup
@@ -98,7 +100,7 @@ func (s *Store) AddFloor(f Floor) (Floor, error) {
 	}
 	for _, o := range s.ws.Floors {
 		if o.ID == f.ID || strings.EqualFold(o.Name, f.Name) {
-			return Floor{}, fmt.Errorf("%w: a floor named %q", ErrDuplicate, o.Name)
+			return Floor{}, apierr.With(fmt.Errorf("%w: a floor named %q", ErrDuplicate, o.Name), "level.name_taken", "name", o.Name)
 		}
 	}
 	seq := s.ws.FloorSeq

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -69,13 +70,13 @@ func (s *Server) handleState(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleAddNode(w http.ResponseWriter, r *http.Request) {
 	var n store.Node
 	if err := readJSON(r, &n); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	n.ID, n.CreatedBy = "", "" // assigned by the server
 	n, err := s.AddNode(n)
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, n)
@@ -141,7 +142,7 @@ type nodePatch struct {
 func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 	var p nodePatch
 	if err := readJSON(r, &p); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	id := r.PathValue("id")
@@ -162,7 +163,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.Terminal != nil && n.Terminal != nil {
 			if p.Terminal.Name == "" {
-				return errors.Join(store.ErrInvalid, errors.New("terminal needs a name"))
+				return apierr.With(errors.Join(store.ErrInvalid, errors.New("terminal needs a name")), "flight.name_required")
 			}
 			if p.Terminal.Cwd != n.Terminal.Cwd {
 				if err := checkTerminalDir(p.Terminal, resolve); err != nil {
@@ -195,7 +196,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	// Another role brings its abbreviation, unless the callsign was chosen
@@ -221,7 +222,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleRemoveNode(w http.ResponseWriter, r *http.Request) {
 	if err := s.RemoveNode(r.PathValue("id")); err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -289,7 +290,7 @@ func (s *Server) handleNodeAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, s.runtimeOf(id))
@@ -304,12 +305,12 @@ type edgeBody struct {
 func (s *Server) handleAddEdge(w http.ResponseWriter, r *http.Request) {
 	var b edgeBody
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	e, err := s.AddEdge(b.A, b.B, b.RopePoints)
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, e)
@@ -328,12 +329,12 @@ func (s *Server) AddEdge(a, b string, rope [][2]float64) (store.Edge, error) {
 func (s *Server) handleUpdateEdge(w http.ResponseWriter, r *http.Request) {
 	var b edgeBody
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	e, err := s.store.UpdateEdgeRope(r.PathValue("id"), b.RopePoints)
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	s.bus.Publish(events.EdgeUpdated, e)
@@ -343,7 +344,7 @@ func (s *Server) handleUpdateEdge(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRemoveEdge(w http.ResponseWriter, r *http.Request) {
 	e, err := s.store.RemoveEdge(r.PathValue("id"))
 	if err != nil {
-		writeError(w, storeErrorCode(err), err.Error())
+		writeErr(w, storeErrorCode(err), err)
 		return
 	}
 	if s.onEdgeGone != nil {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
 
@@ -66,11 +67,11 @@ func writeErr(w http.ResponseWriter, err error) {
 	code := http.StatusInternalServerError
 	switch {
 	case errors.Is(err, ErrNoTurn):
-		code = http.StatusNotFound
+		code, err = http.StatusNotFound, apierr.With(err, "summary.no_turn")
 	case errors.Is(err, ErrNoEngine):
-		code = http.StatusConflict
+		code, err = http.StatusConflict, apierr.With(err, "summary.no_engine")
 	case errors.Is(err, store.ErrInvalid):
 		code = http.StatusBadRequest
 	}
-	writeJSON(w, code, map[string]string{"error": err.Error()})
+	writeJSON(w, code, apierr.Body(err))
 }

@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -422,6 +423,11 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 func writeError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+// writeErr answers err, with its code for the interface (apierr).
+func writeErr(w http.ResponseWriter, code int, err error) {
+	writeJSON(w, code, apierr.Body(err))
 }
 
 func writeText(w http.ResponseWriter, code int, msg string) {

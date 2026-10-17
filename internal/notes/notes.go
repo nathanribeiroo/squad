@@ -29,6 +29,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -185,9 +186,9 @@ func checkTitle(title string) (string, error) {
 // duplicate is the error for a name another note answers to.
 func duplicate(name string, other store.Node) error {
 	if strings.EqualFold(other.Note.Title, name) {
-		return fmt.Errorf("%w: there is already a note named %q", store.ErrDuplicate, other.Note.Title)
+		return apierr.With(fmt.Errorf("%w: there is already a note named %q", store.ErrDuplicate, other.Note.Title), "notam.name_taken", "name", other.Note.Title)
 	}
-	return fmt.Errorf("%w: %q is taken by the note %q", store.ErrDuplicate, name, other.Note.Title)
+	return apierr.With(fmt.Errorf("%w: %q is taken by the note %q", store.ErrDuplicate, name, other.Note.Title), "notam.name_alias", "name", name, "note", other.Note.Title)
 }
 
 // PrepareNode fills a new note node before it's stored (installed as the

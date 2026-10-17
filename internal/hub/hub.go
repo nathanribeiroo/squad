@@ -20,6 +20,7 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/app"
 	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/events"
@@ -405,7 +406,7 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 	m, err := w.app.Server.Store().UpdateMeta(func(m *store.Meta) error {
 		if p.Name != nil {
 			if strings.TrimSpace(*p.Name) == "" {
-				return invalidf("the name can't be empty")
+				return apierr.With(invalidf("the name can't be empty"), "workspace.name_required")
 			}
 			m.Name = strings.TrimSpace(*p.Name)
 		}
@@ -415,7 +416,7 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 				return err
 			}
 			if hasCopies && !samePath(cwd, m.Cwd) {
-				return invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions before changing its folder")
+				return apierr.With(invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions before changing its folder"), "workspace.has_copies")
 			}
 			m.Cwd = cwd
 		}
@@ -447,10 +448,10 @@ func (h *Hub) Remove(id string) error {
 		return ErrNotFound
 	case len(h.ws) == 1:
 		h.mu.Unlock()
-		return invalidf("the last workspace can't be removed")
+		return apierr.With(invalidf("the last workspace can't be removed"), "workspace.last")
 	case hasRepoCopies(w):
 		h.mu.Unlock()
-		return invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions first")
+		return apierr.With(invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions first"), "workspace.has_copies")
 	}
 	delete(h.ws, id)
 	h.mu.Unlock()
@@ -522,7 +523,7 @@ func (h *Hub) summaryLoop() {
 func checkFolder(dir string) (string, error) {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
-		return "", invalidf("a folder is required")
+		return "", apierr.With(invalidf("a folder is required"), "dir.required")
 	}
 	home, _ := os.UserHomeDir()
 	cwd := server.ResolveCwd(dir, home)
@@ -534,7 +535,7 @@ func checkFolder(dir string) (string, error) {
 		cwd = abs
 	}
 	if fi, err := os.Stat(cwd); err != nil || !fi.IsDir() {
-		return "", invalidf("folder not found: %s", cwd)
+		return "", apierr.With(invalidf("folder not found: %s", cwd), "dir.not_found", "folder", cwd)
 	}
 	return cwd, nil
 }

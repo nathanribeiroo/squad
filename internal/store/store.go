@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/ids"
 )
@@ -399,7 +400,7 @@ func (s *Store) AddNode(n Node) (Node, error) {
 			return Node{}, ErrDuplicate
 		}
 		if n.Terminal != nil && other.Terminal != nil && other.Terminal.Name == n.Terminal.Name {
-			return Node{}, fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name)
+			return Node{}, apierr.With(fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name), "flight.name_taken", "name", n.Terminal.Name)
 		}
 	}
 	if n.Terminal != nil {
@@ -427,7 +428,7 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 		if n.Terminal != nil {
 			for _, other := range s.ws.Nodes {
 				if other.ID != id && other.Terminal != nil && other.Terminal.Name == n.Terminal.Name {
-					return Node{}, fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name)
+					return Node{}, apierr.With(fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name), "flight.name_taken", "name", n.Terminal.Name)
 				}
 			}
 			if err := s.checkCallsignLocked(&n, s.ws.Nodes[i]); err != nil {
