@@ -21,8 +21,8 @@ import (
 
 // Role is one entry of the library. A terminal refers to it by ID.
 type Role struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
 	// Abbr: three letters (PLN, IMP…) that give its terminals their
 	// callsigns; made from the name when not given.
 	Abbr   string `json:"abbr,omitempty"`
