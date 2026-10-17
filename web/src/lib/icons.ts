@@ -42,6 +42,7 @@ export const ICONS = [
   'flight_land',
   'gesture',
   'groups',
+  'history',
   'hourglass_top',
   'image',
   'keyboard',

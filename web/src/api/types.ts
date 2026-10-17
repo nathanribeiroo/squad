@@ -18,6 +18,8 @@ export interface TerminalData {
   rows?: number;
   /** The agent's id for the conversation the terminal continues (Squad keeps it). */
   conversation?: string;
+  /** Nothing was said in it yet: there is nothing to continue. */
+  empty?: boolean;
   /** The agent was in the middle of a turn. */
   busy?: boolean;
 }
@@ -242,4 +244,36 @@ export interface WorkspaceSummary {
   active: number;
   /** Requests waiting for a reply. */
   pending: number;
+  /** The open session (internal/hub sessions.go). */
+  session: Session;
+  /** How many sessions the workspace has. */
+  sessions: number;
+}
+
+/** A session: a whole canvas of a workspace; only the open one runs. */
+export interface Session {
+  id: string;
+  name: string;
+  /** Named by the user (or by the agent); otherwise "Nova sessão · 17/10 14:32". */
+  named?: boolean;
+  createdAt: string;
+  openedAt: string;
+}
+
+/** A session as the sessions panel shows it. */
+export interface SessionSummary extends Session {
+  current: boolean;
+  terminals: number;
+  notes: number;
+  portals: number;
+  floors: number;
+  /** Agent types of its terminals (claude, devin…). */
+  agents: string[];
+}
+
+/** GET /api/workspaces/{id}/sessions, newest first; also the "sessions" event. */
+export interface SessionList {
+  workspace: string;
+  current: string;
+  sessions: SessionSummary[];
 }

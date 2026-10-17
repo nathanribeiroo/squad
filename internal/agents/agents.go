@@ -254,7 +254,11 @@ func (l *Launcher) Prepare(n *store.Node, spec *terminal.Spec) (resumed bool, er
 		spec.Command += tail
 		return false, nil
 	}
-	spec.Command, n.Terminal.Conversation, resumed = l.conversationLine(info.Type, spec.Command, tail, n.Terminal.Conversation, fam)
+	conv := n.Terminal.Conversation
+	if n.Terminal.Empty { // nothing said yet: nothing to continue
+		conv = ""
+	}
+	spec.Command, n.Terminal.Conversation, resumed = l.conversationLine(info.Type, spec.Command, tail, conv, fam)
 	return resumed, nil
 }
 

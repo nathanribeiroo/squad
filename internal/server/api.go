@@ -88,7 +88,7 @@ func (s *Server) AddNode(n store.Node) (store.Node, error) {
 	}
 	if n.Terminal != nil { // a new terminal starts a new conversation
 		t := *n.Terminal
-		t.Conversation, t.Busy = "", false
+		t.Conversation, t.Busy, t.Empty = "", false, false
 		n.Terminal = &t
 	}
 	if n.W == 0 && n.H == 0 {
@@ -169,9 +169,9 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 			*n.Terminal = *p.Terminal
 			// Squad keeps the conversation; another agent or folder can't
 			// continue it (agents keep conversations per folder).
-			n.Terminal.Conversation, n.Terminal.Busy = old.Conversation, old.Busy
+			n.Terminal.Conversation, n.Terminal.Busy, n.Terminal.Empty = old.Conversation, old.Busy, old.Empty
 			if p.Terminal.Agent != old.Agent || p.Terminal.Cwd != old.Cwd {
-				n.Terminal.Conversation, n.Terminal.Busy = "", false
+				n.Terminal.Conversation, n.Terminal.Busy, n.Terminal.Empty = "", false, false
 			}
 		}
 		if p.Note != nil && n.Note != nil {

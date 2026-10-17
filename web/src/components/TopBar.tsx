@@ -7,6 +7,7 @@ import { wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
 import { FloorBar } from './FloorBar';
 import { Icon } from './Icon';
+import { SessionsMenu } from './SessionsMenu';
 import { WorkspaceMenu } from './WorkspaceMenu';
 import './TopBar.css';
 
@@ -33,11 +34,20 @@ export function TopBar() {
   const setDrawer = useSquad((s) => s.setDrawer);
   const [menu, setMenu] = useState(false);
   const [wsMenu, setWsMenu] = useState(false);
+  const [sesMenu, setSesMenu] = useState(false);
   const workspaces = useSquad((s) => s.workspaces);
   const activeWs = useSquad((s) => s.activeWs);
   const index = workspaces.findIndex((w) => w.id === activeWs);
+  // The session list comes first: the workspace list follows a moment later.
+  const session = useSquad(
+    (s) => s.sessionLists[s.activeWs ?? '']?.sessions.find((x) => x.id === s.activeSession) ?? s.workspaces.find((w) => w.id === s.activeWs)?.session,
+  );
   const elsewhere = workspaces.some((w) => w.id !== activeWs && (w.active > 0 || w.pending > 0));
-  useEffect(() => setWsMenu(false), [activeWs]); // switched (⌥1–9 or the list)
+  useEffect(() => {
+    // switched (⌥1–9 or the list)
+    setWsMenu(false);
+    setSesMenu(false);
+  }, [activeWs]);
   const floor = useActiveFloor();
   const branch = useBranch(floor?.id ?? '');
   const cwd = floor?.cwd ?? ws?.cwd ?? '';
@@ -68,6 +78,20 @@ export function TopBar() {
           <Icon name="expand_more" size={18} />
         </button>
         {wsMenu && <WorkspaceMenu onClose={() => setWsMenu(false)} />}
+      </div>
+      <Icon name="chevron_right" size={18} style={{ color: 'var(--text-3)' }} />
+      <div style={{ position: 'relative', minWidth: 0 }}>
+        <button
+          className="tb-session"
+          title={session ? `Sessão: ${session.name}` : 'Sessões'}
+          aria-expanded={sesMenu}
+          onClick={() => setSesMenu(!sesMenu)}
+        >
+          <Icon name="history" size={16} />
+          <span className="tb-session-name">{session?.name ?? '…'}</span>
+          <Icon name="expand_more" size={18} />
+        </button>
+        {sesMenu && <SessionsMenu onClose={() => setSesMenu(false)} />}
       </div>
       <Icon name="chevron_right" size={18} style={{ color: 'var(--text-3)' }} />
       <FloorBar />

@@ -37,10 +37,12 @@ export function App() {
     document.documentElement.dataset.term = term;
   }, [term]);
   // The workspace list picks the workspace on screen; its /ws/events starts
-  // with "hello", the full state, and is reopened when switching.
+  // with "hello", the full state, and is reopened when switching workspace
+  // or session.
   const activeWs = useSquad((s) => s.activeWs);
+  const activeSession = useSquad((s) => s.activeSession);
   useEffect(() => connectWorkspaces(), []);
-  useEffect(() => (activeWs ? connectEvents() : undefined), [activeWs]);
+  useEffect(() => (activeWs ? connectEvents() : undefined), [activeWs, activeSession]);
 
   return (
     <ReactFlowProvider>

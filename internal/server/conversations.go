@@ -7,20 +7,24 @@ import (
 
 // Conversations: a terminal remembers the id of its agent's conversation
 // (store.TerminalData.Conversation) and continues it when it starts again
-// (the launch hook builds the line). Busy marks an agent in the middle of a
-// turn, from its hooks; one that starts again while busy was interrupted
-// (Squad closed or restarted) and shows as such until it works again, the
-// user continues it or dismisses the notice.
+// (the launch hook builds the line), once it has had a turn (Empty until
+// then: an agent can't continue a conversation where nothing was said).
+// Busy marks an agent in the middle of a turn, from its hooks; one that
+// starts again while busy was interrupted (Squad closed or restarted) and
+// shows as such until it works again, the user continues it or dismisses
+// the notice.
 
 // startedConversation records the conversation a terminal is starting in.
 func (s *Server) startedConversation(n store.Node, before store.TerminalData, resumed bool) {
 	conv := n.Terminal.Conversation
 	busy := before.Busy && resumed
-	if conv != before.Conversation || busy != before.Busy {
+	// A new id from Squad (Claude, Gemini) is a new, empty conversation.
+	empty := !resumed && conv != "" && (conv != before.Conversation || before.Empty)
+	if conv != before.Conversation || busy != before.Busy || empty != before.Empty {
 		if m, err := s.store.UpdateNode(n.ID, func(m *store.Node) error {
-			m.Terminal.Conversation, m.Terminal.Busy = conv, busy
+			m.Terminal.Conversation, m.Terminal.Busy, m.Terminal.Empty = conv, busy, empty
 			return nil
-		}); err == nil && conv != before.Conversation {
+		}); err == nil && (conv != before.Conversation || empty != before.Empty) {
 			s.bus.Publish(events.NodeUpdated, m)
 		}
 	}
@@ -52,11 +56,18 @@ func (s *Server) SetConversation(id, conv, source string) {
 	if asked && source != "" && source != "resume" {
 		s.bus.Publish(events.TerminalNotice, map[string]string{"id": id, "name": n.Terminal.Name, "kind": "not-resumed"})
 	}
-	if conv == n.Terminal.Conversation {
+	empty := n.Terminal.Empty
+	switch source {
+	case "startup", "clear": // a new conversation: nothing said yet
+		empty = true
+	case "resume":
+		empty = false
+	}
+	if conv == n.Terminal.Conversation && empty == n.Terminal.Empty {
 		return
 	}
 	if m, err := s.store.UpdateNode(id, func(m *store.Node) error {
-		m.Terminal.Conversation = conv
+		m.Terminal.Conversation, m.Terminal.Empty = conv, empty
 		return nil
 	}); err == nil {
 		s.bus.Publish(events.NodeUpdated, m)
@@ -64,17 +75,23 @@ func (s *Server) SetConversation(id, conv, source string) {
 }
 
 // SetBusy records whether an agent is in the middle of a turn (from its turn
-// start and end hooks). Working again ends an interruption.
+// start and end hooks). Working again ends an interruption; a turn makes the
+// conversation one to continue.
 func (s *Server) SetBusy(id string, busy bool) {
 	n, ok := s.store.Node(id)
 	if !ok || n.Terminal == nil {
 		return
 	}
-	if n.Terminal.Busy != busy {
-		_, _ = s.store.UpdateNode(id, func(m *store.Node) error {
+	if n.Terminal.Busy != busy || (busy && n.Terminal.Empty) {
+		if m, err := s.store.UpdateNode(id, func(m *store.Node) error {
 			m.Terminal.Busy = busy
+			if busy {
+				m.Terminal.Empty = false
+			}
 			return nil
-		})
+		}); err == nil && n.Terminal.Empty && busy {
+			s.bus.Publish(events.NodeUpdated, m) // the resume command applies now
+		}
 	}
 	if busy {
 		s.clearInterrupted(id)

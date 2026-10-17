@@ -97,6 +97,9 @@ type TerminalData struct {
 	// Busy: the agent was in the middle of a turn. A terminal that stops
 	// while busy (Squad closed or restarted) resumes as interrupted.
 	Busy bool `json:"busy,omitempty"`
+	// Empty: the conversation hasn't had a turn yet, so there is nothing to
+	// continue (the agent wouldn't find it): the terminal starts a new one.
+	Empty bool `json:"empty,omitempty"`
 }
 
 // NoteData configures a note node; the content lives in a .md file.

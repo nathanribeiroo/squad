@@ -2,6 +2,62 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, S3: sessões na interface
+
+- **Topo:** a sessão aberta aparece entre o workspace e os andares ("squad › Login novo ▾ › térreo"): workspace, sessão e andar, do maior para o menor. Clicando, abre o painel de sessões.
+- **Painel de sessões:**
+  - cada sessão mostra o nome, a criação, a última abertura, quantos terminais, notas, portais e andares tem, e os agentes; a aberta tem a marca "atual";
+  - uma sessão sem nome ("Nova sessão · 17/10 14:32") aparece em cinza até o agente dar o título;
+  - ações: **Abrir**, **Renomear** (no lugar, Enter salva e Esc desiste), **Remover** e **Nova sessão** (nome opcional e "Começar com os mesmos terminais, sem as conversas", que só aparece quando o térreo tem terminais).
+- **Agentes trabalhando:** a recusa do servidor (409) vira um aviso dentro do painel, com os nomes de quem trabalha e os pedidos em andamento, e os botões **Cancelar** e **Trocar mesmo assim**, que reenvia com `confirm`.
+- **Seletor de workspaces:** passar o mouse num workspace (250 ms) ou clicar na seta com o número de sessões mostra as sessões dele ao lado. Clicar numa delas abre a sessão (com o mesmo aviso, se houver agentes trabalhando) e mostra aquele workspace.
+- **Novo workspace:** campo "Nome da sessão (opcional)".
+- **Como a tela segue a sessão:**
+  - o estado guarda a sessão aberta do workspace na tela;
+  - quando ela muda (evento `sessions` ou a lista de workspaces), o canvas, a atividade e os cartões são limpos e os eventos reconectam;
+  - isso vale também quando a troca vem de outra janela ou da API;
+  - o nome no topo vem primeiro da lista de sessões, que chega na hora; a lista de workspaces chega um instante depois;
+  - o estado do git no seletor de andares é buscado de novo, e o enquadramento do canvas (posição e zoom) fica guardado por sessão.
+- **Decisões tomadas sem consulta:**
+  - **Abrir é um botão**, não um clique na linha: abrir outra sessão para os agentes desta, então não pode ser um clique acidental;
+  - **Remover** pede confirmação do navegador, como remover um workspace;
+  - **"Última abertura"**, não "última atividade": o servidor guarda quando a sessão foi aberta;
+  - **os agentes aparecem como etiquetas de texto** ("claude", "devin"), como no cabeçalho do terminal: o Squad não tem ícones de agente;
+  - **ícone novo:** `history`, na sessão do topo.
+- **Correção encontrada no teste: conversa vazia (servidor).**
+  - **O problema:**
+    - um Claude que nunca recebeu mensagem tem um id de conversa (`--session-id`), mas o Claude só grava a conversa na primeira mensagem;
+    - ao voltar para a sessão, o `--resume` falhava, a linha começava uma nova, e a tela avisava "Não deu para retomar a conversa";
+    - isso acontecia em toda troca de sessão, para cada terminal ainda sem uso.
+  - **A correção:**
+    - o terminal ganha a marca `empty`. Ela é ligada quando uma conversa começa (id novo escolhido pelo Squad, ou o hook de início com `source` `startup` ou `clear`) e desligada no primeiro turno;
+    - com a marca, o terminal começa uma conversa nova direto, sem tentar retomar e sem aviso;
+    - "Copiar comando de retomada" some do menu enquanto a conversa está vazia;
+    - o Codex não precisa dela: o id dele só chega no fim de um turno.
+  - **Terminais de antes da correção:** não têm a marca, então um terminal que nunca foi usado ainda pode mostrar o aviso uma vez. Depois disso, fica marcado.
+  - **Devin:** a marca vem do hook de início com `source: startup`. Sem login, não deu para conferir esse valor; se o Devin usar outro, ele continua como antes (tenta retomar e, se não achar, começa uma nova).
+- **Testado aqui:**
+  - testes do S1 com o agente falso, ajustados:
+    - reiniciar sem nenhum turno começa uma conversa nova (id novo, sem `--resume`, sem aviso);
+    - depois de um turno, retoma;
+    - depois de uma retomada que falhou, a próxima abertura não tenta de novo;
+    - o Devin retoma depois de um turno;
+  - `make check` (com os testes do navegador), `TestRealClaude` e `TestRealDevinConfig`;
+  - **Claude real num `serve` isolado**, com a tela aberta pelo Chromium:
+    - montei três sessões no workspace do Squad (Planejador, Implementador e Revisor Devin com uma nota e fios; uma sem nome com um Claude; "Revisão do hub" com dois Claudes e uma nota);
+    - painel com as três, renomear no lugar e criar com "os mesmos terminais" (Revisor e Testador voltaram, com conversas novas);
+    - mandei o Planejador ler e resumir os arquivos do `internal/hub`. No meio do turno, "Abrir" outra sessão mostrou "Planejador está trabalhando"; **Cancelar** manteve tudo; **Trocar mesmo assim** trocou o canvas e o nome no topo;
+    - voltando para a sessão, apareceu "Planejador foi interrompido", com a conversa de antes na tela;
+    - remover uma sessão pelo painel;
+    - workspace novo "loja" pelo formulário, com a sessão "Checkout", e as sessões do workspace "squad" ao lado dele no seletor. Abrir "Revisão do hub" dali trocou de workspace e de sessão de uma vez;
+    - uma sessão sem nome, com um Claude perguntado sobre login por link mágico, virou "Trocar login por link mágico" no topo;
+    - ida e volta entre uma sessão já usada e uma com terminais sem uso: nenhum aviso, e o nome do topo mudou em menos de 0,1 s.
+- **Observação:** o Devin sem login fica numa tela com contador, que o monitor lê como trabalho. Por isso, aqui, o seletor pediu confirmação por causa do Revisor Devin. Com login, a tela dele fica parada entre os turnos.
+- **Não testado:**
+  - Devin com login: a confirmação com um Devin trabalhando e a conversa vazia;
+  - Codex e Gemini;
+  - Windows e Mac reais: passar o mouse no seletor, renomear no lugar e a confirmação do navegador ao remover.
+
 ## 2026-10-17, S2: sessões no servidor
 
 - **O que é uma sessão:** um canvas inteiro do workspace (terminais, notas, portais, fios, posições, andares, cartões de turno), numa pasta própria em `~/.squad/workspaces/<id>/sessions/<sessão>/`. O `sessions.json` do workspace lista as sessões e diz qual está aberta.

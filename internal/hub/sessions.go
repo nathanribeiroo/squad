@@ -355,7 +355,7 @@ func sameTerminals(ws store.Workspace) ([]store.Node, []store.Edge) {
 			continue
 		}
 		t := *n.Terminal
-		t.Conversation, t.Busy = "", false
+		t.Conversation, t.Busy, t.Empty = "", false, false
 		cp := store.Node{ID: ids.New(), Kind: n.Kind, X: n.X, Y: n.Y, W: n.W, H: n.H, Terminal: &t, CreatedBy: n.CreatedBy}
 		newID[n.ID] = cp.ID
 		nodes = append(nodes, cp)

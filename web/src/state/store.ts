@@ -9,6 +9,7 @@ import type {
   PendingRequest,
   RoleDef,
   ServerEvent,
+  SessionList,
   StateExtra,
   StateResponse,
   SummarySettings,
@@ -102,6 +103,10 @@ interface SquadState {
   rolesPanel: false | string | null;
   /** The workspace on screen. */
   activeWs: string | null;
+  /** Its open session: when another one opens, the canvas is reloaded. */
+  activeSession: string | null;
+  /** Each workspace's sessions, as last read or announced ("sessions" event). */
+  sessionLists: Record<string, SessionList>;
   /** The floor on screen ("" is the ground floor). */
   activeFloor: string;
   /** Git state of the floors (GET /api/floors/status, polled by the selector). */
@@ -146,6 +151,8 @@ interface SquadState {
   termTheme: 'noite' | 'papel';
 
   setWorkspaces(list: WorkspaceSummary[]): void;
+  /** A workspace's sessions (from the "sessions" event, or a request). */
+  setSessions(list: SessionList): void;
   setRoles(list: RoleDef[]): void;
   openRoles(id?: string | null): void;
   closeRoles(): void;
@@ -270,6 +277,8 @@ export const useSquad = create<SquadState>((set, get) => ({
   roles: [],
   rolesPanel: false,
   activeWs: null,
+  activeSession: null,
+  sessionLists: {},
   activeFloor: '',
   floorStatus: null,
   floorDialog: null,
@@ -309,12 +318,22 @@ export const useSquad = create<SquadState>((set, get) => ({
   setWorkspaces: (workspaces) => {
     set({ workspaces });
     const st = get();
-    if (workspaces.length === 0 || workspaces.some((w) => w.id === st.activeWs)) return;
+    if (workspaces.length === 0) return;
+    const cur = workspaces.find((w) => w.id === st.activeWs);
+    if (cur) {
+      followSession(cur.id, cur.session?.id);
+      return;
+    }
     // First list, or the workspace on screen was removed: the one in the
     // URL, then the last one used here, then the first.
     const want = [new URLSearchParams(location.search).get('ws'), stored(WS_KEY, '')];
     const pick = want.find((id) => id && workspaces.some((w) => w.id === id)) ?? workspaces[0].id;
     st.switchWorkspace(pick);
+  },
+
+  setSessions: (list) => {
+    set({ sessionLists: { ...get().sessionLists, [list.workspace]: list } });
+    followSession(list.workspace, list.current);
   },
 
   switchWorkspace: (id) => {
@@ -328,7 +347,10 @@ export const useSquad = create<SquadState>((set, get) => ({
     url.searchParams.set('ws', id);
     history.replaceState(null, '', url);
     floorToURL(activeFloor);
-    set({ ...perWorkspace, activeWs: id, activeFloor });
+    // A session just opened there is in its session list before the workspace list.
+    const st = get();
+    const activeSession = st.sessionLists[id]?.current || st.workspaces.find((w) => w.id === id)?.session?.id || null;
+    set({ ...perWorkspace, activeWs: id, activeSession, activeFloor });
   },
 
   setFloor: (id, focus) => {
@@ -593,6 +615,21 @@ export const useSquad = create<SquadState>((set, get) => ({
     set({ workspace: { ...ws, nodes: ws.nodes.map((n) => (n.id === id ? { ...n, x, y } : n)) } });
   },
 }));
+
+/** Follows the open session of the workspace on screen: when another one
+ * opens (from here or from another window), its canvas replaces the old one
+ * and the events reconnect (App). */
+function followSession(ws: string, sid: string | undefined) {
+  const st = useSquad.getState();
+  if (ws !== st.activeWs || !sid || sid === st.activeSession) return;
+  if (st.activeSession === null) {
+    useSquad.setState({ activeSession: sid });
+    return;
+  }
+  persist(floorKey(ws), '');
+  floorToURL('');
+  useSquad.setState({ ...perWorkspace, activeSession: sid, activeFloor: '' });
+}
 
 const NO_NODES: WNode[] = [];
 
