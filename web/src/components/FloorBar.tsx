@@ -24,6 +24,7 @@ const POLL_MS = 10_000;
  */
 function useFloorStatus() {
   const activeWs = useSquad((s) => s.activeWs);
+  const activeSession = useSquad((s) => s.activeSession);
   const floors = useSquad((s) => s.workspace?.floors);
   const working = useSquad((s) => Object.values(s.runtime).filter((r) => r.activity === 'work').length);
   const refresh = useRef<() => void>(() => {});
@@ -61,7 +62,7 @@ function useFloorStatus() {
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [activeWs]);
+  }, [activeWs, activeSession]);
 
   useEffect(() => refresh.current(), [floors]);
   useEffect(() => {

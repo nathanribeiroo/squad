@@ -32,13 +32,16 @@ import './nodes/nodes.css';
 const nodeTypes = { terminal: TerminalNode, note: NoteNode, portal: PortalNode };
 const edgeTypes = { wire: WireEdge };
 
-// Each workspace, and each of its floors, keeps its own pan and zoom.
-const viewportKey = (ws: string | null, floor: string) => `squad.viewport.${ws ?? ''}${floor ? `.${floor}` : ''}`;
+// Each session of a workspace (a canvas of its own), and each of its floors,
+// keeps its own pan and zoom; before sessions, the workspace kept it.
+const viewportKey = (ws: string | null, session: string | null, floor: string) =>
+  `squad.viewport.${ws ?? ''}${session ? `.s.${session}` : ''}${floor ? `.${floor}` : ''}`;
 
-function savedViewport(ws: string | null, floor: string): Viewport {
+function savedViewport(ws: string | null, session: string | null, floor: string): Viewport {
   try {
     const legacy = floor ? null : localStorage.getItem('squad.viewport');
-    const v = JSON.parse(localStorage.getItem(viewportKey(ws, floor)) ?? legacy ?? '') as Viewport;
+    const saved = localStorage.getItem(viewportKey(ws, session, floor)) ?? localStorage.getItem(viewportKey(ws, null, floor));
+    const v = JSON.parse(saved ?? legacy ?? '') as Viewport;
     if (Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.zoom)) return v;
   } catch {
     /* default below */
@@ -69,8 +72,9 @@ export function Canvas() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const activeWs = useSquad((s) => s.activeWs);
+  const session = useSquad((s) => s.activeSession);
   const floor = useSquad((s) => s.activeFloor);
-  const defaultViewport = useMemo(() => savedViewport(activeWs, floor), [activeWs, floor]);
+  const defaultViewport = useMemo(() => savedViewport(activeWs, session, floor), [activeWs, session, floor]);
 
   // The server is the source of truth; local state only adds React Flow's
   // own fields (selection, measured size, drag). The canvas shows the floor
@@ -152,21 +156,21 @@ export function Canvas() {
     settle.current = window.setTimeout(() => useSquad.getState().setZoom(v.zoom, true), 120);
     try {
       const st = useSquad.getState();
-      localStorage.setItem(viewportKey(st.activeWs, st.activeFloor), JSON.stringify(v));
+      localStorage.setItem(viewportKey(st.activeWs, st.activeSession, st.activeFloor), JSON.stringify(v));
     } catch {
       /* storage may be unavailable */
     }
   }, []);
 
   const rf = useReactFlow();
-  // Another workspace or floor on screen: back to where its canvas was left
-  // (defaultViewport only applies on the first render).
-  const shown = useRef(`${activeWs}/${floor}`);
+  // Another workspace, session or floor on screen: back to where its canvas
+  // was left (defaultViewport only applies on the first render).
+  const shown = useRef(`${activeWs}/${session}/${floor}`);
   useEffect(() => {
-    if (shown.current === `${activeWs}/${floor}`) return;
-    shown.current = `${activeWs}/${floor}`;
+    if (shown.current === `${activeWs}/${session}/${floor}`) return;
+    shown.current = `${activeWs}/${session}/${floor}`;
     void rf.setViewport(defaultViewport);
-  }, [activeWs, floor, defaultViewport, rf]);
+  }, [activeWs, session, floor, defaultViewport, rf]);
   // A wire's tag on another floor asked to show this node: center it once
   // it is on the canvas.
   const focusRequest = useSquad((s) => s.focusRequest);

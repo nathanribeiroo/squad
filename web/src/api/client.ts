@@ -11,6 +11,7 @@ import type {
   TurnCard,
   WorkspaceOverview,
   RoleDef,
+  SessionList,
   ShellOption,
   StateResponse,
   WEdge,
@@ -111,10 +112,23 @@ export const api = {
 /** The workspace list (not tied to the workspace on screen). */
 export const hub = {
   list: () => req<WorkspaceSummary[]>('GET', '/api/workspaces'),
-  create: (b: { name?: string; cwd: string; color?: string }) => req<WorkspaceSummary>('POST', '/api/workspaces', b),
+  /** session names the workspace's first session. */
+  create: (b: { name?: string; cwd: string; color?: string; session?: string }) => req<WorkspaceSummary>('POST', '/api/workspaces', b),
   update: (id: string, p: { name?: string; cwd?: string; color?: string }) =>
     req<WorkspaceSummary>('PATCH', `/api/workspaces/${encodeURIComponent(id)}`, p),
   remove: (id: string) => req<void>('DELETE', `/api/workspaces/${encodeURIComponent(id)}`),
+  sessions: (ws: string) => req<SessionList>('GET', `/api/workspaces/${encodeURIComponent(ws)}/sessions`),
+  /** Leaves the open session for a new one. Refused with 409 ("working",
+   * "pending") while agents work, unless confirm. */
+  newSession: (ws: string, b: { name?: string; keepTerminals?: boolean; confirm?: boolean }) =>
+    req<SessionList>('POST', `/api/workspaces/${encodeURIComponent(ws)}/sessions`, b),
+  /** Leaves the open session for session id (409 like newSession). */
+  openSession: (ws: string, id: string, confirm?: boolean) =>
+    req<SessionList>('POST', `/api/workspaces/${encodeURIComponent(ws)}/sessions/${encodeURIComponent(id)}/open`, { confirm: !!confirm }),
+  renameSession: (ws: string, id: string, name: string) =>
+    req<SessionList>('PATCH', `/api/workspaces/${encodeURIComponent(ws)}/sessions/${encodeURIComponent(id)}`, { name }),
+  removeSession: (ws: string, id: string) =>
+    req<SessionList>('DELETE', `/api/workspaces/${encodeURIComponent(ws)}/sessions/${encodeURIComponent(id)}`),
   /** Folder suggestions from the home folder (for a new workspace). */
   dirs: (path: string) => req<{ suggestions: string[] }>('GET', `/api/dirs?path=${encodeURIComponent(path)}`),
   createRole: (r: Omit<RoleDef, 'id'>) => req<RoleDef>('POST', '/api/roles', r),

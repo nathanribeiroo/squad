@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { hub } from '../api/client';
-import type { WorkspaceSummary } from '../api/types';
+import type { SessionSummary, WorkspaceSummary } from '../api/types';
 import { shortPath, trimDir } from '../lib/paths';
+import { ago, contents } from '../lib/sessions';
+import { useNow } from '../lib/useNow';
 import { WS_COLORS, wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
 import { DirInput } from './DirInput';
 import { Icon } from './Icon';
+import { BusyConfirm, useLeave } from './SessionsMenu';
+import './SessionsMenu.css';
 import './WorkspaceMenu.css';
 
 function plural(n: number, one: string, many: string): string {
@@ -29,7 +33,18 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
   const active = useSquad((s) => s.activeWs);
   const switchTo = useSquad((s) => s.switchWorkspace);
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
+  // The workspace whose sessions show beside the list (hover or the arrow).
+  const [peek, setPeek] = useState<{ id: string; top: number } | null>(null);
+  const timer = useRef<number | undefined>(undefined);
   const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const peekAt = (id: string, row: HTMLElement, delay: number) => {
+    window.clearTimeout(timer.current);
+    const top = row.getBoundingClientRect().top - (ref.current?.getBoundingClientRect().top ?? 0);
+    if (delay) timer.current = window.setTimeout(() => setPeek({ id, top }), delay);
+    else setPeek({ id, top });
+  };
+  const peeked = mode.kind === 'list' && peek ? list.find((w) => w.id === peek.id) : undefined;
 
   useEffect(() => {
     const away = (e: PointerEvent) => {
@@ -52,7 +67,14 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
           <div className="ws-menu-title">Workspaces</div>
           <div className="ws-list" role="listbox">
             {list.map((w, i) => (
-              <div key={w.id} className={`ws-row${w.id === active ? ' on' : ''}`} role="option" aria-selected={w.id === active}>
+              <div
+                key={w.id}
+                className={`ws-row${w.id === active ? ' on' : ''}${w.id === peeked?.id ? ' peek' : ''}`}
+                role="option"
+                aria-selected={w.id === active}
+                onMouseEnter={(e) => peekAt(w.id, e.currentTarget, 250)}
+                onMouseLeave={() => window.clearTimeout(timer.current)}
+              >
                 <button
                   className="ws-row-main"
                   onClick={() => {
@@ -75,14 +97,25 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
                 <button className="icon-btn ws-row-edit" onClick={() => setMode({ kind: 'edit', ws: w })} aria-label={`Editar ${w.name}`} title="Editar">
                   <Icon name="edit" size={16} />
                 </button>
+                <button
+                  className="icon-btn ws-row-sessions"
+                  onClick={(e) => peekAt(w.id, e.currentTarget.parentElement!, 0)}
+                  aria-label={`Sessões de ${w.name}`}
+                  aria-expanded={w.id === peeked?.id}
+                  title={w.sessions === 1 ? '1 sessão' : `${w.sessions} sessões`}
+                >
+                  {w.sessions > 1 && <span className="mono">{w.sessions}</span>}
+                  <Icon name="chevron_right" size={16} />
+                </button>
               </div>
             ))}
           </div>
           <span className="ws-menu-div" />
-          <button className="ws-new" onClick={() => setMode({ kind: 'new' })}>
+          <button className="ws-new" onClick={() => setMode({ kind: 'new' })} onMouseEnter={() => window.clearTimeout(timer.current)}>
             <Icon name="add" size={18} />
             Novo workspace
           </button>
+          {peeked && <SessionsPeek key={peeked.id} ws={peeked} top={peek!.top} onDone={onClose} />}
         </>
       ) : (
         <WorkspaceForm
@@ -96,11 +129,63 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** A workspace's sessions, beside its row: opening one there opens it and
+ * shows that workspace. */
+function SessionsPeek({ ws, top, onDone }: { ws: WorkspaceSummary; top: number; onDone: () => void }) {
+  const list = useSquad((s) => s.sessionLists[ws.id]);
+  const switchTo = useSquad((s) => s.switchWorkspace);
+  const [error, setError] = useState('');
+  const leave = useLeave();
+  const now = useNow(30_000);
+
+  useEffect(() => {
+    hub.sessions(ws.id).then(useSquad.getState().setSessions, (err: Error) => setError(err.message));
+  }, [ws.id]);
+
+  const pick = (s: SessionSummary) => {
+    if (s.current) {
+      switchTo(ws.id);
+      onDone();
+      return;
+    }
+    leave.run(s.id, async (confirm) => {
+      useSquad.getState().setSessions(await hub.openSession(ws.id, s.id, confirm));
+      switchTo(ws.id);
+      onDone();
+    });
+  };
+
+  return (
+    <div className="popover ses-peek" style={{ top }} role="listbox" aria-label={`Sessões de ${ws.name}`}>
+      <div className="ws-menu-title">Sessões de {ws.name}</div>
+      <div className="ses-list">
+        {list?.sessions.map((s) => (
+          <div key={s.id}>
+            <button className={`ses-peek-row${s.current ? ' on' : ''}`} role="option" aria-selected={s.current} disabled={leave.running} onClick={() => pick(s)}>
+              <span className="ses-row-head">
+                <span className={`ses-row-name${s.named ? '' : ' provisional'}`}>{s.name}</span>
+                {s.current && <span className="ses-badge">atual</span>}
+              </span>
+              <span className="ses-row-sub">
+                {s.current ? 'aberta agora' : ago(s.openedAt, now)} · {contents(s)}
+              </span>
+            </button>
+            {leave.busy?.target === s.id && <BusyConfirm why={leave.busy.why} onConfirm={leave.busy.confirm} onCancel={leave.cancel} />}
+          </div>
+        ))}
+        {!list && !error && <div className="ses-empty">Carregando…</div>}
+      </div>
+      {(error || leave.error) && <div className="ws-error ses-error">{error || leave.error}</div>}
+    </div>
+  );
+}
+
 function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; last: boolean; onBack: () => void; onDone: () => void }) {
   const switchTo = useSquad((s) => s.switchWorkspace);
   const [name, setName] = useState(ws?.name ?? '');
   const [cwd, setCwd] = useState(ws?.cwd ?? '');
   const [color, setColor] = useState(ws?.color ?? '');
+  const [session, setSession] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const moved = !!ws && trimDir(cwd) !== ws.cwd;
@@ -123,7 +208,7 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
       if (ws) {
         await hub.update(ws.id, { name: name.trim() || ws.name, cwd: trimDir(cwd), ...(color ? { color } : {}) });
       } else {
-        const created = await hub.create({ name: name.trim(), cwd: trimDir(cwd), ...(color ? { color } : {}) });
+        const created = await hub.create({ name: name.trim(), cwd: trimDir(cwd), session: session.trim(), ...(color ? { color } : {}) });
         switchTo(created.id);
       }
       onDone();
@@ -161,6 +246,12 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
         Nome {!ws && '(opcional)'}
         <input value={name} placeholder={ws?.name ?? (cwd ? trimDir(cwd).split(/[\\/]/).pop() : 'nome da pasta')} onChange={(e) => setName(e.target.value)} />
       </label>
+      {!ws && (
+        <label className="field">
+          Nome da sessão (opcional)
+          <input value={session} maxLength={60} placeholder="sem nome, o agente sugere um" onChange={(e) => setSession(e.target.value)} />
+        </label>
+      )}
       <div className="field">
         Cor
         <div className="ws-colors" role="radiogroup" aria-label="Cor">

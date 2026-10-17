@@ -171,7 +171,7 @@ function TermBody({ id, children }: { id: string; children: React.ReactNode }) {
 
 /** The command that opens a terminal's conversation outside Squad, in its folder. */
 function resumeLine(t: TerminalData): string {
-  if (!t.conversation) return '';
+  if (!t.conversation || t.empty) return '';
   return t.agent === 'codex' ? `codex resume ${t.conversation}` : `${t.agent} --resume ${t.conversation}`;
 }
 
