@@ -2,6 +2,16 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre: fim da rodada (F0–F5d)
+
+- **Como andou:** cada fase numa branch a partir da `feat/torre` e mesclada nela quando ficou pronta (F0a, F0b, F1, F2, F3, F4a, F4b, F4c, F5a, F5b, F5c, F5d), sem esperar aprovação, como você pediu. Um PR leva a `feat/torre` para a `main`.
+- **Testado no fim, na `feat/torre`:** `make check` com o navegador, `TestRealClaude` e `TestRealClaudePermission` (o Claude Code real: pergunta, hook, resposta pela interface) e `TestRealDevinConfig` (o Devin real lê a configuração com o hook `PermissionRequest` e o MCP `torre`).
+- **Precisa de você:**
+  - **Windows (Git Bash):** `torre install-skill` (instala o `torre` e troca a skill `squad`), a migração de `~/.squad` para `~/.torre` na primeira subida, um Claude pedindo permissão (o cartão PRIORIDADE e AUTORIZAR pela Torre), `⌥F`/`⌥⇧←` com o Alt do Windows, e um plano de voo decolando;
+  - **Mac:** o `Torre.app` no Dock e o mesmo roteiro;
+  - **Devin com login:** a PRIORIDADE no Devin (ele entra no estado pelo hook, mas a Torre ainda não responde por ele; veja o PLAN).
+- **O que ficou para depois** está no PLAN, seção Torre, "Para depois", cada item com a referência no handoff.
+
 ## 2026-10-17, Torre F5d: planos de voo
 
 - **Pacote `internal/plans`:** um plano é um JSON em `~/.torre/plans/<id>.json` com voos (agente, nome, indicativo, papel, líder, comando próprio, pasta relativa, posição e tamanho), NOTAMs (nome e, se a pessoa quiser, o conteúdo), portais (nome e endereço), frequências (pares de chaves) e níveis (nome e branch). As posições partem do canto do plano, em cada nível. `Check` valida tudo, inclusive o arquivo importado (agentes conhecidos, chaves únicas, fios para itens do plano, até 60 itens e 8 níveis, 4 MB).

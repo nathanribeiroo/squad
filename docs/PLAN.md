@@ -234,6 +234,8 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **F5c:** @ELEMENTOS no portal.
 - **F5d:** planos de voo (salvar, importar, aplicar com revisão dos comandos).
 
+**Status:** todas as fases concluídas e mescladas na `feat/torre` em 2026-10-17; o PR `feat/torre` → `main` espera o seu merge. O que ficou de fora está logo abaixo.
+
 **Para depois (fora destas fases), com a referência no handoff:**
 
 - **Pilha de NOTAMs** (`docs/torre/NOVIDADES-E-BACKEND.md`, "Depois"; quadro 09 em `TELAS.md`): `stack` nas notas. A frequência ligada à pilha valeria para todas, o que mexe na regra de permissão; precisa de desenho próprio.

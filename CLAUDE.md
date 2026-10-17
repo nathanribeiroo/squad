@@ -64,8 +64,10 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | Onde | O quê |
 |---|---|
 | `cmd/torre`, `internal/cli` | CLI: `serve` (e a janela de app, `window.go`), comandos de terminal (`list`, `ask`, `note`, `portal`, `new`…), `hook`, `mcp`, `install-skill`. `cmd/squad` é o mesmo comando com o nome antigo |
-| `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/ws/workspaces`, roteamento de `/cli` e `/hooks`; as sessões de cada workspace, a migração e a troca (`sessions.go`) |
-| `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe |
+| `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/api/agents`, `/api/plans`, `/ws/workspaces`, roteamento de `/cli` e `/hooks`; as sessões de cada workspace, a migração e a troca (`sessions.go`); a primeira abertura (`welcome.go`) |
+| `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe; limites (`limits.go`), salvar e decolar planos de voo (`plans.go`) |
+| `internal/plans` | planos de voo em `~/.torre/plans`: validar, salvar, importar |
+| `internal/attention`, `internal/apierr` | PRIORIDADE: ler o prompt na tela e as teclas de cada resposta; erros da API com `code` (traduzidos em `web/src/api/errors.ts`) |
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |
 | `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot` |
 | `internal/agentbus` | `torre list/ask/check/wait/reply`, limites, pausa, modo `Safe` |
@@ -80,10 +82,11 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 ## Segurança (já decidido)
 
 - **CLI:** os comandos `torre` pedem aprovação no Claude Code. Não libere `Bash(torre *)` (nem `Bash(squad *)`): `torre new --agent shell --command …` rodaria qualquer coisa.
-- **MCP:** as ferramentas de `agents.SafeMCPTools` vêm liberadas. Nas chamadas delas, o servidor recusa tudo o que rodaria um comando. `keys`, `new_shell` e `portal_eval` pedem aprovação.
+- **MCP:** as ferramentas de `agents.SafeMCPTools` vêm liberadas. Nas chamadas delas, o servidor recusa tudo o que rodaria um comando. `keys`, `new_shell`, `portal_eval` e `floor_land` pedem aprovação.
+- **Só da interface** (nunca pelo `/cli` nem pelo MCP): responder a PRIORIDADE (e o hook `PermissionRequest` nunca devolve uma decisão), os limites, o comando padrão dos agentes, cancelar pedidos, salvar e decolar planos de voo. Decolar um plano exige a lista dos comandos próprios que a interface mostrou.
 - **Shells:** nunca digite texto num shell automaticamente. Por isso shells e comandos próprios não recebem as instruções do papel.
 
 ## Pendências
 
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo:** as sessões (S1–S4, no PLAN) terminam no S4. O que vem depois é decisão do usuário (veja "Fora da rodada" no PLAN).
+- **Próximo passo:** a Torre (F0–F5d, no PLAN) terminou. O que ficou de fora está em "Para depois", na seção Torre do PLAN; o que vem agora é decisão do usuário.
