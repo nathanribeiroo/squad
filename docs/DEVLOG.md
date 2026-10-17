@@ -2,6 +2,18 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F4b: Sinóptico
+
+- **Vista nova** (quadro 01), trocada por `⌥S` ou por ESPAÇO · SINÓPTICO na barra. A escolha fica no navegador. Tudo vem do estado que o canvas já tem; não há rota nova.
+- **Radar:** um anel por nível (a pista no centro), as posições reais do canvas escaladas dentro do anel do nível, a varredura girando em 6 s, os símbolos por estado, as linhas de pedido aberto e de resposta recente, os contadores e a legenda. Clique seleciona; duplo clique abre o voo no Espaço, centrado.
+- **Coluna do meio:** as fichas em papel (pede você › aguarda › no ar › em solo › hangar; o que o voo faz vem da pergunta, de quem ele aguarda, do título da tela ou da última mensagem do boletim), a fila de pouso (níveis com commits, com as checagens e "Autorizar pouso…") e as frequências.
+- **Coluna da direita:** o cartão PRIORIDADE (com "1 de N", a pergunta e as respostas; as teclas 1, 2 e 3 respondem a ele) e o terminal do voo selecionado, ao vivo, com o alfinete.
+- **Rodapé:** o Rádio passando (40 s por volta; parado com movimento reduzido) e o Transmitir.
+- **Decisão sem consulta:** no Sinóptico, as teclas do canvas (T, N, P…) não fazem nada; ele não tem canvas.
+- **Fila de pouso:** só o que existe (commits, alterações sem commit, voos no ar); "✓ testes · ✓ revisão" do mockup ficam no PLAN, e o conflito previsto vem na F5a.
+- **Testado aqui:** `tsc`, build e capturas com o Claude real pedindo permissão. A tecla 1 no Sinóptico autorizou e o comando rodou.
+- **Não testado:** um workspace com vários níveis e muitos voos (o radar foi visto com a pista e três voos).
+
 ## 2026-10-17, Torre F4a: Configurações
 
 - **Painel de 1200×780** no lugar do menu ⚙, com abas: Aparência, Agentes, Limites, Resumos, Papéis…, Atalhos e Avisos. Fecha com Esc e clique fora.
