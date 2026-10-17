@@ -7,6 +7,7 @@ export const STATE_META: Record<UIState, { label: string; icon: IconName }> = {
   idle: { label: 'Pátio', icon: 'radio_button_unchecked' },
   work: { label: 'No ar', icon: 'flight' },
   wait: { label: 'Aguarda', icon: 'hourglass_top' },
+  ask: { label: 'Pede você', icon: 'front_hand' },
   done: { label: 'Em solo', icon: 'flight_land' },
   err: { label: 'Pane', icon: 'error' },
   off: { label: 'Hangar', icon: 'bedtime' },

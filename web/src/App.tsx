@@ -14,10 +14,12 @@ import { FloorDialogs } from './components/FloorDialogs';
 import { FloorEmpty } from './components/FloorEmpty';
 import { InterruptedBar } from './components/InterruptedBar';
 import { NoLink } from './components/NoLink';
+import { PriorityBanner } from './components/PriorityBanner';
 import { RolesPanel } from './components/RolesPanel';
 import { SummaryDialogs } from './components/SummaryDialogs';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
+import { goToNextAsk, respond } from './lib/attention';
 import { Toast, toast } from './lib/toast';
 import { useSquad } from './state/store';
 import './App.css';
@@ -31,11 +33,14 @@ export function App() {
     // top bar's color.
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f6f2e4' : '#07100b');
   }, [theme]);
-  // The window's name in the taskbar or the Dock: the workspace first.
+  // The window's name in the taskbar or the Dock: the workspace first, after
+  // how many flights ask you, here and in the other workspaces.
   const wsName = useSquad((s) => s.workspace?.name);
+  const asks = useSquad((s) => s.askingIds.length + s.workspaces.reduce((n, w) => n + (w.id !== s.activeWs ? (w.attention ?? 0) : 0), 0));
   useEffect(() => {
-    document.title = wsName ? `${wsName} · Torre` : 'Torre';
-  }, [wsName]);
+    const name = wsName ? `${wsName} · Torre` : 'Torre';
+    document.title = asks > 0 ? `(${asks}) ${name}` : name;
+  }, [wsName, asks]);
   useEffect(() => {
     document.documentElement.dataset.term = term;
   }, [term]);
@@ -91,6 +96,8 @@ function Stage() {
           ...Object.fromEntries(
             st.workspaces.slice(0, 9).map((w, i) => [`Digit${i + 1}`, () => st.switchWorkspace(w.id)]),
           ),
+          // The next flight asking you: its level, centered, with the keyboard.
+          Enter: () => void goToNextAsk(),
           KeyK: () => {
             const isTerm = (id: string | null) => !!id && !!st.workspace?.nodes.find((n) => n.id === id && n.terminal);
             st.setComposer(!st.composerOpen, [st.focusedTerminal, st.selectedNode, st.composerTarget].find(isTerm) ?? null);
@@ -111,7 +118,13 @@ function Stage() {
       }
       // Plain letters only act on the canvas, never while typing (or in a dialog).
       if (e.metaKey || e.ctrlKey || typing(e.target) || st.rolesPanel !== false || document.querySelector('[aria-modal="true"]')) return;
+      // 1, 2, 3 answer the selected flight that asks you (RESPONDER).
+      const ask = st.selectedNode && st.askingIds.includes(st.selectedNode) ? st.runtime[st.selectedNode]?.attention : undefined;
+      const answer = (choice: 'allow' | 'always' | 'deny') => () => {
+        if (ask?.choices?.includes(choice)) respond(st.selectedNode!, choice);
+      };
       const plain: Record<string, () => void> = {
+        ...(ask ? { Digit1: answer('allow'), Digit2: answer('always'), Digit3: answer('deny') } : {}),
         KeyV: () => st.setTool('select'),
         KeyH: () => st.setTool('pan'),
         KeyT: () => st.setNewTerm(!st.newTermOpen),
@@ -134,6 +147,7 @@ function Stage() {
       <FloorEmpty />
       <AirspaceEmpty onNote={() => create('note')} />
       <InterruptedBar />
+      <PriorityBanner />
       <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
       <ComposerPill />
       <Composer />

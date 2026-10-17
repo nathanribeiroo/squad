@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/terminal"
 )
 
@@ -21,6 +22,7 @@ const (
 	Idle State = "idle"
 	Work State = "work" // agent is producing output
 	Wait State = "wait" // waiting for a reply to its own request
+	Ask  State = "ask"  // waiting for the user: a permission prompt or a question (PRIORIDADE)
 	Done State = "done" // finished a turn, nothing new since
 	Err  State = "err"  // exited with an error
 	Off  State = "off"  // stopped / not running
@@ -35,6 +37,7 @@ type Options struct {
 	BootGrace    time.Duration // max time shown as Boot without output (30 s)
 	DoneFor      time.Duration // how long Done lasts without new input (10 min)
 	HookTimeout  time.Duration // silence that ends a hook-started turn without its end hook (60 s)
+	PromptAfter  time.Duration // a prompt read on a still screen for this long is an ask (1.5 s)
 }
 
 func (o *Options) defaults() {
@@ -59,6 +62,9 @@ func (o *Options) defaults() {
 	if o.HookTimeout == 0 {
 		o.HookTimeout = 60 * time.Second
 	}
+	if o.PromptAfter == 0 {
+		o.PromptAfter = 1500 * time.Millisecond
+	}
 }
 
 // TurnEnd describes the end of a turn.
@@ -77,6 +83,9 @@ type Monitor struct {
 	terms     *terminal.Manager
 	isWaiting func(id string) bool
 	onState   func(id string, s State, since time.Time)
+	// agentOf gives a terminal's agent ("claude"…), false for shells and
+	// own commands, whose screens are never read for prompts.
+	agentOf func(id string) (string, bool)
 
 	mu sync.Mutex
 	st map[string]*track
@@ -106,6 +115,11 @@ type track struct {
 	since          time.Time
 	waiters        map[int]func(TurnEnd)
 	nextWaiter     int
+	// The user is asked something (Ask): from a hook or read on screen.
+	attn       *attention.Attention
+	attnSeen   bool // its prompt showed on screen
+	attnMissed int  // samples since the prompt left the screen
+	attnQuiet  bool // the screen went still after it was raised
 }
 
 // New creates a monitor. isWaiting reports whether a terminal has an
@@ -122,6 +136,10 @@ func New(terms *terminal.Manager, opts Options, isWaiting func(string) bool, onS
 	return &Monitor{opts: opts, terms: terms, isWaiting: isWaiting, onState: onState,
 		st: map[string]*track{}, quit: make(chan struct{})}
 }
+
+// SetAgentOf installs the lookup of a terminal's agent (before Start): only
+// agents' screens are read for prompts.
+func (m *Monitor) SetAgentOf(fn func(id string) (string, bool)) { m.agentOf = fn }
 
 // Start begins sampling.
 func (m *Monitor) Start() {
@@ -187,10 +205,18 @@ func (m *Monitor) Poll() {
 		bytes, _ := t.Output()
 		scr := t.Screen()
 		var hash uint64
-		var title string
+		var title, snap string
 		if scr != nil {
 			hash = scr.Hash()
 			title = scr.Title()
+		}
+		agent, isAgent := "", false
+		if m.agentOf != nil {
+			agent, isAgent = m.agentOf(id)
+		}
+		st, code := t.State()
+		if isAgent && scr != nil && st == terminal.StatusRunning {
+			snap = scr.Snapshot()
 		}
 		waiting := m.isWaiting(id)
 
@@ -222,22 +248,31 @@ func (m *Monitor) Poll() {
 		} else if tr.working && (hashChanged || titleSpin) {
 			tr.lastMeaningful = now
 		}
+		attnChanged := false
+		if isAgent && st == terminal.StatusRunning {
+			attnChanged = m.watchPrompt(tr, agent, snap, now)
+		} else if tr.attn != nil {
+			m.clearAttention(tr, now)
+			attnChanged = true
+		}
 		idleLimit := m.opts.IdleAfter
 		if tr.hookTurn {
 			idleLimit = m.opts.HookTimeout
 		}
-		if tr.working && now.Sub(tr.lastMeaningful) > idleLimit {
+		// A turn waiting for the user doesn't end for being quiet.
+		if tr.working && tr.attn == nil && now.Sub(tr.lastMeaningful) > idleLimit {
 			tr.working, tr.hookTurn = false, false
 			tr.turnEndedAt = now
 			te := TurnEnd{ID: id, Reason: "idle", At: now, Start: tr.turnStart, Prompt: tr.prompt}
 			fires = append(fires, fire{fns: append(m.takeWaiters(tr), m.listeners...), te: te})
 		}
 
-		st, code := t.State()
 		next := m.uiState(tr, st, code, waiting, now)
 		if next != tr.state {
 			tr.state, tr.since = next, now
 			changes = append(changes, change{id, next, now})
+		} else if attnChanged {
+			changes = append(changes, change{id, next, tr.since})
 		}
 		m.mu.Unlock()
 	}
@@ -272,6 +307,8 @@ func (m *Monitor) uiState(tr *track, st terminal.Status, code int, waiting bool,
 		return Off
 	}
 	switch {
+	case tr.attn != nil:
+		return Ask
 	case waiting:
 		return Wait
 	case tr.working:
@@ -338,6 +375,7 @@ func (m *Monitor) SignalStart(id, prompt string) {
 	tr := m.get(id)
 	tr.turnStart, tr.prompt = now, prompt
 	tr.working, tr.hookTurn, tr.open = true, true, true
+	tr.attn, tr.attnSeen, tr.attnMissed, tr.attnQuiet = nil, false, 0, false
 	tr.streak = m.opts.ActiveStreak
 	tr.lastMeaningful = now
 	tr.turnEndedAt = time.Time{}
@@ -353,6 +391,7 @@ func (m *Monitor) Signal(te TurnEnd) {
 	m.mu.Lock()
 	tr := m.get(te.ID)
 	tr.working, tr.hookTurn, tr.open, tr.streak = false, false, false, 0
+	tr.attn, tr.attnSeen, tr.attnMissed, tr.attnQuiet = nil, false, 0, false
 	tr.turnEndedAt = te.At
 	if te.Start.IsZero() {
 		te.Start = tr.turnStart
@@ -439,4 +478,102 @@ func (m *Monitor) Refresh() {
 	for _, c := range changes {
 		m.onState(c.id, c.state, c.since)
 	}
+}
+
+// watchPrompt follows the prompt on an agent's screen (called with m.mu
+// held): a prompt on a still screen raises an ask, its answer (the prompt
+// leaving the screen) clears it. It reports whether the attention changed.
+func (m *Monitor) watchPrompt(tr *track, agent, snap string, now time.Time) bool {
+	p, found := attention.Parse(snap)
+	a := tr.attn
+	switch {
+	case a != nil && found:
+		changed := a.Prompt == nil || !a.Prompt.Same(p)
+		a.Prompt, tr.attnSeen, tr.attnMissed = &p, true, 0
+		if a.Text == "" || a.Source == "screen" {
+			a.Text = p.Question
+		}
+		a.Choices = attention.Answerable(agent, &p)
+		return changed
+	case a != nil && tr.attnSeen:
+		// Answered, here or in the terminal: gone for two samples.
+		if tr.attnMissed++; tr.attnMissed >= 2 {
+			m.clearAttention(tr, now)
+			return true
+		}
+	case a != nil:
+		// Raised by a hook, and no prompt read yet (an agent whose prompt
+		// isn't readable, or one answered at once): working again, after
+		// the screen went still, ends it.
+		if tr.streak == 0 {
+			tr.attnQuiet = true
+		} else if tr.attnQuiet && tr.streak >= m.opts.ActiveStreak {
+			m.clearAttention(tr, now)
+			return true
+		}
+	case found && now.Sub(tr.lastChange) >= m.opts.PromptAfter:
+		kind := attention.Question
+		if _, ok := p.Option(attention.Allow); ok {
+			kind = attention.Permission
+		} else if _, ok := p.Option(attention.Deny); ok {
+			kind = attention.Permission
+		}
+		tr.attn = &attention.Attention{Kind: kind, Text: p.Question, Source: "screen", Since: now, Prompt: &p,
+			Choices: attention.Answerable(agent, &p)}
+		tr.attnSeen, tr.attnMissed = true, 0
+		return true
+	}
+	return false
+}
+
+// clearAttention ends an ask; a turn it held open goes on from now.
+func (m *Monitor) clearAttention(tr *track, now time.Time) {
+	tr.attn, tr.attnSeen, tr.attnMissed, tr.attnQuiet = nil, false, 0, false
+	tr.lastMeaningful = now
+}
+
+// Raise marks a terminal as waiting for the user, from a hook (a permission
+// request): kind, tool and detail come from the hook, the choices from the
+// prompt once it shows on screen.
+func (m *Monitor) Raise(id string, a attention.Attention) {
+	m.mu.Lock()
+	tr := m.get(id)
+	if old := tr.attn; old != nil {
+		if old.Source == "hook" && old.Tool == a.Tool && old.Detail == a.Detail {
+			m.mu.Unlock()
+			return // the same request again
+		}
+		if old.Source == "screen" { // read on screen first: keep what it read
+			a.Since, a.Prompt, a.Choices = old.Since, old.Prompt, old.Choices
+		}
+	} else {
+		tr.attnSeen = false
+	}
+	if a.Since.IsZero() {
+		a.Since = time.Now()
+	}
+	a.Source = "hook"
+	tr.attn, tr.attnMissed, tr.attnQuiet = &a, 0, false
+	m.mu.Unlock()
+	m.Refresh()
+	st, since := m.State(id)
+	m.onState(id, st, since) // the details changed even when the state didn't
+}
+
+// Attention returns what a terminal waits for from the user (nil: nothing).
+func (m *Monitor) Attention(id string) *attention.Attention {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if a := m.get(id).attn; a != nil {
+		c := *a
+		return &c
+	}
+	return nil
+}
+
+// Asking reports whether a terminal waits for the user.
+func (m *Monitor) Asking(id string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.get(id).attn != nil
 }

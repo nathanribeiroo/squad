@@ -70,6 +70,11 @@ const MESSAGES: Record<string, (p: Params) => string> = {
   'git.in_progress': (p) => `Há um ${p.op} em andamento: termine ou aborte antes.`,
   'git.target_in_progress': (p) => `${p.folder} tem um ${p.op} em andamento: termine ou aborte antes.`,
 
+  'attention.none': () => 'O voo não está perguntando nada agora.',
+  'attention.changed': () => 'A pergunta na tela mudou: abra a tela do voo para responder.',
+  'attention.no_keys': () => 'Essa resposta não pode ser enviada daqui para este agente: abra a tela do voo.',
+  'attention.not_agent': () => 'Só os agentes respondem por aqui.',
+
   'summary.no_turn': () => 'Este voo ainda não terminou um turno.',
   'summary.no_engine': () => 'Nenhuma CLI de agente para escrever resumos (claude, devin, codex ou gemini) foi achada, ou os resumos estão desligados.',
 };

@@ -5,7 +5,7 @@ import { useNow } from '../../lib/useNow';
 
 // Only the envelopes animate: the state is static, with a ticking clock
 // (icon + WORD + time, in the state's text color; docs/torre/TELAS.md, 02).
-const TIMED: UIState[] = ['boot', 'work', 'wait', 'done'];
+const TIMED: UIState[] = ['boot', 'work', 'wait', 'ask', 'done'];
 
 export function StatePill({ state, since, exitCode, compact = false }: { state: UIState; since?: string; exitCode?: number; compact?: boolean }) {
   const timed = TIMED.includes(state);

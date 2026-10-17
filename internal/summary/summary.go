@@ -506,8 +506,9 @@ func (s *Service) describe(n store.Node) string {
 // stateNames say a terminal's state as the engine should read it.
 var stateNames = map[activity.State]string{
 	activity.Boot: "iniciando", activity.Idle: "ocioso", activity.Work: "trabalhando agora",
-	activity.Wait: "esperando a resposta de outro agente", activity.Done: "terminou o turno há pouco",
-	activity.Err: "parou com erro", activity.Off: "parado",
+	activity.Wait: "esperando a resposta de outro agente", activity.Ask: "esperando a permissão ou a resposta do usuário",
+	activity.Done: "terminou o turno há pouco",
+	activity.Err:  "parou com erro", activity.Off: "parado",
 }
 
 // clip keeps the first n characters of s (rune-safe), marking the cut.

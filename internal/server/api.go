@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/apierr"
+	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -28,6 +29,8 @@ type TerminalRuntime struct {
 	// Interrupted: the agent continued a conversation it was in the middle
 	// of when it stopped (Torre closed or restarted).
 	Interrupted bool `json:"interrupted"`
+	// Attention: what the flight asks the user (activity "ask").
+	Attention *attention.Attention `json:"attention,omitempty"`
 }
 
 // StateResponse is GET /api/state.
@@ -49,6 +52,9 @@ func (s *Server) runtimeOf(id string) TerminalRuntime {
 	s.mu.Unlock()
 	if s.activityOf != nil {
 		rt.Activity, rt.ActivitySince = s.activityOf(id)
+	}
+	if s.attentionOf != nil {
+		rt.Attention = s.attentionOf(id)
 	}
 	return rt
 }

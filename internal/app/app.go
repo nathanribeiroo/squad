@@ -64,6 +64,15 @@ func New(o Options) (*App, error) {
 		st, since := mon.State(id)
 		return string(st), since
 	})
+	// Only agents' screens are read for prompts (PRIORIDADE).
+	mon.SetAgentOf(func(id string) (string, bool) {
+		n, ok := srv.Store().Node(id)
+		if !ok || n.Terminal == nil || !agentbus.IsAgent(n.Terminal.Agent) {
+			return "", false
+		}
+		return n.Terminal.Agent, true
+	})
+	srv.SetAttention(mon.Attention)
 	srv.SetStateExtra(bus.StateExtra)
 	srv.OnEdgeRemoved(bus.EdgeRemoved)
 	var launcher *agents.Launcher

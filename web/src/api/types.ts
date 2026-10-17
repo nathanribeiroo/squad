@@ -2,7 +2,25 @@
 
 export type NodeKind = 'terminal' | 'note' | 'portal';
 export type AgentType = 'claude' | 'codex' | 'devin' | 'gemini' | 'shell' | 'custom';
-export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'done' | 'err' | 'off';
+export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'ask' | 'done' | 'err' | 'off';
+
+/** An answer the RESPONDER bar sends (internal/attention). */
+export type AttentionChoice = 'allow' | 'always' | 'deny';
+
+/** What a flight asks the user (activity "ask", PRIORIDADE). */
+export interface Attention {
+  kind: 'permission' | 'question';
+  /** Bash, Edit, WebFetch, mcp__… (from the agent's hook). */
+  tool?: string;
+  /** The agent's question on screen ("Do you want to proceed?"). */
+  text?: string;
+  /** What is at stake: the command, the file. */
+  detail?: string;
+  source: 'hook' | 'screen';
+  since: string;
+  /** The answers the interface may send; empty: open the terminal. */
+  choices?: AttentionChoice[];
+}
 
 export interface TerminalData {
   name: string;
@@ -193,6 +211,8 @@ export interface TerminalRuntime {
   activitySince: string;
   /** Continued a conversation it was in the middle of (Torre closed or restarted). */
   interrupted?: boolean;
+  /** What it asks the user (activity "ask"). */
+  attention?: Attention;
 }
 
 export interface PendingRequest {
@@ -255,6 +275,8 @@ export interface WorkspaceSummary {
   active: number;
   /** Requests waiting for a reply. */
   pending: number;
+  /** Flights asking the user (PRIORIDADE). */
+  attention?: number;
   /** The open session (internal/hub sessions.go). */
   session: Session;
   /** How many sessions the workspace has. */

@@ -7,6 +7,10 @@
 //	RUN:<shell command>   runs the command (e.g. `torre ask …`) and prints its output;
 //	                      {id} and {from} are replaced from the [de: … · pedido …] envelope
 //	SLEEP:<seconds>       stays silent for that long before answering
+//	ASKPERM:<command>     asks permission to run the command like Claude Code
+//	                      2.1.302 (the permission hook, then the numbered
+//	                      prompt) and reads one key: 1, 2 or 3 go on, 4 or Esc
+//	                      interrupt the turn without its end hook
 //
 // $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
 // $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Torre's hooks:
@@ -168,6 +172,9 @@ func turn(msg string, work float64) {
 		from, id = m[1], m[2]
 	}
 	out("\nreceived: " + first + "\n")
+	if cmdline, ok := strings.CutPrefix(lastLine(msg), "ASKPERM:"); ok && !askPermission(cmdline) {
+		return
+	}
 	if rest, ok := strings.CutPrefix(lastLine(msg), "SLEEP:"); ok {
 		if s, err := strconv.ParseFloat(rest, 64); err == nil {
 			time.Sleep(time.Duration(s * float64(time.Second)))
@@ -209,4 +216,38 @@ func lastLine(msg string) string {
 		return msg[i+2:]
 	}
 	return msg
+}
+
+// askPermission shows Claude Code's permission prompt for a Bash command and
+// reads the answer; false when it was denied (the turn is interrupted).
+func askPermission(cmdline string) bool {
+	payload, _ := json.Marshal(map[string]any{"hook_event_name": "PermissionRequest", "session_id": sessionID,
+		"tool_name": "Bash", "tool_input": map[string]any{"command": cmdline, "description": "Run it"}})
+	hook("permission", string(payload))
+	out(" Bash command\n │ " + cmdline + "\n Do you want to proceed?\n ❯ 1. Yes\n   2. Yes, and always allow access to\n      /tmp from this project\n" +
+		"   3. Yes, and switch to auto mode\n   4. No\n\n Esc to cancel · Tab to amend\n")
+	key := make([]byte, 16)
+	for {
+		n, err := os.Stdin.Read(key)
+		if err != nil {
+			return false
+		}
+		logf("ASK-KEY %x", key[:n])
+		c := key[0]
+		if c == 0x03 {
+			logf("CTRL-C")
+			os.Exit(130)
+		}
+		if c >= '1' && c <= '4' || c == 0x1b {
+			out("\x1b[2J\x1b[H")
+			if c == '4' || c == 0x1b {
+				out("Interrupted · What should Claude do instead?\n> ")
+				logf("ASK-DENIED")
+				return false
+			}
+			out(fmt.Sprintf("chose %c\n", c))
+			logf("ASK-CHOSE %c", c)
+			return true
+		}
+	}
 }

@@ -3,6 +3,7 @@ import { NodeResizer, useReactFlow, type Node, type NodeProps, type ResizeParams
 import { api } from '../../api/client';
 import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { confirmDialog } from '../../components/ConfirmDialog';
+import { CHOICES, askPhrase, respond } from '../../lib/attention';
 import { Icon } from '../../components/Icon';
 import { STATE_META, callsign, elapsed, stateLabel } from '../../lib/model';
 import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, useRole, useRoleLookup } from '../../lib/roles';
@@ -122,13 +123,58 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
       <NodeHandles id={id} />
       <i className="tn-band" />
       <LiveHeader id={id} t={t} rt={rt} state={state} focused={focused} />
-      <SenderStrip id={id} />
+      {state === 'ask' ? <AskStrip rt={rt} /> : <SenderStrip id={id} />}
       <TermBody id={id}>
         <XTermView id={id} zoom={zoom} />
         {(rt?.status === 'failed' || rt?.status === 'exited' || rt?.status === 'stopped') && <StoppedOverlay id={id} rt={rt} />}
       </TermBody>
       <LiveFooter id={id} t={t} createdBy={data.node.createdBy} floor={data.node.floor ?? ''} />
       <TurnCard id={id} working={state === 'work'} />
+      {state === 'ask' && <RespondBar id={id} rt={rt} focused={focused} />}
+    </div>
+  );
+}
+
+/** PRIORIDADE: what the flight asks you, over its screen (26 px, solid amber). */
+function AskStrip({ rt }: { rt?: TerminalRuntime }) {
+  const a = rt?.attention;
+  return (
+    <div className="tn-ask" title={a?.text}>
+      <Icon name="front_hand" size={15} />
+      <span className="tn-ask-what">{askPhrase(a)}</span>
+      {a?.detail && <span className="tn-ask-detail">{a.detail}</span>}
+    </div>
+  );
+}
+
+/**
+ * RESPONDER, under the flight (outside it): the answers its prompt offers,
+ * with their keys (1, 2, 3 when the flight is selected), and ABRIR TELA.
+ * An agent whose keys Torre hasn't verified only gets ABRIR TELA.
+ */
+function RespondBar({ id, rt, focused }: { id: string; rt?: TerminalRuntime; focused: boolean }) {
+  const choices = CHOICES.filter((c) => rt?.attention?.choices?.includes(c.choice));
+  const open = () => {
+    useSquad.getState().setFocusedTerminal(id);
+    termSession(id).focus();
+  };
+  return (
+    <div className="tn-respond nodrag nopan" onPointerDown={(e) => e.stopPropagation()}>
+      <span className="tn-respond-label">Responder</span>
+      {choices.map((c) => (
+        <button key={c.choice} className={`tn-respond-btn ${c.choice}`} onClick={() => respond(id, c.choice)}>
+          {c.label}
+          <span className="kbd">{c.key}</span>
+        </button>
+      ))}
+      {choices.length === 0 && <span className="tn-respond-note">Responda na tela do voo.</span>}
+      <span className="tn-spacer" />
+      {!focused && (
+        <button className="tn-respond-open" onClick={open}>
+          <Icon name="open_in_full" size={15} />
+          Abrir tela
+        </button>
+      )}
     </div>
   );
 }

@@ -49,6 +49,7 @@ export function TopBar() {
     (s) => s.sessionLists[s.activeWs ?? '']?.sessions.find((x) => x.id === s.activeSession) ?? s.workspaces.find((w) => w.id === s.activeWs)?.session,
   );
   const elsewhere = workspaces.some((w) => w.id !== activeWs && (w.active > 0 || w.pending > 0));
+  const askElsewhere = workspaces.some((w) => w.id !== activeWs && (w.attention ?? 0) > 0);
   useEffect(() => {
     // switched (⌥1–9 or the list)
     setWsMenu(false);
@@ -68,7 +69,11 @@ export function TopBar() {
         <button className="tb-crumb tb-workspace" title="Workspaces" aria-expanded={wsMenu} onClick={() => setWsMenu(!wsMenu)}>
           <span className="tb-ws-color" style={{ background: wsColor(ws?.color) }} />
           <span className="tb-ws-name">{wsName ?? '…'}</span>
-          {elsewhere && <span className="tb-ws-elsewhere" title="Voos no ar em outro workspace" />}
+          {askElsewhere ? (
+            <span className="tb-ws-elsewhere ask" title="Um voo de outro workspace pede você" />
+          ) : (
+            elsewhere && <span className="tb-ws-elsewhere" title="Voos no ar em outro workspace" />
+          )}
           {index >= 0 && index < 9 && <span className="tb-kbd mono">⌥{index + 1}</span>}
           <Icon name="expand_more" size={16} className="tb-caret" />
         </button>

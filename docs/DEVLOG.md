@@ -2,6 +2,36 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F3: PRIORIDADE, o voo pede você
+
+- **Spike com o Claude Code 2.1.302 real** (no modo de permissão padrão, num PTY):
+  - o hook `PermissionRequest` chega antes do diálogo, com `tool_name` e `tool_input` (o comando, o arquivo); o `Notification` chega junto, com `notification_type: "permission_prompt"`;
+  - a tela mostra "Do you want to proceed?" e as opções numeradas: `1. Yes`, `2. Yes, and always allow access to … from this project`, `3. Yes, and switch to auto mode`, `4. No`;
+  - a tecla do número escolhe e confirma na hora. Negar interrompe o turno **sem** o hook `Stop` nem o `PostToolUse`.
+- **Estado novo `ask`** (`internal/activity`): vem antes de `wait` (`err`/`off` > `ask` > `wait` > `work`…).
+  - **Entra:** pelo hook `PermissionRequest` (Claude e Devin; o hook só avisa e nunca devolve uma decisão), ou por um prompt lido na tela parada há 1,5 s.
+  - **O que conta como prompt** (`internal/attention`): uma pergunta terminada em "?" sobre duas ou mais opções numeradas, uma delas com o cursor, no fim da tela (abaixo, só o rodapé "Esc to cancel"). Assim, uma lista numerada na resposta do agente não conta, nem um prompt velho em cima do shell quando o agente sai.
+  - **Sai:** quando o prompt some da tela (duas amostras), quando chega o hook de começo ou fim de turno, quando o processo para, ou (sem prompt legível, como no Devin) quando o voo volta a produzir saída depois de ficar parado.
+  - Shells e comandos próprios nunca são lidos.
+  - Um turno parado esperando você não termina por silêncio, então quem fez `torre ask` continua esperando em vez de receber a tela.
+- **O que se responde:** cada opção vira `allow`, `always` ou `deny`, ou nada. "Yes, and switch to auto mode" e "allow all edits during this session" trocam o modo de permissão e **nunca** são oferecidas; SEMPRE só quando a opção é "always allow"/"don't ask again" (decisão da revisão do handoff).
+- **Rota só da interface:** `POST /w/<id>/api/nodes/<id>/attention/respond`.
+  - Só agentes; só se a pergunta na tela ainda é a mesma que a interface mostrou (senão, 409 `attention.changed`); só as teclas verificadas.
+  - **Decisão sem consulta:** só o Claude está em `verified`. O Devin, o Codex e o Gemini entram em PRIORIDADE mas mostram só "Abrir tela", até alguém conferir as teclas na CLI real (fica no PLAN). Os rótulos do Devin 3000.11.92, lidos do binário ("Yes, allow …", "Yes, always allow …", "No, deny"), já são classificados.
+- **Mensagens esperam:** o barramento não cola um pedido num voo em `ask` (o texto viraria a resposta, e "pedido 7f3a" tem dígitos que escolheriam uma opção). Ele entra depois da resposta, até o limite de espera.
+- **API:** `TerminalRuntime.attention` (`kind`, `tool`, `text`, `detail`, `source`, `since`, `choices`) e `WorkspaceSummary.attention`. **Decisão sem consulta:** a fila da prioridade não foi para o `hello`; a interface a monta do `runtime`.
+- **Interface:**
+  - no voo, o contorno âmbar com halo, a faixa piscando a 1 Hz (só esse estado pisca), "PEDE VOCÊ 0:24", a faixa de 26 px com a frase e o comando, e a barra RESPONDER embaixo, fora do nó;
+  - a faixa "PRIORIDADE · TST em FL1 quer executar um comando · IR ATÉ ELE ⌥⏎" quando o voo não está na tela, o ⌥⏎, as teclas 1/2/3 com o voo selecionado, o número no título da janela e o ponto âmbar na aba do nível, no botão de workspaces e "1 pede você" no seletor;
+  - no Rádio, o pedido preso no topo com os botões, o filtro "Pedem você" e o histórico "Pediu você · respondido em 0:46"; o briefing chama o estado de "esperando a permissão ou a resposta do usuário".
+- **Testado aqui:**
+  - `internal/attention`: os prompts do Claude (comando, edição, MCP), os do Devin, Gemini e Codex como os conhecemos, prosa e shell;
+  - com o agente falso: a transição pelo hook, a resposta pela rota (a tecla chega), o pedido de outro voo que espera e chega depois, um agente sem teclas verificadas só pela tela, um comando próprio nunca lido, e a saída do processo;
+  - **com o Claude real:** `TestRealClaudePermission` (o voo pede, a rota autoriza, o comando roda e a resposta volta pelo `Stop`); e na interface, clicando AUTORIZAR no Rádio, o arquivo foi criado;
+  - o Devin real lê a configuração com o hook novo (`TestRealDevinConfig`);
+  - capturas do voo pedindo, da faixa fora da tela, do Rádio e do depois.
+- **Não testado:** o Devin pedindo permissão numa sessão de verdade (precisa de conta); o Codex e o Gemini (não instalados aqui); notificações do sistema (vão na F4a, em Avisos).
+
 ## 2026-10-17, Torre F2: confirmações, espaço vazio e erros em português
 
 - **`ConfirmDialog`** (quadro 15): substitui as 10 `window.confirm` e as confirmações embutidas nos menus.
