@@ -108,6 +108,9 @@ type Hub struct {
 	ws      map[string]*workspace
 	started bool
 	closed  bool
+	// firstRun: the hub started with no workspace saved (a new
+	// installation): the interface shows its first steps.
+	firstRun bool
 }
 
 // New loads every workspace under opts.Root (none is started yet).
@@ -156,6 +159,7 @@ func New(opts Options) (*Hub, error) {
 			return nil, err
 		}
 	}
+	h.firstRun = len(h.ws) == 0
 	// Workspaces from before colors (the old "default") get one, oldest first.
 	for _, s := range h.List() {
 		if s.Color == "" {

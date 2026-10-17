@@ -11,6 +11,7 @@ import { Composer } from './components/Composer';
 import { ComposerPill } from './components/ComposerPill';
 import { ConfirmHost } from './components/ConfirmDialog';
 import { FloorDialogs } from './components/FloorDialogs';
+import { FirstRun } from './components/FirstRun';
 import { FloorEmpty } from './components/FloorEmpty';
 import { InterruptedBar } from './components/InterruptedBar';
 import { NoLink } from './components/NoLink';
@@ -70,6 +71,7 @@ export function App() {
       <div className="app">
         <TopBar />
         <Stage />
+        <FirstRun />
       </div>
     </ReactFlowProvider>
   );

@@ -2,6 +2,16 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F4c: primeira abertura
+
+- **Passo 1, Enlace:** a página de login do Go foi redesenhada sobre o radar, com os passos no topo, o campo da URL e "só 127.0.0.1 · o token fica num cookie". O botão continua "Entrar" (o teste do login procura o texto).
+- **Quando aparece:** o hub guarda se subiu sem nenhum workspace (`GET /api/welcome`, `firstRun`). **Decisão sem consulta:** quem já usava o Squad não vê os passos (a pasta migrada já tem workspaces); e, depois de vistos ou pulados, eles não voltam no mesmo navegador.
+- **Passo 2, Pasta** (`GET /api/dirs/info`): a pasta do `serve` já preenchida, com o git em até 3 s (repositório, branch, alterações, commit para os níveis) e os `.env*` do topo. Trocar a pasta muda a do workspace inicial, que ainda não tem voos.
+- **Passo 3, Agentes:** a busca da F4a, com o comando de instalação. "Com um plano de voo" fica desligado até a F5d.
+- **Decisão sem consulta: "Recentes"** são as pastas dos workspaces existentes. A Torre não guarda um histórico de pastas.
+- **Testado aqui:** `TestWelcomeAndDirInfo` (instalação nova e segunda subida; um repositório com commit, alterações e dois `.env`; uma pasta sem git; uma que não existe), o login (`internal/server`), e capturas dos três passos num servidor com `TORRE_HOME` novo.
+- **Não testado:** trocar a pasta no passo 2 por uma que já é de outro workspace (o hub recusa como antes; a mensagem aparece num aviso).
+
 ## 2026-10-17, Torre F4b: Sinóptico
 
 - **Vista nova** (quadro 01), trocada por `⌥S` ou por ESPAÇO · SINÓPTICO na barra. A escolha fica no navegador. Tudo vem do estado que o canvas já tem; não há rota nova.

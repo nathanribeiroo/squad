@@ -343,3 +343,16 @@ export interface LimitsView {
   limits: Limits;
   defaults: Limits;
 }
+
+/** GET /api/dirs/info: a folder, for the first open (step 2, Pasta). */
+export interface DirInfo {
+  path: string;
+  exists: boolean;
+  git: boolean;
+  branch?: string;
+  commits: boolean;
+  changes: number;
+  envFiles: string[];
+  /** The workspaces' folders. */
+  recent?: string[];
+}
