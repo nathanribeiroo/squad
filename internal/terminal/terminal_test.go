@@ -256,6 +256,15 @@ func TestQuoteAndLaunchLine(t *testing.T) {
 			t.Errorf("LaunchLine(%v, %q) = %s; want %s", c.f, c.in, got, c.want)
 		}
 	}
+	for f, want := range map[ShellFamily]string{
+		ShellPOSIX:      "a --resume x || a --session-id x",
+		ShellCmd:        "a --resume x || a --session-id x",
+		ShellPowerShell: "a --resume x; if ($LASTEXITCODE -ne 0) { a --session-id x }",
+	} {
+		if got := OrElse(f, "a --resume x", "a --session-id x"); got != want {
+			t.Errorf("OrElse(%v) = %s; want %s", f, got, want)
+		}
+	}
 }
 
 func TestFallsBackWhenShellCannotStart(t *testing.T) {

@@ -23,6 +23,9 @@ type TerminalRuntime struct {
 	// Activity is the UI state: boot, idle, work, wait, done, err, off.
 	Activity      string    `json:"activity"`
 	ActivitySince time.Time `json:"activitySince"`
+	// Interrupted: the agent continued a conversation it was in the middle
+	// of when it stopped (Squad closed or restarted).
+	Interrupted bool `json:"interrupted"`
 }
 
 // StateResponse is GET /api/state.
@@ -40,6 +43,7 @@ func (s *Server) runtimeOf(id string) TerminalRuntime {
 	}
 	s.mu.Lock()
 	rt.Title = s.titles[id]
+	rt.Interrupted = s.interrupted[id]
 	s.mu.Unlock()
 	if s.activityOf != nil {
 		rt.Activity, rt.ActivitySince = s.activityOf(id)
@@ -81,6 +85,11 @@ func (s *Server) handleAddNode(w http.ResponseWriter, r *http.Request) {
 func (s *Server) AddNode(n store.Node) (store.Node, error) {
 	if err := checkTerminalDir(n.Terminal, s.cwdResolver(n.Floor)); err != nil {
 		return store.Node{}, err
+	}
+	if n.Terminal != nil { // a new terminal starts a new conversation
+		t := *n.Terminal
+		t.Conversation, t.Busy = "", false
+		n.Terminal = &t
 	}
 	if n.W == 0 && n.H == 0 {
 		n.W, n.H = defaultSize(n.Kind)
@@ -156,7 +165,14 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 					return err
 				}
 			}
+			old := *n.Terminal
 			*n.Terminal = *p.Terminal
+			// Squad keeps the conversation; another agent or folder can't
+			// continue it (agents keep conversations per folder).
+			n.Terminal.Conversation, n.Terminal.Busy = old.Conversation, old.Busy
+			if p.Terminal.Agent != old.Agent || p.Terminal.Cwd != old.Cwd {
+				n.Terminal.Conversation, n.Terminal.Busy = "", false
+			}
 		}
 		if p.Note != nil && n.Note != nil {
 			// Only the lock: the name changes by renaming (notes.Rename,
@@ -254,6 +270,8 @@ func (s *Server) handleNodeAction(w http.ResponseWriter, r *http.Request) {
 		}
 	case "restart":
 		err = s.StartTerminal(id)
+	case "new-conversation":
+		err = s.StartTerminalFresh(id)
 	default:
 		writeError(w, http.StatusNotFound, "unknown action")
 		return

@@ -262,6 +262,15 @@ func Quote(f ShellFamily, s string) string {
 	}
 }
 
+// OrElse joins two command lines for a shell of family f so that the second
+// runs only when the first fails (exits non-zero).
+func OrElse(f ShellFamily, first, second string) string {
+	if f == ShellPowerShell { // Windows PowerShell 5.1 has no ||
+		return first + "; if ($LASTEXITCODE -ne 0) { " + second + " }"
+	}
+	return first + " || " + second
+}
+
 // LaunchLine joins argv into a command line for a shell of family f.
 func LaunchLine(f ShellFamily, argv []string) string {
 	parts := make([]string, len(argv))

@@ -10,9 +10,15 @@
 //
 // $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
 // $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Squad's hooks:
-// `squad hook claude-prompt` when a turn starts and `squad hook claude-stop`
-// (with last_assistant_message) when it ends. $FAKEAGENT_HOOK=devin does the
-// same with Devin CLI's hook names (devin-prompt, devin-stop).
+// `squad hook claude-session-start` when it starts, `squad hook claude-prompt`
+// when a turn starts and `squad hook claude-stop` (with last_assistant_message)
+// when it ends, each with its session_id. $FAKEAGENT_HOOK=devin does the same
+// with Devin CLI's hook names (devin-session-start, devin-prompt, devin-stop).
+//
+// Its conversation id comes from --session-id or --resume, like Claude Code,
+// or else $FAKEAGENT_SESSION (Devin picks its own). With
+// $FAKEAGENT_RESUME_FAIL set, --resume fails like an agent that can't find
+// the conversation: it prints an error and exits 1.
 //
 // An empty CR (the reinforcement Enter) is ignored. Ctrl-C exits with 130.
 package main
@@ -65,8 +71,25 @@ func main() {
 	if old, err := term.MakeRaw(int(os.Stdin.Fd())); err == nil {
 		defer term.Restore(int(os.Stdin.Fd()), old)
 	}
+	logf("START %q", os.Args[1:])
+	session, source := os.Getenv("FAKEAGENT_SESSION"), "startup"
+	for i, a := range os.Args[1:] {
+		if (a == "--session-id" || a == "--resume") && i+2 < len(os.Args) {
+			session = os.Args[i+2]
+			if a == "--resume" {
+				source = "resume"
+			}
+		}
+	}
+	if source == "resume" && os.Getenv("FAKEAGENT_RESUME_FAIL") != "" {
+		out("No conversation found with session ID: " + session + "\n")
+		logf("RESUME-FAIL")
+		os.Exit(1)
+	}
+	sessionID = session
+	start, _ := json.Marshal(map[string]any{"hook_event_name": "SessionStart", "source": source, "session_id": session})
+	hook("session-start", string(start))
 	out("fakeagent ready\n> ")
-	logf("START")
 
 	var (
 		buf     bytes.Buffer // current message
@@ -117,6 +140,9 @@ func main() {
 	}
 }
 
+// sessionID is the conversation id the hooks report.
+var sessionID string
+
 var envelopeRe = regexp.MustCompile(`^\[de: (.+?) · pedido ([0-9a-f]+)\]`)
 
 // hook runs `squad hook <agent>-<event>` when $FAKEAGENT_HOOK names an agent
@@ -134,7 +160,7 @@ func hook(event string, payload string) {
 }
 
 func turn(msg string, work float64) {
-	prompt, _ := json.Marshal(map[string]any{"hook_event_name": "UserPromptSubmit", "prompt": msg})
+	prompt, _ := json.Marshal(map[string]any{"hook_event_name": "UserPromptSubmit", "prompt": msg, "session_id": sessionID})
 	hook("prompt", string(prompt))
 	first, _, _ := strings.Cut(msg, "\n")
 	from, id := "", ""
@@ -169,7 +195,7 @@ func turn(msg string, work float64) {
 	answer := "answer: " + strings.ToUpper(first)
 	out(answer + "\nDONE\n> ")
 	logf("TURN-END")
-	payload, _ := json.Marshal(map[string]any{"hook_event_name": "Stop", "last_assistant_message": "final: " + first})
+	payload, _ := json.Marshal(map[string]any{"hook_event_name": "Stop", "last_assistant_message": "final: " + first, "session_id": sessionID})
 	hook("stop", string(payload))
 }
 

@@ -12,8 +12,10 @@ import (
 )
 
 // LaunchHook lets the agent adapters (B4) rewrite a terminal's launch line
-// and add environment variables before it starts.
-type LaunchHook func(node store.Node, spec *terminal.Spec) error
+// and add environment variables before it starts. It sets the node's
+// conversation to the one the terminal is in, and reports whether the line
+// continues it.
+type LaunchHook func(node *store.Node, spec *terminal.Spec) (resumed bool, err error)
 
 // SetLaunchHook installs the adapter hook.
 func (s *Server) SetLaunchHook(h LaunchHook) { s.launchHook = h }
@@ -25,11 +27,21 @@ func (s *Server) TerminalToken(id string) string {
 	return s.termTokens[id]
 }
 
-// StartTerminal starts the process for a terminal node.
-func (s *Server) StartTerminal(id string) error {
+// StartTerminal starts the process for a terminal node; its agent continues
+// the conversation it was in.
+func (s *Server) StartTerminal(id string) error { return s.startTerminal(id, false) }
+
+// StartTerminalFresh starts it with a new conversation.
+func (s *Server) StartTerminalFresh(id string) error { return s.startTerminal(id, true) }
+
+func (s *Server) startTerminal(id string, fresh bool) error {
 	n, ok := s.store.Node(id)
 	if !ok || n.Terminal == nil {
 		return errors.New("terminal node not found")
+	}
+	before := *n.Terminal
+	if fresh {
+		n.Terminal.Conversation, n.Terminal.Busy = "", false
 	}
 	cwd := s.cwdResolver(n.Floor)(n.Terminal.Cwd)
 	tok := newToken()
@@ -48,11 +60,15 @@ func (s *Server) StartTerminal(id string) error {
 			"SQUAD_CLI":           s.opts.CLIPath,
 		},
 	}
+	resumed := false
 	if s.launchHook != nil {
-		if err := s.launchHook(n, &spec); err != nil {
+		r, err := s.launchHook(&n, &spec)
+		if err != nil {
 			return err
 		}
+		resumed = r
 	}
+	s.startedConversation(n, before, resumed)
 	if old := s.terms.Get(id); old != nil {
 		s.terms.Remove(id)
 	}
