@@ -8,7 +8,7 @@ import { useSquad } from '../../state/store';
 import { NodeHandles, connectClass, useConnectTarget } from './NodeHandles';
 import { NodeMenu } from './NodeMenu';
 import { actionVerb, usePortalAction } from './portalAction';
-import { useCreator } from '../../lib/roles';
+import { roleColor, useCreator } from '../../lib/roles';
 import { BUTTONS, mods, usePortalStream, type PortalStream } from './portalStream';
 
 export type PortalFlowNode = Node<{ node: WNode }, 'portal'>;
@@ -25,7 +25,9 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
   const target = useConnectTarget(id);
   const level = useSquad((s) => s.zoomLevel);
   // Only stream while readable on screen; smaller zoom keeps the last frame.
-  const stream = usePortalStream(id, !!url && level === 'live');
+  // @ELEMENTOS: the refs agents use (torre portal snapshot), outlined on the page.
+  const [layer, setLayer] = useState(false);
+  const stream = usePortalStream(id, !!url && level === 'live', layer);
   const [focused, setFocused] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const creator = useCreator(data.node.createdBy);
@@ -73,6 +75,16 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
           </button>
         </span>
         <AddressBar id={id} portal={portal} url={stream.state?.url || url} />
+        {url && (
+          <button
+            className={`pn-elements nodrag${layer ? ' on' : ''}`}
+            onClick={() => setLayer(!layer)}
+            aria-pressed={layer}
+            title="Os elementos que os voos veem (@e1, @e2…) no último torre portal snapshot"
+          >
+            <Icon name="data_object" size={14} />@ ELEMENTOS
+          </button>
+        )}
         {focused ? (
           <span className="tn-kbd-here" title="⌥Esc devolve o teclado ao canvas">
             <Icon name="keyboard" size={14} />
@@ -93,7 +105,7 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
           ]}
         />
       </header>
-      <PortalScreen id={id} stream={stream} url={url} onFocusChange={setFocused} />
+      <PortalScreen id={id} stream={stream} url={url} onFocusChange={setFocused} creatorColor={creator?.color} />
     </div>
   );
 }
@@ -216,7 +228,19 @@ function canvasKey(e: React.KeyboardEvent): boolean {
  * zoom) to page pixels; plain wheel scrolls the page, pinch or ⌘/ctrl + wheel
  * zooms the canvas.
  */
-function PortalScreen({ id, stream, url, onFocusChange }: { id: string; stream: PortalStream; url: string; onFocusChange: (f: boolean) => void }) {
+function PortalScreen({
+  id,
+  stream,
+  url,
+  onFocusChange,
+  creatorColor,
+}: {
+  id: string;
+  stream: PortalStream;
+  url: string;
+  onFocusChange: (f: boolean) => void;
+  creatorColor?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const rf = useReactFlow();
   const moveQueued = useRef<MouseEvent | null>(null);
@@ -344,7 +368,86 @@ function PortalScreen({ id, stream, url, onFocusChange }: { id: string; stream: 
       {stream.frame && <img src={stream.frame} alt="" draggable={false} />}
       {st?.error && stream.frame && <div className="pn-error mono">Não foi possível abrir: {st.error}</div>}
       {overlay}
+      {stream.frame && stream.elements && <ElementsLayer id={id} elements={stream.elements} width={st?.width} height={st?.height} creatorColor={creatorColor} />}
       {stream.frame && <AgentCursor id={id} width={st?.width} height={st?.height} />}
+    </div>
+  );
+}
+
+// How an element's role reads on its tag ("@e4 botão").
+const ROLE_PT: Record<string, string> = {
+  button: 'botão',
+  link: 'link',
+  textbox: 'campo',
+  searchbox: 'busca',
+  checkbox: 'caixa',
+  radio: 'opção',
+  combobox: 'lista',
+  listbox: 'lista',
+  option: 'item',
+  menuitem: 'menu',
+  tab: 'aba',
+  switch: 'chave',
+  slider: 'controle',
+  heading: 'título',
+  img: 'imagem',
+  navigation: 'navegação',
+  dialog: 'diálogo',
+  alert: 'alerta',
+  status: 'status',
+};
+
+/**
+ * @ELEMENTOS (TELAS.md, quadro 10): dashed outlines with the ref, in the
+ * darkened color of the role that last used the page. They don't take
+ * clicks: the page under them works as before.
+ */
+function ElementsLayer({
+  id,
+  elements,
+  width,
+  height,
+  creatorColor,
+}: {
+  id: string;
+  elements: NonNullable<PortalStream['elements']>;
+  width?: number;
+  height?: number;
+  creatorColor?: string;
+}) {
+  // The role of the agent that last used the page, else of one on its frequency.
+  const roleKey = useSquad((s) => {
+    const ws = s.workspace;
+    const linked = ws?.edges.flatMap((e) => (e.a === id ? [e.b] : e.b === id ? [e.a] : [])) ?? [];
+    const user = [s.portalActions[id]?.by, ...linked]
+      .map((x) => ws?.nodes.find((n) => n.id === x)?.terminal)
+      .find((t) => t?.role);
+    return user ? roleColor(s.roles.find((r) => r.id === user.role)) : null;
+  });
+  const key = roleKey ?? creatorColor;
+  const color = key ? `var(--r-${key})` : 'var(--text-2)';
+  if (!elements.snapshot || !width || !height) {
+    return (
+      <div className="pn-elements-note mono">
+        {!elements.snapshot ? 'Sem refs: eles aparecem quando um voo lê a página (torre portal snapshot).' : ''}
+      </div>
+    );
+  }
+  return (
+    <div className="pn-layer" style={{ '--el': `color-mix(in srgb, ${color} 75%, black)` } as React.CSSProperties}>
+      {elements.items.map((e) => (
+        <div
+          key={e.ref}
+          className="pn-el"
+          style={{ left: `${(e.x / width) * 100}%`, top: `${(e.y / height) * 100}%`, width: `${(e.w / width) * 100}%`, height: `${(e.h / height) * 100}%` }}
+          title={`${e.ref} ${e.role} "${e.name}"`}
+        >
+          <span className="pn-el-tag mono">
+            {e.ref} {ROLE_PT[e.role] ?? e.role}
+          </span>
+        </div>
+      ))}
+      {elements.items.length === 0 && <div className="pn-elements-note mono">O último snapshot não achou elementos nesta tela.</div>}
     </div>
   );
 }
