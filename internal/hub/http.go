@@ -25,6 +25,7 @@ import (
 //	/api/workspaces…, /api/dirs     the workspace list (and folder suggestions)
 //	/api/workspaces/{id}/sessions…  a workspace's sessions: list, new (in a copy, optionally), open, rename, remove
 //	/api/roles…                     the role library, shared by every workspace
+//	/api/agents…                    the agents found on this computer, and the command that starts each
 //	/ws/workspaces                  the list and the roles, live
 //	POST /cli, POST /hooks/{agent}  calls from terminals, routed by terminal id
 //	/                               the web UI
@@ -47,6 +48,8 @@ func (h *Hub) Handler() http.Handler {
 	mux.Handle("PUT /api/roles/{id}", sess(h.handleRoleUpdate))
 	mux.Handle("POST /api/roles/{id}/reset", sess(h.handleRoleReset))
 	mux.Handle("DELETE /api/roles/{id}", sess(h.handleRoleDelete))
+	mux.Handle("GET /api/agents", sess(h.handleAgents))
+	mux.Handle("PUT /api/agents/{agent}", sess(h.handleAgentCommand))
 	mux.Handle("GET /ws/workspaces", sess(h.handleWorkspacesWS))
 	mux.Handle("/api/", sess(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not found (a workspace's API is under /w/<id>/api/…)")

@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/activity"
@@ -52,8 +53,15 @@ type Options struct {
 
 // Service runs the manager commands of one workspace.
 type Service struct {
-	o Options
+	o       Options
+	maxTeam atomic.Int64 // Options.MaxTeam, changed by SetMaxTeam
 }
+
+// SetMaxTeam changes how many terminals a manager may create.
+func (s *Service) SetMaxTeam(n int) { s.maxTeam.Store(int64(n)) }
+
+// MaxTeam is how many terminals a manager may create.
+func (s *Service) MaxTeam() int { return int(s.maxTeam.Load()) }
 
 // New returns the service.
 func New(o Options) *Service {
@@ -66,7 +74,9 @@ func New(o Options) *Service {
 	if o.Settle == 0 {
 		o.Settle = 2 * time.Second
 	}
-	return &Service{o: o}
+	s := &Service{o: o}
+	s.maxTeam.Store(int64(o.MaxTeam))
+	return s
 }
 
 // Agents a manager may create (the CLI's agent types).
@@ -158,7 +168,7 @@ func (s *Service) Note(caller string) string {
 	if !ok || !s.IsManager(me) {
 		return ""
 	}
-	return fmt.Sprintf("You are a manager: create the terminals you need with torre new (%d of %d created; torre new --help). For parallel work on the same files, give each front its own floor (torre floor --help).", s.created(caller, store.KindTerminal), s.o.MaxTeam)
+	return fmt.Sprintf("You are a manager: create the terminals you need with torre new (%d of %d created; torre new --help). For parallel work on the same files, give each front its own floor (torre floor --help).", s.created(caller, store.KindTerminal), s.MaxTeam())
 }
 
 func (s *Service) created(caller, kind string) int {
@@ -222,7 +232,7 @@ func (s *Service) create(ctx context.Context, me store.Node, args []string) agen
 	if err != nil {
 		return res(400, "torre: "+err.Error()+"\n\n"+Usage)
 	}
-	if n := s.created(me.ID, store.KindTerminal); n >= s.o.MaxTeam {
+	if n := s.created(me.ID, store.KindTerminal); n >= s.MaxTeam() {
 		return res(409, fmt.Sprintf("torre: you already created %d terminals, the limit. Close one you no longer need (torre close \"Name\") or ask the user.", n))
 	}
 	if a.agent == "" {

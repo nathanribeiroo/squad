@@ -99,10 +99,11 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 	// Hop limit: count the chain this caller is already part of.
 	b.mu.Lock()
 	hop := b.incomingHopLocked(caller) + 1
+	maxHops := b.limits.MaxHops
 	b.mu.Unlock()
-	if hop > b.limits.MaxHops {
-		b.SetPaused(true, fmt.Sprintf("hop limit %d reached (%s → %s)", b.limits.MaxHops, fromName, toName))
-		return Result{Code: 409, Body: fmt.Sprintf("torre: hop limit (%d) reached; conversations are paused until the user resumes them", b.limits.MaxHops)}
+	if hop > maxHops {
+		b.SetPaused(true, fmt.Sprintf("hop limit %d reached (%s → %s)", maxHops, fromName, toName))
+		return Result{Code: 409, Body: fmt.Sprintf("torre: hop limit (%d) reached; conversations are paused until the user resumes them", maxHops)}
 	}
 
 	p := &Pending{From: caller, To: tn.ID, FromName: fromName, ToName: toName,

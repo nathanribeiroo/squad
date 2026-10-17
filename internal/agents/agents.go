@@ -197,7 +197,7 @@ func (l *Launcher) Prepare(n *store.Node, spec *terminal.Spec) (resumed bool, er
 	}
 	info := Lookup(spec.Agent)
 	if strings.TrimSpace(spec.Command) == "" {
-		spec.Command = info.DefaultCommand
+		spec.Command = DefaultCommand(spec.Agent) // the user's, in Configurações → Agentes
 	}
 	if spec.Command == "" {
 		return false, nil

@@ -45,8 +45,9 @@ type App struct {
 	Summary *summary.Service
 	Team    *team.Service
 
-	exts   []agentbus.Extension
-	cancel context.CancelFunc
+	exts     []agentbus.Extension
+	cancel   context.CancelFunc
+	defaults store.Limits // the server's limits, before the workspace's
 }
 
 // New builds the app; call Start to begin activity sampling.
@@ -276,7 +277,13 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, exts: exts}
+	// Limits (Configurações → Limites): the workspace's, else the server's.
+	srv.HandleSession("GET /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
+	srv.HandleSession("PUT /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
+	bl := bus.Limits()
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, exts: exts,
+		defaults: store.Limits{MaxHops: bl.MaxHops, PerMinute: bl.PerMinute, MaxTeam: teamSvc.MaxTeam(), PortalsPerAgent: portal.MaxCreated}}
+	app.applyLimits()
 	return app, nil
 }
 
