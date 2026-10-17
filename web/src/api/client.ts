@@ -19,6 +19,9 @@ import type {
   StateExtra,
   WorkspaceSummary,
   AttentionChoice,
+  AgentsDetection,
+  Limits,
+  LimitsView,
 } from './types';
 import { errorMessage } from './errors';
 
@@ -81,6 +84,8 @@ export const api = {
   removeNode: (id: string) => req<void>('DELETE', wsPath(`/api/nodes/${id}`)),
   nodeAction: (id: string, action: 'start' | 'stop' | 'restart' | 'new-conversation') => req<unknown>('POST', wsPath(`/api/nodes/${id}/${action}`)),
   /** Answers the prompt on a flight's screen (only the interface can). */
+  limits: () => req<LimitsView>('GET', wsPath('/api/limits')),
+  setLimits: (l: Partial<Limits>) => req<LimitsView>('PUT', wsPath('/api/limits'), l),
   respond: (id: string, choice: AttentionChoice) => req<void>('POST', wsPath(`/api/nodes/${id}/attention/respond`), { choice }),
   /** Agents interrupted mid-turn: send them "continue", or forget it (all, or ids). */
   interrupted: (action: 'continue' | 'dismiss', ids?: string[]) => req<{ ids: string[] }>('POST', wsPath(`/api/interrupted/${action}`), { ids }),
@@ -121,6 +126,8 @@ export const api = {
 
 /** The workspace list (not tied to the workspace on screen). */
 export const hub = {
+  agents: (refresh = false) => req<AgentsDetection>('GET', `/api/agents${refresh ? '?refresh=1' : ''}`),
+  setAgentCommand: (agent: string, defaultCommand: string) => req<AgentsDetection>('PUT', `/api/agents/${encodeURIComponent(agent)}`, { defaultCommand }),
   list: () => req<WorkspaceSummary[]>('GET', '/api/workspaces'),
   /** session names the workspace's first session. */
   create: (b: { name?: string; cwd: string; color?: string; session?: string }) => req<WorkspaceSummary>('POST', '/api/workspaces', b),

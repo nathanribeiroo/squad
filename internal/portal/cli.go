@@ -438,7 +438,8 @@ func (s *Service) nameUnnamed() {
 	}
 }
 
-// MaxCreated is how many portals one agent may have created at a time.
+// MaxCreated is how many portals one agent may have created at a time,
+// unless the workspace's limits say otherwise (SetMaxCreated).
 const MaxCreated = 3
 
 // create opens a portal next to the calling terminal, connected to it.
@@ -471,7 +472,7 @@ func (s *Service) create(caller string, args []string) agentbus.Result {
 			return res(409, fmt.Sprintf("torre: there is already a portal named %q; pick another name", n.Portal.Name))
 		}
 	}
-	if mine >= MaxCreated {
+	if mine >= s.MaxCreated() {
 		return res(409, fmt.Sprintf("torre: you already created %d portals, the limit; close one with torre portal close \"Name\", or navigate one with goto", mine))
 	}
 	w, h := 560.0, 420.0 // a new portal's size on the canvas

@@ -136,7 +136,11 @@ func (b *Bus) roleLabel(id string) string {
 }
 
 // Limits returns the effective limits.
-func (b *Bus) Limits() Limits { return b.limits }
+func (b *Bus) Limits() Limits {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.limits
+}
 
 // IsWaiting reports whether terminal id has an outstanding request or is
 // waiting for another terminal's turn (torre wait).
@@ -194,14 +198,23 @@ func (b *Bus) SetPaused(p bool, reason string) {
 }
 
 // StateExtra is merged into /api/state and the events hello message.
+// SetLimits changes the hop and per-minute limits (Configurações → Limites).
+func (b *Bus) SetLimits(maxHops, perMinute int) {
+	b.mu.Lock()
+	b.limits.MaxHops, b.limits.PerMinute = maxHops, perMinute
+	b.mu.Unlock()
+	b.events.Publish(events.LimitsChanged, map[string]int{"maxHops": maxHops, "perMinute": perMinute})
+}
+
 func (b *Bus) StateExtra() map[string]any {
 	b.mu.Lock()
 	recent := b.recentSendsLocked(time.Now())
 	paused := b.paused
+	limits := map[string]int{"maxHops": b.limits.MaxHops, "perMinute": b.limits.PerMinute}
 	b.mu.Unlock()
 	return map[string]any{
 		"paused":  paused,
-		"limits":  map[string]int{"maxHops": b.limits.MaxHops, "perMinute": b.limits.PerMinute},
+		"limits":  limits,
 		"rate":    recent,
 		"pending": b.Pending(),
 	}

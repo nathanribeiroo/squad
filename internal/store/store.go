@@ -48,6 +48,8 @@ type Workspace struct {
 	Copy *Floor `json:"copy,omitempty"`
 	// SummaryConfig: turn cards and who writes summaries (nil: the default).
 	SummaryConfig *SummaryConfig `json:"summaryConfig,omitempty"`
+	// Limits are the workspace's conversation limits (shared by its sessions).
+	Limits *Limits `json:"limits,omitempty"`
 }
 
 // Node is an element on the canvas.
@@ -293,13 +295,15 @@ type Shared struct {
 	Meta
 	FloorConfig   *FloorConfig
 	SummaryConfig *SummaryConfig
+	Limits        *Limits
 }
 
 // Shared returns what the workspace's sessions have in common.
 func (s *Store) Shared() Shared {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return Shared{Meta: s.metaLocked(), FloorConfig: cloneFloorConfig(s.ws.FloorConfig), SummaryConfig: cloneSummaryConfig(s.ws.SummaryConfig)}
+	return Shared{Meta: s.metaLocked(), FloorConfig: cloneFloorConfig(s.ws.FloorConfig), SummaryConfig: cloneSummaryConfig(s.ws.SummaryConfig),
+		Limits: cloneLimits(s.ws.Limits)}
 }
 
 // SetShared makes this canvas take the workspace's shared part (a session
@@ -310,6 +314,7 @@ func (s *Store) SetShared(sh Shared) error {
 	old := s.ws
 	s.ws.ID, s.ws.Name, s.ws.Cwd, s.ws.Color, s.ws.CreatedAt = sh.ID, sh.Name, sh.Cwd, sh.Color, sh.CreatedAt
 	s.ws.FloorConfig, s.ws.SummaryConfig = cloneFloorConfig(sh.FloorConfig), cloneSummaryConfig(sh.SummaryConfig)
+	s.ws.Limits = cloneLimits(sh.Limits)
 	if err := s.save(); err != nil {
 		s.ws = old
 		return err

@@ -28,6 +28,15 @@ const ENGINES: { id: SummaryEngine; label: string; hint?: string }[] = [
 ];
 
 function Settings({ onClose }: { onClose: () => void }) {
+  return (
+    <Dialog icon="psychology" title="Resumos e briefing" sub="Neste workspace" onClose={onClose}>
+      <SummarySettingsBody />
+    </Dialog>
+  );
+}
+
+/** Who writes the summaries, and the bulletins on or off (also in Configurações → Resumos). */
+export function SummarySettingsBody() {
   const [s, setS] = useState<SummarySettings | null>(useSquad.getState().summarySettings);
   useEffect(() => {
     api.summarySettings().then(setS, (e: Error) => toast(e.message, 'err'));
@@ -47,7 +56,7 @@ function Settings({ onClose }: { onClose: () => void }) {
   const found = (id: string) => s?.engines.find((e) => e.name === id);
   const none = !!s && !s.engines.some((e) => e.available);
   return (
-    <Dialog icon="psychology" title="Resumos e briefing" sub="Neste workspace" onClose={onClose}>
+    <>
       {!s ? (
         <p className="field-hint">Lendo…</p>
       ) : (
@@ -83,7 +92,7 @@ function Settings({ onClose }: { onClose: () => void }) {
           </p>
         </div>
       )}
-    </Dialog>
+    </>
   );
 }
 

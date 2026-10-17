@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -34,11 +35,12 @@ const (
 
 // Service serves the portals of one workspace.
 type Service struct {
-	store   *store.Store
-	bus     *events.Bus
-	browser *browser.Manager // nil: no portals (tests, or disabled)
-	port    int
-	log     *slog.Logger
+	maxCreated atomic.Int64 // portals one agent may have created (0: MaxCreated)
+	store      *store.Store
+	bus        *events.Bus
+	browser    *browser.Manager // nil: no portals (tests, or disabled)
+	port       int
+	log        *slog.Logger
 
 	canvas Canvas // creates and removes portals for agents (torre portal create)
 
@@ -351,4 +353,16 @@ func writeJSON(ctx context.Context, c *websocket.Conn, v any) error {
 	wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	return c.Write(wctx, websocket.MessageText, b)
+}
+
+// SetMaxCreated changes how many portals one agent may have created (0:
+// MaxCreated).
+func (s *Service) SetMaxCreated(n int) { s.maxCreated.Store(int64(n)) }
+
+// MaxCreated is how many portals one agent may have created.
+func (s *Service) MaxCreated() int {
+	if n := s.maxCreated.Load(); n > 0 {
+		return int(n)
+	}
+	return MaxCreated
 }

@@ -113,6 +113,21 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - globais: `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥1`–`⌥9` workspaces;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
 
+**Configurações** (⚙ no topo; fecha com Esc ou clique fora):
+- **Aparência:** tema da interface (Escuro, Claro ou Sistema, que segue o computador) e dos terminais (Noite ou Papel);
+- **Agentes:** cada agente com a versão que a Torre achou (ou "não achado", com o comando de instalação), o caminho e o **comando padrão**, editável: ele abre o agente nos voos sem comando próprio, em todos os workspaces (fica em `~/.torre/agents.json`; a seta volta ao nome do agente). Também mostra o navegador dos portais. "Procurar de novo" refaz a busca;
+- **Limites** (deste workspace, em todas as sessões; valem na hora): saltos encadeados, pedidos por minuto, voos por líder e portais por voo. O botão "Limites" do Rádio abre aqui;
+- **Resumos:** quem escreve os resumos e os boletins, como antes;
+- **Papéis…** abre o painel de papéis;
+- **Atalhos:** a lista;
+- **Avisos**, quando um voo pede você: o número no título da janela, uma notificação do sistema (quando a janela não está na frente; o navegador pede licença) e um som curto. Valem por navegador.
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/agents` (`?refresh=1` procura de novo) | os agentes (`found`, `version`, `path`, `defaultCommand`, `installHint`) e o navegador |
+| `PUT /api/agents/<agente>` `{"defaultCommand"}` | troca o comando padrão (`""` volta ao nome) |
+| `GET/PUT /w/<id>/api/limits` `{"maxHops", "perMinute", "maxTeam", "portalsPerAgent"}` | os limites do workspace (0 volta ao padrão) |
+
 **PRIORIDADE (o voo pede você):** um agente parado num pedido de permissão (rodar um comando, editar um arquivo, usar uma ferramenta MCP) ou numa pergunta com opções deixa de aparecer como "No ar":
 - **no voo:** contorno âmbar com halo, a faixa de estado âmbar piscando, "PEDE VOCÊ 0:24" no lugar do estado e, em cima da tela, a frase do pedido com o que está em jogo ("QUER EXECUTAR UM COMANDO · npm run e2e");
 - **RESPONDER**, embaixo do voo: **Autorizar** (1), **Sempre** (2), **Negar** (3) e **Abrir tela**. Com o voo selecionado, as teclas 1, 2 e 3 respondem. "Sempre" só aparece quando a opção do agente é "não perguntar de novo" (nunca uma que troque o modo de permissão);

@@ -1,0 +1,54 @@
+/* Configurações (docs/torre/TELAS.md, quadro 18): 1200×780, tabs at 240. */
+.st-backdrop { position: fixed; inset: 0; z-index: 60; background: var(--backdrop); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.st-panel { width: min(1200px, 100%); height: min(780px, 100%); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line-3); box-shadow: var(--shadow-dialog); overflow: hidden; }
+.st-head { display: flex; align-items: center; gap: 10px; height: 52px; flex: none; padding: 0 12px 0 18px; border-bottom: 1px solid var(--line); }
+.st-head strong { font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; }
+.st-body { flex: 1; min-height: 0; display: flex; }
+.st-tabs { width: 240px; flex: none; border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow-y: auto; }
+.st-tab {
+  height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--line);
+  background: transparent; color: var(--text-2); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-align: left; cursor: pointer;
+}
+.st-tab:hover { background: var(--surface-2); color: var(--text); }
+.st-tab.on { background: var(--surface-3); color: var(--text); box-shadow: inset 2px 0 0 var(--text); }
+.st-content { flex: 1; min-width: 0; padding: 22px 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.st-content h2 { margin: 0; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; }
+.st-title-row { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.st-lead { margin: 0; font-size: 12.5px; color: var(--text-3); line-height: 1.5; max-width: 720px; }
+.st-row { display: flex; align-items: center; gap: 24px; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--line); max-width: 860px; }
+.st-label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.st-label b { font-size: 13px; }
+.st-label span { font-size: 12px; color: var(--text-3); line-height: 1.45; }
+.st-choice { display: flex; flex: none; }
+.st-choice button {
+  height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border: 1px solid var(--line-3); margin-left: -1px;
+  background: transparent; color: var(--text-2); font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+}
+.st-choice button.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); position: relative; }
+.st-table { border-collapse: collapse; width: 100%; max-width: 980px; font-size: 12.5px; }
+.st-table th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); padding: 8px 10px; border-bottom: 1px solid var(--line-3); }
+.st-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.st-table td b { display: block; }
+.st-sub { display: block; font-size: 11px; color: var(--text-3); margin-top: 3px; overflow-wrap: anywhere; }
+.st-ok { color: var(--stt-done); }
+.st-err { color: var(--stt-err); }
+.st-path { font-size: 11px; color: var(--text-3); overflow-wrap: anywhere; }
+.st-cmd { display: flex; gap: 4px; align-items: center; }
+.st-cmd input { flex: 1; min-width: 0; height: 32px; border: 1px solid var(--line-3); background: var(--bg); padding: 0 10px; font-size: 12.5px; color: var(--text); }
+.st-cmd input:focus { outline: none; border-color: var(--focus); }
+.st-limit { display: flex; align-items: center; gap: 12px; flex: none; }
+.st-limit input[type='range'] { width: 220px; accent-color: var(--text); }
+.st-num { width: 72px; height: 32px; border: 1px solid var(--line-3); background: var(--bg); padding: 0 8px; font-size: 13px; color: var(--text); }
+.st-keys td:first-child { width: 220px; white-space: nowrap; }
+.st-keys .kbd { margin-right: 4px; }
+.st-check { display: flex; gap: 10px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); max-width: 860px; cursor: pointer; }
+.st-check input { margin-top: 3px; accent-color: var(--text); }
+.st-check > span { display: flex; flex-direction: column; gap: 3px; }
+.st-check b { font-size: 13px; }
+.st-check > span > span { font-size: 12px; color: var(--text-3); line-height: 1.45; }
+@media (max-width: 720px) {
+  .st-body { flex-direction: column; }
+  .st-tabs { width: auto; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .st-tab { border-bottom: 0; flex: none; }
+  .st-row { flex-direction: column; align-items: flex-start; }
+}

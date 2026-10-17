@@ -313,3 +313,33 @@ export interface SessionList {
   current: string;
   sessions: SessionSummary[];
 }
+
+/** GET /api/agents: an agent found (or not) on this computer. */
+export interface AgentInfo {
+  agent: 'claude' | 'codex' | 'devin' | 'gemini';
+  found: boolean;
+  version?: string;
+  path?: string;
+  defaultCommand: string;
+  /** The user changed the command. */
+  custom: boolean;
+  installHint?: string;
+}
+
+export interface AgentsDetection {
+  agents: AgentInfo[];
+  browser: { found: boolean; path?: string };
+}
+
+/** A workspace's conversation limits (GET/PUT /w/<id>/api/limits). */
+export interface Limits {
+  maxHops: number;
+  perMinute: number;
+  maxTeam: number;
+  portalsPerAgent: number;
+}
+
+export interface LimitsView {
+  limits: Limits;
+  defaults: Limits;
+}

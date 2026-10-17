@@ -190,7 +190,7 @@ export function ActivityDrawer() {
           {rate}/{extra.limits.perMinute} por min · máx. {extra.limits.maxHops} saltos
         </span>
         <span style={{ flex: 1 }} />
-        <button className="btn ad-limits" disabled title="Os limites vão para Configurações → Limites">
+        <button className="btn ad-limits" onClick={() => useSquad.getState().openSettings('limits')} title="Configurações → Limites">
           Limites
         </button>
       </footer>
