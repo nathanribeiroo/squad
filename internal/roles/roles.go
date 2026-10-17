@@ -15,6 +15,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/ids"
 )
@@ -284,24 +285,24 @@ func (l *Library) check(r *Role, except string) error {
 	r.Prompt = strings.TrimSpace(strings.ReplaceAll(r.Prompt, "\r\n", "\n"))
 	switch n := utf8.RuneCountInString(r.Name); {
 	case n == 0:
-		return invalidError("a role needs a name")
+		return apierr.With(invalidError("a role needs a name"), "role.name_required")
 	case n > MaxName:
-		return invalidError(fmt.Sprintf("role names have at most %d characters", MaxName))
+		return apierr.With(invalidError(fmt.Sprintf("role names have at most %d characters", MaxName)), "role.name_too_long", "max", fmt.Sprint(MaxName))
 	}
 	if utf8.RuneCountInString(r.Prompt) > MaxPrompt {
-		return invalidError(fmt.Sprintf("role instructions have at most %d characters", MaxPrompt))
+		return apierr.With(invalidError(fmt.Sprintf("role instructions have at most %d characters", MaxPrompt)), "role.prompt_too_long", "max", fmt.Sprint(MaxPrompt))
 	}
 	for _, o := range l.roles {
 		if o.ID != except && strings.EqualFold(o.Name, r.Name) {
-			return invalidError(fmt.Sprintf("there is already a role named %q", o.Name))
+			return apierr.With(invalidError(fmt.Sprintf("there is already a role named %q", o.Name)), "role.name_taken", "name", o.Name)
 		}
 	}
 	if r.Abbr = ids.CleanCallsign(r.Abbr); r.Abbr != "" {
 		if len(r.Abbr) > 3 {
-			return invalidError("a role's abbreviation has at most 3 letters")
+			return apierr.With(invalidError("a role's abbreviation has at most 3 letters"), "role.abbr_too_long")
 		}
 		if o := l.abbrOwner(r.Abbr, except); o != "" {
-			return invalidError(fmt.Sprintf("the role %q already has the abbreviation %s", o, r.Abbr))
+			return apierr.With(invalidError(fmt.Sprintf("the role %q already has the abbreviation %s", o, r.Abbr)), "role.abbr_taken", "role", o, "abbr", r.Abbr)
 		}
 	} else {
 		r.Abbr = l.freeAbbr(ids.Callsign(r.Name), except)

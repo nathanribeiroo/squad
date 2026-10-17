@@ -535,6 +535,7 @@ function DiscardFloor({ floor, onClose }: { floor: Floor; onClose: () => void })
       icon="delete"
       title={`Descartar ${flightLevel(floor)}?`}
       sub="Apaga a cópia e o que há nela. Não dá para desfazer."
+      tone="danger"
       onClose={onClose}
       foot={
         <>
@@ -542,7 +543,7 @@ function DiscardFloor({ floor, onClose }: { floor: Floor; onClose: () => void })
           <button className="btn" onClick={onClose}>
             Cancelar
           </button>
-          <button className="btn fl-btn-danger" disabled={busy || !changes || (loses && !sure)} onClick={discard}>
+          <button className="btn danger" disabled={busy || !changes || (loses && !sure)} onClick={discard}>
             <Icon name="delete" />
             {busy ? 'Descartando…' : 'Descartar nível'}
           </button>
@@ -578,9 +579,9 @@ function DiscardFloor({ floor, onClose }: { floor: Floor; onClose: () => void })
       )}
       {changes && changes.files.length > 0 && <Files files={changes.files} />}
       {loses && (
-        <label className="fl-sure">
+        <label className="cf-ack">
           <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} />
-          Entendo que esse trabalho se perde.
+          <span>Entendo que esse trabalho se perde.</span>
         </label>
       )}
       {error && <p className="fl-error">{error}</p>}

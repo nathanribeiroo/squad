@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -129,7 +130,7 @@ func checkTerminalDir(t *store.TerminalData, resolve func(string) string) error 
 	}
 	dir := resolve(t.Cwd)
 	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
-		return invalidError("folder not found: " + dir)
+		return apierr.With(invalidError("folder not found: "+dir), "dir.not_found", "folder", dir)
 	}
 	return nil
 }

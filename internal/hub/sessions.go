@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/app"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/floors"
@@ -262,11 +263,11 @@ func checkSessionName(name string) (string, error) {
 	n := strings.Join(strings.Fields(name), " ")
 	switch {
 	case n == "":
-		return "", invalidf("a session needs a name")
+		return "", apierr.With(invalidf("a session needs a name"), "session.name_required")
 	case utf8.RuneCountInString(n) > MaxSessionName:
-		return "", invalidf("a session name has at most %d characters", MaxSessionName)
+		return "", apierr.With(invalidf("a session name has at most %d characters", MaxSessionName), "session.name_too_long", "max", fmt.Sprint(MaxSessionName))
 	case strings.IndexFunc(n, unicode.IsControl) >= 0:
-		return "", invalidf("a session name is one line of text")
+		return "", apierr.With(invalidf("a session name is one line of text"), "session.name_line")
 	}
 	return n, nil
 }
@@ -453,7 +454,7 @@ func (h *Hub) OpenSession(id, sid string, confirm bool) (SessionList, error) {
 		case s == nil:
 			return "", nil, fmt.Errorf("%w: no session %q", ErrNotFound, sid)
 		case sid == cur:
-			return "", nil, invalidf("that session is already open")
+			return "", nil, apierr.With(invalidf("that session is already open"), "session.already_open")
 		}
 		if _, err := os.Stat(w.s.path(sid)); err != nil {
 			return "", nil, fmt.Errorf("session %q has no canvas: %w", sid, err)
@@ -567,11 +568,11 @@ func (h *Hub) RemoveSession(id, sid string, confirm bool) (SessionList, error) {
 	case s == nil:
 		return SessionList{}, fmt.Errorf("%w: no session %q", ErrNotFound, sid)
 	case sid == cur:
-		return SessionList{}, invalidf("the open session can't be removed: open another one first")
+		return SessionList{}, apierr.With(invalidf("the open session can't be removed: open another one first"), "session.remove_open")
 	}
 	ws, rerr := store.Read(w.s.path(sid))
 	if rerr == nil && len(ws.Floors) > 0 {
-		return SessionList{}, invalidf("the session has floors (copies of its repository): open it and land or discard them first")
+		return SessionList{}, apierr.With(invalidf("the session has floors (copies of its repository): open it and land or discard them first"), "session.has_levels")
 	}
 	if rerr == nil && ws.Copy != nil {
 		files, err := floors.Uncommitted(context.Background(), *ws.Copy)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
 
@@ -161,17 +162,20 @@ func writeErr(w http.ResponseWriter, err error) {
 	var conflict *ConflictError
 	switch {
 	case errors.As(err, &dirtyErr):
-		body := map[string]any{"error": err.Error(), "files": dirtyErr.Files}
+		body := apierr.Body(err)
+		body["files"] = dirtyErr.Files
 		if dirtyErr.Folder != "" {
 			body["folder"], body["branch"] = dirtyErr.Folder, dirtyErr.Branch
 		}
 		writeJSON(w, http.StatusConflict, body)
 	case errors.As(err, &conflict):
-		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "conflicts": conflict.Files})
+		body := apierr.Body(err)
+		body["conflicts"] = conflict.Files
+		writeJSON(w, http.StatusConflict, body)
 	case errors.Is(err, ErrNotFound):
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusNotFound, apierr.Body(err))
 	case errors.Is(err, ErrInvalid), errors.Is(err, store.ErrInvalid):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, apierr.Body(err))
 	default:
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

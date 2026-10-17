@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import type { RoleDef, TerminalData } from '../api/types';
 import { useSquad } from '../state/store';
 import type { IconName } from './icons';
+import { confirmDialog } from '../components/ConfirmDialog';
 import { callsign } from './model';
 import { toast } from './toast';
 
@@ -69,8 +70,16 @@ export async function changeRole(nodeId: string, t: TerminalData, roleId: string
   const restart = running && ROLE_AGENTS.has(t.agent);
   if (restart) {
     const name = useSquad.getState().roles.find((r) => r.id === roleId)?.name;
-    const what = roleId ? `Dar o papel "${name}" a ${t.name}?` : `Tirar o papel de ${t.name}?`;
-    if (!window.confirm(`${what} O voo reinicia para receber as instruções, e a conversa atual é encerrada.`)) return;
+    const cs = callsign(t);
+    const ok = await confirmDialog({
+      title: roleId ? `Dar o papel ${name} a ${cs}?` : `Tirar o papel de ${cs}?`,
+      icon: 'badge',
+      tone: 'warn',
+      lose: ['O contexto da conversa atual: o voo começa uma nova, para o papel valer desde o início'],
+      keep: ['A conversa atual, guardada no agente'],
+      action: 'Trocar e reiniciar',
+    });
+    if (!ok) return;
   }
   try {
     await api.updateNode(nodeId, { terminal: { ...t, role: roleId || undefined } });

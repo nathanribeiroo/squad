@@ -9,12 +9,12 @@ export function usePopoverClose<T extends HTMLElement = HTMLDivElement>(onClose:
   useEffect(() => {
     const away = (e: PointerEvent) => {
       const t = e.target as Element;
-      if (ref.current?.contains(t)) return;
+      if (ref.current?.contains(t) || t.closest?.('.dlg-backdrop')) return; // a confirmation it opened
       if (opener && t.closest?.(opener)) return;
       onClose();
     };
     const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !document.querySelector('[aria-modal="true"]')) onClose();
     };
     window.addEventListener('pointerdown', away, true);
     window.addEventListener('keydown', esc);

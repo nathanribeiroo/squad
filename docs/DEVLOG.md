@@ -2,6 +2,25 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F2: confirmações, espaço vazio e erros em português
+
+- **`ConfirmDialog`** (quadro 15): substitui as 10 `window.confirm` e as confirmações embutidas nos menus.
+  - Cobre remover voo, NOTAM, sessão, workspace e papel; nova conversa; trocar o papel; reiniciar quem usa um papel; descartar as alterações de um papel; restaurar um papel; trocar de sessão com voos no ar; remover uma sessão com alterações sem commit na cópia. Descartar um nível ganhou a mesma borda e o mesmo botão.
+  - A pergunta é o título, com o indicativo ("Remover o voo PLN?"); a lista diz o que se perde (✕) e o que fica (✓); o botão é o verbo.
+  - A borda dá a gravidade: vermelha (perde trabalho), âmbar (interrompe), clara (só reinicia).
+  - "Entendo que esse trabalho se perde." só quando há trabalho sem commit; Esc cancela; Enter não confirma as vermelhas (o foco começa em Cancelar).
+  - `confirmDialog(...)` devolve uma promessa e pode ser chamada de qualquer lugar (inclusive de `lib/roles.ts`). Os menus que a abrem não fecham com o clique dentro dela, e o Esc dela não fecha o painel de baixo.
+- **Trocar de sessão com voos no ar:** era uma caixa dentro do menu; agora é o diálogo "Trocar de sessão?", com os indicativos de quem para no meio e o que volta (a arremetida, com "Continuar").
+- **Espaço vazio** (quadro 20): "ESPAÇO AÉREO VAZIO · workspace", "Ponha a primeira equipe no ar." e os botões de 52 com o atalho. **Decisão sem consulta:** "Usar um plano de voo ⌥M" aparece desligado até a F5d.
+- **Arremetida e espera geral** (quadro 21): o voo interrompido mostra o chip "arremetida" no cabeçalho, e a faixa do topo usa indicativos. Na espera geral, cada frequência ganha o quadrado de 26 com ∞ (antes era "∞ retido").
+- **Sem enlace** (quadro 19): depois de 4 s sem o servidor, um cartão "O torre serve parou? Tentando de novo em 3 s…", com a contagem da próxima tentativa. Uma queda curta só mostra "RECONECTANDO…" na barra.
+- **Erros em português:**
+  - pacote novo `internal/apierr`: um erro ganha `code` e `params`, e a resposta da API fica `{"error", "code", "params"}`. O `error` continua em inglês, porque os agentes, a CLI e os logs o leem;
+  - 57 erros marcados na origem: pasta, workspace, sessão, voo, NOTAM, papel, nível, cópia da sessão, git e resumos;
+  - a web traduz pelo `code` (`web/src/api/errors.ts`); sem `code` conhecido, mostra a mensagem do servidor.
+- **Testado aqui:** testes Go novos (`apierr`, o `code` de "papel repetido" e de "último workspace" pela API, o de "pasta não encontrada"), a suíte inteira, vet no Linux e no Windows, `tsc`, build e capturas: espaço vazio, "Remover o voo PLN?", "Já existe um voo chamado Planejador" traduzido no Novo voo e o cartão sem enlace (derrubando o servidor com a página aberta).
+- **Não testado:** o cartão de laço da espera geral (fica para depois, veja o PLAN); o Enter nas confirmações vermelhas com leitor de tela.
+
 ## 2026-10-17, Torre F1: redesenho do que existe
 
 - **Indicativo do voo (`callsign`):**

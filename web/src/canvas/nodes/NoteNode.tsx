@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Node, NodeProps } from '@xyflow/react';
 import { ApiError, api } from '../../api/client';
 import type { NoteData, WNode } from '../../api/types';
+import { confirmDialog } from '../../components/ConfirmDialog';
 import { Icon } from '../../components/Icon';
 import { roleColor, useCreator, useRoleLookup } from '../../lib/roles';
 import { Markdown, changedLines, type MarkdownHighlight } from '../../lib/markdown';
@@ -89,9 +90,22 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
   };
 
   const setLocked = (locked: boolean) => api.updateNode(id, { note: { ...note, locked } }).catch((e: Error) => toast(e.message, 'err'));
-  const remove = () => {
-    const kept = note.file ? ` O arquivo ${note.file} continua no disco.` : '';
-    if (window.confirm(`Remover a NOTAM "${note.title}" do canvas?${kept}`)) api.removeNode(id).catch((e: Error) => toast(e.message, 'err'));
+  const remove = async () => {
+    const ok = await confirmDialog({
+      title: `Remover a NOTAM ${note.title}?`,
+      icon: 'description',
+      tone: 'warn',
+      lose: ['A NOTAM sai do canvas, e os voos na frequência dela deixam de vê-la'],
+      keep: [
+        note.file && (
+          <>
+            O arquivo <span className="mono">{note.file}</span>, no disco
+          </>
+        ),
+      ],
+      action: 'Remover NOTAM',
+    });
+    if (ok) api.removeNode(id).catch((e: Error) => toast(e.message, 'err'));
   };
 
   const authorRole = (name: string) => roleColor(roleOf(nodes?.find((n) => n.terminal?.name === name)?.terminal?.role));

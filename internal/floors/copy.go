@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
@@ -44,7 +45,7 @@ func NewCopy(ctx context.Context, req CopyRequest) (store.Floor, error) {
 	main := mainRoot(ctx, root)
 	parent := filepath.Dir(main)
 	if parent == main {
-		return store.Floor{}, invalidError("a session's copy lives next to the repository, which can't be the root of a drive")
+		return store.Floor{}, apierr.With(invalidError("a session's copy lives next to the repository, which can't be the root of a drive"), "copy.drive_root")
 	}
 	from, start := strings.TrimSpace(req.From), "HEAD"
 	if from == "" {
@@ -60,9 +61,9 @@ func NewCopy(ctx context.Context, req CopyRequest) (store.Floor, error) {
 	}
 	if !hasRef(ctx, root, start) {
 		if from == "" {
-			return store.Floor{}, invalidError("the repository has no commit yet: a copy starts from the last commit")
+			return store.Floor{}, apierr.With(invalidError("the repository has no commit yet: a copy starts from the last commit"), "git.no_commit")
 		}
-		return store.Floor{}, invalidError(fmt.Sprintf("there is no branch %q to start from", from))
+		return store.Floor{}, apierr.With(invalidError(fmt.Sprintf("there is no branch %q to start from", from)), "git.no_branch", "branch", from)
 	}
 	baseCommit, err := git(ctx, root, "rev-parse", start)
 	if err != nil {
@@ -73,15 +74,15 @@ func NewCopy(ctx context.Context, req CopyRequest) (store.Floor, error) {
 		return store.Floor{}, err
 	}
 	if hasRef(ctx, root, "refs/heads/"+branch) {
-		return store.Floor{}, invalidError(fmt.Sprintf("a branch named %q already exists: pick another name", branch))
+		return store.Floor{}, apierr.With(invalidError(fmt.Sprintf("a branch named %q already exists: pick another name", branch)), "git.branch_exists", "branch", branch)
 	}
 	id := ids.Slug(branch)
 	if id == "" {
-		return store.Floor{}, invalidError("a branch name needs a letter or a digit")
+		return store.Floor{}, apierr.With(invalidError("a branch name needs a letter or a digit"), "copy.branch_letter")
 	}
 	path := filepath.Join(parent, ".torre", "sessions", filepath.Base(main)+"--"+id)
 	if _, err := os.Stat(path); err == nil {
-		return store.Floor{}, invalidError(fmt.Sprintf("the folder %s already exists (left by an older session?): remove it or pick another branch name", path))
+		return store.Floor{}, apierr.With(invalidError(fmt.Sprintf("the folder %s already exists (left by an older session?): remove it or pick another branch name", path)), "copy.folder_exists", "folder", path)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return store.Floor{}, err
@@ -183,7 +184,7 @@ func (s *Service) CopyLog() (string, error) {
 
 // errNoCopy refuses copy requests in a session that works in the workspace
 // folder.
-var errNoCopy = invalidError("this session works in the workspace folder: it has no copy (nor a branch of its own) to merge")
+var errNoCopy = apierr.With(invalidError("this session works in the workspace folder: it has no copy (nor a branch of its own) to merge"), "copy.none")
 
 // CopyChanges reports what the session's copy has that its base doesn't.
 func (s *Service) CopyChanges(ctx context.Context) (Changes, error) {
@@ -205,22 +206,22 @@ func (s *Service) MergeCopy(ctx context.Context, req LandRequest) (LandResult, e
 		return LandResult{}, errNoCopy
 	}
 	if s.preparing(copyKey) {
-		return LandResult{}, invalidError("the copy's setup command is still running; wait for it to finish")
+		return LandResult{}, apierr.With(invalidError("the copy's setup command is still running; wait for it to finish"), "copy.setup_running")
 	}
 	if !isDir(f.Path) {
-		return LandResult{}, invalidError(fmt.Sprintf("the session's copy is gone (%s)", f.Path))
+		return LandResult{}, apierr.With(invalidError(fmt.Sprintf("the session's copy is gone (%s)", f.Path)), "copy.gone", "folder", f.Path)
 	}
 	root, err := repoRoot(ctx, f.Path)
 	if err != nil {
 		return LandResult{}, err
 	}
 	if op := operationInProgress(ctx, f.Path); op != "" {
-		return LandResult{}, invalidError(fmt.Sprintf("the session's copy has %s in progress: finish or abort it first", op))
+		return LandResult{}, apierr.With(invalidError(fmt.Sprintf("the session's copy has %s in progress: finish or abort it first", op)), "git.in_progress", "op", op)
 	}
 	if br, err := currentBranch(ctx, f.Path); err != nil {
 		return LandResult{}, err
 	} else if br != f.Branch {
-		return LandResult{}, invalidError(fmt.Sprintf("the session's copy is not on its branch %s: switch back before merging", f.Branch))
+		return LandResult{}, apierr.With(invalidError(fmt.Sprintf("the session's copy is not on its branch %s: switch back before merging", f.Branch)), "copy.off_branch", "branch", f.Branch)
 	}
 	files, err := status(ctx, f.Path, untrackedAll)
 	if err != nil {
@@ -234,10 +235,10 @@ func (s *Service) MergeCopy(ctx context.Context, req LandRequest) (LandResult, e
 		into = f.Base
 	}
 	if into == "" {
-		return LandResult{}, invalidError("the copy started from a detached HEAD: say which branch to merge into")
+		return LandResult{}, apierr.With(invalidError("the copy started from a detached HEAD: say which branch to merge into"), "git.detached")
 	}
 	if leaked := committedCopies(ctx, root, f); len(leaked) > 0 {
-		return LandResult{}, invalidError(fmt.Sprintf("the session's branch commits files copied from the workspace folder, which may hold secrets: %s. Remove them from the branch in the copy (git rm --cached, then commit) before merging", strings.Join(leaked, ", ")))
+		return LandResult{}, apierr.With(invalidError(fmt.Sprintf("the session's branch commits files copied from the workspace folder, which may hold secrets: %s. Remove them from the branch in the copy (git rm --cached, then commit) before merging", strings.Join(leaked, ", "))), "copy.leaked", "files", strings.Join(leaked, ", "))
 	}
 	commit, upToDate, err := mergeInto(ctx, root, f, into)
 	var conflict *ConflictError

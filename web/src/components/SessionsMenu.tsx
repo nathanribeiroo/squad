@@ -3,9 +3,11 @@ import { ApiError, api, hub } from '../api/client';
 import type { SessionList, SessionSummary, WNode } from '../api/types';
 import { slugify } from '../lib/floors';
 import { shortPath } from '../lib/paths';
+import { callsign } from '../lib/model';
 import { ago, busyOf, busyText, contents, newBranchName, pendingWork, when, type Busy } from '../lib/sessions';
 import { useNow } from '../lib/useNow';
 import { useSquad } from '../state/store';
+import { confirmDialog, confirmOpen, type ConfirmOptions } from './ConfirmDialog';
 import { Icon } from './Icon';
 import './WorkspaceMenu.css';
 import './SessionsMenu.css';
@@ -15,52 +17,48 @@ function setSessions(l: SessionList) {
 }
 
 /** Leaving the open session (open another, or a new one): run(fn) calls
- * fn(false); when agents are working, the server refuses and busy asks
- * first, and confirming calls fn(true). */
+ * fn(false); when agents are working, the server refuses, and confirming
+ * the question calls fn(true). */
 export function useLeave() {
-  const [busy, setBusy] = useState<{ why: Busy; target: string; confirm: () => void } | null>(null);
   const [error, setError] = useState('');
   const [running, setRunning] = useState(false);
-  const run = (target: string, fn: (confirm: boolean) => Promise<void>, confirm = false) => {
+  const run = (fn: (confirm: boolean) => Promise<void>, confirm = false) => {
     setRunning(true);
     setError('');
-    setBusy(null);
     fn(confirm)
-      .catch((err: Error) => {
+      .catch(async (err: Error) => {
         const why = busyOf(err);
-        if (why && !confirm) setBusy({ why, target, confirm: () => run(target, fn, true) });
-        else setError(err.message);
+        if (!why || confirm) return setError(err.message);
+        if (await confirmDialog(leaveQuestion(why))) run(fn, true);
       })
       .finally(() => setRunning(false));
   };
-  return { run, busy, cancel: () => setBusy(null), error, running };
+  return { run, error, running };
 }
 
-/** The confirmation to leave a session whose agents are working. */
-export function BusyConfirm({ why, onConfirm, onCancel }: { why: Busy; onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="ses-busy" role="alert">
-      <Icon name="warning" size={18} />
-      <div className="ses-busy-text">
-        <span>{busyText(why)}</span>
-        <span className="ses-busy-sub">
-          {why.working.length === 0
-            ? 'Trocando agora, os pedidos são cancelados.'
-            : why.working.length === 1
-              ? 'Trocando agora, o trabalho para no meio. Quando você voltar para esta sessão, o voo aparece em arremetida, com "Continuar".'
-              : 'Trocando agora, o trabalho para no meio. Quando você voltar para esta sessão, os voos aparecem em arremetida, com "Continuar".'}
-        </span>
-        <span className="ses-busy-actions">
-          <button type="button" className="btn" onClick={onCancel}>
-            Cancelar
-          </button>
-          <button type="button" className="btn filled" onClick={onConfirm}>
-            Trocar mesmo assim
-          </button>
-        </span>
-      </div>
-    </div>
-  );
+/** "Trocar de sessão?": who stops in the middle, and what comes back. */
+function leaveQuestion(why: Busy): ConfirmOptions {
+  const nodes = useSquad.getState().workspace?.nodes ?? [];
+  const cs = (name: string) => {
+    const t = nodes.find((n) => n.terminal?.name === name)?.terminal;
+    return t ? callsign(t) : name;
+  };
+  const flights = why.working.map(cs);
+  return {
+    title: 'Trocar de sessão?',
+    icon: 'swap_horiz',
+    tone: 'warn',
+    text: busyText({ ...why, working: flights }),
+    lose: [
+      flights.length > 0 && `O turno de ${flights.join(', ')} para no meio`,
+      why.pending > 0 && (why.pending === 1 ? 'O pedido em andamento é cancelado' : `Os ${why.pending} pedidos em andamento são cancelados`),
+    ],
+    keep: [
+      'A sessão atual fica guardada, como está',
+      flights.length > 0 && 'Ao voltar, os voos aparecem em arremetida, com "Continuar"',
+    ],
+    action: 'Trocar mesmo assim',
+  };
 }
 
 /** The sessions of the workspace on screen, under the session in the top bar. */
@@ -81,9 +79,10 @@ export function SessionsMenu({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const away = (e: PointerEvent) => {
       // The top bar button toggles the menu itself.
-      if (!ref.current?.contains(e.target as Node) && !(e.target as Element).closest?.('.tb-session')) onClose();
+      const t = e.target as Element;
+      if (!ref.current?.contains(t) && !t.closest?.('.tb-session, .dlg-backdrop')) onClose();
     };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && !confirmOpen() && onClose();
     window.addEventListener('pointerdown', away, true);
     window.addEventListener('keydown', esc);
     return () => {
@@ -93,7 +92,7 @@ export function SessionsMenu({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   const open = (s: SessionSummary) =>
-    leave.run(s.id, async (confirm) => {
+    leave.run(async (confirm) => {
       setSessions(await hub.openSession(ws, s.id, confirm));
       onClose();
     });
@@ -107,21 +106,19 @@ export function SessionsMenu({ onClose }: { onClose: () => void }) {
           <div className="ws-menu-title">Sessões de {wsName}</div>
           <div className="ses-list">
             {list?.sessions.map((s) => (
-              <div key={s.id}>
-                <SessionRow
-                  ws={ws}
-                  s={s}
-                  now={now}
-                  disabled={leave.running}
-                  onOpen={() => open(s)}
-                  onMerge={() => {
-                    onClose();
-                    useSquad.getState().setFloorDialog({ kind: 'merge-copy' });
-                  }}
-                  onError={setError}
-                />
-                {leave.busy?.target === s.id && <BusyConfirm why={leave.busy.why} onConfirm={leave.busy.confirm} onCancel={leave.cancel} />}
-              </div>
+              <SessionRow
+                key={s.id}
+                ws={ws}
+                s={s}
+                now={now}
+                disabled={leave.running}
+                onOpen={() => open(s)}
+                onMerge={() => {
+                  onClose();
+                  useSquad.getState().setFloorDialog({ kind: 'merge-copy' });
+                }}
+                onError={setError}
+              />
             ))}
             {!list && !error && <div className="ses-empty">Carregando…</div>}
           </div>
@@ -156,8 +153,6 @@ function SessionRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(s.name);
-  // Uncommitted changes in its copy that removing it would lose.
-  const [losing, setLosing] = useState<string[] | null>(null);
   const cancelled = useRef(false);
   useEffect(() => {
     if (!editing) setName(s.name); // named meanwhile (by the agent, or elsewhere)
@@ -172,20 +167,55 @@ function SessionRow({
       onError(err.message);
     });
   };
+  // What removing it keeps: the branch of its copy, and the conversations.
+  const keep = [
+    s.branch && (
+      <>
+        O branch <span className="mono">{s.branch}</span>, com o que foi commitado
+      </>
+    ),
+    'As conversas, guardadas nos agentes',
+  ];
   const remove = (confirm = false) => {
-    setLosing(null);
-    hub.removeSession(ws, s.id, confirm).then(setSessions, (err: Error) => {
+    hub.removeSession(ws, s.id, confirm).then(setSessions, async (err: Error) => {
       const files = err instanceof ApiError && err.status === 409 ? (err.body.files as string[] | undefined) : undefined;
-      if (files) setLosing(files);
-      else onError(err.message);
+      if (!files) return onError(err.message);
+      // Uncommitted changes in its copy, which removing it loses.
+      const ok = await confirmDialog({
+        title: `Remover a sessão ${s.name}?`,
+        tone: 'danger',
+        lose: [
+          <>
+            {files.length === 1 ? '1 alteração sem commit na cópia' : `${files.length} alterações sem commit na cópia`}:{' '}
+            <span className="mono">
+              {files.slice(0, 5).join(', ')}
+              {files.length > 5 ? ` e mais ${files.length - 5}` : ''}
+            </span>
+          </>,
+        ],
+        keep,
+        ack: 'Entendo que esse trabalho se perde.',
+        action: 'Remover sessão',
+      });
+      if (ok) remove(true);
     });
   };
-  const askRemove = () => {
-    const copy = s.copy
-      ? ` A cópia ${shortPath(s.copy)} é apagada; o branch ${s.branch} continua no repositório, com o que foi commitado.`
-      : '';
-    const msg = `Remover a sessão "${s.name}"?\n\nO canvas e as NOTAMs dela vão para a lixeira da Torre (~/.torre/trash).${copy} As conversas continuam guardadas nos agentes.`;
-    if (window.confirm(msg)) remove();
+  const askRemove = async () => {
+    const ok = await confirmDialog({
+      title: `Remover a sessão ${s.name}?`,
+      tone: 'danger',
+      lose: [
+        'O canvas e as NOTAMs saem da lista e vão para a lixeira da Torre (~/.torre/trash)',
+        s.copy && (
+          <>
+            A cópia <span className="mono">{shortPath(s.copy)}</span>
+          </>
+        ),
+      ],
+      keep,
+      action: 'Remover sessão',
+    });
+    if (ok) remove();
   };
 
   return (
@@ -266,26 +296,6 @@ function SessionRow({
           )}
         </span>
       </div>
-      {losing && (
-        <div className="ses-busy" role="alert">
-          <Icon name="warning" size={18} />
-          <div className="ses-busy-text">
-            <span>
-              A cópia tem {losing.length === 1 ? '1 alteração sem commit, que se perde' : `${losing.length} alterações sem commit, que se perdem`}:{' '}
-              <span className="mono">{losing.slice(0, 5).join(', ')}{losing.length > 5 ? ` e mais ${losing.length - 5}` : ''}</span>.
-            </span>
-            <span className="ses-busy-sub">Para {losing.length === 1 ? 'guardá-la' : 'guardá-las'}, abra a sessão e peça a um voo para commitar.</span>
-            <span className="ses-busy-actions">
-              <button type="button" className="btn" onClick={() => setLosing(null)}>
-                Cancelar
-              </button>
-              <button type="button" className="btn filled" onClick={() => remove(true)}>
-                Remover mesmo assim
-              </button>
-            </span>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -336,7 +346,7 @@ function NewSessionForm({ ws, onBack, onDone }: { ws: string; onBack: () => void
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const copy = where === 'copy' ? { branch: target, from } : undefined;
-    leave.run('new', async (confirm) => {
+    leave.run(async (confirm) => {
       setSessions(await hub.newSession(ws, { name: name.trim() || undefined, keepTerminals: keep, confirm, copy }));
       onDone();
     });
@@ -423,13 +433,9 @@ function NewSessionForm({ ws, onBack, onDone }: { ws: string; onBack: () => void
         </div>
       )}
       <div className="ws-note">A sessão atual fica guardada e volta como está quando você abri-la de novo.</div>
-      {leave.busy ? (
-        <BusyConfirm why={leave.busy.why} onConfirm={leave.busy.confirm} onCancel={leave.cancel} />
-      ) : (
-        <button className="btn filled" type="submit" disabled={leave.running || taken || (where === 'copy' && !target)} style={{ justifyContent: 'center' }}>
-          {leave.running && where === 'copy' ? 'Criando a cópia…' : 'Criar e abrir'}
-        </button>
-      )}
+      <button className="btn filled" type="submit" disabled={leave.running || taken || (where === 'copy' && !target)} style={{ justifyContent: 'center' }}>
+        {leave.running && where === 'copy' ? 'Criando a cópia…' : 'Criar e abrir'}
+      </button>
       {leave.error && <div className="ws-error">{leave.error}</div>}
     </form>
   );

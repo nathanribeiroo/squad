@@ -12,6 +12,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/server"
@@ -97,7 +98,7 @@ type createBody struct {
 func (h *Hub) handleCreate(w http.ResponseWriter, r *http.Request) {
 	var b createBody
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	s, err := h.Create(b.Name, b.Cwd, b.Color, b.Session)
@@ -111,7 +112,7 @@ func (h *Hub) handleCreate(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleOpen(w http.ResponseWriter, r *http.Request) {
 	var b createBody
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	s, err := h.Open(b.Cwd)
@@ -125,7 +126,7 @@ func (h *Hub) handleOpen(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	var p Patch
 	if err := readJSON(r, &p); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	s, err := h.Update(r.PathValue("id"), p)
@@ -156,7 +157,7 @@ func (h *Hub) handleSessions(w http.ResponseWriter, r *http.Request) {
 func (h *Hub) handleNewSession(w http.ResponseWriter, r *http.Request) {
 	var b NewSession
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	l, err := h.NewSession(r.PathValue("id"), b)
@@ -185,7 +186,7 @@ func (h *Hub) handleRenameSession(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"name"`
 	}
 	if err := readJSON(r, &b); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
 	l, err := h.RenameSession(r.PathValue("id"), r.PathValue("sid"), b.Name)
@@ -283,19 +284,28 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
 }
 
+// writeErr answers err, with its code for the interface (apierr).
+func writeErr(w http.ResponseWriter, code int, err error) {
+	writeJSON(w, code, apierr.Body(err))
+}
+
 func writeHubError(w http.ResponseWriter, err error) {
 	var busy *BusyError
 	var dirty *DirtyCopyError
 	switch {
 	case errors.As(err, &busy):
-		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "working": busy.Working, "pending": busy.Pending})
+		body := apierr.Body(err)
+		body["working"], body["pending"] = busy.Working, busy.Pending
+		writeJSON(w, http.StatusConflict, body)
 	case errors.As(err, &dirty):
-		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "files": dirty.Files})
+		body := apierr.Body(err)
+		body["files"] = dirty.Files
+		writeJSON(w, http.StatusConflict, body)
 	case errors.Is(err, ErrNotFound):
-		writeError(w, http.StatusNotFound, err.Error())
+		writeErr(w, http.StatusNotFound, err)
 	case errors.Is(err, ErrInvalid), errors.Is(err, floors.ErrInvalid):
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, err)
 	default:
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, http.StatusInternalServerError, err)
 	}
 }

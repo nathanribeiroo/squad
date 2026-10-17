@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/nathanribeiroo/squad/internal/apierr"
 )
 
 // gitTimeout bounds one git command (a checkout of a large repository).
@@ -62,7 +64,7 @@ func run(ctx context.Context, dir string, ok []int, args ...string) (gitResult, 
 			}
 		}
 	case errors.Is(err, exec.ErrNotFound):
-		return res, errors.New("git is not installed (or not on PATH)")
+		return res, apierr.With(errors.New("git is not installed (or not on PATH)"), "git.missing")
 	}
 	msg := strings.TrimSpace(stderr.String())
 	if msg == "" {
@@ -85,7 +87,7 @@ func repoRoot(ctx context.Context, dir string) (string, error) {
 	out, err := git(ctx, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		if strings.Contains(err.Error(), "not a git repository") {
-			return "", invalidError("the workspace folder is not in a git repository (floors are copies of one)")
+			return "", apierr.With(invalidError("the workspace folder is not in a git repository (floors are copies of one)"), "git.not_repo")
 		}
 		return "", err
 	}
@@ -127,10 +129,10 @@ func currentBranch(ctx context.Context, dir string) (string, error) {
 // checkBranchName validates a branch name the way git does.
 func checkBranchName(ctx context.Context, dir, name string) error {
 	if name == "" || strings.HasPrefix(name, "-") {
-		return invalidError(fmt.Sprintf("invalid branch name %q", name))
+		return apierr.With(invalidError(fmt.Sprintf("invalid branch name %q", name)), "git.bad_branch", "branch", name)
 	}
 	if _, err := git(ctx, dir, "check-ref-format", "--branch", name); err != nil {
-		return invalidError(fmt.Sprintf("invalid branch name %q", name))
+		return apierr.With(invalidError(fmt.Sprintf("invalid branch name %q", name)), "git.bad_branch", "branch", name)
 	}
 	return nil
 }

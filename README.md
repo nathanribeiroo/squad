@@ -112,7 +112,19 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal;
 - globais: `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥1`–`⌥9` workspaces.
 
-**Frequências:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó: os dois ficam na mesma frequência. Um clique no fio o seleciona; para tirar da frequência, use Delete ou o botão "Desligar". Duplo clique no fio cria um ponto de curva, que pode ser arrastado; duplo clique no ponto o remove. Enquanto um pedido passa, o fio corre tracejado, e um "∞ retido" aparece quando a espera geral ou o limite por minuto o seguram.
+**Confirmações:** remover um voo, uma NOTAM, uma sessão, um workspace ou um papel, começar uma conversa nova, trocar o papel de um voo, reiniciar quem usa um papel, descartar um nível e trocar de sessão com voos no ar abrem um diálogo da Torre:
+- o título é a pergunta ("Remover o voo PLN?"), a lista diz o que se perde (✕) e o que fica (✓), e o botão é o verbo ("Remover voo", "Trocar mesmo assim");
+- a borda diz a gravidade: vermelha quando perde trabalho, âmbar quando interrompe, clara quando só reinicia;
+- quando há alterações sem commit a perder, o botão só funciona depois de marcar "Entendo que esse trabalho se perde.";
+- Esc cancela; Enter confirma, menos nas vermelhas.
+
+**Espaço vazio:** uma sessão sem voos na pista mostra "Ponha a primeira equipe no ar.", com **Novo voo** (`T`) e **Escrever o plano numa NOTAM** (`N`). "Usar um plano de voo" aparece desligado até os planos de voo chegarem.
+
+**Sem enlace:** se o `torre serve` parar, a barra mostra "Reconectando…"; depois de alguns segundos, um cartão diz "O torre serve parou? Tentando de novo em 3 s…". Os voos ficam no último estado conhecido e voltam sozinhos quando o servidor sobe.
+
+**Erros em português:** as mensagens de erro da interface (pasta não encontrada, nome repetido, sigla em uso, nível com alterações…) chegam em português. A API manda `code` e `params` junto com o `error` em inglês, que é o que os agentes e a CLI continuam lendo.
+
+**Frequências:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó: os dois ficam na mesma frequência. Um clique no fio o seleciona; para tirar da frequência, use Delete ou o botão "Desligar". Duplo clique no fio cria um ponto de curva, que pode ser arrastado; duplo clique no ponto o remove. Enquanto um pedido passa, o fio corre tracejado. Na espera geral (`⌥P`), o botão do topo vira "Liberar todos" em âmbar e cada frequência ganha um quadrado com ∞.
 
 **Indicativos e níveis:**
 - cada voo tem um **indicativo** de até 4 letras, único no canvas da sessão. Vem da **sigla** do papel (PLN, IMP; o segundo Implementador é IM2) ou, sem papel, das consoantes do nome (Claude → CLD). Dá para escolher outro em Novo voo ou em Configurar…;
@@ -145,7 +157,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - uma conversa em que ninguém escreveu ainda não tem o que retomar: o agente que ainda não recebeu nenhuma mensagem começa uma conversa nova, sem aviso;
 - **Nova conversa…**, no menu `⋯`, reinicia o agente sem o contexto (a conversa antiga continua guardada no agente). Trocar o papel também começa uma conversa nova, para o papel valer desde o início;
 - **Copiar comando de retomada**, no mesmo menu, copia `claude --resume <id>` (ou o do agente): rodado na pasta do voo, abre a mesma conversa fora da Torre;
-- **arremetida:** se a Torre fechar com um agente no meio de um turno, ao reabrir aparece a faixa âmbar "Arremetida · CLD foi interrompido no meio do turno". **Continuar** manda "continue de onde parou" a cada um; **Dispensar** esquece. O que o agente estava escrevendo naquele instante se perde, e ele refaz esse passo. Funciona no Claude e no Devin, que avisam o início e o fim de cada turno;
+- **arremetida:** se a Torre fechar com um agente no meio de um turno, ao reabrir aparece a faixa âmbar "Arremetida · CLD foi interrompido no meio do turno". **Continuar** manda "continue de onde parou" a cada um; **Dispensar** esquece. O que o agente estava escrevendo naquele instante se perde, e ele refaz esse passo. O voo também mostra "arremetida" no cabeçalho. Funciona no Claude e no Devin, que avisam o início e o fim de cada turno;
 - trocar a pasta ou o agente de um voo começa uma conversa nova, porque os agentes guardam as conversas por pasta.
 
 **Transmitir (`⌥K`):**

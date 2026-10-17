@@ -5,6 +5,7 @@ import { callsign } from '../lib/model';
 import { MAX_ROLE_NAME, MAX_ROLE_PROMPT, ROLE_AGENTS, ROLE_COLORS, ROLE_ICONS, roleIcon } from '../lib/roles';
 import { toast } from '../lib/toast';
 import { useNodes, useSquad } from '../state/store';
+import { confirmDialog, confirmOpen } from './ConfirmDialog';
 import { Icon } from './Icon';
 import './RolesPanel.css';
 
@@ -53,12 +54,19 @@ function Panel({ initial }: { initial: string | null }) {
   }, [selected, current?.name, current?.abbr, current?.prompt, current?.color, current?.icon, current?.manager]);
 
   const leave = (then: () => void) => {
-    if (!dirty || window.confirm('Descartar as alterações deste papel?')) then();
+    if (!dirty) return then();
+    void confirmDialog({
+      title: 'Descartar as alterações?',
+      icon: 'edit_note',
+      tone: 'warn',
+      lose: [`O que você mudou em ${base.name || 'papel novo'} e não salvou`],
+      action: 'Descartar',
+    }).then((ok) => ok && then());
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !confirmOpen()) {
         e.stopPropagation();
         leave(close);
       }
@@ -82,7 +90,16 @@ function Panel({ initial }: { initial: string | null }) {
     }
   };
   const reset = async () => {
-    if (!current || !window.confirm(`Restaurar o papel "${current.name}" como a Torre o traz?`)) return;
+    if (!current) return;
+    const ok = await confirmDialog({
+      title: `Restaurar ${current.name}?`,
+      icon: 'undo',
+      tone: 'warn',
+      lose: [`As suas mudanças em ${current.name}: nome, sigla, cor, ícone e instruções voltam aos da Torre`],
+      keep: ['Os voos com o papel, que recebem as instruções ao reiniciar'],
+      action: 'Restaurar padrão',
+    });
+    if (!ok) return;
     try {
       const r = await hub.resetRole(current.id);
       useSquad.getState().setRoles(upsert(useSquad.getState().roles, r));
@@ -92,7 +109,14 @@ function Panel({ initial }: { initial: string | null }) {
     }
   };
   const remove = async () => {
-    if (!current || !window.confirm(`Remover o papel "${current.name}"?`)) return;
+    if (!current) return;
+    const ok = await confirmDialog({
+      title: `Remover o papel ${current.name}?`,
+      tone: 'danger',
+      lose: [`${current.name} (${current.abbr}) e as instruções dele, para todos os workspaces`],
+      action: 'Remover papel',
+    });
+    if (!ok) return;
     try {
       await hub.removeRole(current.id);
       const rest = useSquad.getState().roles.filter((r) => r.id !== current.id);
@@ -263,8 +287,15 @@ function Restart({ role, saved }: { role?: RoleDef; saved: boolean }) {
   const running = users.filter((n) => ROLE_AGENTS.has(n.terminal!.agent) && runtime[n.id]?.status === 'running');
   if (!role || !saved || running.length === 0) return null;
   const names = running.map((n) => callsign(n.terminal!)).join(', ');
-  const restart = () => {
-    if (!window.confirm(`Reiniciar ${names}? A conversa atual de cada um é encerrada.`)) return;
+  const restart = async () => {
+    const ok = await confirmDialog({
+      title: `Reiniciar ${names}?`,
+      tone: 'info',
+      text: running.length > 1 ? 'Cada um para e decola de novo, já com as instruções novas.' : 'O voo para e decola de novo, já com as instruções novas.',
+      keep: [running.length > 1 ? 'A conversa: cada voo volta para a dele' : 'A conversa: o voo volta para ela'],
+      action: 'Reiniciar',
+    });
+    if (!ok) return;
     for (const n of running) api.nodeAction(n.id, 'restart').catch((e: Error) => toast(e.message, 'err'));
   };
   return (

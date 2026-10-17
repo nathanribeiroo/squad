@@ -185,8 +185,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
         )}
         {paused && visuals.length === 0 && !selected && (
           <div className="wire-paused" style={{ transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y}px)` }} title="Espera geral: os pedidos ficam retidos">
-            <Icon name="all_inclusive" size={14} />
-            retido
+            <Icon name="all_inclusive" size={16} />
           </div>
         )}
         {selected && visuals.length === 0 && (
