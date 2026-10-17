@@ -43,6 +43,7 @@ type App struct {
 	Portals *portal.Service
 	Floors  *floors.Service
 	Summary *summary.Service
+	Team    *team.Service
 
 	exts   []agentbus.Extension
 	cancel context.CancelFunc
@@ -256,7 +257,7 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, exts: exts}
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, exts: exts}
 	return app, nil
 }
 

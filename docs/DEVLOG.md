@@ -2,6 +2,58 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, S2: sessões no servidor
+
+- **O que é uma sessão:** um canvas inteiro do workspace (terminais, notas, portais, fios, posições, andares, cartões de turno), numa pasta própria em `~/.squad/workspaces/<id>/sessions/<sessão>/`. O `sessions.json` do workspace lista as sessões e diz qual está aberta.
+- **Como a troca funciona:**
+  - o `hub` monta o `app` do workspace sobre o canvas da sessão aberta. Abrir outra fecha esse `app` (terminais, portais, monitor) e monta outro sobre o canvas da outra sessão;
+  - as notas, os anexos e os cartões já derivavam a pasta do arquivo do canvas, então seguem a sessão sem mudança;
+  - o endereço `/w/<id>/` é o mesmo;
+  - ao fechar, o barramento de eventos agora é fechado, e a tela, que já reconectava sozinha, recarrega o estado da sessão nova;
+  - conferido com a tela aberta.
+- **O que as sessões compartilham:** o nome, a pasta, a cor e as configurações de andares e de resumos (`store.Shared`). Elas ficam no canvas da sessão aberta, e a sessão que abre recebe essa parte. Assim, renomear o workspace numa sessão vale para todas.
+- **Agentes trabalhando:**
+  - sair de uma sessão com agentes no meio de um turno, ou com pedidos esperando, é recusado (409, com os nomes) sem `confirm`;
+  - com `confirm`, eles param e voltam como interrompidos (S1);
+  - "trabalhando" é o turno aberto do monitor, só para agentes. Um shell com um servidor de desenvolvimento não conta.
+- **Nova sessão:**
+  - vazia, ou com os terminais do térreo da sessão atual: novos ids, sem conversa, com papéis, posições e os fios entre eles. Notas e portais ficam de fora;
+  - os terminais de andares ficam de fora, porque os andares são da sessão de origem.
+- **Nome:**
+  - sem nome, a sessão nasce como "Nova sessão · 17/10 14:32";
+  - no fim do primeiro turno do orquestrador, o Squad pede um título ao mesmo tipo de agente, com o mesmo mecanismo dos resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`). O orquestrador é o terminal gerente; se não houver gerente, o primeiro agente que terminar um turno;
+  - se os resumos estiverem desligados ou o agente falhar, o título vem das primeiras palavras do primeiro pedido;
+  - o nome dado por você nunca é trocado.
+- **Cartões de turno:** antes ficavam só na memória e sumiam ao reiniciar o Squad. Agora ficam em `cards.json`, na pasta da sessão, e voltam com ela.
+- **Remover:**
+  - a sessão aberta não pode ser removida;
+  - uma sessão com andares também não: é preciso abri-la e aterrissar ou descartar os andares;
+  - a pasta vai para a lixeira, e as conversas continuam guardadas nos agentes.
+  - Remover o workspace leva a pasta dele inteira. Mudar a pasta do workspace e removê-lo agora olham os andares de todas as sessões.
+- **Migração:**
+  - um workspace de antes das sessões vira a "Sessão 1" na primeira abertura: o canvas, as notas, os anexos e os cartões vão para a pasta da sessão;
+  - o `sessions.json` é gravado antes de o canvas mudar de lugar, então uma migração interrompida termina na próxima abertura.
+- **Testado aqui:**
+  - testes do `hub`:
+    - canvas completo ida e volta (nós, fios, posições, conteúdo da nota, terminal rodando de novo);
+    - nome do workspace seguindo as sessões;
+    - renomear, remover para a lixeira, recarregar o `hub`;
+    - nova sessão com os mesmos terminais (papel mantido, sem conversa, um fio);
+    - recusa e `confirm` com agente trabalhando;
+    - migração com nota;
+    - nome pelo primeiro pedido;
+  - `-race` nos pacotes mexidos e `make check`.
+- **Claude real:**
+  - com o binário da `main`, criei um workspace com um Claude e uma nota, e pedi para guardar 7319;
+  - com o binário novo, o workspace virou a "Sessão 1" (nota e canvas dentro da pasta da sessão), e o Claude retomou a conversa;
+  - abri uma sessão 2 sem nome (canvas vazio), pus um Claude e pedi os movimentos do cavalo: o `claude -p` deu o nome "Movimentos do cavalo em b1";
+  - com a tela aberta, abri a sessão 1 pela API: a tela trocou sozinha, com o Claude, o "Eu" e a nota "Regras";
+  - perguntei o número: 7319.
+- **Não testado:**
+  - o título escrito pelo `devin -p` (precisa de login) e o retomar do Devin na troca de sessão (o mesmo do S1);
+  - Codex e Gemini;
+  - Windows real: a migração e a lixeira usam `os.Rename`, mas com as sessões fechadas não há arquivo preso.
+
 ## 2026-10-17, S1: conversas que continuam
 
 - **Pedido do usuário:**

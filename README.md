@@ -181,6 +181,30 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - **Notas criadas por agentes** (`squad note create "Nome"`, ou a ferramenta `note` do MCP) ficam com o nome que o agente deu: aparecem com "por Bia" e sem "Renomear".
 - **Nomes únicos no workspace**, sem diferenciar maiúsculas, contando os nomes antigos. Os agentes acham a nota pelo nome em qualquer caixa.
 
+### Sessões
+
+Cada workspace tem sessões, e cada sessão é um canvas inteiro: terminais, notas, portais, fios, posições, andares e cartões de turno. Só a sessão aberta tem processos rodando.
+- **Nova sessão:** começa com o canvas vazio, ou com os mesmos terminais (com fios e papéis, mas sem as conversas).
+- **Abrir uma sessão:** para os processos da sessão atual e volta tudo da outra como estava. Cada agente retoma a sua conversa, e quem foi interrompido no meio de um turno ganha o "Continuar".
+- **Nome:**
+  - você dá ao criar a sessão (ou ao criar o workspace, para a primeira);
+  - sem nome, o fim do primeiro turno do orquestrador (o terminal gerente, ou o primeiro agente) dá um título, escrito pelo mesmo tipo de agente (`claude -p`, `devin -p`…);
+  - se não houver agente disponível, o título vem do começo do primeiro pedido.
+- **Arquivos:** os do projeto são um só para todas as sessões. Voltar a uma sessão não desfaz o que outra mudou.
+- **No disco:** cada sessão fica em `~/.squad/workspaces/<id>/sessions/<sessão>/`, com o canvas, as notas, os anexos e os cartões. Um workspace de antes das sessões vira a "Sessão 1" na primeira abertura.
+
+A tela das sessões vem no próximo PR (S3). Até lá, pela API (com `Authorization: Bearer <token>`):
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/workspaces/<id>/sessions` | as sessões, da mais nova para a mais antiga, com a aberta marcada e quantos terminais, notas, portais e andares cada uma tem |
+| `POST /api/workspaces/<id>/sessions` `{"name", "keepTerminals", "confirm"}` | abre uma sessão nova |
+| `POST /api/workspaces/<id>/sessions/<sessão>/open` `{"confirm"}` | abre outra sessão |
+| `PATCH /api/workspaces/<id>/sessions/<sessão>` `{"name"}` | renomeia |
+| `DELETE /api/workspaces/<id>/sessions/<sessão>` | manda a pasta da sessão para a lixeira (a aberta, ou uma com andares, não pode) |
+
+Sem `confirm`, sair de uma sessão com agentes trabalhando ou pedidos esperando resposta é recusado (409, com a lista de quem trabalha). Com `confirm`, eles param no meio do turno e voltam como interrompidos quando a sessão abrir de novo. A tela se atualiza sozinha ao trocar de sessão.
+
 ### Testar a conversa sem a interface (pela API)
 
 Em outro terminal, com o servidor rodando:

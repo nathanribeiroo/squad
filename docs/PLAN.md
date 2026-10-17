@@ -44,8 +44,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Nomes de nota | `feat/note-names` | concluído |
 | Papel Arquiteto | `feat/role-architect` | concluído |
 | Planejador espera o resultado (`squad wait`) | `feat/planner-waits` | concluído |
-| S1 Conversas que continuam | `feat/resume-conversations` | concluído (PR) |
-| S2 Sessões: servidor | — | planejado |
+| S1 Conversas que continuam | `feat/resume-conversations` | concluído |
+| S2 Sessões: servidor | `feat/sessions` | concluído (PR) |
 | S3 Sessões: interface | — | planejado |
 | S4 Sessão numa cópia isolada | — | planejado |
 

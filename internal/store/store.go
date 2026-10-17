@@ -186,17 +186,35 @@ func Open(path string, def Workspace) (*Store, error) {
 	case err != nil:
 		return nil, err
 	}
-	var env envelope
-	if err := json.Unmarshal(data, &env); err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
-	}
-	if env.Type != "workspace" || env.SchemaVersion > SchemaVersion {
-		return nil, fmt.Errorf("%s: unsupported %s v%d", path, env.Type, env.SchemaVersion)
-	}
-	if err := json.Unmarshal(env.Payload, &s.ws); err != nil {
-		return nil, fmt.Errorf("parse %s payload: %w", path, err)
+	if s.ws, err = parse(path, data); err != nil {
+		return nil, err
 	}
 	return s, nil
+}
+
+// Read loads a workspace file without opening it for changes (a session
+// that isn't open).
+func Read(path string) (Workspace, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Workspace{}, err
+	}
+	return parse(path, data)
+}
+
+func parse(path string, data []byte) (Workspace, error) {
+	var env envelope
+	var ws Workspace
+	if err := json.Unmarshal(data, &env); err != nil {
+		return ws, fmt.Errorf("parse %s: %w", path, err)
+	}
+	if env.Type != "workspace" || env.SchemaVersion > SchemaVersion {
+		return ws, fmt.Errorf("%s: unsupported %s v%d", path, env.Type, env.SchemaVersion)
+	}
+	if err := json.Unmarshal(env.Payload, &ws); err != nil {
+		return ws, fmt.Errorf("parse %s payload: %w", path, err)
+	}
+	return ws, nil
 }
 
 // Path returns the workspace file path.
@@ -250,6 +268,54 @@ func (s *Store) UpdateMeta(fn func(*Meta) error) (Meta, error) {
 		return Meta{}, err
 	}
 	return s.metaLocked(), nil
+}
+
+// Shared is what every session of a workspace has in common (each session
+// is a canvas of its own): the workspace's id, name, folder and color, and
+// its settings for floors and turn summaries.
+type Shared struct {
+	Meta
+	FloorConfig   *FloorConfig
+	SummaryConfig *SummaryConfig
+}
+
+// Shared returns what the workspace's sessions have in common.
+func (s *Store) Shared() Shared {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return Shared{Meta: s.metaLocked(), FloorConfig: cloneFloorConfig(s.ws.FloorConfig), SummaryConfig: cloneSummaryConfig(s.ws.SummaryConfig)}
+}
+
+// SetShared makes this canvas take the workspace's shared part (a session
+// being opened catches up with changes made while it was closed).
+func (s *Store) SetShared(sh Shared) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	old := s.ws
+	s.ws.ID, s.ws.Name, s.ws.Cwd, s.ws.Color, s.ws.CreatedAt = sh.ID, sh.Name, sh.Cwd, sh.Color, sh.CreatedAt
+	s.ws.FloorConfig, s.ws.SummaryConfig = cloneFloorConfig(sh.FloorConfig), cloneSummaryConfig(sh.SummaryConfig)
+	if err := s.save(); err != nil {
+		s.ws = old
+		return err
+	}
+	return nil
+}
+
+func cloneFloorConfig(c *FloorConfig) *FloorConfig {
+	if c == nil {
+		return nil
+	}
+	cp := *c
+	cp.Copy = append([]string(nil), c.Copy...)
+	return &cp
+}
+
+func cloneSummaryConfig(c *SummaryConfig) *SummaryConfig {
+	if c == nil {
+		return nil
+	}
+	cp := *c
+	return &cp
 }
 
 // TerminalIDs returns the ids of the terminal nodes.

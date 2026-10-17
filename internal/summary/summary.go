@@ -11,16 +11,21 @@ package summary
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
 
 	"github.com/nathanribeiroo/squad/internal/activity"
+	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/store"
 	"github.com/nathanribeiroo/squad/internal/terminal"
@@ -100,10 +105,12 @@ type PendingRequest struct {
 	From, To, Preview string
 }
 
-// Service keeps the cards of one workspace.
+// Service keeps the cards of one workspace, in cards.json next to its
+// canvas, so they come back with it.
 type Service struct {
-	o   Options
-	log *slog.Logger
+	o    Options
+	log  *slog.Logger
+	file string // cards.json ("" when the canvas has no file)
 
 	mu    sync.Mutex
 	cards map[string]*Card
@@ -126,7 +133,48 @@ func New(o Options) *Service {
 			*f = func(string) bool { return false }
 		}
 	}
-	return &Service{o: o, log: o.Logger, cards: map[string]*Card{}, asked: map[string]string{}}
+	s := &Service{o: o, log: o.Logger, cards: map[string]*Card{}, asked: map[string]string{}}
+	if o.Canvas != nil && o.Canvas.Store().Path() != "" {
+		s.file = filepath.Join(filepath.Dir(o.Canvas.Store().Path()), "cards.json")
+		s.load()
+	}
+	return s
+}
+
+// load reads the cards saved with the canvas.
+func (s *Service) load() {
+	data, err := os.ReadFile(s.file)
+	if err != nil {
+		return
+	}
+	var list []Card
+	if err := json.Unmarshal(data, &list); err != nil {
+		s.log.Warn("cards", "file", s.file, "err", err)
+		return
+	}
+	for _, c := range list {
+		c.Summarizing = false // that run ended with the last Squad
+		s.cards[c.Terminal] = &c
+	}
+}
+
+// saveLocked writes the cards (s.mu held).
+func (s *Service) saveLocked() {
+	if s.file == "" {
+		return
+	}
+	list := make([]Card, 0, len(s.cards))
+	for _, c := range s.cards {
+		list = append(list, *c)
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].Terminal < list[j].Terminal })
+	data, err := json.MarshalIndent(list, "", "  ")
+	if err == nil {
+		err = config.WriteFileAtomic(s.file, data, 0o600)
+	}
+	if err != nil {
+		s.log.Warn("cards", "file", s.file, "err", err)
+	}
 }
 
 // Attach makes a card at every turn end the monitor sees.
@@ -168,6 +216,7 @@ func (s *Service) Forget(id string) {
 	s.mu.Lock()
 	delete(s.cards, id)
 	delete(s.asked, id)
+	s.saveLocked()
 	s.mu.Unlock()
 }
 
@@ -203,6 +252,7 @@ func (s *Service) TurnEnded(te activity.TurnEnd) {
 	}
 	delete(s.asked, te.ID)
 	s.cards[te.ID] = c
+	s.saveLocked()
 	cp := *c
 	s.mu.Unlock()
 	s.o.Canvas.Bus().Publish(events.TurnCard, cp)
@@ -336,11 +386,37 @@ func (s *Service) Summarize(id string) (Card, error) {
 			}
 			cur.Summary = &Summary{Text: strings.TrimSpace(out.Resumo), Steps: steps, By: name, At: time.Now().UTC()}
 		}
+		s.saveLocked()
 		cp := *cur
 		s.mu.Unlock()
 		s.o.Canvas.Bus().Publish(events.TurnCard, cp)
 	}()
 	return turn, nil
+}
+
+// Title asks an engine for a short title for a session that began with turn
+// c: the agent's own (claude -p for a Claude terminal…), else whichever is
+// installed. It waits for the answer.
+func (s *Service) Title(ctx context.Context, agent string, c Card) (string, error) {
+	name, path, err := s.engine(agent)
+	if err != nil {
+		return "", err
+	}
+	var out struct {
+		Titulo string `json:"titulo"`
+	}
+	answer, err := run(ctx, name, path, titleJob(c), s.o.Timeout)
+	if err == nil {
+		err = decode(answer, &out)
+	}
+	if err != nil {
+		return "", err
+	}
+	t := strings.Join(strings.Fields(strings.Trim(out.Titulo, " \"'“”.")), " ")
+	if t == "" {
+		return "", errors.New("the engine gave no title")
+	}
+	return clip(t, 60), nil
 }
 
 // Overview asks an engine for a view of the whole workspace (it waits for
