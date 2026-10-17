@@ -20,6 +20,7 @@ import type {
   WorkspaceSummary,
   AttentionChoice,
   AgentsDetection,
+  DirInfo,
   Limits,
   LimitsView,
 } from './types';
@@ -126,6 +127,8 @@ export const api = {
 
 /** The workspace list (not tied to the workspace on screen). */
 export const hub = {
+  welcome: () => req<{ firstRun: boolean }>('GET', '/api/welcome'),
+  dirInfo: (path: string) => req<DirInfo>('GET', `/api/dirs/info?path=${encodeURIComponent(path)}`),
   agents: (refresh = false) => req<AgentsDetection>('GET', `/api/agents${refresh ? '?refresh=1' : ''}`),
   setAgentCommand: (agent: string, defaultCommand: string) => req<AgentsDetection>('PUT', `/api/agents/${encodeURIComponent(agent)}`, { defaultCommand }),
   list: () => req<WorkspaceSummary[]>('GET', '/api/workspaces'),
