@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { api } from '../api/client';
 import type { ShellOption, WNode } from '../api/types';
+import { workdir } from '../lib/floors';
 import { AGENTS } from '../lib/model';
 import { ROLE_AGENTS } from '../lib/roles';
 import { shortPath, trimDir } from '../lib/paths';
@@ -53,7 +54,7 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
   // that floor's copy of the workspace folder.
   const activeFloor = useSquad((s) => s.activeFloor);
   const floor = node ? (node.floor ?? '') : activeFloor;
-  const wsCwd = useSquad((s) => (floor ? s.workspace?.floors?.find((f) => f.id === floor)?.cwd : s.workspace?.cwd) ?? '');
+  const wsCwd = useSquad((s) => workdir(s.workspace, floor) ?? '');
   const suggestDirs = useCallback((p: string) => api.dirs(p, floor), [floor]);
   const shells = useShells();
   const t = node?.terminal;

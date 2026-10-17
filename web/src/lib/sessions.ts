@@ -73,3 +73,21 @@ export function contents(s: SessionSummary): string {
   if (s.floors) parts.push(count(s.floors, 'andar', 'andares'));
   return parts.length ? parts.join(' · ') : 'vazia';
 }
+
+/** The branch of a new session's copy: from its name (or the time), and
+ * not one that exists. */
+export function newBranchName(slug: string, branches: string[]): string {
+  const d = new Date();
+  const base = slug || `sessao-${pad(d.getDate())}${pad(d.getMonth() + 1)}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  let name = base;
+  for (let i = 2; branches.includes(name); i++) name = `${base}-${i}`;
+  return name;
+}
+
+/** "Login novo tem 2 agentes trabalhando e 5 arquivos alterados sem commit." */
+export function pendingWork(session: string, working: number, changes: number): string {
+  const parts = [];
+  if (working) parts.push(working === 1 ? '1 agente trabalhando' : `${working} agentes trabalhando`);
+  if (changes) parts.push(changes === 1 ? '1 arquivo alterado sem commit' : `${changes} arquivos alterados sem commit`);
+  return `${session} tem ${parts.join(' e ')}.`;
+}

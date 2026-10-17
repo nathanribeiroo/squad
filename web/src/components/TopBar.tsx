@@ -50,7 +50,7 @@ export function TopBar() {
   }, [activeWs]);
   const floor = useActiveFloor();
   const branch = useBranch(floor?.id ?? '');
-  const cwd = floor?.cwd ?? ws?.cwd ?? '';
+  const cwd = floor?.cwd ?? ws?.copy?.cwd ?? ws?.cwd ?? '';
 
   const sendTimes = useSquad((s) => s.sendTimes);
   const now = useNow(5000, sendTimes.length > 0);

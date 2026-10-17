@@ -105,7 +105,9 @@ function useBusyFloors(): Record<string, number> {
 /**
  * The floor selector in the top bar (handoff §1, item 5): the ground floor
  * and each floor, with its branch and what it has that isn't landed; + makes
- * a floor, and the floor on screen opens its menu (land, discard, log).
+ * a floor, and the floor on screen opens its menu (land, discard, log). In a
+ * session that works in a copy, the ground floor is the copy, and its menu
+ * merges it.
  */
 export function FloorBar() {
   const floors = useFloors();
@@ -125,7 +127,9 @@ export function FloorBar() {
     tabsRef.current?.querySelector('.tb-floor.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [active, floors, status]);
 
-  const ground = gitSummary(status?.repo ? status.ground : undefined);
+  const copy = useSquad((s) => s.workspace?.copy);
+  let ground: { text: string; dirty?: boolean; err?: boolean; spin?: boolean } | null = gitSummary(status?.repo ? status.ground : undefined);
+  if (copy && !status?.ground.missing) ground = prepSummary(copy) ?? ground;
   const notRepo = status !== null && !status.repo;
 
   const tab = (id: string, label: string, sub: { text: string; dirty?: boolean; err?: boolean; spin?: boolean } | null, title: string) => {
@@ -139,7 +143,7 @@ export function FloorBar() {
         title={title}
         onClick={(e) => {
           if (!on) return setFloor(id);
-          if (!id) return;
+          if (!id && !copy) return; // the ground floor's menu is the session copy's
           const r = e.currentTarget.getBoundingClientRect();
           setMenu(menu ? null : { id, x: r.left, y: r.bottom + 6 });
         }}
@@ -153,7 +157,7 @@ export function FloorBar() {
             {sub.text}
           </span>
         )}
-        {on && id && <Icon name="expand_more" size={16} />}
+        {on && (id || copy) && <Icon name="expand_more" size={16} />}
       </button>
     );
   };
@@ -162,12 +166,15 @@ export function FloorBar() {
     <>
       <div className="tb-floors">
         <div className="tb-floor-tabs" role="tablist" aria-label="Andares" ref={tabsRef}>
-          {tab('', status?.repo ? status.ground.branch || 'HEAD' : GROUND, ground, 'Térreo: a pasta do workspace')}
+          {tab(
+            '',
+            status?.repo ? status.ground.branch || 'HEAD' : GROUND,
+            ground,
+            copy ? `Térreo da sessão: a cópia em ${copy.cwd}, branch ${copy.branch}` : 'Térreo: a pasta do workspace',
+          )}
           {floors.map((f) => {
             const g = status?.floors[f.id];
-            let sub: { text: string; dirty?: boolean; err?: boolean; spin?: boolean } | null = gitSummary(g);
-            if (f.status === 'preparing') sub = { text: 'preparando', spin: true };
-            else if (f.status === 'failed') sub = { text: 'preparo falhou', err: true };
+            const sub = prepSummary(f) ?? gitSummary(g);
             return tab(f.id, f.name, sub, `Andar ${f.name}: branch ${g?.branch || f.branch}, em ${f.cwd}`);
           })}
         </div>
@@ -181,14 +188,20 @@ export function FloorBar() {
           <Icon name="add" size={18} />
         </button>
       </div>
-      {menu && <FloorMenu id={menu.id} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}
+      {menu && (menu.id ? <FloorMenu id={menu.id} x={menu.x} y={menu.y} onClose={() => setMenu(null)} /> : <CopyMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} />)}
     </>
   );
 }
 
-function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; onClose: () => void }) {
-  const floor = useSquad((s) => s.workspace?.floors?.find((f) => f.id === id));
-  const setDialog = useSquad((s) => s.setFloorDialog);
+/** A floor's (or the session copy's) setup state, while it isn't simply ready. */
+function prepSummary(f: Floor): { text: string; err?: boolean; spin?: boolean } | null {
+  if (f.status === 'preparing') return { text: 'preparando', spin: true };
+  if (f.status === 'failed') return { text: 'preparo falhou', err: true };
+  return null;
+}
+
+/** Closes a floor menu on a click elsewhere (but on its tab, which toggles it) or Escape. */
+function useMenuClose(onClose: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const away = (e: PointerEvent) => {
@@ -202,6 +215,57 @@ function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; on
       window.removeEventListener('keydown', esc);
     };
   }, [onClose]);
+  return ref;
+}
+
+function copyPath(path: string) {
+  navigator.clipboard?.writeText(path).then(
+    () => toast('Caminho copiado'),
+    () => toast(path),
+  );
+}
+
+/** The ground floor's menu in a session that works in a copy. */
+function CopyMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void }) {
+  const copy = useSquad((s) => s.workspace?.copy);
+  const setDialog = useSquad((s) => s.setFloorDialog);
+  const ref = useMenuClose(onClose);
+  if (!copy) return null;
+  const open = (kind: 'merge-copy' | 'copy-log') => {
+    onClose();
+    setDialog({ kind });
+  };
+  return (
+    <div className="popover tb-menu fl-menu" ref={ref} style={{ position: 'fixed', left: x, top: y }} role="menu">
+      <div className="tb-menu-title">
+        Cópia da sessão · <span className="mono">⎇ {copy.branch}</span>
+      </div>
+      <button className="tb-menu-item" onClick={() => open('merge-copy')}>
+        <Icon name="call_merge" size={18} />
+        Mesclar…
+      </button>
+      <button className="tb-menu-item" onClick={() => open('copy-log')}>
+        <Icon name="description" size={18} />
+        Log do preparo
+      </button>
+      <button
+        className="tb-menu-item"
+        onClick={() => {
+          onClose();
+          copyPath(copy.cwd);
+        }}
+      >
+        <Icon name="content_copy" size={18} />
+        Copiar o caminho
+      </button>
+    </div>
+  );
+}
+
+function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; onClose: () => void }) {
+  const floor = useSquad((s) => s.workspace?.floors?.find((f) => f.id === id));
+  const setDialog = useSquad((s) => s.setFloorDialog);
+  const ref = useMenuClose(onClose);
   if (!floor) return null;
   const open = (kind: 'land' | 'discard' | 'log') => {
     onClose();
@@ -224,10 +288,7 @@ function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; on
         className="tb-menu-item"
         onClick={() => {
           onClose();
-          navigator.clipboard?.writeText(floor.cwd).then(
-            () => toast('Caminho copiado'),
-            () => toast(floor.cwd),
-          );
+          copyPath(floor.cwd);
         }}
       >
         <Icon name="content_copy" size={18} />

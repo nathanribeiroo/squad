@@ -13,14 +13,20 @@ import './FloorDialogs.css';
 /** The floor dialog open (FloorDialog in the store), if any. */
 export function FloorDialogs() {
   const d = useSquad((s) => s.floorDialog);
-  const floor = useSquad((s) => (d && d.kind !== 'create' ? s.workspace?.floors?.find((f) => f.id === d.id) : undefined));
+  const floor = useSquad((s) => (d && 'id' in d ? s.workspace?.floors?.find((f) => f.id === d.id) : undefined));
+  const copy = useSquad((s) => s.workspace?.copy);
   const close = () => useSquad.getState().setFloorDialog(null);
   if (!d) return null;
   if (d.kind === 'create') return <CreateFloor onClose={close} />;
+  if (d.kind === 'merge-copy' || d.kind === 'copy-log') {
+    if (!copy) return null; // another session opened meanwhile
+    if (d.kind === 'merge-copy') return <MergeCopy copy={copy} onClose={close} />;
+    return <SetupLog floor={copy} title={`Preparo da cópia ${copy.branch}`} load={api.copyLog} onClose={close} />;
+  }
   if (!floor) return null; // landed meanwhile
   if (d.kind === 'land') return <LandFloor key={floor.id} floor={floor} onClose={close} />;
   if (d.kind === 'discard') return <DiscardFloor key={floor.id} floor={floor} onClose={close} />;
-  return <FloorLog key={floor.id} floor={floor} onClose={close} />;
+  return <SetupLog key={floor.id} floor={floor} title={`Preparo de ${floor.name}`} load={() => api.floorLog(floor.id)} onClose={close} />;
 }
 
 /** Patterns typed as "a, b" or one per line. */
@@ -170,31 +176,117 @@ function Files({ files, max = 8 }: { files: { path: string; status?: string }[];
   );
 }
 
-function useChanges(id: string): [FloorChanges | null, string] {
+/** A floor's changes (id), or the session copy's (id null). */
+function useChanges(id: string | null): [FloorChanges | null, string] {
   const [changes, setChanges] = useState<FloorChanges | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
-    api.floorChanges(id).then(setChanges, (e: Error) => setError(e.message));
+    (id === null ? api.copyChanges() : api.floorChanges(id)).then(setChanges, (e: Error) => setError(e.message));
   }, [id]);
   return [changes, error];
 }
 
-type Refusal = { message: string; files?: string[]; conflicts?: string[] };
+/** The branches a worktree's branch can merge into. */
+function useTargets(branch: string): string[] {
+  const [branches, setBranches] = useState<string[]>([]);
+  useEffect(() => {
+    api.branches().then(
+      (r) => setBranches(r.branches.filter((b) => b !== branch)),
+      () => setBranches([]),
+    );
+  }, [branch]);
+  return branches;
+}
+
+/** The commits a floor or a copy has, and those its base got meanwhile. */
+function Commits({ changes, base, what }: { changes: FloorChanges; base?: string; what: [string, string, string] }) {
+  return (
+    <section className="fl-section">
+      <div className="fl-section-title">
+        <Icon name="commit" size={16} />
+        {changes.ahead ? plural(changes.ahead, what[0], what[1]) : what[2]}
+        {changes.behind > 0 && (
+          <span className="fl-muted">
+            · {base || 'a origem'} tem {plural(changes.behind, 'commit novo', 'commits novos')}
+          </span>
+        )}
+      </div>
+      {changes.commits.length > 0 && (
+        <ul className="fl-commits mono">
+          {changes.commits.map((c) => (
+            <li key={c.hash}>
+              <span className="fl-hash">{c.hash}</span> {c.subject}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** "Mesclar em [branch]": the target, among the branches it can merge into. */
+function IntoSelect({ into, branches, onChange, onClick }: { into: string; branches: string[]; onChange: (b: string) => void; onClick?: () => void }) {
+  return (
+    <select className="mono" value={into} onChange={(e) => onChange(e.target.value)} onClick={onClick}>
+      {!into && <option value="">escolha um branch</option>}
+      {(branches.includes(into) || !into ? branches : [into, ...branches]).map((b) => (
+        <option key={b} value={b}>
+          {b}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+type Refusal = { message: string; files?: string[]; conflicts?: string[]; folder?: string; branch?: string };
+
+function refusalOf(e: unknown): Refusal {
+  const body = e instanceof ApiError ? e.body : {};
+  return {
+    message: (e as Error).message,
+    files: body.files as string[] | undefined,
+    conflicts: body.conflicts as string[] | undefined,
+    folder: body.folder as string | undefined,
+    branch: body.branch as string | undefined,
+  };
+}
+
+/** Why a land or a merge was refused; nothing changed. who is "do andar" or
+ * "da sessão", again what to do after fixing it. */
+function RefusalView({ r, into, branch, who, again }: { r: Refusal; into: string; branch: string; who: string; again: string }) {
+  return (
+    <div className="fl-error">
+      {r.conflicts ? (
+        <>
+          <b>Conflito ao mesclar em {into}. Nada mudou.</b> Peça a um agente {who} para mesclar {into} no branch {branch}, resolver e commitar; depois {again}.
+          <Files files={r.conflicts.map((path) => ({ path }))} />
+        </>
+      ) : r.folder ? (
+        <>
+          <b>
+            A pasta <span className="mono">{shortPath(r.folder)}</span>, onde o branch {r.branch} está aberto, tem alterações sem commit. Nada mudou.
+          </b>{' '}
+          Commite ou descarte essas alterações lá (ou escolha outro branch); depois {again}.
+          {r.files && <Files files={r.files.map((path) => ({ path }))} />}
+        </>
+      ) : (
+        <>
+          {r.message}
+          {r.files && <Files files={r.files.map((path) => ({ path }))} />}
+        </>
+      )}
+    </div>
+  );
+}
 
 function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
   const [changes, loadError] = useChanges(floor.id);
-  const [branches, setBranches] = useState<string[]>([]);
+  const branches = useTargets(floor.branch);
   const [mode, setMode] = useState<'merge' | 'keep'>('merge');
   const [into, setInto] = useState(floor.base ?? '');
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [busy, setBusy] = useState(false);
   const { closes, notes } = useFloorNodes(floor.id);
-  useEffect(() => {
-    api.branches().then(
-      (r) => setBranches(r.branches.filter((b) => b !== floor.branch)),
-      () => setBranches([]),
-    );
-  }, [floor.branch]);
   // Nothing to merge: keeping the branch is the obvious choice.
   useEffect(() => {
     if (changes && changes.ahead === 0) setMode('keep');
@@ -219,8 +311,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
       onClose();
     } catch (e) {
       undo();
-      const body = e instanceof ApiError ? e.body : {};
-      setRefusal({ message: (e as Error).message, files: body.files as string[] | undefined, conflicts: body.conflicts as string[] | undefined });
+      setRefusal(refusalOf(e));
     } finally {
       setBusy(false);
     }
@@ -257,26 +348,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
       {changes && (
         <>
           {changes.missing && <p className="fl-warn">A pasta do andar sumiu. Aterrissar só limpa o registro; os commits do branch continuam.</p>}
-          <section className="fl-section">
-            <div className="fl-section-title">
-              <Icon name="commit" size={16} />
-              {changes.ahead ? plural(changes.ahead, 'commit do andar', 'commits do andar') : 'Nenhum commit novo no andar'}
-              {changes.behind > 0 && (
-                <span className="fl-muted">
-                  · {floor.base || 'a origem'} tem {plural(changes.behind, 'commit novo', 'commits novos')}
-                </span>
-              )}
-            </div>
-            {changes.commits.length > 0 && (
-              <ul className="fl-commits mono">
-                {changes.commits.map((c) => (
-                  <li key={c.hash}>
-                    <span className="fl-hash">{c.hash}</span> {c.subject}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <Commits changes={changes} base={floor.base} what={['commit do andar', 'commits do andar', 'Nenhum commit novo no andar']} />
           {dirty && (
             <div className="fl-warn">
               <b>{plural(changes.files.length, 'alteração não commitada', 'alterações não commitadas')}.</b> Commite antes de aterrissar (peça a um agente do andar), ou
@@ -288,15 +360,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
             <label className={`fl-option${mode === 'merge' ? ' on' : ''}`}>
               <input type="radio" checked={mode === 'merge'} onChange={() => setMode('merge')} />
               <span>
-                <b>Mesclar em</b>{' '}
-                <select className="mono" value={into} onChange={(e) => setInto(e.target.value)} onClick={() => setMode('merge')}>
-                  {!into && <option value="">escolha um branch</option>}
-                  {(branches.includes(into) || !into ? branches : [into, ...branches]).map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
+                <b>Mesclar em</b> <IntoSelect into={into} branches={branches} onChange={setInto} onClick={() => setMode('merge')} />
                 <span className="fl-option-sub">Commit de merge. Se o branch estiver aberto numa pasta, ela precisa estar sem alterações.</span>
               </span>
             </label>
@@ -313,22 +377,86 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
             {notes.length ? `${list(notes.map(label))} ${notes.length > 1 ? 'descem' : 'desce'} para o térreo; ` : ''}a pasta {shortPath(floor.cwd)} é apagada e o
             branch {floor.branch} continua.
           </p>
-          {refusal && (
-            <div className="fl-error">
-              {refusal.conflicts ? (
-                <>
-                  <b>Conflito ao mesclar em {target}. Nada mudou.</b> Peça a um agente do andar para mesclar {target} no branch {floor.branch}, resolver e commitar; depois
-                  aterrisse de novo.
-                  <Files files={refusal.conflicts.map((path) => ({ path }))} />
-                </>
-              ) : (
-                <>
-                  {refusal.message}
-                  {refusal.files && <Files files={refusal.files.map((path) => ({ path }))} />}
-                </>
-              )}
+          {refusal && <RefusalView r={refusal} into={target} branch={floor.branch} who="do andar" again="aterrisse de novo" />}
+        </>
+      )}
+    </Dialog>
+  );
+}
+
+/** Merges the session's branch, keeping its copy: the session goes on working
+ * there and can merge again. */
+function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
+  const [changes, loadError] = useChanges(null);
+  const branches = useTargets(copy.branch);
+  const [into, setInto] = useState(copy.base ?? '');
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [busy, setBusy] = useState(false);
+  const dirty = (changes?.files.length ?? 0) > 0;
+
+  const merge = async () => {
+    setBusy(true);
+    setRefusal(null);
+    try {
+      const r = await api.mergeCopy(into);
+      toast(r.upToDate ? `${r.into} já tinha tudo de ${r.branch}` : `${r.branch} mesclado em ${r.into} (${(r.commit ?? '').slice(0, 7)}); a sessão continua na cópia`);
+      onClose();
+    } catch (e) {
+      setRefusal(refusalOf(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog
+      icon="call_merge"
+      title="Mesclar a sessão"
+      sub={
+        <span className="mono">
+          ⎇ {copy.branch}
+          {into && ` → ${into}`}
+        </span>
+      }
+      onClose={onClose}
+      wide
+      foot={
+        <>
+          <span className="tn-spacer" />
+          <button className="btn" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn filled" disabled={busy || !changes || dirty || !into || changes.missing} onClick={merge}>
+            <Icon name="call_merge" />
+            {busy ? 'Mesclando…' : 'Mesclar'}
+          </button>
+        </>
+      }
+    >
+      {loadError && <p className="fl-error">{loadError}</p>}
+      {!changes && !loadError && <p className="field-hint">Lendo a cópia…</p>}
+      {changes && (
+        <>
+          {changes.missing && <p className="fl-warn">A pasta da cópia sumiu. Os commits do branch {copy.branch} continuam no repositório.</p>}
+          <Commits changes={changes} base={copy.base} what={['commit da sessão', 'commits da sessão', 'Nenhum commit novo na sessão']} />
+          {dirty && (
+            <div className="fl-warn">
+              <b>{plural(changes.files.length, 'alteração não commitada', 'alterações não commitadas')}.</b> Commite antes de mesclar (peça a um agente da sessão).
+              <Files files={changes.files} />
             </div>
           )}
+          <section className="fl-options">
+            <div className="fl-option on">
+              <span>
+                <b>Mesclar em</b> <IntoSelect into={into} branches={branches} onChange={setInto} />
+                <span className="fl-option-sub">Commit de merge. Se o branch estiver aberto numa pasta (a do projeto, por exemplo), ela precisa estar sem alterações.</span>
+              </span>
+            </div>
+          </section>
+          <p className="field-hint">
+            A cópia <span className="mono">{shortPath(copy.cwd)}</span> continua: a sessão segue trabalhando no branch {copy.branch} e pode mesclar de novo.
+          </p>
+          {refusal && <RefusalView r={refusal} into={into} branch={copy.branch} who="da sessão" again="mescle de novo" />}
         </>
       )}
     </Dialog>
@@ -417,34 +545,36 @@ function DiscardFloor({ floor, onClose }: { floor: Floor; onClose: () => void })
   );
 }
 
-function FloorLog({ floor, onClose }: { floor: Floor; onClose: () => void }) {
+/** The setup command's output, of a floor or of the session's copy. */
+function SetupLog({ floor, title, load, onClose }: { floor: Floor; title: string; load: () => Promise<string>; onClose: () => void }) {
   const [log, setLog] = useState<string | null>(null);
   const preparing = floor.status === 'preparing';
   useEffect(() => {
     let alive = true;
-    const load = () =>
-      api.floorLog(floor.id).then(
+    const read = () =>
+      load().then(
         (t) => alive && setLog(t),
         () => alive && setLog(''),
       );
-    void load();
+    void read();
     if (!preparing) return;
-    const timer = window.setInterval(load, 2000);
+    const timer = window.setInterval(read, 2000);
     return () => {
       alive = false;
       window.clearInterval(timer);
     };
-  }, [floor.id, preparing]);
+    // load is a new function on every render: the floor and its state say when to read again.
+  }, [floor.id, floor.path, preparing]);
   const state = preparing ? 'rodando…' : floor.status === 'failed' ? 'falhou' : 'terminou';
   return (
-    <Dialog icon="description" title={`Preparo de ${floor.name}`} sub={log ? `O comando de preparo ${state}` : undefined} onClose={onClose} wide>
+    <Dialog icon="description" title={title} sub={log ? `O comando de preparo ${state}` : undefined} onClose={onClose} wide>
       {floor.status === 'failed' && floor.error && <p className="fl-error">{floor.error.split('\n')[0]}</p>}
       {log === null ? (
         <p className="field-hint">Lendo…</p>
       ) : log ? (
         <pre className="fl-log mono">{log}</pre>
       ) : (
-        <p className="field-hint">Este andar não rodou comando de preparo. Ele se configura em Novo andar → Preparação.</p>
+        <p className="field-hint">Não rodou comando de preparo. Ele se configura em Novo andar → Preparação.</p>
       )}
     </Dialog>
   );
