@@ -26,12 +26,12 @@ export function App() {
     document.documentElement.dataset.theme = theme;
     // The title bar of an app window (and of the Safari web app) follows the
     // top bar's color.
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#ffffff' : '#1a1b1e');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f6f2e4' : '#07100b');
   }, [theme]);
   // The window's name in the taskbar or the Dock: the workspace first.
   const wsName = useSquad((s) => s.workspace?.name);
   useEffect(() => {
-    document.title = wsName ? `${wsName} · Squad` : 'Squad';
+    document.title = wsName ? `${wsName} · Torre` : 'Torre';
   }, [wsName]);
   useEffect(() => {
     document.documentElement.dataset.term = term;

@@ -249,8 +249,8 @@ const perWorkspace = {
   composerDraft: null,
 } satisfies Partial<SquadState>;
 
-const WS_KEY = 'squad.ws';
-const floorKey = (ws: string) => `squad.floor.${ws}`;
+const WS_KEY = 'torre.ws';
+const floorKey = (ws: string) => `torre.floor.${ws}`;
 
 /** The floor to show when a workspace opens: the URL's (when it is that
  * workspace's), then the last one shown here. */
@@ -309,8 +309,8 @@ export const useSquad = create<SquadState>((set, get) => ({
   tool: 'select',
   zoomLevel: 'live',
   renderZoom: 1,
-  theme: stored<'dark' | 'light'>('squad.theme', prefersDark() ? 'dark' : 'light'),
-  termTheme: stored<'noite' | 'papel'>('squad.term', stored('squad.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
+  theme: stored<'dark' | 'light'>('torre.theme', prefersDark() ? 'dark' : 'light'),
+  termTheme: stored<'noite' | 'papel'>('torre.term', stored('torre.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
 
   setRoles: (roles) => set({ roles }),
   openRoles: (id = null) => set({ rolesPanel: id }),
@@ -483,7 +483,7 @@ export const useSquad = create<SquadState>((set, get) => ({
           extra: { ...st.extra, paused: !!d.paused },
           activity: loop
             ? [
-                { key: `loop-${ev.time}`, time: ev.time, fromName: 'Squad', toName: 'todos', text: `Laço: limite de ${st.extra.limits.maxHops} saltos atingido ${reason.replace(/^hop limit \d+ reached /, '')}. Conversas pausadas até você retomar.`, outcome: 'held' as const },
+                { key: `loop-${ev.time}`, time: ev.time, fromName: 'Torre', toName: 'todos', text: `Laço: limite de ${st.extra.limits.maxHops} saltos atingido ${reason.replace(/^hop limit \d+ reached /, '')}. Conversas pausadas até você retomar.`, outcome: 'held' as const },
                 ...st.activity,
               ].slice(0, 200)
             : st.activity,
@@ -602,12 +602,12 @@ export const useSquad = create<SquadState>((set, get) => ({
   // The terminal palette follows the UI theme; it can still be overridden afterwards.
   setTheme: (theme) => {
     const termTheme = theme === 'dark' ? 'noite' : 'papel';
-    persist('squad.theme', theme);
-    persist('squad.term', termTheme);
+    persist('torre.theme', theme);
+    persist('torre.term', termTheme);
     set({ theme, termTheme });
   },
   setTermTheme: (termTheme) => {
-    persist('squad.term', termTheme);
+    persist('torre.term', termTheme);
     set({ termTheme });
   },
   moveNodeLocal: (id, x, y) => {

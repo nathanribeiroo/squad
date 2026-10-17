@@ -217,7 +217,7 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
 
   const remove = () => {
     if (!ws) return;
-    const msg = `Remover o workspace "${ws.name}"?\n\nOs terminais dele são encerrados, e o canvas e as notas vão para a lixeira do Squad (~/.squad/trash).`;
+    const msg = `Remover o workspace "${ws.name}"?\n\nOs terminais dele são encerrados, e o canvas e as notas vão para a lixeira da Torre (~/.torre/trash).`;
     if (!window.confirm(msg)) return;
     void run(async () => {
       await hub.remove(ws.id);

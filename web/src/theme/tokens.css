@@ -1,5 +1,5 @@
 /* Copied from docs/design_handoff_squad/tokens/tokens.css; fonts are bundled locally (see main.tsx) instead of Google Fonts. */
-/* Squad — design tokens. Aplique data-theme="dark|light" e data-term="noite|papel" no <html>. */
+/* Torre — design tokens. Aplique data-theme="dark|light" e data-term="noite|papel" no <html>. */
 
 :root{
   --font-ui:'Geist Variable','Geist',system-ui,sans-serif;

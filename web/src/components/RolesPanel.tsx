@@ -74,7 +74,7 @@ function Panel({ initial }: { initial: string | null }) {
     }
   };
   const reset = async () => {
-    if (!current || !window.confirm(`Restaurar o papel "${current.name}" como o Squad o traz?`)) return;
+    if (!current || !window.confirm(`Restaurar o papel "${current.name}" como a Torre o traz?`)) return;
     try {
       const r = await hub.resetRole(current.id);
       useSquad.getState().setRoles(upsert(useSquad.getState().roles, r));
@@ -129,7 +129,7 @@ function Panel({ initial }: { initial: string | null }) {
         </div>
         <footer className="roles-foot">
           {current?.edited && (
-            <button className="btn" onClick={reset} title="Volta às instruções que o Squad traz">
+            <button className="btn" onClick={reset} title="Volta às instruções que a Torre traz">
               <Icon name="undo" />
               Restaurar padrão
             </button>
@@ -196,8 +196,8 @@ function Editor({ draft, setDraft, current }: { draft: Draft; setDraft: (d: Draf
       <label className="roles-check">
         <input type="checkbox" checked={!!draft.manager} onChange={(e) => set({ manager: e.target.checked })} />
         <span>
-          <b>Gerente</b>: o agente pode criar terminais ligados a ele e ligar nós (<span className="mono">squad new</span>,{' '}
-          <span className="mono">squad connect</span>). Cada terminal pode desligar isso no menu ⋯.
+          <b>Gerente</b>: o agente pode criar terminais ligados a ele e ligar nós (<span className="mono">torre new</span>,{' '}
+          <span className="mono">torre connect</span>). Cada terminal pode desligar isso no menu ⋯.
         </span>
       </label>
       <label className="field roles-prompt">
@@ -211,7 +211,7 @@ function Editor({ draft, setDraft, current }: { draft: Draft; setDraft: (d: Draf
           value={draft.prompt}
           maxLength={MAX_ROLE_PROMPT}
           spellCheck={false}
-          placeholder="O que este agente faz, como trabalha e com quem fala (squad ask, squad portal…)."
+          placeholder="O que este agente faz, como trabalha e com quem fala (torre ask, torre portal…)."
           onChange={(e) => set({ prompt: e.target.value })}
         />
       </label>

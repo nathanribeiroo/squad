@@ -46,7 +46,7 @@ export function FloorEmpty() {
         )}
         <p>
           Os terminais daqui trabalham nessa cópia, no branch dela. Crie um terminal (<span className="kbd">T</span>), ou peça a um gerente:{' '}
-          <span className="mono">squad new "Bia" --role impl --floor "{floor.name}"</span>.
+          <span className="mono">torre new "Bia" --role impl --floor "{floor.name}"</span>.
         </p>
         <button className="btn" onClick={() => useSquad.getState().setNewTerm(true)}>
           <Icon name="terminal" />

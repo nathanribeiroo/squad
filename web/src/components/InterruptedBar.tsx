@@ -7,7 +7,7 @@ import './InterruptedBar.css';
 
 /**
  * Agents that were in the middle of a turn when their terminal stopped
- * (Squad closed or restarted): they're back in their conversations, waiting.
+ * (Torre closed or restarted): they're back in their conversations, waiting.
  * Continuar tells them to go on; Dispensar forgets it.
  */
 export function InterruptedBar() {

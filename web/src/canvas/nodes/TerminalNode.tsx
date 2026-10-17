@@ -169,7 +169,7 @@ function TermBody({ id, children }: { id: string; children: React.ReactNode }) {
   );
 }
 
-/** The command that opens a terminal's conversation outside Squad, in its folder. */
+/** The command that opens a terminal's conversation outside Torre, in its folder. */
 function resumeLine(t: TerminalData): string {
   if (!t.conversation || t.empty) return '';
   return t.agent === 'codex' ? `codex resume ${t.conversation}` : `${t.agent} --resume ${t.conversation}`;
@@ -249,7 +249,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
         </span>
       )}
       {manager && (
-        <span className="tn-manager" title="Modo gerente: cria e liga terminais (squad new). Desligue no menu ⋯">
+        <span className="tn-manager" title="Modo gerente: cria e liga terminais (torre new). Desligue no menu ⋯">
           <Icon name="groups" size={15} />
           gerente
         </span>
@@ -281,7 +281,7 @@ function LiveFooter({ id, t, createdBy, floor }: { id: string; t: TerminalData; 
       </span>
       {inbox > 0 && <span style={{ color: 'var(--st-wait)' }}>caixa {inbox}</span>}
       {creator && (
-        <span className="tn-creator" title={`${creator.name} criou este terminal (squad new)`}>
+        <span className="tn-creator" title={`${creator.name} criou este terminal (torre new)`}>
           <i style={{ background: `var(--r-${creator.color})` }} />
           criado por {creator.name}
         </span>
