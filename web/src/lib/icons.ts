@@ -40,6 +40,8 @@ export const ICONS = [
   'database',
   'delete',
   'description',
+  'dock_to_left',
+  'dock_to_right',
   'edit',
   'edit_note',
   'edit_square',

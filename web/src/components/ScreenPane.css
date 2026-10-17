@@ -1,0 +1,17 @@
+/* A flight's screen out of the canvas (TELAS.md, quadro 04): docked at an
+   edge, with a 2 px divider, or on the whole stage (Foco). */
+.space { position: absolute; inset: 0; display: flex; }
+.space-main { position: relative; flex: 1; min-width: 0; }
+.sp { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; padding-left: var(--w-state-band); background: var(--surface); }
+.sp-left, .sp-right { flex: none; width: clamp(420px, 46%, 1100px); }
+.sp-left { border-right: 2px solid var(--focus); }
+.sp-right { border-left: 2px solid var(--focus); order: 2; }
+.sp-focus { position: absolute; inset: 0; z-index: 30; }
+.sp-head { height: 34px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; border-bottom: 1px solid var(--line); background: var(--surface); font-size: 12.5px; white-space: nowrap; }
+.sp-cs { font-size: 13px; }
+.sp-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sp-where { font-size: 10.5px; color: var(--text-3); }
+.sp.st-ask { outline: 2px solid var(--st-ask); outline-offset: -2px; }
+.sp.st-ask .sp-head { background: var(--stb-ask); }
+.sp .tn-respond { position: static; flex: none; box-shadow: none; border-width: 1.5px 0 0; }
+.sp-body { flex: 1; min-height: 0; }

@@ -3,6 +3,7 @@ import { NodeResizer, useReactFlow, type Node, type NodeProps, type ResizeParams
 import { api } from '../../api/client';
 import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { confirmDialog } from '../../components/ConfirmDialog';
+import { HiddenScreen } from '../../components/HiddenScreen';
 import { CHOICES, askPhrase, respond } from '../../lib/attention';
 import { Icon } from '../../components/Icon';
 import { STATE_META, callsign, elapsed, stateLabel } from '../../lib/model';
@@ -10,29 +11,18 @@ import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, us
 import { flightLevel, useBranch, workdir } from '../../lib/floors';
 import { TurnCard, useCardShown } from './TurnCard';
 import { shortPath, terminalCwd } from '../../lib/paths';
+import { dockAt, toggleFocus, useScreenHidden, useScreenPlace, type ScreenPlace } from '../../lib/screens';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
 import { useSquad } from '../../state/store';
 import { termSession } from '../../term/session';
+import { gridFor } from '../../term/grid';
 import { ScreenSpace, XTermView } from '../../term/XTermView';
 import { NodeHandles, connectClass, useConnectTarget } from './NodeHandles';
 import { NodeMenu, type MenuEntry } from './NodeMenu';
 import { StatePill } from './StatePill';
 
 export type TerminalFlowNode = Node<{ node: WNode }, 'terminal'>;
-
-// Fixed chrome of the live node, in world px (docs/torre/TELAS.md, quadro
-// 02): borders, the state band, header, footer and the body padding around
-// the terminal grid.
-const CHROME_W = 2 + 6 + 20;
-const CHROME_H = 2 + 34 + 22 + 16;
-
-/** Terminal grid that fits a node of w×h world px. */
-function gridFor(id: string, w: number, h: number): { cols: number; rows: number } | null {
-  const cell = termSession(id).cellSize();
-  if (!cell) return null;
-  return { cols: Math.max(20, Math.floor((w - CHROME_W) / cell.w)), rows: Math.max(5, Math.floor((h - CHROME_H) / cell.h)) };
-}
 
 function useInbox(id: string): number {
   return useSquad((s) => s.extra.pending.reduce((n, p) => (p.to === id ? n + 1 : n), 0));
@@ -48,6 +38,8 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
   const state: UIState = rt?.activity ?? 'boot';
   const roleColorKey = roleColor(useRole(t.role));
   const cardShown = useCardShown(id, state === 'work');
+  const place = useScreenPlace(id);
+  const hidden = useScreenHidden(id);
 
   // The session exists for every level, so miniatures have a live buffer.
   useEffect(() => {
@@ -103,7 +95,13 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
             <span className="tn-spacer" />
             <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} compact />
           </header>
-          <MiniSnapshot id={id} />
+          {hidden ? (
+            <div className="tm-body" style={{ position: 'relative' }}>
+              <HiddenScreen id={id} compact />
+            </div>
+          ) : (
+            <MiniSnapshot id={id} />
+          )}
         </ScreenSpace>
       </div>
     );
@@ -125,7 +123,8 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
       <LiveHeader id={id} t={t} rt={rt} state={state} focused={focused} />
       {state === 'ask' ? <AskStrip rt={rt} /> : <SenderStrip id={id} />}
       <TermBody id={id}>
-        <XTermView id={id} zoom={zoom} />
+        {place === 'node' ? <XTermView id={id} zoom={zoom} /> : <Elsewhere id={id} place={place} />}
+        {place === 'node' && hidden && <HiddenScreen id={id} />}
         {(rt?.status === 'failed' || rt?.status === 'exited' || rt?.status === 'stopped') && <StoppedOverlay id={id} rt={rt} />}
       </TermBody>
       <LiveFooter id={id} t={t} createdBy={data.node.createdBy} floor={data.node.floor ?? ''} />
@@ -135,8 +134,24 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
   );
 }
 
+/** The node of a flight whose screen is in the Foco or docked at an edge. */
+function Elsewhere({ id, place }: { id: string; place: ScreenPlace }) {
+  const side = useSquad((s) => s.dock?.side);
+  const back = () => (place === 'focus' ? toggleFocus() : useSquad.getState().setDock(null));
+  return (
+    <div className="tn-elsewhere nodrag" onMouseDown={(e) => e.stopPropagation()}>
+      <b>{place === 'focus' ? 'Em foco' : side === 'left' ? 'Encaixado à esquerda' : 'Encaixado à direita'}</b>
+      <span>A tela deste voo está {place === 'focus' ? 'no foco' : 'na borda'}.</span>
+      <button className="btn" onClick={back} title={id}>
+        <Icon name="close_fullscreen" size={15} />
+        Trazer de volta
+      </button>
+    </div>
+  );
+}
+
 /** PRIORIDADE: what the flight asks you, over its screen (26 px, solid amber). */
-function AskStrip({ rt }: { rt?: TerminalRuntime }) {
+export function AskStrip({ rt }: { rt?: TerminalRuntime }) {
   const a = rt?.attention;
   return (
     <div className="tn-ask" title={a?.text}>
@@ -152,7 +167,7 @@ function AskStrip({ rt }: { rt?: TerminalRuntime }) {
  * with their keys (1, 2, 3 when the flight is selected), and ABRIR TELA.
  * An agent whose keys Torre hasn't verified only gets ABRIR TELA.
  */
-function RespondBar({ id, rt, focused }: { id: string; rt?: TerminalRuntime; focused: boolean }) {
+export function RespondBar({ id, rt, focused }: { id: string; rt?: TerminalRuntime; focused: boolean }) {
   const choices = CHOICES.filter((c) => rt?.attention?.choices?.includes(c.choice));
   const open = () => {
     useSquad.getState().setFocusedTerminal(id);
@@ -228,6 +243,8 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
   const role = useRole(t.role);
   const roles = useSquad((s) => s.roles);
   const manager = isManager(t, role);
+  const hidden = useScreenHidden(id);
+  const dock = useSquad((s) => (s.dock?.id === id ? s.dock.side : null));
   const running = rt?.status === 'running' || rt?.status === 'starting';
   const act = (a: 'start' | 'stop' | 'restart' | 'new-conversation') => api.nodeAction(id, a).catch((e: Error) => toast(e.message, 'err'));
   const cs = callsign(t);
@@ -272,6 +289,11 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
         ]
       : []),
     { icon: 'tune', label: 'Configurar…', action: () => useSquad.getState().setEditTerm(id) },
+    'divider',
+    { icon: 'open_in_full', label: 'Foco', hint: '⌥F', action: () => toggleFocus(id) },
+    { icon: 'dock_to_left', label: 'Encaixar à esquerda', hint: '⌥⇧←', checked: dock === 'left', action: () => dockAt('left', id) },
+    { icon: 'dock_to_right', label: 'Encaixar à direita', hint: '⌥⇧→', checked: dock === 'right', action: () => dockAt('right', id) },
+    { icon: 'visibility_off', label: 'Ocultar a tela', checked: hidden, action: () => useSquad.getState().toggleHiddenScreen(id) },
     ...(ROLE_AGENTS.has(t.agent)
       ? [
           {

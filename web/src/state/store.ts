@@ -168,6 +168,14 @@ interface SquadState {
   /** The flight the Sinóptico shows on the right, and whether it stays there. */
   synPick: string | null;
   synPinned: boolean;
+  /** A flight docked at an edge of the Espaço (⌥⇧←/→), kept per workspace. */
+  dock: Dock | null;
+  /** The flight on the whole stage (Foco, ⌥F). */
+  focusPane: string | null;
+  /** Flights whose screen is hidden (⋯ → Ocultar a tela), kept per workspace. */
+  hiddenScreens: string[];
+  /** A node for the canvas to select (Tab), and to bring into view. */
+  selectRequest: string | null;
 
   setWorkspaces(list: WorkspaceSummary[]): void;
   /** A workspace's sessions (from the "sessions" event, or a request). */
@@ -206,6 +214,38 @@ interface SquadState {
   setSynPinned(pinned: boolean, id: string): void;
   setTermTheme(t: SquadState['termTheme']): void;
   moveNodeLocal(id: string, x: number, y: number): void;
+  setDock(d: Dock | null): void;
+  setFocusPane(id: string | null): void;
+  toggleHiddenScreen(id: string): void;
+  requestSelect(id: string | null): void;
+}
+
+export interface Dock {
+  id: string;
+  side: 'left' | 'right';
+}
+
+const dockKey = (ws: string) => `torre.dock.${ws}`;
+const hiddenKey = (ws: string) => `torre.hidden.${ws}`;
+
+function storedDock(ws: string | null): Dock | null {
+  if (!ws) return null;
+  try {
+    const d = JSON.parse(localStorage.getItem(dockKey(ws)) ?? 'null') as Dock | null;
+    return d && typeof d.id === 'string' && (d.side === 'left' || d.side === 'right') ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+function storedHidden(ws: string | null): string[] {
+  if (!ws) return [];
+  try {
+    const v = JSON.parse(localStorage.getItem(hiddenKey(ws)) ?? '[]') as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 const emptyExtra: StateExtra = { paused: false, limits: { maxHops: 6, perMinute: 30 }, rate: 0, pending: [] };
@@ -281,6 +321,10 @@ const perWorkspace = {
   summarySettings: null,
   summaryDialog: null,
   composerDraft: null,
+  dock: null,
+  focusPane: null,
+  hiddenScreens: [],
+  selectRequest: null,
 } satisfies Partial<SquadState>;
 
 const WS_KEY = 'torre.ws';
@@ -352,6 +396,10 @@ export const useSquad = create<SquadState>((set, get) => ({
   view: stored<'space' | 'synoptic'>('torre.view', 'space'),
   synPick: null,
   synPinned: false,
+  dock: null,
+  focusPane: null,
+  hiddenScreens: [],
+  selectRequest: null,
   termTheme: stored<'noite' | 'papel'>('torre.term', stored('torre.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
 
   setRoles: (roles) => set({ roles }),
@@ -363,6 +411,20 @@ export const useSquad = create<SquadState>((set, get) => ({
   // A pinned flight stays until unpinned; picking another only moves the selection.
   setSynPick: (id) => set((s) => (s.synPinned ? {} : { synPick: id })),
   setSynPinned: (synPinned, id) => set({ synPinned, synPick: id }),
+  setDock: (dock) => {
+    const ws = get().activeWs;
+    if (ws) persist(dockKey(ws), dock ? JSON.stringify(dock) : '');
+    // A flight docked leaves the Foco, and the other way around.
+    set((s) => ({ dock, focusPane: dock && s.focusPane === dock.id ? null : s.focusPane }));
+  },
+  setFocusPane: (focusPane) => set({ focusPane }),
+  toggleHiddenScreen: (id) => {
+    const st = get();
+    const hiddenScreens = st.hiddenScreens.includes(id) ? st.hiddenScreens.filter((x) => x !== id) : [...st.hiddenScreens, id];
+    if (st.activeWs) persist(hiddenKey(st.activeWs), JSON.stringify(hiddenScreens));
+    set({ hiddenScreens });
+  },
+  requestSelect: (selectRequest) => set({ selectRequest }),
   openRoles: (id = null) => set({ rolesPanel: id }),
   closeRoles: () => set({ rolesPanel: false }),
 
@@ -432,7 +494,22 @@ export const useSquad = create<SquadState>((set, get) => ({
       .filter((p) => !known.has(`req-${p.id}`))
       .map((p) => ({ key: `req-${p.id}`, time: p.sentAt, id: p.id, from: p.from, to: p.to, fromName: p.fromName, toName: p.toName, text: p.preview ?? '', outcome: 'pending' as const }));
     const activity = seeded.length ? [...seeded, ...get().activity] : get().activity;
-    set({ workspace: s.workspace, runtime, askingIds: askingOf(runtime, []), extra: s.extra ?? emptyExtra, flights: pending, sendTimes, activity });
+    // The docked flight comes back with the workspace; a hidden screen stays hidden.
+    const isTerm = (id?: string | null) => !!id && s.workspace.nodes.some((n) => n.id === id && n.terminal);
+    const cur = get();
+    const dock = cur.dock && isTerm(cur.dock.id) ? cur.dock : storedDock(cur.activeWs);
+    set({
+      workspace: s.workspace,
+      runtime,
+      askingIds: askingOf(runtime, []),
+      extra: s.extra ?? emptyExtra,
+      flights: pending,
+      sendTimes,
+      activity,
+      dock: dock && isTerm(dock.id) ? dock : null,
+      focusPane: isTerm(cur.focusPane) ? cur.focusPane : null,
+      hiddenScreens: storedHidden(cur.activeWs),
+    });
     // A floor landed while we were away (or a stale link): the ground floor.
     const st = get();
     const floor = validFloor(st.activeFloor, s.workspace.floors);
@@ -453,6 +530,8 @@ export const useSquad = create<SquadState>((set, get) => ({
         return;
       case 'node.removed':
         if (ws) set({ workspace: { ...ws, nodes: ws.nodes.filter((n) => n.id !== d.id) } });
+        if (st.dock?.id === d.id) st.setDock(null);
+        if (st.focusPane === d.id) set({ focusPane: null });
         return;
       case 'edge.added':
       case 'edge.updated':

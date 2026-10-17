@@ -50,12 +50,13 @@ export class ApiError extends Error {
   }
 }
 
-async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function req<T>(method: string, path: string, body?: unknown, keepalive?: boolean): Promise<T> {
   const res = await fetch(path, {
     method,
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
     credentials: 'same-origin',
+    keepalive,
   });
   if (!res.ok) {
     let msg = res.statusText;
@@ -81,7 +82,7 @@ async function text(path: string): Promise<string> {
 export const api = {
   state: () => req<StateResponse>('GET', wsPath('/api/state')),
   addNode: (n: Partial<WNode>) => req<WNode>('POST', wsPath('/api/nodes'), n),
-  updateNode: (id: string, patch: Partial<WNode>) => req<WNode>('PATCH', wsPath(`/api/nodes/${id}`), patch),
+  updateNode: (id: string, patch: Partial<WNode>, keepalive?: boolean) => req<WNode>('PATCH', wsPath(`/api/nodes/${id}`), patch, keepalive),
   removeNode: (id: string) => req<void>('DELETE', wsPath(`/api/nodes/${id}`)),
   nodeAction: (id: string, action: 'start' | 'stop' | 'restart' | 'new-conversation') => req<unknown>('POST', wsPath(`/api/nodes/${id}/${action}`)),
   /** Answers the prompt on a flight's screen (only the interface can). */
