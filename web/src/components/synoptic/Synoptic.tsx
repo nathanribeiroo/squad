@@ -5,7 +5,9 @@ import { flightLevel, gitSummary } from '../../lib/floors';
 import { STATE_META, callsign, clock, elapsed } from '../../lib/model';
 import { useNodeRoleColor } from '../../lib/roles';
 import { useNow } from '../../lib/useNow';
+import { useScreenHidden, useScreenPlace } from '../../lib/screens';
 import { XTermView } from '../../term/XTermView';
+import { HiddenScreen } from '../HiddenScreen';
 import { useSquad } from '../../state/store';
 import { Icon } from '../Icon';
 import './Synoptic.css';
@@ -395,6 +397,8 @@ function SelectedTerminal({ n, floors, rt, pinned }: { n: WNode; floors: Floor[]
   const roleOf = useNodeRoleColor();
   const st = rt?.activity ?? 'off';
   const now = useNow(1000);
+  const place = useScreenPlace(n.id);
+  const hidden = useScreenHidden(n.id);
   return (
     <div className={`syn-term st-${st}`}>
       <header className="syn-term-head">
@@ -416,7 +420,8 @@ function SelectedTerminal({ n, floors, rt, pinned }: { n: WNode; floors: Floor[]
         </button>
       </header>
       <div className="syn-term-body" onMouseDown={() => useSquad.getState().setFocusedTerminal(n.id)}>
-        <XTermView id={n.id} zoom={1} />
+        {place === 'focus' ? <div className="tn-elsewhere">Em foco · ⌥F volta</div> : <XTermView id={n.id} zoom={1} />}
+        {hidden && <HiddenScreen id={n.id} />}
       </div>
       <footer className="syn-term-foot mono">
         {levelOf(n, floors)} · {pinned ? 'fixado' : 'segue a seleção'} · clique para digitar

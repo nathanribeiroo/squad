@@ -183,6 +183,23 @@ export function Canvas() {
     }, 60);
     return () => window.clearTimeout(t);
   }, [focusRequest, nodes, rf]);
+  // Tab: select a node, and bring it into view when it is off screen (at the
+  // same zoom).
+  const selectRequest = useSquad((s) => s.selectRequest);
+  useEffect(() => {
+    if (!selectRequest) return;
+    useSquad.getState().requestSelect(null);
+    setNodes((ns) => ns.map((n) => (n.selected === (n.id === selectRequest) ? n : { ...n, selected: n.id === selectRequest })));
+    useSquad.getState().setSelectedNode(selectRequest);
+    const n = rf.getInternalNode(selectRequest);
+    const pane = document.querySelector('.react-flow')?.getBoundingClientRect();
+    if (!n || !pane) return;
+    const a = rf.flowToScreenPosition(n.internals.positionAbsolute);
+    const b = rf.flowToScreenPosition({ x: n.internals.positionAbsolute.x + (n.measured.width ?? 0), y: n.internals.positionAbsolute.y + (n.measured.height ?? 0) });
+    if (a.x >= pane.left && a.y >= pane.top && b.x <= pane.right && b.y <= pane.bottom) return;
+    const z = rf.getZoom();
+    void rf.fitView({ nodes: [{ id: selectRequest }], duration: 250, minZoom: z, maxZoom: z });
+  }, [selectRequest, rf]);
   // Double-clicking a wire adds a bend point there.
   const onEdgeDoubleClick = useCallback(
     (e: React.MouseEvent, edge: Edge) => {

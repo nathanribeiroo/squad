@@ -16,6 +16,7 @@ import { FloorEmpty } from './components/FloorEmpty';
 import { InterruptedBar } from './components/InterruptedBar';
 import { NoLink } from './components/NoLink';
 import { PriorityBanner } from './components/PriorityBanner';
+import { ScreenPane } from './components/ScreenPane';
 import { RolesPanel } from './components/RolesPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { Synoptic } from './components/synoptic/Synoptic';
@@ -24,6 +25,8 @@ import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
 import { goToNextAsk, respond } from './lib/attention';
 import { noticePrefs } from './lib/notify';
+import { dockAt, nextNode, toggleFocus } from './lib/screens';
+import { termSession } from './term/session';
 import { Toast, toast } from './lib/toast';
 import { useSquad } from './state/store';
 import './App.css';
@@ -85,6 +88,9 @@ function typing(t: EventTarget | null): boolean {
 
 function Stage() {
   const view = useSquad((s) => s.view);
+  // The docked flight (unless it is in the Foco, which has its screen).
+  const dock = useSquad((s) => (s.dock && s.dock.id !== s.focusPane && s.workspace?.nodes.some((n) => n.id === s.dock!.id) ? s.dock : null));
+  const focusPane = useSquad((s) => s.focusPane);
   const rf = useReactFlow();
 
   const create = useCallback(
@@ -106,6 +112,12 @@ function Stage() {
       const st = useSquad.getState();
       // ⌥ shortcuts are global (e.code: Option changes e.key on macOS).
       if (e.altKey && !e.metaKey && !e.ctrlKey) {
+        // ⌥⇧←/→ dock the flight at an edge (TELAS.md, quadro 04).
+        if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+          e.preventDefault();
+          dockAt(e.code === 'ArrowLeft' ? 'left' : 'right');
+          return;
+        }
         const map: Record<string, () => void> = {
           KeyA: () => st.setDrawer(!st.drawerOpen),
           KeyP: () => void (st.extra.paused ? api.resume() : api.pause()).catch((err: Error) => toast(err.message, 'err')),
@@ -118,6 +130,7 @@ function Stage() {
             void goToNextAsk();
           },
           KeyS: () => st.setView(st.view === 'space' ? 'synoptic' : 'space'),
+          KeyF: () => toggleFocus(),
           KeyK: () => {
             const isTerm = (id: string | null) => !!id && !!st.workspace?.nodes.find((n) => n.id === id && n.terminal);
             st.setComposer(!st.composerOpen, [st.focusedTerminal, st.selectedNode, st.composerTarget].find(isTerm) ?? null);
@@ -131,7 +144,8 @@ function Stage() {
         return;
       }
       if (e.key === 'Escape') {
-        if (st.newTermOpen) st.setNewTerm(false);
+        if (st.focusPane && !typing(e.target)) st.setFocusPane(null);
+        else if (st.newTermOpen) st.setNewTerm(false);
         else if (st.editTermId) st.setEditTerm(null);
         else if (st.composerOpen) st.setComposer(false);
         return;
@@ -152,6 +166,25 @@ function Stage() {
           answer(key)();
         }
         return; // the canvas' keys need the canvas
+      }
+      // Tab / ⇧Tab pass the selection along the nodes; Enter gives the
+      // selected flight the keyboard. Not over a button or a link, which
+      // keep their own Tab and Enter.
+      const onPage = document.activeElement === document.body || !!document.activeElement?.closest('.react-flow');
+      if (onPage && !st.focusPane && (e.code === 'Tab' || (e.code === 'Enter' && !e.shiftKey && !e.altKey))) {
+        if (e.code === 'Tab') {
+          e.preventDefault();
+          nextNode(e.shiftKey);
+          return;
+        }
+        const sel = st.selectedNode && st.workspace?.nodes.find((n) => n.id === st.selectedNode && n.terminal);
+        if (sel) {
+          e.preventDefault();
+          // Too small to type into: bring it close first.
+          if (st.zoomLevel !== 'live') st.setFloor(sel.floor ?? '', sel.id);
+          window.setTimeout(() => termSession(sel.id).focus(), st.zoomLevel !== 'live' ? 450 : 0);
+        }
+        return;
       }
       const plain: Record<string, () => void> = {
         ...(ask ? { Digit1: answer('allow'), Digit2: answer('always'), Digit3: answer('deny') } : {}),
@@ -176,16 +209,20 @@ function Stage() {
       {view === 'synoptic' ? (
         <Synoptic />
       ) : (
-        <>
-          <Canvas />
-          <FloorEmpty />
-          <AirspaceEmpty onNote={() => create('note')} />
-          <InterruptedBar />
-          <PriorityBanner />
-          <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
-          <ComposerPill />
-        </>
+        <div className="space">
+          {dock && <ScreenPane key={`dock-${dock.id}`} id={dock.id} mode={dock.side} />}
+          <div className="space-main">
+            <Canvas />
+            <FloorEmpty />
+            <AirspaceEmpty onNote={() => create('note')} />
+            <InterruptedBar />
+            <PriorityBanner />
+            <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
+            <ComposerPill />
+          </div>
+        </div>
       )}
+      {focusPane && <ScreenPane key={`focus-${focusPane}`} id={focusPane} mode="focus" />}
       <Composer />
       <ActivityDrawer />
       <RolesPanel />
