@@ -2,6 +2,19 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F5d: planos de voo
+
+- **Pacote `internal/plans`:** um plano é um JSON em `~/.torre/plans/<id>.json` com voos (agente, nome, indicativo, papel, líder, comando próprio, pasta relativa, posição e tamanho), NOTAMs (nome e, se a pessoa quiser, o conteúdo), portais (nome e endereço), frequências (pares de chaves) e níveis (nome e branch). As posições partem do canto do plano, em cada nível. `Check` valida tudo, inclusive o arquivo importado (agentes conhecidos, chaves únicas, fios para itens do plano, até 60 itens e 8 níveis, 4 MB).
+- **Rotas do hub** (planos de todos os workspaces): `GET /api/plans`, `GET`/`DELETE /api/plans/{id}` e `POST /api/plans/import`. O importado fica marcado (`imported`).
+- **Rotas do workspace**, só da interface (decolar inicia processos): `POST /w/<id>/api/plans` (a seleção, o nível aberto ou a sessão inteira) e `POST /w/<id>/api/plans/{id}/apply`.
+- **Segurança:** decolar exige `commands` com cada comando próprio do plano, a lista que a interface mostrou em "Antes de decolar"; sem ela, 409 `plan.review`. Os voos de agente rodam o comando de Configurações → Agentes, como qualquer voo novo.
+- **Decolar:** os itens vão para o nível aberto, à direita do que já existe lá (160 px depois do último nó). Os níveis do plano viram níveis novos com o nome dele ("Login 2" quando o nome, o branch ou a pasta já existem). Nomes repetidos ganham número, e o indicativo é numerado pelo store (IMP → IM2). Um papel que não existe nesta Torre, uma pasta que não existe e níveis num workspace sem git viram avisos, e o resto decola.
+- **Decisão sem consulta: o que salvar.** No canvas só dá para selecionar no nível aberto, então o diálogo oferece três escopos: a seleção, tudo no nível aberto e a sessão inteira com os níveis (o que faz o plano "duas frentes em paralelo" do mockup).
+- **Decisão sem consulta:** a galeria começa vazia, sem os planos de exemplo do mockup (ficou no PLAN).
+- **Interface:** a galeria (`⌥M`, o botão novo na barra de ferramentas, "Usar um plano de voo" no espaço vazio e "Com um plano de voo" na primeira abertura), com miniatura, composição, importar, exportar e remover (com confirmação); "Antes de decolar", com o comando de cada voo e o aviso para planos importados; e "Salvar como plano" (`⌥⇧M`).
+- **Testado aqui:** `TestPlanSaveAndApply` (salvar a sessão com o conteúdo da NOTAM, recusa sem revisão, decolar com nomes repetidos, NOTAM com conteúdo, frequências), `TestPlanLevelWithoutGit`, `TestPlanLevels` (num repositório: o nível "Login" e, na segunda vez, "Login 2"), `TestPlansImportListDelete` e, na tela, salvar a sessão de teste como "Trio com portal", importar um plano com `npm run dev`, a revisão e decolar a equipe ao lado da original.
+- **Não testado:** decolar um plano com Claude e Devin reais (os voos nascem como qualquer voo novo, pelo mesmo `AddNode`); importar pela janela de arquivo (testado pela rota).
+
 ## 2026-10-17, Torre F5c: @ELEMENTOS no portal
 
 - **Servidor:** o WebSocket do portal aceita `{"type":"elements","on":true|false}`. Ligada, a camada recebe `{"type":"elements","elements":[{ref, role, name, x, y, w, h}],"snapshot":bool}` na hora e de novo a cada segundo quando algo muda (rolagem, snapshot novo, página nova). As caixas são as de agora (`Page.Boxes`, `DOM.getBoxModel` de cada ref), não as do momento do snapshot.

@@ -110,7 +110,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 
 **Atalhos:**
 - canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal, `Tab`/`⇧Tab` o próximo/anterior nó (na ordem de leitura, trazendo o nó para a tela), `⏎` dá o teclado ao voo selecionado;
-- globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥F` foco, `⌥⇧←`/`⌥⇧→` encaixar, `⌥1`–`⌥9` workspaces;
+- globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥F` foco, `⌥⇧←`/`⌥⇧→` encaixar, `⌥M` planos de voo, `⌥⇧M` salvar como plano, `⌥1`–`⌥9` workspaces;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
 
 **Foco, encaixe e ocultar** (também no menu ⋯ do voo):
@@ -154,6 +154,9 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 | `GET /api/agents` (`?refresh=1` procura de novo) | os agentes (`found`, `version`, `path`, `defaultCommand`, `installHint`) e o navegador |
 | `PUT /api/agents/<agente>` `{"defaultCommand"}` | troca o comando padrão (`""` volta ao nome) |
 | `GET/PUT /w/<id>/api/limits` `{"maxHops", "perMinute", "maxTeam", "portalsPerAgent"}` | os limites do workspace (0 volta ao padrão) |
+| `GET /api/plans` · `GET`/`DELETE /api/plans/<id>` · `POST /api/plans/import` (o arquivo) | os planos de voo, de todos os workspaces |
+| `POST /w/<id>/api/plans` `{"name", "scope": "selection"\|"level"\|"session", "nodes", "floor", "notesContent"}` | salva um plano deste canvas |
+| `POST /w/<id>/api/plans/<plano>/apply` `{"floor", "commands"}` | decola o plano; `commands` são os comandos próprios que você revisou (sem eles, 409 `plan.review`) |
 
 **PRIORIDADE (o voo pede você):** um agente parado num pedido de permissão (rodar um comando, editar um arquivo, usar uma ferramenta MCP) ou numa pergunta com opções deixa de aparecer como "No ar":
 - **no voo:** contorno âmbar com halo, a faixa de estado âmbar piscando, "PEDE VOCÊ 0:24" no lugar do estado e, em cima da tela, a frase do pedido com o que está em jogo ("QUER EXECUTAR UM COMANDO · npm run e2e");
@@ -179,7 +182,13 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - quando há alterações sem commit a perder, o botão só funciona depois de marcar "Entendo que esse trabalho se perde.";
 - Esc cancela; Enter confirma, menos nas vermelhas.
 
-**Espaço vazio:** uma sessão sem voos na pista mostra "Ponha a primeira equipe no ar.", com **Novo voo** (`T`) e **Escrever o plano numa NOTAM** (`N`). "Usar um plano de voo" aparece desligado até os planos de voo chegarem.
+**Espaço vazio:** uma sessão sem voos na pista mostra "Ponha a primeira equipe no ar.", com **Usar um plano de voo** (`⌥M`), **Novo voo** (`T`) e **Escrever o plano numa NOTAM** (`N`).
+
+**Planos de voo:** uma equipe guardada para decolar de novo, em qualquer workspace, com conversas novas.
+- **Salvar** (`⌥⇧M`, ou o cartão tracejado da galeria): a seleção no Espaço, tudo no nível aberto, ou a sessão inteira com os níveis. Guarda os voos (agente, nome, indicativo, papel, líder, comando próprio, pasta relativa, posição e tamanho), as NOTAMs (o nome e, se quiser, o conteúdo), os portais (nome e endereço), as frequências entre eles e os níveis (nome e branch). Fica em `~/.torre/plans`.
+- **Galeria** (`⌥M`, o botão na barra de ferramentas, ou "Com um plano de voo" na primeira abertura): os planos com uma miniatura e a composição ("PLN · IMP · REV · 1 NOTAM · 3 frequências"); **Importar** um arquivo; em cada cartão, exportar o arquivo e remover.
+- **Antes de decolar:** a lista do que cada voo vai rodar (o comando do agente, de Configurações → Agentes, ou o comando próprio do plano, em âmbar). Um plano importado com comandos próprios mostra o aviso. O servidor recusa decolar se a interface não mandar a lista de comandos que mostrou.
+- **Decolar a equipe:** os itens vão para o nível aberto, ao lado do que já está lá; os níveis do plano viram níveis novos (com o nome dele, ou "Login 2" se já existir). Nomes que já existem ganham um número, e o indicativo também (IMP → IM2). O que não dá para criar (um papel que não existe nesta Torre, uma pasta que não existe, níveis sem git) vira um aviso, e o resto decola.
 
 **Sem enlace:** se o `torre serve` parar, a barra mostra "Reconectando…"; depois de alguns segundos, um cartão diz "O torre serve parou? Tentando de novo em 3 s…". Os voos ficam no último estado conhecido e voltam sozinhos quando o servidor sobe.
 
