@@ -176,6 +176,10 @@ interface SquadState {
   hiddenScreens: string[];
   /** A node for the canvas to select (Tab), and to bring into view. */
   selectRequest: string | null;
+  /** The nodes selected on the canvas (one or more). */
+  selectedIds: string[];
+  /** Flight plans: the gallery (⌥M) or saving one (⌥⇧M). */
+  plansDialog: 'gallery' | 'save' | null;
 
   setWorkspaces(list: WorkspaceSummary[]): void;
   /** A workspace's sessions (from the "sessions" event, or a request). */
@@ -218,6 +222,8 @@ interface SquadState {
   setFocusPane(id: string | null): void;
   toggleHiddenScreen(id: string): void;
   requestSelect(id: string | null): void;
+  setSelectedIds(ids: string[]): void;
+  setPlansDialog(d: SquadState['plansDialog']): void;
 }
 
 export interface Dock {
@@ -325,6 +331,8 @@ const perWorkspace = {
   focusPane: null,
   hiddenScreens: [],
   selectRequest: null,
+  selectedIds: [],
+  plansDialog: null,
 } satisfies Partial<SquadState>;
 
 const WS_KEY = 'torre.ws';
@@ -400,6 +408,8 @@ export const useSquad = create<SquadState>((set, get) => ({
   focusPane: null,
   hiddenScreens: [],
   selectRequest: null,
+  selectedIds: [],
+  plansDialog: null,
   termTheme: stored<'noite' | 'papel'>('torre.term', stored('torre.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
 
   setRoles: (roles) => set({ roles }),
@@ -425,6 +435,8 @@ export const useSquad = create<SquadState>((set, get) => ({
     set({ hiddenScreens });
   },
   requestSelect: (selectRequest) => set({ selectRequest }),
+  setSelectedIds: (selectedIds) => set({ selectedIds }),
+  setPlansDialog: (plansDialog) => set({ plansDialog }),
   openRoles: (id = null) => set({ rolesPanel: id }),
   closeRoles: () => set({ rolesPanel: false }),
 

@@ -17,6 +17,7 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/plans"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -82,7 +83,7 @@ func newEnvWith(t *testing.T, limits agentbus.Limits, act activity.Options) *env
 	}
 	a, err := New(Options{
 		Server:   server.Options{Port: port, Token: "tok", Store: st, CLIPath: filepath.Join(binDir, "torre")},
-		Activity: act, Limits: limits, Roles: lib,
+		Activity: act, Limits: limits, Roles: lib, Plans: plans.Open(filepath.Join(dir, "plans")),
 	})
 	if err != nil {
 		t.Fatal(err)

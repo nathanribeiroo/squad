@@ -25,6 +25,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
+	"github.com/nathanribeiroo/squad/internal/plans"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -72,6 +73,7 @@ type Options struct {
 	Setup      func(*app.App) error // runs on every workspace's app before it starts
 	Browser    *browser.Manager     // the portals' browser, shared by all workspaces (nil: no portals)
 	Roles      *roles.Library       // nil: roles.json next to Root (~/.torre/roles.json)
+	Plans      *plans.Library       // nil: plans/ next to Root (~/.torre/plans)
 }
 
 // Summary is a workspace as the selector shows it.
@@ -130,6 +132,9 @@ func New(opts Options) (*Hub, error) {
 			return nil, err
 		}
 		opts.Roles = lib
+	}
+	if opts.Plans == nil {
+		opts.Plans = plans.Open(filepath.Join(filepath.Dir(opts.Root), "plans"))
 	}
 	h := &Hub{
 		opts: opts, log: opts.Logger, roles: opts.Roles, events: events.NewBus(),
@@ -191,6 +196,7 @@ func (h *Hub) build(st *store.Store, ss *sessions) (*workspace, error) {
 		Extensions: h.opts.Extensions,
 		Browser:    h.opts.Browser,
 		Roles:      h.roles,
+		Plans:      h.opts.Plans,
 	})
 	if err != nil {
 		return nil, err

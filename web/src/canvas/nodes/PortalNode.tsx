@@ -220,7 +220,7 @@ function LiveBadge({ stream, hasUrl, paused }: { stream: PortalStream; hasUrl: b
 function canvasKey(e: React.KeyboardEvent): boolean {
   if (!e.altKey || e.ctrlKey || e.metaKey) return false;
   if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return true; // dock
-  return e.code === 'KeyA' || e.code === 'KeyP' || e.code === 'KeyK' || e.code === 'KeyF' || e.key === 'Escape' || /^Digit[1-9]$/.test(e.code);
+  return e.code === 'KeyA' || e.code === 'KeyP' || e.code === 'KeyK' || e.code === 'KeyF' || e.code === 'KeyM' || e.key === 'Escape' || /^Digit[1-9]$/.test(e.code);
 }
 
 /**

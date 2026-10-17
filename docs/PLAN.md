@@ -61,7 +61,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Torre F5a Extras (nível, pedidos, NOTAM, pouso) | `feat/torre-f5a-extras` → `feat/torre` | concluído |
 | Torre F5b Foco, encaixe, ocultar, Tab | `feat/torre-f5b-foco` → `feat/torre` | concluído |
 | Torre F5c @ELEMENTOS no portal | `feat/torre-f5c-elementos` → `feat/torre` | concluído |
-| Torre F5d Planos de voo | `feat/torre-f5d-planos` → `feat/torre` | pendente |
+| Torre F5d Planos de voo | `feat/torre-f5d-planos` → `feat/torre` | concluído |
 
 ## B0, esqueleto
 
@@ -251,4 +251,6 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **Fim da compatibilidade com o nome antigo** (`RENOMEACAO.md`, 1.2): tirar o atalho `squad`, a leitura de `SQUAD_*`, o cookie e o cabeçalho antigos e a busca por `Squad.app`, quando o usuário quiser.
 - **Renomear o repositório e o módulo Go** para `torre`: muda o caminho do `go install`.
 - **Ocultar a tela guardado no nó** (F5b; `NOVIDADES-E-BACKEND.md`, item 17, "Guardar `redacted` no nó é opcional"): hoje fica no navegador. No nó, valeria em todas as janelas e no Sinóptico de outro computador.
+- **Planos de voo pelos agentes** (F5d): hoje só a interface salva e decola planos (decolar inicia processos, então ficou fora do `/cli` e do MCP, como a resposta da PRIORIDADE). Um líder poderia pedir "decole o plano Trio" com aprovação, se fizer falta.
+- **Galeria com planos prontos** (F5d; o mockup do quadro 20 mostra "Trio clássico", "Front-end com teste visual", "Duas frentes em paralelo"): a galeria começa vazia. Planos prontos que venham com a Torre precisariam escolher agentes e papéis que existam na máquina.
 - **Dois voos encaixados** (F5b): hoje um por vez, numa borda. As duas bordas ao mesmo tempo pediriam um desenho para o canvas espremido no meio.

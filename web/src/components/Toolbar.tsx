@@ -24,6 +24,7 @@ export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => 
     { icon: 'public', label: 'Portal', key: 'P', action: onCreatePortal },
     { icon: 'gesture', label: 'Desenho (em breve)', key: 'D', action: () => {}, disabled: true },
     { icon: 'select', label: 'Grupo (em breve)', key: 'G', action: () => {}, disabled: true },
+    { icon: 'flight_class', label: 'Planos de voo', key: '⌥M', action: () => useSquad.getState().setPlansDialog('gallery') },
   ];
 
   const render = (t: Tool) => (
