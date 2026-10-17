@@ -39,6 +39,9 @@ type Workspace struct {
 	// canvas; FloorConfig seeds new ones (nil: DefaultFloorConfig).
 	Floors      []Floor      `json:"floors,omitempty"`
 	FloorConfig *FloorConfig `json:"floorConfig,omitempty"`
+	// Copy: the canvas (a session) works in a copy of the repository instead
+	// of the workspace folder (copy.go).
+	Copy *Floor `json:"copy,omitempty"`
 	// SummaryConfig: turn cards and who writes summaries (nil: the default).
 	SummaryConfig *SummaryConfig `json:"summaryConfig,omitempty"`
 }

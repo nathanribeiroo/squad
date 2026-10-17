@@ -13,6 +13,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/nathanribeiroo/squad/internal/events"
+	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/webui"
 )
@@ -21,7 +22,7 @@ import (
 //
 //	/w/<id>/api/…, /w/<id>/ws/…   a workspace's API (see server.APIHandler)
 //	/api/workspaces…, /api/dirs     the workspace list (and folder suggestions)
-//	/api/workspaces/{id}/sessions…  a workspace's sessions: list, new, open, rename, remove
+//	/api/workspaces/{id}/sessions…  a workspace's sessions: list, new (in a copy, optionally), open, rename, remove
 //	/api/roles…                     the role library, shared by every workspace
 //	/ws/workspaces                  the list and the roles, live
 //	POST /cli, POST /hooks/{agent}  calls from terminals, routed by terminal id
@@ -196,7 +197,8 @@ func (h *Hub) handleRenameSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Hub) handleRemoveSession(w http.ResponseWriter, r *http.Request) {
-	l, err := h.RemoveSession(r.PathValue("id"), r.PathValue("sid"))
+	confirm := r.URL.Query().Get("confirm") == "true" // uncommitted changes in its copy are lost
+	l, err := h.RemoveSession(r.PathValue("id"), r.PathValue("sid"), confirm)
 	if err != nil {
 		writeHubError(w, err)
 		return
@@ -283,12 +285,15 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 
 func writeHubError(w http.ResponseWriter, err error) {
 	var busy *BusyError
+	var dirty *DirtyCopyError
 	switch {
 	case errors.As(err, &busy):
 		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "working": busy.Working, "pending": busy.Pending})
+	case errors.As(err, &dirty):
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "files": dirty.Files})
 	case errors.Is(err, ErrNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrInvalid):
+	case errors.Is(err, ErrInvalid), errors.Is(err, floors.ErrInvalid):
 		writeError(w, http.StatusBadRequest, err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, err.Error())

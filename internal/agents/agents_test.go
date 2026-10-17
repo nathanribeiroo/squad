@@ -130,6 +130,14 @@ func TestPrepareLaunchLines(t *testing.T) {
 	if !strings.HasSuffix(spec.Command, " --respect-workspace-trust false") {
 		t.Fatalf("devin on a floor: %s", spec.Command)
 	}
+	// Nor in a session's copy.
+	l.InCopy = func() bool { return true }
+	spec = terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
+	_, _ = l.Prepare(&store.Node{}, &spec)
+	if !strings.HasSuffix(spec.Command, " --respect-workspace-trust false") {
+		t.Fatalf("devin in a session's copy: %s", spec.Command)
+	}
+	l.InCopy = nil
 	spec = terminal.Spec{Agent: "shell"}
 	_, _ = l.Prepare(&store.Node{}, &spec)
 	if spec.Command != "" {

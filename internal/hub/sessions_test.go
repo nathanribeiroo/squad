@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -284,5 +285,106 @@ func TestSessionNamedByFirstTurn(t *testing.T) {
 	waitForLong(t, "the session's name", func() bool { return h.sessions(ws.ID).current().Named })
 	if got := h.sessions(ws.ID).current().Name; got != "Implementar o movimento do cavalo no tabuleiro" {
 		t.Fatalf("name: %q", got)
+	}
+}
+
+// A session can work in a copy of the repository: its terminals start there,
+// without the work left uncommitted in the workspace folder; removing the
+// session removes the copy (asking first when the copy has uncommitted work)
+// and keeps its branch.
+func TestSessionInACopy(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	h := newHarness(t, filepath.Join(t.TempDir(), "workspaces"))
+	repo := filepath.Join(t.TempDir(), "app")
+	git := func(dir string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	git(repo, "init", "-q", "-b", "main")
+	git(repo, "config", "user.name", "Test")
+	git(repo, "config", "user.email", "test@example.com")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("app\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(repo, "add", ".")
+	git(repo, "commit", "-q", "-m", "first")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("app\nhalf done\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, data := h.do("POST", "/api/workspaces", map[string]string{"name": "App", "cwd": repo}, nil)
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %s", code, data)
+	}
+	var ws Summary
+	_ = json.Unmarshal(data, &ws)
+	h.addTerminal(ws.ID, "Shell")
+	first := h.sessions(ws.ID).Current
+
+	code, data = h.do("POST", "/api/workspaces/"+ws.ID+"/sessions", NewSession{Name: "Login novo", KeepTerminals: true, Copy: &NewCopy{}}, nil)
+	if code != http.StatusCreated {
+		t.Fatalf("new session in a copy: %d %s", code, data)
+	}
+	copyDir := filepath.Join(filepath.Dir(repo), ".squad", "sessions", "app--login-novo")
+	cur := h.sessions(ws.ID).current()
+	if cur.Branch != "login-novo" || cur.Copy != copyDir {
+		t.Fatalf("session: %+v", cur)
+	}
+	st := h.state(ws.ID)
+	if len(st.Workspace.Nodes) != 1 || st.Workspace.Copy == nil || st.Workspace.Copy.Base != "main" {
+		t.Fatalf("canvas: %+v", st.Workspace)
+	}
+	tm := h.hub.App(ws.ID).Server.Terminals().Get(st.Workspace.Nodes[0].ID)
+	if tm == nil || tm.Spec().Cwd != copyDir {
+		t.Fatalf("the terminal doesn't run in the copy: %+v", tm)
+	}
+	if b, _ := os.ReadFile(filepath.Join(copyDir, "README.md")); string(b) != "app\n" {
+		t.Fatalf("the copy took the uncommitted work: %q", b)
+	}
+
+	// A branch that already exists: refused, and nothing changes.
+	if code, data := h.do("POST", "/api/workspaces/"+ws.ID+"/sessions", NewSession{Name: "Outra", Copy: &NewCopy{Branch: "login-novo"}}, nil); code != http.StatusBadRequest {
+		t.Fatalf("existing branch: %d %s", code, data)
+	}
+	if l := h.sessions(ws.ID); len(l.Sessions) != 2 || l.current().Branch != "login-novo" {
+		t.Fatalf("after the refusal: %+v", l)
+	}
+	// The workspace's folder can't move away from its copies.
+	if code, data := h.do("PATCH", "/api/workspaces/"+ws.ID, map[string]string{"cwd": t.TempDir()}, nil); code != http.StatusBadRequest {
+		t.Fatalf("move with a copy: %d %s", code, data)
+	}
+
+	// Removing the session: its uncommitted work is shown first.
+	if code, data := h.do("POST", "/api/workspaces/"+ws.ID+"/sessions/"+first+"/open", nil, nil); code != 200 {
+		t.Fatalf("open: %d %s", code, data)
+	}
+	if err := os.WriteFile(filepath.Join(copyDir, "wip.txt"), []byte("wip\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, data = h.do("DELETE", "/api/workspaces/"+ws.ID+"/sessions/"+cur.ID, nil, nil)
+	var refused struct {
+		Files []string `json:"files"`
+	}
+	if _ = json.Unmarshal(data, &refused); code != http.StatusConflict || len(refused.Files) != 1 || refused.Files[0] != "wip.txt" {
+		t.Fatalf("remove with uncommitted work: %d %s", code, data)
+	}
+	if code, data := h.do("DELETE", "/api/workspaces/"+ws.ID+"/sessions/"+cur.ID+"?confirm=true", nil, nil); code != 200 {
+		t.Fatalf("remove: %d %s", code, data)
+	}
+	if _, err := os.Stat(copyDir); !os.IsNotExist(err) {
+		t.Fatalf("the copy is still there: %v", err)
+	}
+	if git(repo, "branch", "--list", "login-novo") == "" {
+		t.Fatal("the session's branch is gone")
 	}
 }

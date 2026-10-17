@@ -2,7 +2,9 @@
 // copies of its git repository, each a git worktree on its own branch with
 // its own canvas, so agents can work in parallel without touching the same
 // files. A floor lives outside the project, like Maestri's, in
-// <parent of the repository>/.squad/floors/<repository>--<floor>.
+// <parent of the repository>/.squad/floors/<repository>--<floor>. A session
+// may work in a copy of its own, made the same way (copy.go); its floors are
+// made from that copy.
 //
 // A new floor gets the tracked files of the ground floor's last commit (no
 // copy-on-write clone: Windows has none), the untracked files the workspace
@@ -51,9 +53,12 @@ func (e invalidError) Is(target error) bool { return target == ErrInvalid }
 // DirtyError refuses a land: uncommitted changes on the floor, or in the
 // folder where the target branch is checked out.
 type DirtyError struct {
-	Where string   // "the floor" or a folder
+	Where string   // "the floor", "the session's copy" or a folder
 	Files []string // first ones
 	More  int      // how many more
+	// Folder and Branch: the changes are in the folder where the target
+	// branch is checked out.
+	Folder, Branch string
 }
 
 func (e *DirtyError) Error() string {
@@ -68,11 +73,16 @@ func (e *DirtyError) Error() string {
 type ConflictError struct {
 	Branch, Into string
 	Files        []string
+	Copy         bool // merging a session's copy, not landing a floor
 }
 
 func (e *ConflictError) Error() string {
-	return fmt.Sprintf("merging %s into %s conflicts in: %s. Nothing was changed: merge %s into %s on the floor, resolve and commit there, then land again.",
-		e.Branch, e.Into, strings.Join(e.Files, ", "), e.Into, e.Branch)
+	where, then := "on the floor", "land again"
+	if e.Copy {
+		where, then = "in the session's copy", "merge again"
+	}
+	return fmt.Sprintf("merging %s into %s conflicts in: %s. Nothing was changed: merge %s into %s %s, resolve and commit there, then %s.",
+		e.Branch, e.Into, strings.Join(e.Files, ", "), e.Into, e.Branch, where, then)
 }
 
 // Canvas is the workspace the floors belong to.
@@ -128,7 +138,8 @@ func New(o Options) *Service {
 	return &Service{o: o, log: o.Logger, setups: map[string]*setupRun{}}
 }
 
-// Start marks setups cut short by a previous run as failed.
+// Start marks setups cut short by a previous run as failed, and runs the
+// setup of the session's copy if it hasn't finished yet.
 func (s *Service) Start() {
 	st := s.o.Canvas.Store()
 	for _, f := range st.Floors() {
@@ -138,6 +149,7 @@ func (s *Service) Start() {
 			})
 		}
 	}
+	s.prepareCopy()
 }
 
 // Close stops the running setup commands.
@@ -158,10 +170,11 @@ type View struct {
 }
 
 // State is the floors of the workspace and how new ones are seeded (GET
-// /api/floors and the floors.updated event).
+// /api/floors and the floors.updated event), and the session's copy.
 type State struct {
 	Floors []View            `json:"floors"`
 	Config store.FloorConfig `json:"config"`
+	Copy   *store.Floor      `json:"copy,omitempty"`
 }
 
 // State returns the floors and their config.
@@ -177,6 +190,9 @@ func (s *Service) State() State {
 			}
 		}
 		out.Floors = append(out.Floors, v)
+	}
+	if c, ok := st.Copy(); ok {
+		out.Copy = &c
 	}
 	return out
 }
@@ -229,13 +245,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (store.Floor, e
 			return store.Floor{}, invalidError(fmt.Sprintf("there is already a floor named %q", f.Name))
 		}
 	}
-	cwd := st.Meta().Cwd
+	cwd := st.Workdir()
 	root, err := repoRoot(ctx, cwd)
 	if err != nil {
 		return store.Floor{}, err
 	}
-	parent := filepath.Dir(root)
-	if parent == root {
+	main := mainRoot(ctx, root)
+	parent := filepath.Dir(main)
+	if parent == main {
 		return store.Floor{}, invalidError("floors live next to the repository, which can't be the root of a drive")
 	}
 	if !hasRef(ctx, root, "HEAD") {
@@ -263,6 +280,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (store.Floor, e
 	case !exists && req.Existing:
 		return store.Floor{}, invalidError(fmt.Sprintf("there is no branch named %q", branch))
 	}
+	// Next to the repository; a session's copy names its floors after it.
 	path := filepath.Join(parent, ".squad", "floors", filepath.Base(root)+"--"+id)
 	if _, err := os.Stat(path); err == nil {
 		return store.Floor{}, invalidError(fmt.Sprintf("the folder %s already exists (left by an older floor?): remove it or pick another name", path))
@@ -300,14 +318,18 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (store.Floor, e
 		f.Status = store.FloorPreparing
 	}
 	if f, err = st.AddFloor(f); err != nil {
-		s.removeWorktree(ctx, root, path)
+		_ = removeWorktree(ctx, root, path)
 		if !exists {
 			_, _ = git(ctx, root, "branch", "-D", branch)
 		}
 		return store.Floor{}, err
 	}
 	if cfg.Setup != "" {
-		s.startSetup(f, cfg.Setup)
+		id := f.ID
+		s.startSetup(id, f, cfg.Setup, s.logPath(id), func(fn func(*store.Floor)) error {
+			_, err := st.UpdateFloor(id, fn)
+			return err
+		})
 	}
 	s.publish()
 	return f, nil
@@ -334,6 +356,12 @@ func (s *Service) Changes(ctx context.Context, id string) (Changes, error) {
 	if !ok {
 		return Changes{}, ErrNotFound
 	}
+	return changes(ctx, f)
+}
+
+// changes reports what a worktree (a floor, or a session's copy) has that
+// its base doesn't.
+func changes(ctx context.Context, f store.Floor) (Changes, error) {
 	out := Changes{Files: []change{}, Commits: []Commit{}}
 	if !isDir(f.Path) {
 		out.Missing = true
@@ -392,7 +420,7 @@ func (s *Service) Land(ctx context.Context, id string, req LandRequest) (LandRes
 	if s.preparing(f.ID) {
 		return LandResult{}, invalidError("the floor's setup command is still running; wait for it to finish (or discard the floor)")
 	}
-	root, err := repoRoot(ctx, st.Meta().Cwd)
+	root, err := repoRoot(ctx, st.Workdir())
 	if err != nil {
 		return LandResult{}, err
 	}
@@ -450,7 +478,7 @@ func (s *Service) Discard(ctx context.Context, id string) error {
 	if !ok {
 		return ErrNotFound
 	}
-	root, err := repoRoot(ctx, st.Meta().Cwd)
+	root, err := repoRoot(ctx, st.Workdir())
 	if err != nil {
 		return err
 	}
@@ -493,7 +521,7 @@ func committedCopies(ctx context.Context, root string, f store.Floor) []string {
 // that branch is checked out, or without any folder (merge-tree).
 func mergeInto(ctx context.Context, root string, f store.Floor, into string) (commit string, upToDate bool, err error) {
 	if into == f.Branch {
-		return "", false, invalidError("a floor can't merge its branch into itself")
+		return "", false, invalidError(fmt.Sprintf("%s can't be merged into itself", f.Branch))
 	}
 	if err := checkBranchName(ctx, root, into); err != nil {
 		return "", false, err
@@ -519,7 +547,9 @@ func mergeInto(ctx context.Context, root string, f store.Floor, into string) (co
 			return "", false, err
 		}
 		if len(files) > 0 {
-			return "", false, dirty(wt+" (branch "+into+")", files)
+			e := dirty(wt+" (branch "+into+")", files)
+			e.Folder, e.Branch = wt, into
+			return "", false, e
 		}
 		if _, err := git(ctx, wt, "merge", "--no-ff", "--no-edit", "-m", msg, from); err != nil {
 			files := unmerged(ctx, wt)
@@ -586,7 +616,7 @@ func (s *Service) remove(ctx context.Context, root string, f store.Floor, delete
 			return err
 		}
 	}
-	if err := s.removeWorktree(ctx, root, f.Path); err != nil {
+	if err := removeWorktree(ctx, root, f.Path); err != nil {
 		return err
 	}
 	if deleteBranch && f.NewBranch {
@@ -602,10 +632,10 @@ func (s *Service) remove(ctx context.Context, root string, f store.Floor, delete
 	return nil
 }
 
-// removeWorktree removes a floor's folder and git's record of it. Its
-// terminals were just stopped: on Windows their processes may hold the
-// folder for a moment.
-func (s *Service) removeWorktree(ctx context.Context, root, path string) error {
+// removeWorktree removes a floor's folder (or a session's copy) and git's
+// record of it. Its terminals were just stopped: on Windows their processes
+// may hold the folder for a moment.
+func removeWorktree(ctx context.Context, root, path string) error {
 	var err error
 	for i := 0; i < 10 && isDir(path); i++ {
 		if i > 0 {
@@ -618,7 +648,7 @@ func (s *Service) removeWorktree(ctx context.Context, root, path string) error {
 			if err == nil {
 				err = rerr
 			}
-			return fmt.Errorf("could not remove the floor's folder %s: %w", path, err)
+			return fmt.Errorf("could not remove the folder %s: %w", path, err)
 		}
 	}
 	_, _ = git(ctx, root, "worktree", "prune")
@@ -626,8 +656,8 @@ func (s *Service) removeWorktree(ctx context.Context, root, path string) error {
 	return nil
 }
 
-// removeEmptyParents removes .squad/floors and .squad next to the
-// repository when nothing else is in them.
+// removeEmptyParents removes .squad/floors (or .squad/sessions) and .squad
+// next to the repository when nothing else is in them.
 func removeEmptyParents(path string) {
 	floors := filepath.Dir(path)
 	_ = os.Remove(floors)
@@ -820,20 +850,23 @@ func (s *Service) stopSetup(id string) {
 	}
 }
 
-func (s *Service) startSetup(f store.Floor, cmdline string) {
+// startSetup runs the setup command of a floor, or of the session's copy
+// (key names it among the running ones), in the background; update records
+// how it ended.
+func (s *Service) startSetup(key string, f store.Floor, cmdline, logPath string, update func(func(*store.Floor)) error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.o.SetupTimeout)
 	r := &setupRun{cancel: cancel, done: make(chan struct{})}
 	s.smu.Lock()
-	s.setups[f.ID] = r
+	s.setups[key] = r
 	s.smu.Unlock()
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		err := runSetup(ctx, f, cmdline, s.logPath(f.ID), s.o.SetupTimeout)
+		err := runSetup(ctx, f, cmdline, logPath, s.o.SetupTimeout)
 		cancelled := errors.Is(ctx.Err(), context.Canceled)
 		cancel()
 		if !cancelled { // a discarded floor (or Squad stopping) leaves it be
-			_, uerr := s.o.Canvas.Store().UpdateFloor(f.ID, func(f *store.Floor) {
+			uerr := update(func(f *store.Floor) {
 				f.Status, f.Error = store.FloorReady, ""
 				if err != nil {
 					f.Status, f.Error = store.FloorFailed, err.Error()
@@ -844,7 +877,7 @@ func (s *Service) startSetup(f store.Floor, cmdline string) {
 			}
 		}
 		s.smu.Lock()
-		delete(s.setups, f.ID)
+		delete(s.setups, key)
 		s.smu.Unlock()
 		close(r.done)
 	}()
@@ -869,7 +902,7 @@ func runSetup(ctx context.Context, f store.Floor, cmdline, logPath string, timeo
 		argv := commandArgv(sh, cmdline)
 		cmd := exec.Command(argv[0], argv[1:]...)
 		cmd.Dir = f.Cwd
-		env := map[string]string{"SQUAD_FLOOR": f.Name}
+		env := map[string]string{"SQUAD_FLOOR": f.Name} // the copy's branch for a session's copy
 		for k, v := range sh.Env {
 			env[k] = v
 		}
@@ -951,50 +984,63 @@ type Status struct {
 type FloorStatus struct {
 	Branch  string `json:"branch"`            // "" when detached
 	Changes int    `json:"changes"`           // uncommitted files (copied ones left out)
-	Ahead   int    `json:"ahead,omitempty"`   // floors: commits not on their base yet
-	Missing bool   `json:"missing,omitempty"` // floors: the folder is gone
+	Ahead   int    `json:"ahead,omitempty"`   // floors and copies: commits not on their base yet
+	Missing bool   `json:"missing,omitempty"` // floors and copies: the folder is gone
 }
 
-// Status reads the branch and uncommitted changes of the ground floor and of
-// every floor.
+// Status reads the branch and uncommitted changes of the ground floor (the
+// workspace folder, or the session's copy) and of every floor.
 func (s *Service) Status(ctx context.Context) Status {
 	st := s.o.Canvas.Store()
 	out := Status{Floors: map[string]FloorStatus{}}
-	cwd := st.Meta().Cwd
+	c, inCopy := st.Copy()
+	if inCopy && !isDir(c.Path) {
+		out.Repo, out.Ground = true, FloorStatus{Branch: c.Branch, Missing: true}
+		return out
+	}
+	cwd := st.Workdir()
 	if _, err := repoRoot(ctx, cwd); err != nil {
 		return out
 	}
 	out.Repo = true
-	out.Ground.Branch, _ = currentBranch(ctx, cwd)
-	if files, err := status(ctx, cwd, untrackedFolded); err == nil {
-		out.Ground.Changes = len(files)
+	if inCopy {
+		out.Ground = worktreeStatus(ctx, c)
+	} else {
+		out.Ground.Branch, _ = currentBranch(ctx, cwd)
+		if files, err := status(ctx, cwd, untrackedFolded); err == nil {
+			out.Ground.Changes = len(files)
+		}
 	}
 	for _, f := range st.Floors() {
-		fs := FloorStatus{Branch: f.Branch}
-		if !isDir(f.Path) {
-			fs.Missing = true
-			out.Floors[f.ID] = fs
-			continue
-		}
-		if b, err := currentBranch(ctx, f.Path); err == nil {
-			fs.Branch = b
-		}
-		if files, err := status(ctx, f.Path, untrackedAll); err == nil {
-			fs.Changes = len(withoutCopied(files, f.Copied))
-		}
-		base := f.BaseCommit
-		if f.Base != "" && hasRef(ctx, f.Path, "refs/heads/"+f.Base) {
-			base = "refs/heads/" + f.Base
-		}
-		fs.Ahead = count(ctx, f.Path, base+"..refs/heads/"+f.Branch)
-		out.Floors[f.ID] = fs
+		out.Floors[f.ID] = worktreeStatus(ctx, f)
 	}
 	return out
 }
 
+// worktreeStatus reads the git state of a floor (or of a session's copy).
+func worktreeStatus(ctx context.Context, f store.Floor) FloorStatus {
+	fs := FloorStatus{Branch: f.Branch}
+	if !isDir(f.Path) {
+		fs.Missing = true
+		return fs
+	}
+	if b, err := currentBranch(ctx, f.Path); err == nil {
+		fs.Branch = b
+	}
+	if files, err := status(ctx, f.Path, untrackedAll); err == nil {
+		fs.Changes = len(withoutCopied(files, f.Copied))
+	}
+	base := f.BaseCommit
+	if f.Base != "" && hasRef(ctx, f.Path, "refs/heads/"+f.Base) {
+		base = "refs/heads/" + f.Base
+	}
+	fs.Ahead = count(ctx, f.Path, base+"..refs/heads/"+f.Branch)
+	return fs
+}
+
 // Branches lists the repository's local branches, for landing into one.
 func (s *Service) Branches(ctx context.Context) ([]string, error) {
-	out, err := git(ctx, s.o.Canvas.Store().Meta().Cwd, "for-each-ref", "--format=%(refname:short)", "refs/heads")
+	out, err := git(ctx, s.o.Canvas.Store().Workdir(), "for-each-ref", "--format=%(refname:short)", "refs/heads")
 	if err != nil {
 		return nil, err
 	}

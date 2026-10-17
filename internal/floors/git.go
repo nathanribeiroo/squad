@@ -92,6 +92,23 @@ func repoRoot(ctx context.Context, dir string) (string, error) {
 	return filepath.Clean(filepath.FromSlash(out)), nil
 }
 
+// mainRoot returns the folder of the repository's main worktree: root itself,
+// unless root is another worktree (a floor, or a session's copy).
+func mainRoot(ctx context.Context, root string) string {
+	common, err := git(ctx, root, "rev-parse", "--git-common-dir")
+	if err != nil {
+		return root
+	}
+	common = filepath.FromSlash(common)
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(root, common)
+	}
+	if common = filepath.Clean(common); filepath.Base(common) != ".git" {
+		return root // a bare repository, or a layout of its own
+	}
+	return filepath.Dir(common)
+}
+
 // hasRef reports whether a ref (refs/heads/x, a commit…) exists.
 func hasRef(ctx context.Context, dir, ref string) bool {
 	r, err := run(ctx, dir, []int{1}, "rev-parse", "--verify", "--quiet", ref+"^{commit}")
