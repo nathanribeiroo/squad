@@ -247,6 +247,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - O tamanho da página acompanha o nó (redimensione pelas alças). Com o zoom abaixo de 60%, o portal mostra o último quadro e para de transmitir ("pausado · zoom").
 - Cada portal tem um nome ("Portal", "Portal 2"…). Duplo clique no nome (ou ⋯ → Renomear) troca; os agentes usam esse nome para escolher o portal.
 - **Agentes no portal:** um voo na frequência do portal usa a página com `torre portal` (tabela abaixo). Enquanto ele age, o cursor dele aparece na página com o nome e a cor do papel, e o fio mostra "clicando", "preenchendo", "digitando"…
+- **@ ELEMENTOS**, no cabeçalho do portal, mostra o que os voos veem: um contorno tracejado em cada elemento do último `torre portal snapshot`, com a etiqueta ("@e7 botão"), na cor do papel de quem usa a página. Os contornos acompanham a rolagem e não pegam cliques. Sem snapshot (ou depois que a página muda de endereço), aparece "Sem refs". Ligar a camada não tira um snapshot novo, para não trocar as refs que um agente está usando.
 
 **Papéis:** instruções que o agente recebe ao decolar (⚙ → Papéis…, ou "Editar papéis…" no menu do voo).
 - O painel lista os papéis com o ícone, o nome, a sigla e "editado". O editor tem **Nome**, **Sigla**, **Cor**, **Ícone**, **Líder** e as **Instruções** (com o contador). O rodapé mostra quem usa o papel neste workspace.

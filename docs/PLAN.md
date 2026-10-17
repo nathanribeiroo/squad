@@ -60,7 +60,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Torre F4c Primeira abertura | `feat/torre-f4c-primeira-abertura` → `feat/torre` | concluído |
 | Torre F5a Extras (nível, pedidos, NOTAM, pouso) | `feat/torre-f5a-extras` → `feat/torre` | concluído |
 | Torre F5b Foco, encaixe, ocultar, Tab | `feat/torre-f5b-foco` → `feat/torre` | concluído |
-| Torre F5c @ELEMENTOS no portal | `feat/torre-f5c-elementos` → `feat/torre` | pendente |
+| Torre F5c @ELEMENTOS no portal | `feat/torre-f5c-elementos` → `feat/torre` | concluído |
 | Torre F5d Planos de voo | `feat/torre-f5d-planos` → `feat/torre` | pendente |
 
 ## B0, esqueleto
