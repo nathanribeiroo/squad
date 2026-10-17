@@ -62,7 +62,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 | Onde | O quê |
 |---|---|
 | `cmd/squad` | CLI: `serve` (e a janela de app, `window.go`), comandos de terminal (`list`, `ask`, `note`, `portal`, `new`…), `hook`, `mcp`, `install-skill` |
-| `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/ws/workspaces`, roteamento de `/cli` e `/hooks` |
+| `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/ws/workspaces`, roteamento de `/cli` e `/hooks`; as sessões de cada workspace, a migração e a troca (`sessions.go`) |
 | `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe |
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |
 | `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot` |
@@ -84,4 +84,4 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 ## Pendências
 
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo:** as sessões (S1–S4, no PLAN), aprovadas pelo usuário nessa ordem; depois do S1, siga com o S2.
+- **Próximo passo:** as sessões (S1–S4, no PLAN), aprovadas pelo usuário nessa ordem; depois do S2, siga com o S3 (a interface das sessões).
