@@ -77,7 +77,7 @@ func TestPrepareLaunchLines(t *testing.T) {
 		t.Fatalf("settings file: %v\n%s", err, settings)
 	}
 	spec := terminal.Spec{Agent: "claude", Shell: "/bin/sh"}
-	if err := l.Prepare(store.Node{}, &spec); err != nil {
+	if _, err := l.Prepare(&store.Node{}, &spec); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.HasPrefix(spec.Command, "claude --settings ") || !strings.Contains(spec.Command, "claude-hooks.json") ||
@@ -107,7 +107,7 @@ func TestPrepareLaunchLines(t *testing.T) {
 		t.Fatalf("pre-approved tools: %v", cs.Permissions.Allow)
 	}
 	spec = terminal.Spec{Agent: "codex", Command: "codex --model x", Shell: "/bin/sh"}
-	_ = l.Prepare(store.Node{}, &spec)
+	_, _ = l.Prepare(&store.Node{}, &spec)
 	want := `codex --model x -c 'notify=["/opt/squad/bin/squad","hook","codex-notify"]'` +
 		` -c 'mcp_servers.squad.command="/opt/squad/bin/squad"' -c 'mcp_servers.squad.args=["mcp"]'` +
 		` -c 'mcp_servers.squad.env_vars=["SQUAD_URL","SQUAD_TERMINAL_ID","SQUAD_TOKEN"]' -c mcp_servers.squad.tool_timeout_sec=1800`
@@ -115,7 +115,7 @@ func TestPrepareLaunchLines(t *testing.T) {
 		t.Fatalf("codex command:\n got %s\nwant %s", spec.Command, want)
 	}
 	spec = terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
-	_ = l.Prepare(store.Node{}, &spec)
+	_, _ = l.Prepare(&store.Node{}, &spec)
 	if want := "devin --config " + terminal.Quote(terminal.ShellPOSIX, l.DevinConfig); spec.Command != want {
 		t.Fatalf("devin command:\n got %s\nwant %s", spec.Command, want)
 	}
@@ -126,12 +126,12 @@ func TestPrepareLaunchLines(t *testing.T) {
 	}
 	// On a floor, Devin doesn't stop at its workspace trust prompt.
 	spec = terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
-	_ = l.Prepare(store.Node{Floor: "f1"}, &spec)
+	_, _ = l.Prepare(&store.Node{Floor: "f1"}, &spec)
 	if !strings.HasSuffix(spec.Command, " --respect-workspace-trust false") {
 		t.Fatalf("devin on a floor: %s", spec.Command)
 	}
 	spec = terminal.Spec{Agent: "shell"}
-	_ = l.Prepare(store.Node{}, &spec)
+	_, _ = l.Prepare(&store.Node{}, &spec)
 	if spec.Command != "" {
 		t.Fatalf("shell command: %q", spec.Command)
 	}
@@ -154,24 +154,25 @@ func TestRoleDelivery(t *testing.T) {
 		asked++
 		return text, n.Terminal != nil && n.Terminal.Role != ""
 	}
-	node := func(id, role string) store.Node {
-		return store.Node{ID: id, Terminal: &store.TerminalData{Name: "Ana", Role: role}}
+	l.HasFlag = func(string, string) bool { return false } // a Gemini without --session-id
+	node := func(id, role string) *store.Node {
+		return &store.Node{ID: id, Terminal: &store.TerminalData{Name: "Ana", Role: role}}
 	}
 
 	// Claude Code: a file per terminal, appended to the system prompt.
 	spec := terminal.Spec{Agent: "claude", Shell: "/bin/sh"}
-	if err := l.Prepare(node("t1", "test"), &spec); err != nil {
+	if _, err := l.Prepare(node("t1", "test"), &spec); err != nil {
 		t.Fatal(err)
 	}
 	file := filepath.Join(l.RoleDir, "t1.md")
-	if !strings.HasSuffix(spec.Command, " --append-system-prompt-file "+terminal.Quote(terminal.ShellPOSIX, file)) {
+	if !strings.Contains(spec.Command, " --append-system-prompt-file "+terminal.Quote(terminal.ShellPOSIX, file)+" ") {
 		t.Fatalf("claude: %s", spec.Command)
 	}
 	if data, _ := os.ReadFile(file); string(data) != text {
 		t.Fatalf("role file: %q", data)
 	}
 	spec = terminal.Spec{Agent: "claude", Shell: "/bin/sh"}
-	_ = l.Prepare(node("t1", ""), &spec)
+	_, _ = l.Prepare(node("t1", ""), &spec)
 	if strings.Contains(spec.Command, "append-system-prompt") {
 		t.Fatalf("no role, no flag: %s", spec.Command)
 	}
@@ -181,7 +182,7 @@ func TestRoleDelivery(t *testing.T) {
 
 	// Codex: developer_instructions as an ASCII TOML string, safe in any shell.
 	spec = terminal.Spec{Agent: "codex", Shell: "/bin/sh"}
-	_ = l.Prepare(node("t2", "test"), &spec)
+	_, _ = l.Prepare(node("t2", "test"), &spec)
 	_, arg, ok := strings.Cut(spec.Command, " -c 'developer_instructions=")
 	if !ok {
 		t.Fatalf("codex: %s", spec.Command)
@@ -198,14 +199,14 @@ func TestRoleDelivery(t *testing.T) {
 
 	// Devin: the SessionStart hook asks for the role.
 	spec = terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
-	_ = l.Prepare(node("t4", "test"), &spec)
+	_, _ = l.Prepare(node("t4", "test"), &spec)
 	if cfg, _ := os.ReadFile(l.DevinConfig); !strings.Contains(string(cfg), `"SessionStart"`) || !strings.Contains(string(cfg), "hook devin-session-start") {
 		t.Fatalf("devin config: %s", cfg)
 	}
 
 	// Gemini: the role is the first prompt, from the environment.
 	spec = terminal.Spec{Agent: "gemini", Shell: "/bin/sh"}
-	_ = l.Prepare(node("t3", "test"), &spec)
+	_, _ = l.Prepare(node("t3", "test"), &spec)
 	if spec.Command != `gemini -i "$SQUAD_ROLE"` || spec.Env["SQUAD_ROLE"] != text {
 		t.Fatalf("gemini: %s %q", spec.Command, spec.Env["SQUAD_ROLE"])
 	}
@@ -217,7 +218,7 @@ func TestRoleDelivery(t *testing.T) {
 	asked = 0
 	for _, agent := range []string{"shell", "custom"} {
 		spec = terminal.Spec{Agent: agent, Command: "aider", Shell: "/bin/sh"}
-		_ = l.Prepare(node("t4", "test"), &spec)
+		_, _ = l.Prepare(node("t4", "test"), &spec)
 		if spec.Command != "aider" || len(spec.Env) != 0 {
 			t.Fatalf("%s: %s %v", agent, spec.Command, spec.Env)
 		}
@@ -231,16 +232,24 @@ func TestSessionStartHook(t *testing.T) {
 	if ev, ok := ParseHook("devin-session-start", []byte(`{"hook_event_name":"SessionStart","source":"startup"}`)); !ok || !ev.SessionStart {
 		t.Fatalf("parse: %+v %v", ev, ok)
 	}
-	h := HookHandler(nil, func(r *http.Request) string { return r.Header.Get("X-Terminal-ID") }, func(id string) (string, bool) {
-		return "Seja o Testador.", id == "with-role"
+	var reported []string
+	h := HookHandler(HookOptions{
+		CallerOf: func(r *http.Request) string { return r.Header.Get("X-Terminal-ID") },
+		Role:     func(id string) (string, bool) { return "Seja o Testador.", id == "with-role" },
+		Conversation: func(id, conv, source string) {
+			reported = append(reported, id+" "+conv+" "+source)
+		},
 	})
-	call := func(id string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest("POST", "/hooks/devin-session-start", strings.NewReader(`{"source":"startup"}`))
-		r.SetPathValue("agent", "devin-session-start")
+	callHook := func(hook, id, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "/hooks/"+hook, strings.NewReader(body))
+		r.SetPathValue("agent", hook)
 		r.Header.Set("X-Terminal-ID", id)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		return w
+	}
+	call := func(id string) *httptest.ResponseRecorder {
+		return callHook("devin-session-start", id, `{"source":"startup","session_id":"d-1"}`)
 	}
 	w := call("with-role")
 	var out struct {
@@ -254,5 +263,118 @@ func TestSessionStartHook(t *testing.T) {
 	}
 	if w := call("no-role"); w.Code != http.StatusNoContent || w.Body.Len() != 0 {
 		t.Fatalf("no role: %d %s", w.Code, w.Body)
+	}
+	// A continued conversation already has its role; Claude Code gets it at
+	// launch. Both report their conversation.
+	if w := callHook("devin-session-start", "with-role", `{"source":"resume","session_id":"d-1"}`); w.Code != http.StatusNoContent {
+		t.Fatalf("devin resume: %d %s", w.Code, w.Body)
+	}
+	if w := callHook("claude-session-start", "with-role", `{"source":"startup","session_id":"c-1"}`); w.Code != http.StatusNoContent {
+		t.Fatalf("claude session start: %d %s", w.Code, w.Body)
+	}
+	if got := strings.Join(reported, "|"); got != "with-role d-1 startup|no-role d-1 startup|with-role d-1 resume|with-role c-1 startup" {
+		t.Fatalf("conversations: %s", got)
+	}
+}
+
+// Each agent reports its conversation id where its hooks carry it.
+func TestHookConversation(t *testing.T) {
+	for hook, body := range map[string]string{
+		"claude-prompt":        `{"prompt":"oi","session_id":"s1"}`,
+		"claude-stop":          `{"last_assistant_message":"ok","session_id":"s1"}`,
+		"devin-prompt":         `{"prompt":"oi","session_id":"s1"}`,
+		"devin-stop":           `{"last_assistant_message":"ok","session_id":"s1"}`,
+		"codex-notify":         `{"type":"agent-turn-complete","thread-id":"s1","last-assistant-message":"ok"}`,
+		"claude-session-start": `{"source":"clear","session_id":"s1"}`,
+	} {
+		if ev, ok := ParseHook(hook, []byte(body)); !ok || ev.Conversation != "s1" {
+			t.Errorf("%s: %+v", hook, ev)
+		}
+	}
+	for id, ok := range map[string]bool{
+		"0b9c7e1a-77f4-4e0b-9a3e-2b1f0c9d8e7f": true, "ses_01HXYZ": true, "a.b_c-1": true,
+		"": false, "-r": false, "a b": false, "a;rm": false, "$(x)": false, strings.Repeat("a", 129): false,
+	} {
+		if ValidConversation(id) != ok {
+			t.Errorf("ValidConversation(%q) != %v", id, ok)
+		}
+	}
+}
+
+// A terminal starts a new conversation, or continues the one it remembers;
+// when the agent can't find it, the launch line itself starts a new one.
+func TestConversationLines(t *testing.T) {
+	t.Setenv("SQUAD_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("APPDATA", t.TempDir())
+	l, err := NewLauncher("/opt/squad/bin/squad")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gemini := true
+	l.HasFlag = func(prog, flag string) bool { return gemini && prog == "gemini" && flag == "--session-id" }
+	l.Role = func(store.Node) (string, bool) { return "papel", true }
+	prepare := func(agent, cmd, conv string) (string, string, bool) {
+		t.Helper()
+		n := &store.Node{ID: "t1", Terminal: &store.TerminalData{Name: "Ana", Agent: agent, Conversation: conv}}
+		spec := terminal.Spec{ID: "t1", Agent: agent, Command: cmd, Shell: "/bin/sh"}
+		resumed, err := l.Prepare(n, &spec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return spec.Command, n.Terminal.Conversation, resumed
+	}
+
+	// Claude: Squad picks the id, so it's known before the first prompt.
+	line, conv, resumed := prepare("claude", "", "")
+	if !ValidConversation(conv) || len(conv) != 36 || conv != strings.ToLower(conv) || resumed || !strings.HasSuffix(line, " --session-id "+conv) {
+		t.Fatalf("claude, new: %s (%s, %v)", line, conv, resumed)
+	}
+	base := strings.TrimSuffix(line, " --session-id "+conv)
+	line, conv2, resumed := prepare("claude", "", conv)
+	if want := base + " --resume " + conv + " || " + base + " --session-id " + conv; line != want || conv2 != conv || !resumed {
+		t.Fatalf("claude, continued:\n got %s\nwant %s", line, want)
+	}
+	// An id that isn't one (it came from a hook) is never put on the line.
+	if line, conv, _ := prepare("claude", "", "-r; rm -rf ~"); strings.Contains(line, "rm") || !ValidConversation(conv) {
+		t.Fatalf("claude, bad id: %s %s", line, conv)
+	}
+	// The user's own line picks the conversation: Squad leaves it alone.
+	if line, conv, resumed := prepare("claude", "claude --continue", "c-1"); strings.Contains(line, "--session-id") || strings.Contains(line, "--resume") || conv != "c-1" || resumed {
+		t.Fatalf("claude --continue: %s %s", line, conv)
+	}
+
+	// Devin picks its own id (the hooks report it).
+	line, conv, resumed = prepare("devin", "", "")
+	devin := "devin --config " + terminal.Quote(terminal.ShellPOSIX, l.DevinConfig)
+	if line != devin || conv != "" || resumed {
+		t.Fatalf("devin, new: %s %q", line, conv)
+	}
+	if line, conv, resumed := prepare("devin", "", "d-1"); line != devin+" --resume d-1 || "+devin || conv != "d-1" || !resumed {
+		t.Fatalf("devin, continued: %s", line)
+	}
+
+	// Codex: the resume subcommand goes right after the program.
+	line, _, _ = prepare("codex", "codex --model x", "")
+	if line, conv, resumed := prepare("codex", "codex --model x", "x-1"); !strings.HasPrefix(line, "codex resume x-1 --model x -c ") ||
+		!strings.HasSuffix(line, " || "+strings.TrimSpace(strings.SplitN(line, " || ", 2)[1])) || !strings.Contains(line, " || codex --model x -c ") || conv != "x-1" || !resumed {
+		t.Fatalf("codex, continued: %s", line)
+	}
+	if line, conv, resumed := prepare("codex", "npx codex", "x-1"); strings.Contains(line, "resume") || conv != "x-1" || resumed {
+		t.Fatalf("codex through npx: %s %s", line, conv)
+	}
+
+	// Gemini: like Claude when it has --session-id; the role is the first
+	// prompt of a new conversation only.
+	line, conv, _ = prepare("gemini", "", "")
+	if line != "gemini --session-id "+conv+` -i "$SQUAD_ROLE"` {
+		t.Fatalf("gemini, new: %s", line)
+	}
+	if line, _, resumed := prepare("gemini", "", "g-1"); line != `gemini --resume g-1 || gemini --session-id g-1 -i "$SQUAD_ROLE"` || !resumed {
+		t.Fatalf("gemini, continued: %s", line)
+	}
+	gemini = false // an older Gemini CLI
+	if line, conv, resumed := prepare("gemini", "", "g-1"); line != `gemini -i "$SQUAD_ROLE"` || conv != "" || resumed {
+		t.Fatalf("older gemini: %s %q", line, conv)
 	}
 }

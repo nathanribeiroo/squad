@@ -2,6 +2,63 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, S1: conversas que continuam
+
+- **Pedido do usuário:**
+  - fechar o `squad serve` (ou reiniciar um terminal) e voltar com cada agente na conversa em que estava;
+  - depois, sessões por workspace, cada uma com o seu canvas.
+  - O plano combinado (S1 a S4) está no PLAN. Este é o S1.
+- **O que os agentes oferecem:** conferido com os binários reais: Claude 2.1, Devin 3000.11, Codex 0.163 e Gemini 0.64 (instalados só para ler a ajuda).
+
+| Agente | Id da conversa | Retomar |
+|---|---|---|
+| Claude | o Squad escolhe (`--session-id`); os hooks avisam se mudar (`/clear`, `/resume`) | `--resume <id>` |
+| Devin | o `session_id` dos hooks (o Devin não aceita escolher) | `--resume <id>` |
+| Codex | o `thread-id` do aviso de fim de turno | `codex resume <id>` (subcomando, logo depois do programa) |
+| Gemini | o Squad escolhe (`--session-id`), se a versão tiver; o Squad confere na ajuda uma vez | `--resume <id>` |
+
+- **O agente não é o processo do terminal:** o Squad digita a linha do agente num shell. Por isso, uma retomada que falha não aparece como terminal encerrado: o shell continua vivo.
+  - **Solução:** a própria linha cuida da falha, no formato `retomar || começar nova`. No PowerShell 5.1, que não tem `||`, vira `; if ($LASTEXITCODE -ne 0) { … }`.
+  - **Mesmo id:** no Claude e no Gemini, a conversa nova começa com o mesmo id, então o id guardado continua valendo.
+  - **Conferido no Claude real:** ele sai com 1 e "No conversation found" quando não acha a conversa, e com 0 no `/exit` e no Ctrl-C duplo. O `||` só age na falha.
+  - **O aviso:** um hook `SessionStart` novo no Claude (o Devin já tinha) informa o `source`. Pedido de retomada que volta com `startup` vira o aviso "Não deu para retomar a conversa de X: começou uma nova".
+- **Interrompidos:**
+  - os hooks de início e fim de turno marcam o terminal como ocupado (`busy`, gravado no `workspace.json`). A marca vem dos hooks, e não da tela: a tela do agente abrindo apagaria a marca;
+  - um terminal que reabre retomando a conversa e ainda ocupado volta como **interrompido**;
+  - a tela mostra "Claude foi interrompido no meio do trabalho", com **Continuar** (manda "O seu trabalho foi interrompido (o terminal reiniciou). Continue de onde parou.") e **Dispensar**;
+  - a marca some quando o agente trabalha de novo;
+  - funciona no Claude e no Devin, que têm hook de início de turno. O Codex e o Gemini não têm, então ficam de fora.
+- **Proteções:**
+  - o id e a marca de ocupado são do servidor: o `PATCH` de nó, que substitui todos os dados do terminal, não os apaga nem os troca;
+  - trocar a pasta ou o agente começa uma conversa nova, porque os agentes guardam as conversas por pasta;
+  - um nó criado pela API começa sem conversa;
+  - o id que chega pelos hooks é validado (letras, números, `.`, `_`, `-`, sem começar com `-`) e vai entre aspas na linha.
+- **Papel:**
+  - **Devin:** não recebe o papel de novo ao retomar (`source: resume`), porque a conversa já tem o papel;
+  - **Gemini:** o papel vai como primeira mensagem, então só entra numa conversa nova;
+  - **Trocar o papel:** agora começa uma conversa nova, para o papel valer desde o início. Antes também reiniciava do zero.
+- **Interface:**
+  - no menu do terminal, **Nova conversa** (com confirmação) e **Copiar comando de retomada** (`claude --resume <id>`, para abrir a conversa fora do Squad, na pasta do terminal);
+  - a faixa de interrompidos e o aviso de retomada que falhou.
+- **Skill:** uma regra para quando o Squad reinicia no meio de uma espera: usar `squad wait` ou `squad check` antes de mandar o pedido de novo.
+- **Bug achado nos testes:** o estado do terminal ia com `interrupted` em `omitempty`. Quando virava falso, o campo sumia, e a tela, que junta o estado novo ao antigo, continuava mostrando a faixa. Corrigido.
+- **Efeito colateral bom:** neste container, os agentes lançados pelo Squad herdavam variáveis da minha sessão e gravavam a conversa num arquivo com o id dela. Com `--session-id`, cada um usa o seu.
+- **Testado aqui:**
+  - agentes falsos: a linha de cada agente (nova, retomada, `||`, id inválido, linha do usuário com `--continue`, Codex via `npx`, Gemini antigo), os hooks com o id, o Claude retomando ao reiniciar, "Nova conversa", o `PATCH` sem apagar o id, a pasta nova, a falha com o mesmo id e o aviso, o Devin com o id vindo dos hooks, o interrompido com Continuar e Dispensar;
+  - `make check`.
+- **Claude real, num `serve` de teste:**
+  - pedi para guardar 4271;
+  - dei uma lista de 80 cidades e fechei o `serve` no item 40;
+  - ao reabrir, o Claude voltou com `--resume <id>`, mostrando a conversa, e a faixa apareceu;
+  - cliquei em Continuar: ele recomeçou a lista (a resposta pela metade não fica salva) e terminou. A faixa sumiu;
+  - perguntei o número: 4271;
+  - com um id inexistente gravado, ele começou uma conversa nova com o mesmo id, e a tela avisou.
+- **Devin real:** sem login, ele para na tela de entrar na conta, então não deu para testar a retomada.
+- **Precisa de você (Devin com login):**
+  1. abrir um terminal Devin, conversar, reiniciar o `serve` e conferir que ele volta na conversa (`devin --resume <id>`);
+  2. fechar o `serve` no meio de um turno e usar o Continuar;
+  3. não sei se o Devin sai com erro quando não acha a conversa. Se ele ficar aberto mostrando um erro, o `||` não entra, e você vê o erro dentro do Devin; nesse caso, me avise.
+
 ## 2026-10-16, Planejador espera o resultado (`squad wait`)
 
 - **Problema (visto no teste do Arquiteto):** o Planejador respondeu "ainda esperando o Arq" a quem pediu e terminou o trabalho depois, sozinho; a resposta final ficou só na tela dele.

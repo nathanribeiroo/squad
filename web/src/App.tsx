@@ -10,6 +10,7 @@ import { Composer } from './components/Composer';
 import { ComposerPill } from './components/ComposerPill';
 import { FloorDialogs } from './components/FloorDialogs';
 import { FloorEmpty } from './components/FloorEmpty';
+import { InterruptedBar } from './components/InterruptedBar';
 import { RolesPanel } from './components/RolesPanel';
 import { SummaryDialogs } from './components/SummaryDialogs';
 import { Toolbar } from './components/Toolbar';
@@ -126,6 +127,7 @@ function Stage() {
     <main className="stage">
       <Canvas />
       <FloorEmpty />
+      <InterruptedBar />
       <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
       <ComposerPill />
       <Composer />

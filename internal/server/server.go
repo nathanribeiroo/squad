@@ -50,6 +50,11 @@ type Server struct {
 	mu         sync.Mutex
 	termTokens map[string]string // terminal id → token for CLI calls
 	titles     map[string]string
+	// interrupted: terminals that continued a conversation the agent was in
+	// the middle of (it stopped busy); resuming: the conversation each one
+	// asked to continue, until its session start says whether it did.
+	interrupted map[string]bool
+	resuming    map[string]string
 
 	// cliHandler and hookHandler are installed by later stages (agent bus,
 	// adapters); until then the endpoints answer 501.
@@ -99,6 +104,7 @@ func New(opts Options) (*Server, error) {
 	s := &Server{
 		opts: opts, log: opts.Logger, store: opts.Store, bus: events.NewBus(),
 		termTokens: map[string]string{}, titles: map[string]string{},
+		interrupted: map[string]bool{}, resuming: map[string]string{},
 	}
 	cliDir := ""
 	if opts.CLIPath != "" {

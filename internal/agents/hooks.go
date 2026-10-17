@@ -17,21 +17,31 @@ type HookEvent struct {
 	Message      string // final assistant message (when TurnEnd)
 	Failure      bool   // the turn ended with an error
 	SessionStart bool   // a session began: the hook's answer may add context
+	// Conversation is the agent's id for the conversation, when the payload
+	// has it (session_id; Codex's thread-id). Source is how a session began
+	// (SessionStart): startup, resume, clear, compact.
+	Conversation string
+	Source       string
 }
 
 // ParseHook interprets the payload of a named hook ("claude-stop",
-// "claude-stop-failure", "claude-prompt", "codex-notify", "devin-stop",
-// "devin-prompt", "devin-session-start").
+// "claude-stop-failure", "claude-prompt", "claude-session-start",
+// "codex-notify", "devin-stop", "devin-prompt", "devin-session-start").
 func ParseHook(name string, body []byte) (HookEvent, bool) {
+	var common struct {
+		SessionID string `json:"session_id"`
+		Source    string `json:"source"`
+	}
+	_ = json.Unmarshal(body, &common)
 	switch name {
-	case "devin-session-start":
-		return HookEvent{SessionStart: true}, true
+	case "claude-session-start", "devin-session-start":
+		return HookEvent{SessionStart: true, Conversation: common.SessionID, Source: common.Source}, true
 	case "claude-prompt", "devin-prompt":
 		var p struct {
 			Prompt string `json:"prompt"`
 		}
 		_ = json.Unmarshal(body, &p) // the start counts even without a readable prompt
-		return HookEvent{TurnStart: true, Prompt: p.Prompt}, true
+		return HookEvent{TurnStart: true, Prompt: p.Prompt, Conversation: common.SessionID}, true
 	case "claude-stop", "claude-stop-failure", "devin-stop":
 		// Devin's Stop payload follows Claude Code's: last_assistant_message
 		// (Devin CLI v3000.5.20+), no transcript_path and no failure event.
@@ -45,7 +55,7 @@ func ParseHook(name string, body []byte) (HookEvent, bool) {
 		if json.Unmarshal(body, &p) != nil {
 			return HookEvent{}, false
 		}
-		ev := HookEvent{TurnEnd: true, Message: p.LastAssistantMessage, Failure: name == "claude-stop-failure"}
+		ev := HookEvent{TurnEnd: true, Message: p.LastAssistantMessage, Failure: name == "claude-stop-failure", Conversation: common.SessionID}
 		if ev.Message == "" && p.TranscriptPath != "" {
 			// Older Claude Code versions: read the transcript instead.
 			if msg, err := LastAssistantFromTranscript(p.TranscriptPath); err == nil {
@@ -59,35 +69,54 @@ func ParseHook(name string, body []byte) (HookEvent, bool) {
 	case "codex-notify":
 		var p struct {
 			Type                 string `json:"type"`
+			ThreadID             string `json:"thread-id"`
 			LastAssistantMessage string `json:"last-assistant-message"`
 		}
 		if json.Unmarshal(body, &p) != nil || p.Type != "agent-turn-complete" {
 			return HookEvent{}, false
 		}
-		return HookEvent{TurnEnd: true, Message: p.LastAssistantMessage}, true
+		return HookEvent{TurnEnd: true, Message: p.LastAssistantMessage, Conversation: p.ThreadID}, true
 	}
 	return HookEvent{}, false
 }
 
+// HookOptions connect HookHandler to the workspace.
+type HookOptions struct {
+	Monitor  *activity.Monitor
+	CallerOf func(*http.Request) string // the authenticated terminal id
+	// Role returns the instructions of a terminal's role (false: none),
+	// answered to Devin's session start (Claude Code gets them at launch).
+	Role func(id string) (string, bool)
+	// Conversation gets the conversation id a hook reported (source: how
+	// the session began, on a session start; "" otherwise).
+	Conversation func(id, conversation, source string)
+	// Busy gets the start (true) and end (false) of each turn.
+	Busy func(id string, busy bool)
+}
+
 // HookHandler serves POST /hooks/{agent}: it turns hook payloads into turn
-// signals for the activity monitor, and answers a session start with the
-// terminal's role as context. callerOf returns the authenticated terminal id;
-// role returns the instructions of its role (false: none).
-func HookHandler(mon *activity.Monitor, callerOf func(*http.Request) string, role func(id string) (string, bool)) http.Handler {
+// signals for the activity monitor, keeps the conversation id, and answers
+// Devin's session start with the terminal's role as context.
+func HookHandler(o HookOptions) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("agent")
 		body, _ := io.ReadAll(io.LimitReader(r.Body, 16<<20))
-		ev, ok := ParseHook(r.PathValue("agent"), body)
+		ev, ok := ParseHook(name, body)
 		if !ok {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		id := callerOf(r)
+		id := o.CallerOf(r)
+		if ev.Conversation != "" && o.Conversation != nil {
+			o.Conversation(id, ev.Conversation, ev.Source)
+		}
 		switch {
 		case ev.SessionStart:
-			text, ok := "", false
-			if role != nil {
-				text, ok = role(id)
+			// A continued conversation already has its role.
+			if name != "devin-session-start" || ev.Source == "resume" || o.Role == nil {
+				break
 			}
+			text, ok := o.Role(id)
 			if !ok {
 				break
 			}
@@ -98,10 +127,15 @@ func HookHandler(mon *activity.Monitor, callerOf func(*http.Request) string, rol
 			}})
 			return
 		case ev.TurnStart:
-			mon.SignalStart(id, ev.Prompt)
+			o.Monitor.SignalStart(id, ev.Prompt)
+			if o.Busy != nil {
+				o.Busy(id, true)
+			}
 		case ev.TurnEnd:
-			reason := r.PathValue("agent")
-			mon.Signal(activity.TurnEnd{ID: id, Reason: reason, Message: ev.Message})
+			o.Monitor.Signal(activity.TurnEnd{ID: id, Reason: name, Message: ev.Message})
+			if o.Busy != nil {
+				o.Busy(id, false)
+			}
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})

@@ -169,12 +169,30 @@ function TermBody({ id, children }: { id: string; children: React.ReactNode }) {
   );
 }
 
+/** The command that opens a terminal's conversation outside Squad, in its folder. */
+function resumeLine(t: TerminalData): string {
+  if (!t.conversation) return '';
+  return t.agent === 'codex' ? `codex resume ${t.conversation}` : `${t.agent} --resume ${t.conversation}`;
+}
+
 function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData; rt?: TerminalRuntime; state: UIState; focused: boolean }) {
   const role = useRole(t.role);
   const roles = useSquad((s) => s.roles);
   const manager = isManager(t, role);
   const running = rt?.status === 'running' || rt?.status === 'starting';
-  const act = (a: 'start' | 'stop' | 'restart') => api.nodeAction(id, a).catch((e: Error) => toast(e.message));
+  const act = (a: 'start' | 'stop' | 'restart' | 'new-conversation') => api.nodeAction(id, a).catch((e: Error) => toast(e.message));
+  const newConversation = () => {
+    if (window.confirm(`Começar uma conversa nova em ${t.name}? O agente reinicia sem o contexto da conversa atual (ela continua guardada no agente).`))
+      act('new-conversation');
+  };
+  const copyResume = () => {
+    const line = resumeLine(t);
+    if (!line) return;
+    navigator.clipboard.writeText(line).then(
+      () => toast(`Copiado: ${line}`),
+      () => toast(line),
+    );
+  };
   const remove = () => {
     if (window.confirm(`Remover "${t.name}"? O processo do terminal é encerrado.`)) api.removeNode(id).catch((e: Error) => toast(e.message));
   };
@@ -183,6 +201,12 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
       ? { icon: 'stop_circle', label: 'Parar', action: () => act('stop') }
       : { icon: 'play_circle', label: 'Iniciar', action: () => act('start') },
     { icon: 'restart_alt', label: 'Reiniciar', action: () => act('restart') },
+    ...(ROLE_AGENTS.has(t.agent)
+      ? [
+          { icon: 'edit_square' as const, label: 'Nova conversa', action: newConversation },
+          ...(resumeLine(t) ? [{ icon: 'content_copy' as const, label: 'Copiar comando de retomada', action: copyResume }] : []),
+        ]
+      : []),
     { icon: 'tune', label: 'Configurar…', action: () => useSquad.getState().setEditTerm(id) },
     ...(ROLE_AGENTS.has(t.agent)
       ? [

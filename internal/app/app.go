@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/activity"
@@ -197,17 +198,55 @@ func New(o Options) (*App, error) {
 		launcher.Role = roleOf
 		srv.SetLaunchHook(launcher.Prepare)
 	}
-	srv.SetHookHandler(agents.HookHandler(mon, server.CallerID, func(id string) (string, bool) {
-		n, ok := srv.Store().Node(id)
-		if !ok || n.Terminal == nil || !agents.Lookup(n.Terminal.Agent).Roles {
-			return "", false
-		}
-		return roleOf(n)
+	srv.SetHookHandler(agents.HookHandler(agents.HookOptions{
+		Monitor:  mon,
+		CallerOf: server.CallerID,
+		Role: func(id string) (string, bool) {
+			n, ok := srv.Store().Node(id)
+			if !ok || n.Terminal == nil || !agents.Lookup(n.Terminal.Agent).Roles {
+				return "", false
+			}
+			return roleOf(n)
+		},
+		Conversation: func(id, conv, source string) {
+			if agents.ValidConversation(conv) {
+				srv.SetConversation(id, conv, source)
+			}
+		},
+		Busy: srv.SetBusy,
 	}))
 	bus.SetHookedAgents(agents.HasHooks)
 
 	var app *App
 	srv.HandleSession("POST /api/nodes/{id}/send", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleSend(w, r) }))
+
+	// Agents interrupted mid-turn (Squad closed or restarted): continue them,
+	// or forget it.
+	srv.HandleSession("POST /api/interrupted/{action}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		action := r.PathValue("action")
+		if action != "continue" && action != "dismiss" {
+			writeErrorJSON(w, http.StatusNotFound, "unknown action")
+			return
+		}
+		var body struct {
+			IDs []string `json:"ids"` // empty: all of them
+		}
+		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&body)
+		done := []string{}
+		for _, id := range srv.Interrupted() {
+			if len(body.IDs) > 0 && !slices.Contains(body.IDs, id) {
+				continue
+			}
+			if action == "continue" {
+				if err := app.Send(id, ComposeRequest{Text: continueText}); err != nil {
+					continue
+				}
+			}
+			srv.DismissInterrupted(id)
+			done = append(done, id)
+		}
+		writeJSON(w, map[string]any{"ids": done})
+	}))
 
 	srv.HandleSession("POST /api/conversations/pause", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		bus.SetPaused(true, "user")
@@ -220,6 +259,10 @@ func New(o Options) (*App, error) {
 	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, exts: exts}
 	return app, nil
 }
+
+// continueText is what an agent interrupted mid-turn gets when the user
+// continues it.
+const continueText = "O seu trabalho foi interrompido (o terminal reiniciou). Continue de onde parou."
 
 // Start begins activity sampling, watches notes and starts the workspace's
 // terminals.

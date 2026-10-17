@@ -90,6 +90,13 @@ type TerminalData struct {
 	// Manager lets the agent create and connect terminals (squad new); nil
 	// follows its role.
 	Manager *bool `json:"manager,omitempty"`
+	// Conversation is the agent's own id for the conversation the terminal
+	// continues when it starts again (claude/devin/gemini --resume, codex
+	// resume); empty starts a new one. Squad keeps it (Server.SetConversation).
+	Conversation string `json:"conversation,omitempty"`
+	// Busy: the agent was in the middle of a turn. A terminal that stops
+	// while busy (Squad closed or restarted) resumes as interrupted.
+	Busy bool `json:"busy,omitempty"`
 }
 
 // NoteData configures a note node; the content lives in a .md file.

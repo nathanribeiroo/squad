@@ -1,6 +1,7 @@
 // Global client state, fed by /ws/events.
 import { create } from 'zustand';
 import { api, setWorkspace } from '../api/client';
+import { toast } from '../lib/toast';
 import type {
   Floor,
   FloorConfig,
@@ -385,6 +386,9 @@ export const useSquad = create<SquadState>((set, get) => ({
         return;
       case 'terminal.title':
         set({ runtime: { ...st.runtime, [d.id]: { ...st.runtime[d.id], title: d.title } } });
+        return;
+      case 'terminal.notice':
+        if (d.kind === 'not-resumed') toast(`Não deu para retomar a conversa de ${d.name}: começou uma nova.`);
         return;
       case 'request.sent': {
         const now = Date.now();

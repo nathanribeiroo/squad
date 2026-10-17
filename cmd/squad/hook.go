@@ -195,6 +195,9 @@ waits, ` + "`squad ask \"Planejador\" \"…\"`" + ` delivers your message as the
 ## Rules
 
 - If an ask times out while the agent is still in its turn, don't resend it: ` + "`squad wait \"Name\"`" + ` returns its answer when it finishes.
+- If Squad restarted while you waited (a squad command failed to reach it, or
+  you were told your work was interrupted), agents continue their
+  conversations: use ` + "`squad wait \"Name\"`" + ` or ` + "`squad check`" + ` before resending a request.
 - When you were asked something, your final answer is what goes back: don't
   end your turn with progress ("still waiting for X") while agents you called
   are working. Wait for them; stop early only when something needs the user

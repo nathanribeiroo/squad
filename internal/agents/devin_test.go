@@ -62,7 +62,7 @@ func TestDevinConfigKeepsTheUsers(t *testing.T) {
 	}
 	prepare := func() {
 		spec := terminal.Spec{Agent: "devin", Shell: "/bin/sh"}
-		if err := l.Prepare(store.Node{}, &spec); err != nil {
+		if _, err := l.Prepare(&store.Node{}, &spec); err != nil {
 			t.Fatal(err)
 		}
 	}

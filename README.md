@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP, os andares (git worktree), com seletor no topo, e os resumos de turno. Com eles, a segunda rodada está completa (veja o plano). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP, os andares (git worktree), com seletor no topo, e os resumos de turno. Com eles, a segunda rodada está completa (veja o plano). Agora vêm as sessões: os agentes já voltam para a conversa em que estavam quando o Squad reabre (S1). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -89,6 +89,22 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - arraste pelo cabeçalho e redimensione pelas alças (o PTY acompanha);
 - com zoom abaixo de 60% vira miniatura, e abaixo de 35%, cartão;
 - a pinça ou ⌘/ctrl + roda sobre o terminal dá zoom no canvas.
+
+**Conversas que continuam:**
+- cada terminal de agente lembra a conversa em que está. Ao reabrir o `squad serve`, ou em **Reiniciar**, o agente volta para a mesma conversa:
+
+| Agente | Como o Squad sabe a conversa | Como retoma |
+|---|---|---|
+| Claude | escolhe o id ao abrir (`--session-id`) | `claude --resume <id>` |
+| Devin | o id que os hooks dele informam | `devin --resume <id>` |
+| Codex | o `thread-id` do aviso de fim de turno | `codex resume <id>` |
+| Gemini | escolhe o id ao abrir, nas versões com `--session-id` | `gemini --resume <id>` |
+
+- se o agente não acha a conversa (apagada, ou de outra pasta), a própria linha de comando começa uma nova (`retomar || começar`), e a tela avisa "Não deu para retomar a conversa";
+- **Nova conversa**, no menu `⋯`, reinicia o agente sem o contexto (a conversa antiga continua guardada no agente). Trocar o papel também começa uma conversa nova, para o papel valer desde o início;
+- **Copiar comando de retomada**, no mesmo menu, copia `claude --resume <id>` (ou o do agente): rodado na pasta do terminal, abre a mesma conversa fora do Squad;
+- **trabalho interrompido:** se o Squad fechar com um agente no meio de um turno, ao reabrir aparece "Claude foi interrompido no meio do trabalho". **Continuar** manda "continue de onde parou" a cada um; **Dispensar** esquece. O que o agente estava escrevendo naquele instante se perde, e ele refaz esse passo. Funciona no Claude e no Devin, que avisam o início e o fim de cada turno;
+- trocar a pasta ou o agente de um terminal começa uma conversa nova, porque os agentes guardam as conversas por pasta.
 
 **Composer (`⌥K`):**
 - escreva para um ou mais terminais;

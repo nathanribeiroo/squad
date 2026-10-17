@@ -3,8 +3,9 @@
 // so replies come from the agent's final message instead of the screen.
 //
 //   - Claude Code: a settings file passed with --settings adds Stop,
-//     StopFailure and UserPromptSubmit hooks that run `squad hook …`. Hooks
-//     from settings files are merged, so the user's own hooks keep working.
+//     StopFailure, UserPromptSubmit and SessionStart hooks that run `squad
+//     hook …`. Hooks from settings files are merged, so the user's own hooks
+//     keep working.
 //   - Codex: -c notify=[…] runs `squad hook codex-notify <json>` on
 //     agent-turn-complete (not tested against a real Codex account).
 //   - Devin CLI: --config replaces the user's config.json, so Squad passes
@@ -24,6 +25,10 @@
 // Codex with mcp_servers config overrides. Devin reads MCP servers only from
 // its mcp_config.json, where squad install-skill registers squad; its config
 // copy pre-approves the same safe tools.
+//
+// Each terminal continues its agent's conversation when it starts again
+// (conversation.go): Squad remembers the conversation id, from the launch line
+// or the hooks.
 //
 // On a floor (a git worktree), Devin skips its workspace trust prompt: the
 // floor is a copy of the repository the user opened in Squad. Claude Code
@@ -94,6 +99,9 @@ type Launcher struct {
 	RoleDir         string // one file per terminal with its role, for Claude Code
 	// Role returns the instructions of a terminal's role (false: no role).
 	Role func(n store.Node) (string, bool)
+	// HasFlag reports whether a program's --help mentions a flag (nil: ask
+	// the program; tests replace it).
+	HasFlag func(program, flag string) bool
 
 	devinMu sync.Mutex
 }
@@ -123,6 +131,7 @@ func NewLauncher(squadPath string) (*Launcher, error) {
 		"Stop":             "claude-stop",
 		"StopFailure":      "claude-stop-failure",
 		"UserPromptSubmit": "claude-prompt",
+		"SessionStart":     "claude-session-start",
 	}, map[string]any{"permissions": map[string]any{"allow": allow}}); err != nil {
 		return nil, err
 	}
@@ -172,20 +181,29 @@ func writeJSON(path string, v any) error {
 }
 
 // Prepare rewrites a terminal spec before start: default command for the
-// agent type plus the flags that install Squad's hooks and pass its role.
-func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
+// agent type plus the flags that install Squad's hooks, pass its role and
+// start or continue its conversation (conversation.go). It sets
+// n.Terminal.Conversation to the conversation the terminal is in ("" when
+// the agent picks the id and reports it later) and reports whether the line
+// continues one.
+func (l *Launcher) Prepare(n *store.Node, spec *terminal.Spec) (resumed bool, err error) {
+	if n.Terminal == nil {
+		n.Terminal = &store.TerminalData{}
+	}
 	info := Lookup(spec.Agent)
 	if strings.TrimSpace(spec.Command) == "" {
 		spec.Command = info.DefaultCommand
 	}
 	if spec.Command == "" {
-		return nil
+		return false, nil
 	}
 	_, fam := terminal.ResolveShell(spec.Shell)
 	role, hasRole := "", false
 	if l.Role != nil && info.Roles {
-		role, hasRole = l.Role(n)
+		role, hasRole = l.Role(*n)
 	}
+	user := userPicksConversation(info.Type, spec.Command)
+	tail := ""
 	switch info.Type {
 	case "claude":
 		spec.Command += " --settings " + terminal.Quote(fam, l.ClaudeSettings)
@@ -196,10 +214,10 @@ func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 			break
 		}
 		if err := os.MkdirAll(l.RoleDir, 0o700); err != nil {
-			return err
+			return false, err
 		}
 		if err := config.WriteFileAtomic(path, []byte(role), 0o600); err != nil {
-			return err
+			return false, err
 		}
 		spec.Command += " --append-system-prompt-file " + terminal.Quote(fam, path)
 	case "codex":
@@ -212,7 +230,7 @@ func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 		}
 	case "devin":
 		if err := l.writeDevinConfig(); err != nil {
-			return err
+			return false, err
 		}
 		spec.Command += " --config " + terminal.Quote(fam, l.DevinConfig)
 		if n.Floor != "" {
@@ -228,10 +246,16 @@ func (l *Launcher) Prepare(n store.Node, spec *terminal.Spec) error {
 				spec.Env = map[string]string{}
 			}
 			spec.Env["SQUAD_ROLE"] = role
-			spec.Command += " -i " + envRef(fam, "SQUAD_ROLE")
+			// The first prompt: a continued conversation already has it.
+			tail = " -i " + envRef(fam, "SQUAD_ROLE")
 		}
 	}
-	return nil
+	if user {
+		spec.Command += tail
+		return false, nil
+	}
+	spec.Command, n.Terminal.Conversation, resumed = l.conversationLine(info.Type, spec.Command, tail, n.Terminal.Conversation, fam)
+	return resumed, nil
 }
 
 // envRef is an environment variable as one argument of a shell command line.

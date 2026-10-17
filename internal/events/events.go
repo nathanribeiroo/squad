@@ -10,15 +10,16 @@ import (
 
 // Event types sent to clients (names follow docs/design_handoff_squad).
 const (
-	TerminalState       = "terminal.state" // lifecycle + activity state of a terminal
-	TerminalTitle       = "terminal.title" // window title (agent spinner)
-	NodeAdded           = "node.added"     //
-	NodeUpdated         = "node.updated"   //
-	NodeRemoved         = "node.removed"   //
-	EdgeAdded           = "edge.added"     //
-	EdgeUpdated         = "edge.updated"   //
-	EdgeRemoved         = "edge.removed"   //
-	RequestSent         = "request.sent"   // ask left the sender
+	TerminalState       = "terminal.state"  // lifecycle + activity state of a terminal
+	TerminalTitle       = "terminal.title"  // window title (agent spinner)
+	TerminalNotice      = "terminal.notice" // something the user should know about a terminal (kind: not-resumed)
+	NodeAdded           = "node.added"      //
+	NodeUpdated         = "node.updated"    //
+	NodeRemoved         = "node.removed"    //
+	EdgeAdded           = "edge.added"      //
+	EdgeUpdated         = "edge.updated"    //
+	EdgeRemoved         = "edge.removed"    //
+	RequestSent         = "request.sent"    // ask left the sender
 	RequestDelivered    = "request.delivered"
 	RequestPending      = "request.pending"
 	ReplySent           = "reply.sent"

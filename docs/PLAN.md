@@ -43,7 +43,11 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Paridade do Devin | `feat/devin-parity` | concluído |
 | Nomes de nota | `feat/note-names` | concluído |
 | Papel Arquiteto | `feat/role-architect` | concluído |
-| Planejador espera o resultado (`squad wait`) | `feat/planner-waits` | concluído (PR) |
+| Planejador espera o resultado (`squad wait`) | `feat/planner-waits` | concluído |
+| S1 Conversas que continuam | `feat/resume-conversations` | concluído (PR) |
+| S2 Sessões: servidor | — | planejado |
+| S3 Sessões: interface | — | planejado |
+| S4 Sessão numa cópia isolada | — | planejado |
 
 ## B0, esqueleto
 
@@ -172,8 +176,17 @@ Ordem combinada em 2026-10-16. Depois de R1 e R2, um Planejador monta a equipe s
 - **Nomes de nota:** a nota nova abre com o campo de nome; o usuário renomeia as suas notas, e os nomes antigos continuam valendo para os agentes; as notas de agente ficam com o nome que ele deu.
 - **Paridade do Devin:** o Devin recebe o MCP (registrado pelo `install-skill`), mantém a configuração do usuário dentro do Squad e não pergunta a confiança nos andares; o `install-skill` instala para todos os agentes encontrados.
 
+## Sessões (S1–S4)
+
+Pedido do usuário: fechar o `squad serve` e voltar exatamente onde estava, e ter várias sessões por workspace, cada uma com o seu canvas, para abrir uma nova e voltar a uma antiga.
+
+- **S1, conversas que continuam:** cada terminal guarda o id da conversa do agente e a retoma ao reabrir o `serve` e em "Reiniciar" (Claude e Gemini com `--session-id`/`--resume`, Devin com `--resume` e o id dos hooks, Codex com `codex resume` e o `thread-id`). Se o agente não acha a conversa, a própria linha de comando começa uma nova. "Nova conversa" no menu do terminal. Agentes parados no meio de um turno voltam como interrompidos, com "Continuar".
+- **S2, sessões no servidor:** uma sessão é um canvas completo do workspace (terminais, notas, portais, fios, posições, andares, cartões de turno), numa pasta própria em `~/.squad/workspaces/<id>/sessions/<sessão>/`. Só a sessão atual tem processos rodando. Nova sessão vazia, ou com os mesmos terminais sem as conversas; abrir (volta tudo, com cada agente na sua conversa); renomear; remover. Sem nome, o mesmo agente do orquestrador sugere um título (`claude -p`, `devin -p`…). Aviso ao trocar com agentes trabalhando. Migração dos workspaces que já existem para a primeira sessão.
+- **S3, sessões na interface:** a sessão atual no topo, o painel de sessões, as sessões no seletor de workspaces e o nome no formulário de novo workspace.
+- **S4, sessão numa cópia isolada:** "Onde a sessão trabalha": na pasta do projeto ou numa cópia isolada (um andar, num branch novo a partir de um branch escolhido). Vem marcada quando a sessão atual tem agentes trabalhando ou alterações sem commit. "Mesclar" leva o trabalho para o projeto sem fechar a sessão; os andares da sessão nascem da cópia dela.
+
 **Fora da rodada:**
-- infraestrutura: CI com Windows, binários no GitHub Releases, terminais que sobrevivem ao reinício do servidor;
+- infraestrutura: CI com Windows, binários no GitHub Releases;
 - funcionalidades: Modelos (salvar um arranjo de agentes), chat por terminal, simulador de iPhone.
 
 **Validação no Windows real** continua pendente (ver DEVLOG).
