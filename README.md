@@ -2,7 +2,7 @@
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP, os andares (git worktree), com seletor no topo, e os resumos de turno. Com eles, a segunda rodada está completa (veja o plano). Agora vêm as sessões: os agentes já voltam para a conversa em que estavam quando o Squad reabre (S1). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`squad portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP, os andares (git worktree), com seletor no topo, e os resumos de turno. Com eles, a segunda rodada está completa (veja o plano). Depois vieram as sessões (S1–S4): os agentes voltam para a conversa em que estavam quando o Squad reabre, cada workspace tem várias sessões (cada uma um canvas inteiro), e uma sessão pode trabalhar numa cópia isolada do repositório. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -191,7 +191,7 @@ Cada workspace tem sessões, e cada sessão é um canvas inteiro: terminais, not
   - você dá ao criar a sessão (ou ao criar o workspace, para a primeira);
   - sem nome, o fim do primeiro turno do orquestrador (o terminal gerente, ou o primeiro agente) dá um título, escrito pelo mesmo tipo de agente (`claude -p`, `devin -p`…);
   - se não houver agente disponível, o título vem do começo do primeiro pedido.
-- **Arquivos:** os do projeto são um só para todas as sessões. Voltar a uma sessão não desfaz o que outra mudou.
+- **Arquivos:** na pasta do projeto, os arquivos são os mesmos para todas as sessões, e voltar a uma sessão não desfaz o que outra mudou. Para separar, a sessão pode trabalhar numa cópia isolada (abaixo).
 - **No disco:** cada sessão fica em `~/.squad/workspaces/<id>/sessions/<sessão>/`, com o canvas, as notas, os anexos e os cartões. Um workspace de antes das sessões vira a "Sessão 1" na primeira abertura.
 
 **Na tela:**
@@ -206,15 +206,28 @@ Cada workspace tem sessões, e cada sessão é um canvas inteiro: terminais, not
 - **Uma sessão sem nome** aparece em cinza ("Nova sessão · 17/10 14:32") até o agente dar o título.
 - **O enquadramento do canvas** (posição e zoom) fica guardado por sessão.
 
+**Sessão numa cópia isolada:** para começar uma sessão sem mexer no que outra deixou pela metade na pasta do projeto.
+- **Onde a sessão trabalha**, em Nova sessão:
+  - **Na pasta do projeto**, como as outras sessões;
+  - **Numa cópia isolada**: um branch novo (o nome vem do nome da sessão, e dá para mudar), criado **a partir de** um branch que você escolhe (o padrão é o branch atual).
+- **A opção certa já vem marcada:** se a sessão atual tem agentes trabalhando ou arquivos alterados sem commit, aparece o aviso ("Carrinho tem 1 arquivo alterado sem commit") e a cópia vem marcada. Sem nada pendente, vem marcada a pasta do projeto.
+- **A cópia** é feita como um andar (`git worktree`), do último commit do branch escolhido: o que está sem commit fica na pasta do projeto. Ela recebe os arquivos da lista de cópia (`.env*`) e roda o comando de preparo, se houver. Fica ao lado do repositório, em `<pasta-pai>/.squad/sessions/<projeto>--<branch>`.
+- **Na sessão:** os terminais (Claude, Devin, Codex, Gemini, shells) abrem na cópia; o Devin não pergunta se confia na pasta, e o Claude também não. O térreo do seletor de andares mostra o branch da sessão; o rodapé dos terminais e o caminho no topo mostram a pasta da cópia. Os andares que a sessão criar nascem da cópia.
+- **Mesclar:** clicando no térreo (o branch da sessão), ou em **Mesclar…** no painel de sessões. O diálogo mostra os commits da sessão e mescla o branch dela no branch escolhido (o padrão é o de origem), com commit de merge. **A cópia continua**: a sessão segue trabalhando e pode mesclar de novo. É recusado se a cópia tiver alteração sem commit, ou se a pasta onde o branch de destino está aberto (a do projeto, por exemplo) tiver alteração sem commit; com conflito, nada muda, e o diálogo lista os arquivos para um agente da sessão resolver.
+- **Remover a sessão** apaga a cópia; o branch continua no repositório, com o que foi commitado. Se a cópia tiver alterações sem commit, o painel lista os arquivos e pede confirmação.
+- **Sem git:** numa pasta que não é um repositório git, a opção não aparece.
+- Um workspace com sessões em cópia não pode ser removido nem mudar de pasta antes de remover essas sessões.
+
 **Pela API** (com `Authorization: Bearer <token>`):
 
 | Rota | O que faz |
 |---|---|
-| `GET /api/workspaces/<id>/sessions` | as sessões, da mais nova para a mais antiga, com a aberta marcada e quantos terminais, notas, portais e andares cada uma tem |
-| `POST /api/workspaces/<id>/sessions` `{"name", "keepTerminals", "confirm"}` | abre uma sessão nova |
+| `GET /api/workspaces/<id>/sessions` | as sessões, da mais nova para a mais antiga, com a aberta marcada, quantos terminais, notas, portais e andares cada uma tem e, numa sessão em cópia, o `branch` e a pasta (`copy`) |
+| `POST /api/workspaces/<id>/sessions` `{"name", "keepTerminals", "confirm", "copy": {"branch", "from"}}` | abre uma sessão nova; com `copy`, numa cópia isolada |
 | `POST /api/workspaces/<id>/sessions/<sessão>/open` `{"confirm"}` | abre outra sessão |
 | `PATCH /api/workspaces/<id>/sessions/<sessão>` `{"name"}` | renomeia |
-| `DELETE /api/workspaces/<id>/sessions/<sessão>` | manda a pasta da sessão para a lixeira (a aberta, ou uma com andares, não pode) |
+| `DELETE /api/workspaces/<id>/sessions/<sessão>` | manda a pasta da sessão para a lixeira (a aberta, ou uma com andares, não pode) e apaga a cópia dela; com alterações sem commit na cópia, 409 com `files`, e `?confirm=true` remove mesmo assim |
+| `GET /w/<id>/api/copy/changes`, `POST /w/<id>/api/copy/merge` `{"into"}`, `GET /w/<id>/api/copy/log` | a cópia da sessão aberta: o que ela tem para mesclar, mesclar (a cópia continua) e o log do preparo |
 
 Sem `confirm`, sair de uma sessão com agentes trabalhando ou pedidos esperando resposta é recusado (409, com a lista de quem trabalha). Com `confirm`, eles param no meio do turno e voltam como interrompidos quando a sessão abrir de novo. A tela se atualiza sozinha ao trocar de sessão, também quando a troca vem de outra janela ou da API.
 

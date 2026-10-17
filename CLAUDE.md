@@ -71,7 +71,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 | `internal/roles`, `internal/team` | biblioteca de papéis; `squad new/connect/close` (gerente) |
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `squad portal` |
 | `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |
-| `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `squad floor`, `/api/floors` |
+| `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `squad floor`, `/api/floors`; a cópia em que uma sessão trabalha, e mesclar sem fechar (`copy.go`) |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
 | `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas`, sessões em `src/components/SessionsMenu.tsx` |
 
@@ -84,4 +84,4 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 ## Pendências
 
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo:** as sessões (S1–S4, no PLAN), aprovadas pelo usuário nessa ordem; depois do S3, siga com o S4 (a sessão numa cópia isolada).
+- **Próximo passo:** as sessões (S1–S4, no PLAN) terminam no S4. O que vem depois é decisão do usuário (veja "Fora da rodada" no PLAN).

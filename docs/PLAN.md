@@ -46,8 +46,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Planejador espera o resultado (`squad wait`) | `feat/planner-waits` | concluído |
 | S1 Conversas que continuam | `feat/resume-conversations` | concluído |
 | S2 Sessões: servidor | `feat/sessions` | concluído |
-| S3 Sessões: interface | `feat/sessions-ui` | concluído (PR) |
-| S4 Sessão numa cópia isolada | — | planejado |
+| S3 Sessões: interface | `feat/sessions-ui` | concluído |
+| S4 Sessão numa cópia isolada | `feat/session-copy` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -183,7 +183,9 @@ Pedido do usuário: fechar o `squad serve` e voltar exatamente onde estava, e te
 - **S1, conversas que continuam:** cada terminal guarda o id da conversa do agente e a retoma ao reabrir o `serve` e em "Reiniciar" (Claude e Gemini com `--session-id`/`--resume`, Devin com `--resume` e o id dos hooks, Codex com `codex resume` e o `thread-id`). Se o agente não acha a conversa, a própria linha de comando começa uma nova. "Nova conversa" no menu do terminal. Agentes parados no meio de um turno voltam como interrompidos, com "Continuar".
 - **S2, sessões no servidor:** uma sessão é um canvas completo do workspace (terminais, notas, portais, fios, posições, andares, cartões de turno), numa pasta própria em `~/.squad/workspaces/<id>/sessions/<sessão>/`. Só a sessão atual tem processos rodando. Nova sessão vazia, ou com os mesmos terminais sem as conversas; abrir (volta tudo, com cada agente na sua conversa); renomear; remover. Sem nome, o mesmo agente do orquestrador sugere um título (`claude -p`, `devin -p`…). Aviso ao trocar com agentes trabalhando. Migração dos workspaces que já existem para a primeira sessão.
 - **S3, sessões na interface:** a sessão atual no topo, o painel de sessões (abrir, renomear, remover, nova sessão), o aviso com quem está trabalhando antes de trocar, as sessões no seletor de workspaces e o nome no formulário de novo workspace. Junto, uma correção: um agente que ainda não recebeu mensagem começa uma conversa nova em vez de tentar retomar.
-- **S4, sessão numa cópia isolada:** "Onde a sessão trabalha": na pasta do projeto ou numa cópia isolada (um andar, num branch novo a partir de um branch escolhido). Vem marcada quando a sessão atual tem agentes trabalhando ou alterações sem commit. "Mesclar" leva o trabalho para o projeto sem fechar a sessão; os andares da sessão nascem da cópia dela.
+- **S4, sessão numa cópia isolada:** "Onde a sessão trabalha": na pasta do projeto ou numa cópia isolada (um andar, num branch novo a partir de um branch escolhido). Vem marcada quando a sessão atual tem agentes trabalhando ou alterações sem commit. "Mesclar" leva o trabalho para o projeto sem fechar a sessão; os andares da sessão nascem da cópia dela. Remover a sessão apaga a cópia e mantém o branch.
+
+**As sessões terminam no S4.**
 
 **Fora da rodada:**
 - infraestrutura: CI com Windows, binários no GitHub Releases;

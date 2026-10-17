@@ -2,6 +2,56 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, S4: sessão numa cópia isolada
+
+- **Pedido do usuário:** criar uma sessão nova enquanto a sessão 1 está no meio do trabalho, sem misturar os arquivos, com a opção de um branch novo a partir de um branch escolhido, e sem encher a tela de opções.
+- **Nova sessão, "Onde a sessão trabalha":**
+  - "Na pasta do projeto" ou "Numa cópia isolada";
+  - na cópia, "A partir de" (o branch atual vem marcado) e "Branch novo" (o nome da sessão sem acentos, ou `sessao-<dia><mês>-<hora>`, com `-2`, `-3` se já existir);
+  - se a sessão atual tem agentes trabalhando ou arquivos alterados sem commit, aparece o aviso ("Carrinho tem 1 arquivo alterado sem commit"), e a cópia já vem marcada;
+  - numa pasta que não é repositório git, a escolha não aparece.
+- **Como a cópia funciona (servidor):**
+  - é um `git worktree` num branch novo, feito como um andar: do último commit do branch escolhido, com os arquivos da lista de cópia (`.env*`) e o comando de preparo, que roda quando a sessão abre (e de novo, se ela fechar antes de ele terminar). Fica em `<pasta-pai>/.squad/sessions/<projeto>--<branch>`;
+  - o canvas da sessão guarda a cópia (`copy` no `workspace.json` da sessão, fora da parte compartilhada). O store ganhou a "pasta de trabalho": a cópia, quando existe, ou a pasta do workspace;
+  - os terminais resolvem as pastas a partir dela, e uma pasta do projeto dada por inteiro aponta para a cópia;
+  - os andares nascem da cópia e se chamam `<projeto>--<branch>--<andar>`, ao lado dos outros;
+  - o estado do git no seletor (o térreo) é o da cópia, com os commits ainda não mesclados;
+  - o Devin recebe `--respect-workspace-trust false` na cópia, como nos andares.
+- **Mesclar:**
+  - no menu do térreo (clicando no branch da sessão) ou em "Mesclar…" no painel; reaproveita o diálogo de aterrissar: commits, branch de destino (o de origem vem marcado), conflitos;
+  - **a cópia continua**: a sessão segue trabalhando e pode mesclar de novo. O Claude e o Devin guardam as conversas por pasta, então apagar a cópia perderia as conversas da sessão;
+  - é recusado com alteração sem commit na cópia, ou na pasta onde o branch de destino está aberto. É o caso da pasta do projeto com o trabalho da sessão 1: o diálogo diz isso em português e lista os arquivos. Antes, essa recusa (que vale também para aterrissar um andar) aparecia em inglês, com a mensagem do servidor.
+- **Remover a sessão:** apaga a cópia e mantém o branch, com o que foi commitado. Com alterações sem commit na cópia, o servidor recusa (409 com os arquivos) e o painel lista os arquivos, com "Remover mesmo assim".
+- **Decisões tomadas sem consulta:**
+  - **o branch fica** ao remover a sessão: assim nada commitado se perde, e apagar o branch é fácil depois;
+  - **remover o workspace ou mudar a pasta dele** é recusado enquanto houver sessão em cópia, como já era com os andares. Remover as cópias junto apagaria trabalho sem perguntar;
+  - **o branch novo precisa ser novo:** abrir um branch existente numa sessão (como o `--existing` dos andares) fica para depois, se você quiser.
+- **Testado aqui:**
+  - testes do `floors`:
+    - a cópia a partir de outro branch, sem o trabalho não commitado da pasta do projeto;
+    - o preparo ao abrir e o estado do git;
+    - um andar nascendo da cópia;
+    - mesclar: recusa com alteração na cópia e na pasta de destino; mesclar no branch de origem com a cópia continuando;
+    - remover mantendo o branch;
+  - teste do `hub`: sessão em cópia pela API, terminal rodando na cópia, branch repetido recusado, pasta do workspace travada, remoção com 409 e com `confirm`;
+  - teste do Devin com a flag na cópia;
+  - `make check`, `TestRealClaude` e `TestRealDevinConfig`.
+- **Claude real**, num repositório de teste:
+  - a sessão "Carrinho" teve um Claude que acrescentou "TODO: carrinho com cupom" ao README, sem commit;
+  - no formulário de nova sessão, o aviso apareceu e a cópia veio marcada. Criei "Login novo" com os mesmos terminais;
+  - o Claude da sessão nova abriu na cópia, sem a pergunta de confiança. Perguntado, disse que o README não tem o TODO, e fez o commit "login" na cópia;
+  - a pasta do projeto ficou só com o TODO, sem o `login.txt`;
+  - "Mesclar" em `main` foi recusado (a pasta do projeto tem o README alterado); em `dev`, mesclou, e a cópia continuou;
+  - de volta ao "Carrinho", tudo estava como antes;
+  - remover "Login novo" com um arquivo sem commit na cópia mostrou a lista e "Remover mesmo assim". Depois disso, a cópia sumiu, e o branch `login-novo` ficou.
+- **Devin real:** um terminal Devin na sessão em cópia abriu na pasta da cópia com `--respect-workspace-trust false` (sem login, ele para na tela de entrar).
+- **Observação:** a pergunta de confiança do Claude não aparece na cópia quando a pasta do projeto já é confiada. No teste, foi preciso confiar no repositório de teste uma vez.
+- **Não testado:**
+  - Devin com login trabalhando na cópia;
+  - Codex e Gemini;
+  - Windows: o `git worktree` e a remoção da cópia (com o mesmo cuidado dos andares para pastas presas por um instante);
+  - um comando de preparo de verdade (`npm install`) numa cópia, que só foi testado com `echo`.
+
 ## 2026-10-17, S3: sessões na interface
 
 - **Topo:** a sessão aberta aparece entre o workspace e os andares ("squad › Login novo ▾ › térreo"): workspace, sessão e andar, do maior para o menor. Clicando, abre o painel de sessões.
