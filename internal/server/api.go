@@ -24,7 +24,7 @@ type TerminalRuntime struct {
 	Activity      string    `json:"activity"`
 	ActivitySince time.Time `json:"activitySince"`
 	// Interrupted: the agent continued a conversation it was in the middle
-	// of when it stopped (Squad closed or restarted).
+	// of when it stopped (Torre closed or restarted).
 	Interrupted bool `json:"interrupted"`
 }
 
@@ -167,7 +167,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 			}
 			old := *n.Terminal
 			*n.Terminal = *p.Terminal
-			// Squad keeps the conversation; another agent or folder can't
+			// Torre keeps the conversation; another agent or folder can't
 			// continue it (agents keep conversations per folder).
 			n.Terminal.Conversation, n.Terminal.Busy, n.Terminal.Empty = old.Conversation, old.Busy, old.Empty
 			if p.Terminal.Agent != old.Agent || p.Terminal.Cwd != old.Cwd {

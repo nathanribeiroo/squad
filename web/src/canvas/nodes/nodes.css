@@ -134,7 +134,7 @@
 .tn-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .tn-agent { font-weight: 500; font-size: 10.5px; line-height: 16px; color: var(--text-2); border: 1px solid var(--line-2); border-radius: var(--radius-chip); padding: 0 5px; flex: none; }
 .tn-role { height: 20px; padding: 0 7px 0 5px; border-radius: var(--radius-chip); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; }
-/* Manager mode (squad new) and who created a node. */
+/* Manager mode (torre new) and who created a node. */
 .tn-manager { height: 20px; padding: 0 7px 0 5px; border-radius: var(--radius-chip); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; color: var(--text-2); border: 1px solid var(--line-2); }
 .tn-creator { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .tn-creator i { width: 7px; height: 7px; border-radius: 2px; display: block; }
@@ -235,13 +235,13 @@
   position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 8px; border-radius: 6px;
   background: var(--stb-err); color: var(--st-err); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* Name: agents pick a portal by it (squad portal "Docs" …). */
+/* Name: agents pick a portal by it (torre portal "Docs" …). */
 .pn-title { flex: 0 1 auto; max-width: 28%; cursor: text; }
 .pn-name {
   flex: 0 1 140px; min-width: 60px; height: 24px; border-radius: 5px; border: 1px solid var(--focus); outline: none;
   background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; padding: 0 6px;
 }
-/* An agent acting on the page (squad portal click…): its cursor, or a chip for keys and navigation. */
+/* An agent acting on the page (torre portal click…): its cursor, or a chip for keys and navigation. */
 .pn-cursor {
   position: absolute; width: 0; height: 0; pointer-events: none; z-index: 2;
   transition: left 0.2s ease-out, top 0.2s ease-out;

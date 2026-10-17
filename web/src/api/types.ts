@@ -12,11 +12,11 @@ export interface TerminalData {
   cwd?: string;
   /** Id of a role in the library (RoleDef). */
   role?: string;
-  /** Manager mode (squad new); unset follows the role. */
+  /** Manager mode (torre new); unset follows the role. */
   manager?: boolean;
   cols?: number;
   rows?: number;
-  /** The agent's id for the conversation the terminal continues (Squad keeps it). */
+  /** The agent's id for the conversation the terminal continues (Torre keeps it). */
   conversation?: string;
   /** Nothing was said in it yet: there is nothing to continue. */
   empty?: boolean;
@@ -43,7 +43,7 @@ export interface NoteData {
 
 export interface PortalData {
   url: string;
-  /** How agents refer to it (squad portal "Name" …). */
+  /** How agents refer to it (torre portal "Name" …). */
   name?: string;
 }
 
@@ -57,7 +57,7 @@ export interface WNode {
   terminal?: TerminalData;
   note?: NoteData;
   portal?: PortalData;
-  /** The terminal whose agent created this node (squad new, squad portal create). */
+  /** The terminal whose agent created this node (torre new, torre portal create). */
   createdBy?: string;
   /** The floor the node is on (a Floor id); absent on the ground floor. */
   floor?: string;
@@ -185,7 +185,7 @@ export interface TerminalRuntime {
   error?: string;
   activity: UIState;
   activitySince: string;
-  /** Continued a conversation it was in the middle of (Squad closed or restarted). */
+  /** Continued a conversation it was in the middle of (Torre closed or restarted). */
   interrupted?: boolean;
 }
 
@@ -228,7 +228,7 @@ export interface RoleDef {
   /** --r-<color> / --rb-<color> */
   color: string;
   icon: string;
-  /** Its terminals may create and connect terminals (squad new). */
+  /** Its terminals may create and connect terminals (torre new). */
   manager?: boolean;
   builtin?: boolean;
   /** A built-in role that differs from its default. */

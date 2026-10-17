@@ -11,16 +11,23 @@ import { SessionsMenu } from './SessionsMenu';
 import { WorkspaceMenu } from './WorkspaceMenu';
 import './TopBar.css';
 
+/** The control tower (viewBox 56×64): shaft, cab, green glass, orange beacon. */
+export function TowerLogo({ size = 16 }: { size?: number }) {
+  return (
+    <svg className="tower-logo" width={size} height={(size * 64) / 56} viewBox="0 0 56 64" aria-hidden="true">
+      <path d="M20 62 L24 26 H32 L36 62 Z" fill="currentColor" />
+      <path d="M10 26 H46 L40 12 H16 Z" fill="currentColor" />
+      <path d="M18 14 H38 L35 22 H21 Z" fill="var(--brand-glass, #7fe0a0)" />
+      <circle cx="28" cy="4" r="3" fill="var(--brand, #e05a2b)" />
+    </svg>
+  );
+}
+
 function Logo() {
   return (
-    <div className="tb-logo" aria-label="squad">
-      <span className="tb-logo-grid">
-        <i />
-        <i />
-        <i />
-        <i className="hollow" />
-      </span>
-      <span className="tb-wordmark">squad</span>
+    <div className="tb-logo" aria-label="Torre">
+      <TowerLogo />
+      <span className="tb-wordmark">TORRE</span>
     </div>
   );
 }

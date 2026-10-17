@@ -184,7 +184,7 @@ function SessionRow({
     const copy = s.copy
       ? ` A cópia ${shortPath(s.copy)} é apagada; o branch ${s.branch} continua no repositório, com o que foi commitado.`
       : '';
-    const msg = `Remover a sessão "${s.name}"?\n\nO canvas e as notas dela vão para a lixeira do Squad (~/.squad/trash).${copy} As conversas continuam guardadas nos agentes.`;
+    const msg = `Remover a sessão "${s.name}"?\n\nO canvas e as notas dela vão para a lixeira da Torre (~/.torre/trash).${copy} As conversas continuam guardadas nos agentes.`;
     if (window.confirm(msg)) remove();
   };
 

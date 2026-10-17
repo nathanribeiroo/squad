@@ -33,10 +33,10 @@ func Envelope(fromName, id, msg string, shell bool) string {
 func (b *Bus) runningTerminal(n store.Node) (*terminal.Terminal, int, string) {
 	t := b.terms.Get(n.ID)
 	if t == nil {
-		return nil, 503, "squad: " + quote(n.Terminal.Name) + " is not running"
+		return nil, 503, "torre: " + quote(n.Terminal.Name) + " is not running"
 	}
 	if st, _ := t.State(); st != terminal.StatusRunning {
-		return nil, 503, "squad: " + quote(n.Terminal.Name) + " is not running (" + string(st) + ")"
+		return nil, 503, "torre: " + quote(n.Terminal.Name) + " is not running (" + string(st) + ")"
 	}
 	return t, 0, ""
 }
@@ -45,11 +45,11 @@ func (b *Bus) runningTerminal(n store.Node) (*terminal.Terminal, int, string) {
 // reply (the target's turn end, an explicit reply, or the fallbacks).
 func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 	if strings.TrimSpace(msg) == "" {
-		return Result{Code: 400, Body: "squad: empty message"}
+		return Result{Code: 400, Body: "torre: empty message"}
 	}
 	callerNode, ok := b.store.Node(caller)
 	if !ok || callerNode.Terminal == nil {
-		return Result{Code: 400, Body: "squad: unknown calling terminal"}
+		return Result{Code: 400, Body: "torre: unknown calling terminal"}
 	}
 	tn, code, emsg := b.connectedTerminal(caller, target)
 	if code != 0 {
@@ -57,7 +57,7 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 	}
 	if Safe(ctx) && !IsAgent(tn.Terminal.Agent) {
 		// A message to a shell runs as a command line.
-		return Result{Code: 403, Body: fmt.Sprintf("squad: %s is a %s terminal, not an agent: a message would run there as a command. Use the keys tool (it asks the user) or squad ask --raw.", quote(tn.Terminal.Name), tn.Terminal.Agent)}
+		return Result{Code: 403, Body: fmt.Sprintf("torre: %s is a %s terminal, not an agent: a message would run there as a command. Use the keys tool (it asks the user) or torre ask --raw.", quote(tn.Terminal.Name), tn.Terminal.Agent)}
 	}
 	t, code, emsg := b.runningTerminal(tn)
 	if code != 0 {
@@ -102,7 +102,7 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 	b.mu.Unlock()
 	if hop > b.limits.MaxHops {
 		b.SetPaused(true, fmt.Sprintf("hop limit %d reached (%s → %s)", b.limits.MaxHops, fromName, toName))
-		return Result{Code: 409, Body: fmt.Sprintf("squad: hop limit (%d) reached; conversations are paused until the user resumes them", b.limits.MaxHops)}
+		return Result{Code: 409, Body: fmt.Sprintf("torre: hop limit (%d) reached; conversations are paused until the user resumes them", b.limits.MaxHops)}
 	}
 
 	p := &Pending{From: caller, To: tn.ID, FromName: fromName, ToName: toName,
@@ -111,7 +111,7 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 		b.events.Publish(events.RequestHeld, map[string]any{"from": caller, "to": tn.ID, "fromName": fromName, "toName": toName, "paused": b.Paused()})
 	}
 	if err := b.waitSlot(ctx, held); err != nil {
-		return Result{Code: 499, Body: "squad: request abandoned while held", Source: "cancelled"}
+		return Result{Code: 499, Body: "torre: request abandoned while held", Source: "cancelled"}
 	}
 
 	b.mu.Lock()
@@ -180,12 +180,12 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 			b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()), Source: te.Reason})
 		})()
 	}
-	// A target blocked in squad wait for the caller (or for someone who,
+	// A target blocked in torre wait for the caller (or for someone who,
 	// through a chain, waits for the caller) would read a pasted message only
 	// after its wait, which can't end: the message ends the wait instead.
 	if !b.handToWaiter(p, msg) {
 		if err := t.Paste(Envelope(p.FromName, p.ID, msg, shell), true); err != nil {
-			b.resolve(p, Result{Code: 500, Body: "squad: delivery failed: " + err.Error(), Source: "cancelled"})
+			b.resolve(p, Result{Code: 500, Body: "torre: delivery failed: " + err.Error(), Source: "cancelled"})
 			return <-p.done
 		}
 		if hooked && b.mon != nil {
@@ -208,7 +208,7 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 		case r := <-p.done:
 			return r
 		case <-ctx.Done():
-			b.resolve(p, Result{Code: 499, Body: "squad: caller went away", Source: "cancelled"})
+			b.resolve(p, Result{Code: 499, Body: "torre: caller went away", Source: "cancelled"})
 			return <-p.done
 		case <-quick.C:
 			if useFallback && b.mon != nil && !b.mon.Working(tn.ID) && b.mon.StableFor(tn.ID) >= b.limits.Stable {
@@ -227,9 +227,9 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 				note = "timeout (no output since delivery)"
 			}
 			if b.mon != nil && b.mon.InTurn(tn.ID) {
-				note += fmt.Sprintf("; %s is still in its turn (busy without output, or waiting for the user at a prompt on its screen). Don't resend: squad wait %s returns its answer when it finishes", quote(p.ToName), quote(p.ToName))
+				note += fmt.Sprintf("; %s is still in its turn (busy without output, or waiting for the user at a prompt on its screen). Don't resend: torre wait %s returns its answer when it finishes", quote(p.ToName), quote(p.ToName))
 			}
-			b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()) + "\n[squad: " + note + "]", Source: "timeout"})
+			b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()) + "\n[torre: " + note + "]", Source: "timeout"})
 		}
 	}
 }
@@ -244,10 +244,10 @@ func (b *Bus) Reply(caller, id, msg string) Result {
 	p := b.pending[id]
 	b.mu.Unlock()
 	if p == nil {
-		return Result{Code: 404, Body: "squad: no pending request " + quote(id) + " (it may have been answered, cancelled or timed out)"}
+		return Result{Code: 404, Body: "torre: no pending request " + quote(id) + " (it may have been answered, cancelled or timed out)"}
 	}
 	if p.To != caller {
-		return Result{Code: 403, Body: "squad: request " + quote(id) + " is not addressed to you"}
+		return Result{Code: 403, Body: "torre: request " + quote(id) + " is not addressed to you"}
 	}
 	b.events.Publish(events.ReplySent, map[string]any{"id": id, "from": caller, "to": p.From, "fromName": p.ToName, "toName": p.FromName})
 	b.resolve(p, Result{Code: 200, Body: replyBody(p.ToName, id, msg), Source: "reply"})
@@ -262,7 +262,7 @@ func (b *Bus) Check(caller, target string) Result {
 	}
 	t := b.terms.Get(tn.ID)
 	if t == nil {
-		return Result{Code: 503, Body: "squad: " + quote(target) + " is not running"}
+		return Result{Code: 503, Body: "torre: " + quote(target) + " is not running"}
 	}
 	return Result{Code: 200, Body: t.Snapshot()}
 }
@@ -280,13 +280,13 @@ func (b *Bus) Raw(caller, target, keys string) Result {
 	}
 	data, err := Unescape(keys)
 	if err != nil {
-		return Result{Code: 400, Body: "squad: " + err.Error()}
+		return Result{Code: 400, Body: "torre: " + err.Error()}
 	}
 	if len(data) == 0 {
-		return Result{Code: 400, Body: "squad: nothing to send"}
+		return Result{Code: 400, Body: "torre: nothing to send"}
 	}
 	if err := t.Raw(data); err != nil {
-		return Result{Code: 500, Body: "squad: " + err.Error()}
+		return Result{Code: 500, Body: "torre: " + err.Error()}
 	}
 	time.Sleep(b.limits.RawDelay)
 	return Result{Code: 200, Body: t.Snapshot()}
@@ -339,7 +339,7 @@ type BatchItem struct {
 func (b *Bus) Batch(ctx context.Context, caller, spec string) Result {
 	var m map[string]string
 	if err := json.Unmarshal([]byte(spec), &m); err != nil || len(m) == 0 {
-		return Result{Code: 400, Body: `squad: invalid --batch JSON; expected {"Name": "prompt", …}`}
+		return Result{Code: 400, Body: `torre: invalid --batch JSON; expected {"Name": "prompt", …}`}
 	}
 	names := make([]string, 0, len(m))
 	for n := range m {

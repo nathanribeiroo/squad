@@ -1,4 +1,4 @@
-.react-flow__minimap.squad-minimap {
+.react-flow__minimap.torre-minimap {
   width: 220px;
   height: 132px;
   background: var(--surface);
@@ -7,7 +7,7 @@
   overflow: hidden;
   box-shadow: var(--shadow);
 }
-.squad-minimap .react-flow__minimap-mask { rx: 3; }
+.torre-minimap .react-flow__minimap-mask { rx: 3; }
 .zoom-ctl {
   position: absolute;
   bottom: 18px;

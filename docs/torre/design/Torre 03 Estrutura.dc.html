@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&amp;family=B612+Mono:wght@400;700&amp;family=Archivo:wdth,wght@62..125,400..900&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0,0&amp;display=block">
+<style>
+body{margin:0;background:#d9d5cc;color:#161512;font-family:'B612',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#161512;text-decoration:underline}a:hover{color:#48453e}
+</style>
+</helmet>
+<section id="torre-estrutura" style="padding:56px 56px 80px;display:flex;flex-direction:column;gap:48px">
+
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:1500px">
+<svg width="34" height="40" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#161512"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#161512"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"></path><circle cx="28" cy="2" r="2" fill="#e05a2b"></circle></svg>
+<span style="font:700 36px/0.9 'B612',sans-serif;letter-spacing:.06em">TORRE</span>
+<span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;color:#48453e">Produto · 03 Estrutura</span>
+<span style="flex:1"></span>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<a href="Torre 01 Nucleo.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">01</span>Núcleo</a>
+<a href="Torre 02 Comunicacao.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">02</span>Comunicação</a>
+<a href="Torre 03 Estrutura.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#161512;color:#f3f1ec;border:1px solid #161512;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">03</span>Estrutura</a>
+<a href="Torre 04 Sistema.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">04</span>Sistema</a>
+</div>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.55;color:#48453e;max-width:980px;text-wrap:pretty">Workspace › sessão › pista e níveis. A barra superior lê como um caminho, e cada parte abre o seu painel. Os níveis e a sessão em cópia agora são a mesma coisa na interface: uma cópia isolada com branch próprio, com o mesmo menu e o mesmo pouso.</p>
+
+<div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+
+<div id="11" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#11" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">11</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Workspaces</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">Todos rodam ao mesmo tempo. O seletor mostra o que está acontecendo em cada um e as sessões ao lado.</span></div>
+<div data-screen-label="11 Workspaces" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<dc-import name="TorreBar" view="espaco" level="pista" hint-size="1440px,48px" style="position:absolute;left:0;top:0"></dc-import>
+<div style="position:absolute;left:0;top:48px;width:1440px;height:852px;background-color:#050b08;background-image:radial-gradient(#11251a 1px,transparent 1px);background-size:20px 20px;opacity:.6"></div>
+
+<div style="position:absolute;left:120px;top:52px;width:440px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 14px 36px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:40px;display:flex;align-items:center;padding:0 14px;border-bottom:1px solid #16301f;font:700 11px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">WORKSPACES</div>
+<div style="padding:10px 14px;display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:4px 10px;align-items:center;background:#10241a;box-shadow:inset 2px 0 0 #cfeedd"><span style="width:9px;height:9px;background:#6fd3d8"></span><b style="font-size:13.5px">relatorios-api</b><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">⌥1</span><span></span><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892;white-space:nowrap">~/proj/relatorios-api</span><span style="display:flex;gap:2px;align-items:center;color:#7fa892"><span style="font-family:'Material Symbols Outlined';font-size:16px">edit</span><span style="font:400 10.5px 'B612 Mono',monospace">3</span><span style="font-family:'Material Symbols Outlined';font-size:16px">chevron_right</span></span><span></span><span style="font:400 11px 'B612 Mono',monospace;white-space:nowrap"><span style="color:#ffd27a">1 pede você</span> · <span style="color:#a9c8ff">1 no ar</span> · 1 aguarda</span><span></span></div>
+<div style="padding:10px 14px;display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:4px 10px;align-items:center;border-top:1px solid #16301f;background:#0b1710"><span style="width:9px;height:9px;background:#b49cff"></span><b style="font-size:13.5px">loja-demo</b><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">⌥2</span><span></span><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892;white-space:nowrap">~/proj/loja-demo</span><span style="display:flex;gap:2px;align-items:center;color:#cfeedd"><span style="font-family:'Material Symbols Outlined';font-size:16px;color:#7fa892">edit</span><span style="font:400 10.5px 'B612 Mono',monospace">2</span><span style="font-family:'Material Symbols Outlined';font-size:16px">chevron_right</span></span><span></span><span style="font:400 11px 'B612 Mono',monospace;white-space:nowrap"><span style="color:#a9c8ff">2 no ar</span> · 1 pendente</span><span></span></div>
+<div style="padding:10px 14px;display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:4px 10px;align-items:center;border-top:1px solid #16301f"><span style="width:9px;height:9px;background:#e0a526"></span><b style="font-size:13.5px">site-pessoal</b><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">⌥3</span><span></span><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892;white-space:nowrap">~/site</span><span style="display:flex;gap:2px;align-items:center;color:#7fa892"><span style="font-family:'Material Symbols Outlined';font-size:16px">edit</span><span style="font:400 10.5px 'B612 Mono',monospace">1</span><span style="font-family:'Material Symbols Outlined';font-size:16px">chevron_right</span></span><span></span><span style="font:400 11px 'B612 Mono',monospace;color:#5a8a6c">sem voos</span><span></span></div>
+<div style="height:42px;display:flex;align-items:center;gap:8px;padding:0 14px;border-top:1px solid #16301f;font:700 11px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:17px">add</span>NOVO WORKSPACE</div>
+</div>
+<div style="position:absolute;left:566px;top:146px;width:330px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 14px 36px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:36px;display:flex;align-items:center;padding:0 12px;border-bottom:1px solid #16301f;font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">SESSÕES DE LOJA-DEMO</div>
+<div style="padding:9px 12px;display:flex;flex-direction:column;gap:3px"><b style="font-size:13px">Carrinho com cupom</b><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">aberta há 10 min · 3 voos · 1 NOTAM</span></div>
+<div style="padding:9px 12px;display:flex;flex-direction:column;gap:3px;border-top:1px solid #16301f"><b style="font-size:13px">Login novo</b><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">⎇ login-novo · ontem · 2 voos</span></div>
+</div>
+
+<div style="position:absolute;left:0;top:0;width:1440px;height:900px;pointer-events:none"></div>
+<div style="position:absolute;left:940px;top:120px;width:460px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:50px;display:flex;align-items:center;gap:10px;padding:0 10px 0 18px;border-bottom:1px solid #16301f"><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">NOVO WORKSPACE</b><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#7fa892">close</span></div>
+<div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">PASTA DO PROJETO</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1.5px solid #cfeedd;font:400 12.5px 'B612 Mono',monospace">~/proj/fin<svg width="2" height="14" style="margin-left:1px"><rect width="2" height="14" fill="#cfeedd"></rect></svg></span></label>
+<div style="margin-top:-10px;border:1px solid #2c5a3d;border-top:none;background:#0b1710;font:400 12px 'B612 Mono',monospace"><div style="height:30px;display:flex;align-items:center;padding:0 10px;background:#10241a">~/proj/financeiro<span style="flex:1"></span><span style="color:#7fa892;font-size:10.5px">git · main</span></div><div style="height:30px;display:flex;align-items:center;padding:0 10px;color:#9fc4ae">~/proj/fintech-poc<span style="flex:1"></span><span style="color:#5a8a6c;font-size:10.5px">sem git</span></div></div>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">NOME <span style="font-weight:400;letter-spacing:0">(opcional)</span></span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font-size:13px;color:#5a8a6c">financeiro</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">NOME DA SESSÃO <span style="font-weight:400;letter-spacing:0">(opcional · sem nome, o agente sugere)</span></span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font-size:13px;color:#5a8a6c">Nova sessão</span></label>
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">COR</span><div style="display:flex;gap:6px"><span style="width:26px;height:26px;background:#6fd3d8"></span><span style="width:26px;height:26px;background:#3b74d0;box-shadow:0 0 0 2px #07100b,0 0 0 4px #cfeedd"></span><span style="width:26px;height:26px;background:#b49cff"></span><span style="width:26px;height:26px;background:#f29ac0"></span><span style="width:26px;height:26px;background:#d9443c"></span><span style="width:26px;height:26px;background:#e0a526"></span><span style="width:26px;height:26px;background:#c6e06a"></span><span style="width:26px;height:26px;background:#2e9b5b"></span></div></div>
+</div>
+<div style="height:58px;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid #16301f"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:36px;padding:0 16px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CRIAR E ABRIR</span></div>
+</div>
+<div style="position:absolute;left:940px;top:620px;width:460px;box-sizing:border-box;border:1px dashed #2c5a3d;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.5;color:#9fc4ae"><b style="color:#cfeedd;font:700 10.5px 'B612',sans-serif;letter-spacing:.12em">EDITAR WORKSPACE</b><span>O mesmo formulário com SALVAR e REMOVER WORKSPACE (vermelho, nunca no último). Mudar a pasta avisa: "Os voos abertos continuam na pasta antiga até reiniciar." Workspaces com níveis ou sessões em cópia não mudam de pasta nem saem.</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Linha do workspace.</b> Cor, nome, ⌥N, pasta e a atividade resumida com as palavras dos estados. O ponto no botão da barra é âmbar se algum voo de outro workspace pede você, azul se só há voos no ar.</div>
+<div><b style="color:#161512">Sessões ao lado.</b> Passar o mouse (ou →) abre as sessões daquele workspace; clicar abre a sessão e troca de workspace de uma vez.</div>
+<div><b style="color:#161512">Pasta.</b> Sugestões enquanto digita (↑↓, Enter, Tab), com o branch quando é git. Sem git, os níveis ficam desligados com a explicação.</div>
+</div>
+</div>
+
+<div id="12" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#12" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">12</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Sessões</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">Cada sessão é um canvas inteiro. Só a aberta tem processos; trocar guarda tudo e cada voo retoma a conversa.</span></div>
+<div data-screen-label="12 Sessões" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<dc-import name="TorreBar" view="espaco" level="pista" hint-size="1440px,48px" style="position:absolute;left:0;top:0"></dc-import>
+<div style="position:absolute;left:0;top:48px;width:1440px;height:852px;background-color:#050b08;background-image:radial-gradient(#11251a 1px,transparent 1px);background-size:20px 20px;opacity:.6"></div>
+
+<div style="position:absolute;left:250px;top:52px;width:520px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 14px 36px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:40px;display:flex;align-items:center;padding:0 14px;border-bottom:1px solid #16301f;font:700 11px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">SESSÕES DE RELATORIOS-API</div>
+<div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:#10241a;box-shadow:inset 2px 0 0 #cfeedd">
+<div style="display:flex;align-items:center;gap:8px"><b style="font-size:14px">Export CSV</b><span style="padding:1px 6px;background:#cfeedd;color:#030705;font:700 9.5px 'B612',sans-serif;letter-spacing:.1em">ATUAL</span><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#7fa892">edit</span></div>
+<span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">criada 17/10 13:50 · aberta agora · na pasta do projeto</span>
+<div style="display:flex;align-items:center;gap:6px;font:400 11px 'B612 Mono',monospace;flex-wrap:wrap"><span>5 voos · 1 NOTAM · 1 portal · FL1</span><span style="padding:0 5px;border:1px solid #2c5a3d;color:#9fc4ae">claude</span><span style="padding:0 5px;border:1px solid #2c5a3d;color:#9fc4ae">codex</span><span style="padding:0 5px;border:1px solid #2c5a3d;color:#9fc4ae">devin</span><span style="padding:0 5px;border:1px solid #2c5a3d;color:#9fc4ae">gemini</span></div>
+</div>
+<div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px;border-top:1px solid #16301f">
+<div style="display:flex;align-items:center;gap:8px"><b style="font-size:14px">Filtros de data</b><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#7fa892">edit</span><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#7fa892">delete</span><span style="height:26px;padding:0 10px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 10.5px 'B612',sans-serif;letter-spacing:.08em">ABRIR</span></div>
+<span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">⎇ filtros-data · cópia isolada · última abertura ontem</span>
+<span style="font:400 11px 'B612 Mono',monospace">2 voos · 1 NOTAM</span>
+</div>
+<div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px;border-top:1px solid #16301f">
+<div style="display:flex;align-items:center;gap:8px"><b style="font-size:14px;color:#7fa892">Nova sessão · 16/10 09:12</b><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#7fa892">edit</span><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#7fa892">delete</span><span style="height:26px;padding:0 10px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 10.5px 'B612',sans-serif;letter-spacing:.08em">ABRIR</span></div>
+<span style="font:400 11px 'B612 Mono',monospace;color:#5a8a6c">vazia</span>
+</div>
+<div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 14px;border-top:1px solid #16301f;font:700 11px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:17px">add</span>NOVA SESSÃO</div>
+</div>
+
+<div style="position:absolute;left:830px;top:72px;width:560px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:50px;display:flex;align-items:center;gap:10px;padding:0 10px 0 18px;border-bottom:1px solid #16301f"><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">NOVA SESSÃO</b><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#7fa892">close</span></div>
+<div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+<div style="padding:10px 12px;border:1.5px solid #e0a526;background:#1a1407;display:flex;gap:10px;font-size:12.5px;line-height:1.5;color:#f3e6c4"><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#ffd27a">hourglass_top</span><span><b>Export CSV</b> tem 1 voo no ar e 5 arquivos alterados sem commit. Numa cópia isolada, a sessão nova não mexe nisso.</span></div>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">NOME <span style="font-weight:400;letter-spacing:0">(opcional)</span></span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1.5px solid #cfeedd;font-size:13px">Painel de vendas</span></label>
+<span style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="width:16px;height:16px;background:#cfeedd;color:#030705;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">✓</span>Começar com os mesmos voos, sem as conversas</span>
+<div style="display:flex;flex-direction:column;gap:8px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">ONDE A SESSÃO TRABALHA</span>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<div style="padding:10px 12px;border:1px solid #2c5a3d;display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700"><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid #7fa892;border-radius:50%"></span>Na pasta do projeto</span><span style="font-size:12px;line-height:1.45;color:#7fa892">A mesma das outras sessões.</span></div>
+<div style="padding:10px 12px;border:1.5px solid #cfeedd;background:#10241a;display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700"><span style="width:14px;height:14px;box-sizing:border-box;border:4px solid #cfeedd;border-radius:50%"></span>Numa cópia isolada</span><span style="font-size:12px;line-height:1.45;color:#9fc4ae">Branch novo; o que está sem commit fica de fora.</span></div>
+</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">A PARTIR DE</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font:400 12.5px 'B612 Mono',monospace">main<span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:16px;color:#7fa892">expand_more</span></span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">BRANCH NOVO</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font:400 12.5px 'B612 Mono',monospace">painel-de-vendas</span></label>
+</div>
+<span style="font-size:12px;line-height:1.5;color:#7fa892">A sessão atual fica guardada e volta como está quando você abri-la de novo.</span>
+</div>
+<div style="height:58px;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid #16301f"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:36px;padding:0 16px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CRIAR E ABRIR</span></div>
+</div>
+
+<div style="position:absolute;left:250px;top:470px;width:520px;box-sizing:border-box;border:1px dashed #2c5a3d;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.55;color:#9fc4ae"><b style="color:#cfeedd;font:700 10.5px 'B612',sans-serif;letter-spacing:.12em">NOME AUTOMÁTICO</b><span>Sem nome, a sessão aparece em cinza como "Nova sessão · 17/10 14:32" até o fim do primeiro turno do líder. Aí um agente do mesmo tipo sugere 2 a 6 palavras; sem agente, vale o começo do primeiro pedido.</span><b style="color:#cfeedd;font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;margin-top:6px">REMOVER</b><span>Confirmação na interface (<a href="#15" style="color:#cfeedd">15</a>). Canvas e NOTAMs vão para a lixeira; as conversas continuam guardadas nos agentes. Não aparece na sessão aberta; desligado se a sessão tem níveis.</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Linha da sessão.</b> Nome (cinza enquanto provisório), ATUAL, datas, onde trabalha (pasta ou ⎇ branch da cópia), conteúdo e os agentes. Ações: renomear no lugar, remover, ABRIR.</div>
+<div><b style="color:#161512">Trabalho pendente.</b> Com voos no ar ou arquivos sem commit, o aviso âmbar aparece e "Numa cópia isolada" já vem marcado.</div>
+<div><b style="color:#161512">Sessão em cópia.</b> A pista passa a mostrar o branch dela. O menu da pista ganha POUSAR… (o antigo "Mesclar…"), igual ao de um nível (<a href="#13">13</a>).</div>
+</div>
+</div>
+
+<div id="13" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#13" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">13</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Níveis de voo</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">Cópias isoladas do repositório (git worktree), cada uma com branch e canvas próprios. O antigo "andar".</span></div>
+<div data-screen-label="13 Níveis" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<dc-import name="TorreBar" view="espaco" level="fl1" hint-size="1440px,48px" style="position:absolute;left:0;top:0"></dc-import>
+<div style="position:absolute;left:0;top:48px;width:1440px;height:852px;background-color:#050b08;background-image:radial-gradient(#15301f 1px,transparent 1px);background-size:20px 20px"></div>
+
+<div style="position:absolute;left:500px;top:52px;width:280px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 14px 36px rgba(0,0,0,.6);display:flex;flex-direction:column;padding-bottom:4px">
+<div style="padding:10px 14px;border-bottom:1px solid #16301f;display:flex;flex-direction:column;gap:3px"><b style="font:700 12px 'B612',sans-serif;letter-spacing:.08em">FL1 · Export CSV</b><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">⎇ feat/export-csv · 3 commits · 4 alt.</span></div>
+<div style="height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:13px;background:#10241a"><span style="font-family:'Material Symbols Outlined';font-size:17px">flight_land</span>Pedir pouso…</div>
+<div style="height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:13px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">terminal</span>Log do preparo</div>
+<div style="height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:13px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">content_copy</span>Copiar o caminho</div>
+<div style="height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:13px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">edit</span>Renomear</div>
+<div style="height:1px;background:#16301f;margin:4px 0"></div>
+<div style="height:34px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:13px;color:#ff9a8f"><span style="font-family:'Material Symbols Outlined';font-size:17px">delete</span>Descartar…</div>
+</div>
+
+<div style="position:absolute;left:40px;top:250px;width:420px;box-sizing:border-box;border:1px solid #2c5a3d;background:#07100b;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">NÍVEL VAZIO</span>
+<b style="font:700 22px 'B612',sans-serif">FL2 · Página de cupom</b>
+<span style="font:400 11.5px 'B612 Mono',monospace;color:#7fa892">⎇ feat/cupom · …/.squad/floors/cupom</span>
+<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #1f3a29;font:400 12px 'B612 Mono',monospace"><span style="font-family:'Material Symbols Outlined';font-size:16px;color:#a9c8ff">progress_activity</span>Preparando: npm install<span style="flex:1"></span><span style="text-decoration:underline;color:#9fc4ae">ver log</span></div>
+<span style="font-size:13px;line-height:1.55;color:#9fc4ae">Ponha voos aqui com <b style="font-family:'B612 Mono',monospace;color:#cfeedd">T</b>, ou peça a um líder:</span>
+<span style="padding:8px 10px;background:#030705;font:400 12px 'B612 Mono',monospace;color:#cfeedd">squad new "Bia" --role impl --floor "Página de cupom"</span>
+<span style="height:38px;display:flex;align-items:center;justify-content:center;gap:8px;background:#cfeedd;color:#030705;font:700 12px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:17px">terminal</span>NOVO VOO NESTE NÍVEL</span>
+<span style="display:flex;align-items:center;gap:8px;font:400 11.5px 'B612 Mono',monospace;color:#ff9a8f;border-top:1px solid #16301f;padding-top:10px"><span style="font-family:'Material Symbols Outlined';font-size:15px">error</span>Se o preparo falha: "O preparo falhou (saída 1)", com ver log.</span>
+</div>
+
+<div style="position:absolute;left:0;top:48px;width:1440px;height:852px;background:rgba(1,3,2,0)"></div>
+<div style="position:absolute;left:830px;top:100px;width:560px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="padding:14px 18px;border-bottom:1px solid #16301f;display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:center"><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">NOVO NÍVEL DE VOO</b><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#7fa892">close</span></div><span style="font-size:12.5px;color:#9fc4ae">Uma cópia isolada do repositório, num branch próprio, com um canvas próprio.</span></div>
+<div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+<div style="display:grid;grid-template-columns:70px 1fr 1fr;gap:10px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">NÍVEL</span><span style="height:34px;display:flex;align-items:center;justify-content:center;background:#10241a;border:1px solid #2c5a3d;font:700 13px 'B612 Mono',monospace">FL2</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">NOME</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1.5px solid #cfeedd;font-size:13px">Página de cupom</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">BRANCH</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font:400 12.5px 'B612 Mono',monospace">feat/cupom</span></label>
+</div>
+<span style="font-size:12.5px;line-height:1.5;color:#9fc4ae">Parte do último commit de <b style="font-family:'B612 Mono',monospace;color:#cfeedd">main</b>. O que ainda não foi commitado fica na pista.</span>
+<div style="border:1px solid #1f3a29"><div style="height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #16301f;font:700 10.5px 'B612',sans-serif;letter-spacing:.12em"><span style="font-family:'Material Symbols Outlined';font-size:16px">expand_more</span>PREPARAÇÃO</div>
+<div style="padding:12px;display:flex;flex-direction:column;gap:10px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:#9fc4ae">Copiar da pista (arquivos fora do git)</span><span style="height:32px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font:400 12px 'B612 Mono',monospace">.env*</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:#9fc4ae">Comando de preparo</span><span style="height:32px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font:400 12px 'B612 Mono',monospace">npm install</span></label>
+<span style="font-size:11.5px;color:#7fa892">Vale para os próximos níveis deste workspace.</span>
+</div></div>
+</div>
+<div style="height:58px;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid #16301f"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:36px;padding:0 16px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CRIAR NÍVEL</span></div>
+</div>
+
+<div style="position:absolute;left:830px;top:640px;width:560px;display:flex;flex-direction:column;gap:8px">
+<span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">ESTADO DO NÍVEL NA ABA</span>
+<div style="display:flex;flex-wrap:wrap;gap:6px;font:400 11px 'B612 Mono',monospace">
+<span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;border:1px solid #1f3a29"><b>FL1</b>limpo</span>
+<span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;border:1px solid #1f3a29"><b>FL1</b>4 alt.</span>
+<span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;border:1px solid #1f3a29"><b>FL1</b>3 commits</span>
+<span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;border:1px solid #1f3a29;color:#a9c8ff"><b style="color:#cfeedd">FL2</b>◌ preparando</span>
+<span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;border:1px solid #6a2a26;color:#ff9a8f"><b style="color:#cfeedd">FL2</b>✕ preparo falhou</span>
+<span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;border:1px solid #6a2a26;color:#ff9a8f"><b style="color:#cfeedd">FL3</b>pasta sumiu</span>
+<span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;border:1px solid #1f3a29"><b>FL1</b><span style="color:#a9c8ff">▲</span> voos no ar</span>
+<span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;border:1px solid #1f3a29"><b>FL1</b><span style="width:7px;height:7px;border-radius:50%;background:#ffcf6e"></span> pede você</span>
+</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Numeração.</b> Cada nível ganha FL1, FL2… na ordem de criação, além do nome. É o que aparece no radar, nas fichas e nas etiquetas entre níveis ("TST · FL1").</div>
+<div><b style="color:#161512">Menu do nível.</b> Clicar na aba ativa: Pedir pouso…, Log do preparo, Copiar o caminho, Renomear, Descartar…. A pista de uma sessão em cópia tem o mesmo menu (sem Descartar e Renomear).</div>
+<div><b style="color:#161512">Toasts.</b> "FL2 criado: branch feat/cupom". Quando um líder pousa um nível: "FL1 pousou: feat/export-csv em main (abc1234)".</div>
+</div>
+</div>
+
+<div id="14" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#14" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">14</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Autorização de pouso</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">Trazer o nível de volta: mesclar o branch e fechar a cópia. A sua aprovação é a autorização de pouso.</span></div>
+<div data-screen-label="14 Pouso" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<dc-import name="TorreBar" view="espaco" level="fl1" hint-size="1440px,48px" style="position:absolute;left:0;top:0"></dc-import>
+<div style="position:absolute;left:0;top:48px;width:1440px;height:852px;background:rgba(1,3,2,.85)"></div>
+
+<div style="position:absolute;left:60px;top:84px;width:700px;box-sizing:border-box;background:#07100b;border:1.5px solid #cfeedd;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="padding:16px 20px;border-bottom:1px solid #16301f;display:flex;align-items:center;gap:12px"><span style="font-family:'Material Symbols Outlined';font-size:24px">flight_land</span><div style="display:flex;flex-direction:column;gap:2px"><b style="font:700 15px 'B612',sans-serif;letter-spacing:.1em">AUTORIZAR POUSO · FL1</b><span style="font:400 11.5px 'B612 Mono',monospace;color:#7fa892">Export CSV · feat/export-csv → main</span></div><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#7fa892">close</span></div>
+<div style="padding:16px 20px;display:flex;flex-direction:column;gap:16px">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font:400 11.5px 'B612 Mono',monospace">
+<div style="padding:10px;border:1px solid #2e9b5b;display:flex;flex-direction:column;gap:3px"><span style="color:#5fe39a">✓ sem conflito</span><span style="color:#7fa892;font-size:10.5px">com main hoje</span></div>
+<div style="padding:10px;border:1px solid #2e9b5b;display:flex;flex-direction:column;gap:3px"><span style="color:#5fe39a">✓ tudo commitado</span><span style="color:#7fa892;font-size:10.5px">0 alterações</span></div>
+<div style="padding:10px;border:1px dashed #e0a526;display:flex;flex-direction:column;gap:3px"><span style="color:#ffd27a">⧗ 2 voos no ar</span><span style="color:#7fa892;font-size:10.5px">IMP, TST fecham</span></div>
+<div style="padding:10px;border:1px solid #1f3a29;display:flex;flex-direction:column;gap:3px"><span>main +2</span><span style="color:#7fa892;font-size:10.5px">commits novos</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:0"><b style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892;margin-bottom:6px">COMMITS DO NÍVEL · 3</b>
+<div style="display:grid;grid-template-columns:70px 1fr 60px;gap:10px;padding:7px 0;border-top:1px solid #16301f;font:400 12px 'B612 Mono',monospace"><span style="color:#ffd27a">a91c2f0</span><span>feat(reports): stream CSV com BOM</span><span style="color:#7fa892">IMP</span></div>
+<div style="display:grid;grid-template-columns:70px 1fr 60px;gap:10px;padding:7px 0;border-top:1px solid #16301f;font:400 12px 'B612 Mono',monospace"><span style="color:#ffd27a">3e0b771</span><span>test(export): BOM e escape de aspas</span><span style="color:#7fa892">IMP</span></div>
+<div style="display:grid;grid-template-columns:70px 1fr 60px;gap:10px;padding:7px 0;border-top:1px solid #16301f;font:400 12px 'B612 Mono',monospace"><span style="color:#ffd27a">c4d812a</span><span>test(e2e): download do CSV</span><span style="color:#7fa892">TST</span></div>
+<span style="font:400 11px 'B612 Mono',monospace;color:#7fa892;padding-top:6px;border-top:1px solid #16301f">+188 −12 em 4 arquivos · main ganhou 2 commits desde que o nível saiu</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px"><b style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">COMO POUSAR</b>
+<div style="padding:10px 12px;border:1.5px solid #cfeedd;background:#10241a;display:flex;align-items:center;gap:10px;font-size:13px"><span style="width:14px;height:14px;box-sizing:border-box;border:4px solid #cfeedd;border-radius:50%"></span><b>Mesclar em</b><span style="height:26px;padding:0 8px;display:inline-flex;align-items:center;gap:4px;border:1px solid #2c5a3d;font:400 12px 'B612 Mono',monospace">main<span style="font-family:'Material Symbols Outlined';font-size:15px">expand_more</span></span><span style="color:#9fc4ae">com commit de merge</span></div>
+<div style="padding:10px 12px;border:1px solid #2c5a3d;display:flex;align-items:center;gap:10px;font-size:13px"><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid #7fa892;border-radius:50%"></span><b>Só guardar o branch</b><span style="color:#9fc4ae">sem mesclar</span></div>
+</div>
+<div style="padding:10px 12px;border:1px dashed #2c5a3d;font-size:12.5px;line-height:1.55;color:#9fc4ae">Ao pousar: os voos e portais do FL1 fecham, as NOTAMs descem para a pista, a pasta da cópia é apagada e o branch <span style="font-family:'B612 Mono',monospace;color:#cfeedd">feat/export-csv</span> continua.</div>
+</div>
+<div style="height:62px;display:flex;align-items:center;gap:8px;padding:0 20px;border-top:1px solid #16301f"><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">quem pode: você, ou o líder que criou o nível</span><span style="flex:1"></span><span style="height:38px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:38px;padding:0 18px;display:inline-flex;align-items:center;gap:8px;background:#cfeedd;color:#030705;font:700 12px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:17px">flight_land</span>MESCLAR E POUSAR</span></div>
+</div>
+
+<div style="position:absolute;left:800px;top:84px;width:580px;box-sizing:border-box;background:#07100b;border:1.5px solid #d9443c;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="padding:16px 20px;border-bottom:1px solid #3a1714;display:flex;align-items:center;gap:12px;background:#1a0908"><span style="font-family:'Material Symbols Outlined';font-size:24px;color:#ff9a8f">flight_takeoff</span><div style="display:flex;flex-direction:column;gap:2px"><b style="font:700 15px 'B612',sans-serif;letter-spacing:.1em;color:#ffc9c2">POUSO NEGADO · FL1</b><span style="font:400 11.5px 'B612 Mono',monospace;color:#c98a83">nada mudou · o nível continua no ar</span></div></div>
+<div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+<span style="font-size:13.5px;line-height:1.55">O merge em <b style="font-family:'B612 Mono',monospace">main</b> deu conflito em 2 arquivos:</span>
+<div style="border:1px solid #3a1714;font:400 12px 'B612 Mono',monospace"><div style="display:flex;padding:8px 10px;border-bottom:1px solid #3a1714"><span style="color:#ff9a8f;width:20px">✕</span>src/reports/reports.ts</div><div style="display:flex;padding:8px 10px"><span style="color:#ff9a8f;width:20px">✕</span>src/export/index.ts</div></div>
+<span style="font-size:12.5px;line-height:1.55;color:#9fc4ae">Peça a um voo do FL1 para trazer main e resolver; depois peça o pouso de novo.</span>
+<span style="height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid #2c5a3d;font-size:12.5px"><span style="font-family:'Material Symbols Outlined';font-size:16px">send</span>Pedir ao <b style="font-family:'B612 Mono',monospace">IMP</b> para resolver os conflitos<span style="flex:1"></span><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">abre o Transmitir</span></span>
+</div>
+<div style="height:56px;display:flex;align-items:center;gap:8px;padding:0 20px;border-top:1px solid #3a1714"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">FECHAR</span></div>
+</div>
+
+<div style="position:absolute;left:800px;top:500px;width:580px;box-sizing:border-box;background:#07100b;border:1.5px solid #e0a526;display:flex;flex-direction:column">
+<div style="padding:14px 20px;border-bottom:1px solid #3a2c0c;display:flex;align-items:center;gap:12px;background:#1a1407"><span style="font-family:'Material Symbols Outlined';font-size:22px;color:#ffd27a">hourglass_top</span><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em;color:#ffd27a">AINDA NÃO DÁ PARA POUSAR</b></div>
+<div style="padding:14px 20px;display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.55">
+<span>O FL1 tem 2 arquivos sem commit:</span>
+<div style="font:400 12px 'B612 Mono',monospace;color:#ffd27a">M src/reports/csv.ts<br>? test/fixtures/vendas.csv</div>
+<span style="color:#9fc4ae">Faça o commit (ou peça a um voo) e tente de novo. Também bloqueia se a pasta de <span style="font-family:'B612 Mono',monospace">main</span> tiver alterações.</span>
+</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Checklist antes do botão.</b> Conflito, commits pendentes, voos no ar e o quanto main andou aparecem como quatro caixas. Verde é liberado; âmbar avisa e não bloqueia; vermelho bloqueia.</div>
+<div><b style="color:#161512">Recusas.</b> Conflito vira "POUSO NEGADO", com os arquivos e um passo pronto para um voo resolver. Alterações sem commit bloqueiam antes, em âmbar.</div>
+<div><b style="color:#161512">Mesmo diálogo para a sessão em cópia.</b> A diferença: a cópia continua depois do pouso (dá para pousar de novo), e o título é "AUTORIZAR POUSO · sessão Filtros de data".</div>
+</div>
+</div>
+
+<div id="15" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#15" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#e05a2b;color:#fff;border-radius:2px;text-decoration:none">15</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Confirmações na interface</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">As 10 confirmações do navegador viram um só padrão: o que se perde, em lista, e o botão com o nome da ação.</span></div>
+<div data-screen-label="15 Confirmações" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<div style="position:absolute;left:0;top:0;width:1440px;height:900px;background-color:#050b08;background-image:radial-gradient(#11251a 1px,transparent 1px);background-size:20px 20px"></div>
+
+<div style="position:absolute;left:40px;top:40px;width:440px;box-sizing:border-box;background:#07100b;border:1.5px solid #d9443c;display:flex;flex-direction:column">
+<div style="padding:14px 18px;border-bottom:1px solid #3a1714;display:flex;align-items:center;gap:10px"><span style="font-family:'Material Symbols Outlined';font-size:20px;color:#ff9a8f">delete</span><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">DESCARTAR FL2?</b></div>
+<div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5">
+<span style="display:flex;gap:8px"><span style="color:#ff9a8f">✕</span>Apaga a pasta, com <b>3 alterações sem commit</b></span>
+<span style="display:flex;gap:8px"><span style="color:#ff9a8f">✕</span>Fecha 2 voos e 1 portal</span>
+<span style="display:flex;gap:8px"><span style="color:#ff9a8f">✕</span>Apaga o branch feat/cupom (criado pelo nível)</span>
+<span style="display:flex;gap:8px"><span style="color:#5fe39a">✓</span>As NOTAMs descem para a pista</span>
+<span style="display:flex;align-items:center;gap:10px;margin-top:6px;padding:10px;border:1px solid #6a2a26;background:#1a0908"><span style="width:16px;height:16px;background:#ff9a8f;color:#1a0908;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">✓</span>Entendo que esse trabalho se perde.</span>
+</div>
+<div style="height:56px;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid #3a1714"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;background:#d9443c;color:#fff;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">DESCARTAR NÍVEL</span></div>
+</div>
+
+<div style="position:absolute;left:510px;top:40px;width:440px;box-sizing:border-box;background:#07100b;border:1.5px solid #e0a526;display:flex;flex-direction:column">
+<div style="padding:14px 18px;border-bottom:1px solid #3a2c0c;display:flex;align-items:center;gap:10px"><span style="font-family:'Material Symbols Outlined';font-size:20px;color:#ffd27a">swap_horiz</span><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">TROCAR DE SESSÃO?</b></div>
+<div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.55">
+<div style="display:grid;grid-template-columns:7px 46px 1fr;height:34px;background:#efe8cf;color:#1b1a14;font:400 11px 'B612 Mono',monospace;align-items:center"><span style="height:34px;background:#3b74d0"></span><b style="padding:0 6px;font-size:13px">REV</b><span>no ar há 0:48 · revisando</span></div>
+<span>Trocando agora, o REV para no meio. Quando você voltar, ele aparece em <b>arremetida</b>, com CONTINUAR. O pedido pendente 7f3a é cancelado.</span>
+</div>
+<div style="height:56px;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid #3a2c0c"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;background:#ffd27a;color:#1a1407;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">TROCAR MESMO ASSIM</span></div>
+</div>
+
+<div style="position:absolute;left:980px;top:40px;width:420px;box-sizing:border-box;background:#07100b;border:1.5px solid #cfeedd;display:flex;flex-direction:column">
+<div style="padding:14px 18px;border-bottom:1px solid #16301f;display:flex;align-items:center;gap:10px"><span style="font-family:'Material Symbols Outlined';font-size:20px">restart_alt</span><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">TROCAR O PAPEL DO IMP?</b></div>
+<div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.55">
+<span style="font:400 12px 'B612 Mono',monospace;color:#9fc4ae">Implementador → Revisor</span>
+<span>O voo reinicia e começa uma conversa nova. A conversa atual continua guardada no codex.</span>
+</div>
+<div style="height:56px;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid #16301f"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">TROCAR E REINICIAR</span></div>
+</div>
+
+<div style="position:absolute;left:40px;top:430px;width:440px;box-sizing:border-box;background:#07100b;border:1.5px solid #d9443c;display:flex;flex-direction:column">
+<div style="padding:14px 18px;border-bottom:1px solid #3a1714;display:flex;align-items:center;gap:10px"><span style="font-family:'Material Symbols Outlined';font-size:20px;color:#ff9a8f">delete</span><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">REMOVER O VOO PLN?</b></div>
+<div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5"><span style="display:flex;gap:8px"><span style="color:#ff9a8f">✕</span>Encerra o processo do claude</span><span style="display:flex;gap:8px"><span style="color:#ff9a8f">✕</span>Desliga 3 frequências; 1 pedido pendente é cancelado</span><span style="display:flex;gap:8px"><span style="color:#5fe39a">✓</span>A conversa fica guardada (claude --resume)</span></div>
+<div style="height:56px;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid #3a1714"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;background:#d9443c;color:#fff;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">REMOVER VOO</span></div>
+</div>
+
+<div style="position:absolute;left:510px;top:430px;width:440px;box-sizing:border-box;background:#07100b;border:1.5px solid #d9443c;display:flex;flex-direction:column">
+<div style="padding:14px 18px;border-bottom:1px solid #3a1714;display:flex;align-items:center;gap:10px"><span style="font-family:'Material Symbols Outlined';font-size:20px;color:#ff9a8f">delete</span><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">REMOVER A SESSÃO?</b></div>
+<div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5"><span><b>Filtros de data</b> trabalha numa cópia com 2 arquivos sem commit:</span><span style="font:400 12px 'B612 Mono',monospace;color:#ffd27a">M src/filters/date.ts<br>M src/filters/date.spec.ts</span><span style="color:#9fc4ae">A cópia é apagada; o branch filtros-data fica. Canvas e NOTAMs vão para a lixeira (~/.squad/trash).</span></div>
+<div style="height:56px;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid #3a1714"><span style="flex:1"></span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:36px;padding:0 14px;display:inline-flex;align-items:center;background:#d9443c;color:#fff;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">REMOVER MESMO ASSIM</span></div>
+</div>
+
+<div style="position:absolute;left:980px;top:430px;width:420px;display:flex;flex-direction:column;gap:10px">
+<span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">O MESMO PADRÃO PARA</span>
+<div style="display:flex;flex-direction:column;font-size:13px;line-height:1.45">
+<span style="padding:8px 0;border-top:1px solid #16301f">Remover workspace · <span style="color:#7fa892">encerra os voos, canvas para a lixeira</span></span>
+<span style="padding:8px 0;border-top:1px solid #16301f">Remover NOTAM do canvas · <span style="color:#7fa892">o arquivo fica no disco</span></span>
+<span style="padding:8px 0;border-top:1px solid #16301f">Nova conversa · <span style="color:#7fa892">reinicia sem o contexto</span></span>
+<span style="padding:8px 0;border-top:1px solid #16301f">Reiniciar quem usa um papel · <span style="color:#7fa892">lista os voos</span></span>
+<span style="padding:8px 0;border-top:1px solid #16301f">Descartar alterações de um papel</span>
+<span style="padding:8px 0;border-top:1px solid #16301f">Restaurar papel padrão · Remover papel</span>
+</div>
+<div style="padding:12px;border:1px dashed #2c5a3d;font:400 12px/1.55 'B612 Mono',monospace;color:#9fc4ae">Cor da borda = gravidade: vermelho perde trabalho, âmbar interrompe, claro só reinicia. Enter não confirma ações vermelhas; Esc sempre cancela.</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Título é a pergunta.</b> "DESCARTAR FL2?" e não "Tem certeza?". O botão repete o verbo (DESCARTAR NÍVEL, REMOVER VOO).</div>
+<div><b style="color:#161512">Consequências em lista</b>, com ✕ para o que se perde e ✓ para o que fica, com os números reais (alterações, frequências, pedidos).</div>
+<div><b style="color:#161512">Atrito proporcional.</b> Só a perda de trabalho não commitado pede a caixa "Entendo que esse trabalho se perde."</div>
+</div>
+</div>
+
+</div>
+</section>
+</x-dc>
+</body>
+</html>

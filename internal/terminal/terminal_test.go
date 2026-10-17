@@ -15,7 +15,7 @@ import (
 var fakeAgent string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "squad-fakeagent")
+	dir, err := os.MkdirTemp("", "torre-fakeagent")
 	if err != nil {
 		panic(err)
 	}
@@ -68,11 +68,11 @@ func newTerm(t *testing.T, spec Spec) (*Manager, *Terminal) {
 
 func TestShellEchoAndSnapshot(t *testing.T) {
 	_, term := newTerm(t, Spec{Name: "sh", Agent: "shell"})
-	if err := term.Input([]byte("echo squad-$((40+2))\r")); err != nil {
+	if err := term.Input([]byte("echo torre-$((40+2))\r")); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "echo output on screen", 5*time.Second, func() bool {
-		return strings.Contains(term.Snapshot(), "squad-42")
+		return strings.Contains(term.Snapshot(), "torre-42")
 	})
 	if st, _ := term.State(); st != StatusRunning {
 		t.Fatalf("status %s", st)
@@ -225,14 +225,14 @@ func TestStopRestartAndEvents(t *testing.T) {
 
 func TestBuildEnvStripsMarkersAndSetsTerm(t *testing.T) {
 	env := BuildEnv([]string{"PATH=/usr/bin", "CLAUDECODE=1", "CLAUDE_CODE_SESSION_ID=x", "CLAUDE_CODE_USE_BEDROCK=1", "TERM=dumb"},
-		map[string]string{"SQUAD_TERMINAL_ID": "abc"}, "/opt/squad")
+		map[string]string{"SQUAD_TERMINAL_ID": "abc"}, "/opt/torre")
 	joined := strings.Join(env, "\n")
 	for _, bad := range []string{"CLAUDECODE=", "CLAUDE_CODE_SESSION_ID=", "TERM=dumb"} {
 		if strings.Contains(joined, bad) {
 			t.Fatalf("env still has %s:\n%s", bad, joined)
 		}
 	}
-	for _, good := range []string{"PATH=/opt/squad:/usr/bin", "CLAUDE_CODE_USE_BEDROCK=1", "TERM=xterm-256color", "SQUAD_TERMINAL_ID=abc", "TERM_PROGRAM=Squad"} {
+	for _, good := range []string{"PATH=/opt/torre:/usr/bin", "CLAUDE_CODE_USE_BEDROCK=1", "TERM=xterm-256color", "SQUAD_TERMINAL_ID=abc", "TERM_PROGRAM=Torre"} {
 		if !strings.Contains(joined, good) {
 			t.Fatalf("env lacks %s:\n%s", good, joined)
 		}
@@ -274,7 +274,7 @@ func TestFallsBackWhenShellCannotStart(t *testing.T) {
 	if err := os.WriteFile(bad, []byte{0, 1, 2, 3}, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SQUAD_SHELL", "/bin/sh")
+	t.Setenv("TORRE_SHELL", "/bin/sh")
 	_, term := newTerm(t, Spec{Name: "sh", Agent: "shell", Shell: bad})
 	if err := term.Input([]byte("echo fallback-$((1+1))\r")); err != nil {
 		t.Fatal(err)

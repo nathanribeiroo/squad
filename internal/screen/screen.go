@@ -2,7 +2,7 @@
 // output, so the server can read what a terminal shows (for `check`/`ask`),
 // detect activity and know which input modes the program enabled.
 //
-// The rest of Squad depends on the Screen interface only; the implementation
+// The rest of Torre depends on the Screen interface only; the implementation
 // uses charmbracelet/x/vt (vendored in third_party/vt) behind an OSC
 // pre-filter that fixes UTF-8 titles and surfaces OSC events.
 package screen

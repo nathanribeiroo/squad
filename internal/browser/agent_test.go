@@ -35,7 +35,7 @@ func refOf(t *testing.T, snap, role, name string) string {
 func TestAgentActions(t *testing.T) {
 	path := Find()
 	if path == "" {
-		t.Skip("no Chromium-based browser (set SQUAD_BROWSER)")
+		t.Skip("no Chromium-based browser (set TORRE_BROWSER)")
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

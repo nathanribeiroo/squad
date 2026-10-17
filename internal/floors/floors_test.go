@@ -90,7 +90,7 @@ func TestCreateCommitAndLandWithMerge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPath := filepath.Join(filepath.Dir(repo), ".squad", "floors", "app--pagina-de-login")
+	wantPath := filepath.Join(filepath.Dir(repo), ".torre", "floors", "app--pagina-de-login")
 	if f.ID != "pagina-de-login" || f.Branch != "pagina-de-login" || f.Base != "main" || f.Path != wantPath || f.Cwd != wantPath || !f.NewBranch || f.CreatedBy != "T1" {
 		t.Fatalf("floor: %+v", f)
 	}
@@ -159,8 +159,8 @@ func TestCreateCommitAndLandWithMerge(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(repo, "login.go")); err != nil {
 		t.Fatal("merged file missing on the ground floor")
 	}
-	if isDir(f.Path) || isDir(filepath.Join(filepath.Dir(repo), ".squad")) {
-		t.Fatal("floor folder (or the empty .squad) left behind")
+	if isDir(f.Path) || isDir(filepath.Join(filepath.Dir(repo), ".torre")) {
+		t.Fatal("floor folder (or the empty .torre) left behind")
 	}
 	if sh(t, repo, "branch", "--list", f.Branch) == "" {
 		t.Fatal("landing deleted the branch")

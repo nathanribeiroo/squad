@@ -16,11 +16,11 @@ import (
 	"github.com/nathanribeiroo/squad/internal/store"
 )
 
-// mcpSession starts `squad mcp` as terminal n's agent would; env adds
+// mcpSession starts `torre mcp` as terminal n's agent would; env adds
 // KEY=VALUE settings of the agent.
 func (e *env) mcpSession(n store.Node, env ...string) *mcp.ClientSession {
 	e.t.Helper()
-	cmd := exec.Command(filepath.Join(binDir, "squad"), "mcp")
+	cmd := exec.Command(filepath.Join(binDir, "torre"), "mcp")
 	cmd.Env = append(os.Environ(), "SQUAD_URL="+e.app.Server.URL(), "SQUAD_TERMINAL_ID="+n.ID, "SQUAD_TOKEN="+e.app.Server.TerminalToken(n.ID))
 	cmd.Env = append(cmd.Env, env...)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

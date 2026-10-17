@@ -47,7 +47,7 @@ func (e *env) talk(n store.Node, text string) {
 	})
 }
 
-// restart starts a terminal again as Squad does when it reopens.
+// restart starts a terminal again as Torre does when it reopens.
 func (e *env) restart(n store.Node) {
 	e.t.Helper()
 	if err := e.app.Server.StartTerminal(n.ID); err != nil {
@@ -67,7 +67,7 @@ func waitUntil(t *testing.T, what string, cond func() bool) {
 	}
 }
 
-// A Claude terminal starts in a conversation whose id Squad picks, continues
+// A Claude terminal starts in a conversation whose id Torre picks, continues
 // it when it starts again (once something was said in it), and starts a new
 // one on request.
 func TestConversationContinues(t *testing.T) {

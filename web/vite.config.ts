@@ -5,9 +5,9 @@ import react from '@vitejs/plugin-react';
 declare const process: { env: Record<string, string | undefined> };
 
 // The build goes straight into the Go embed directory so `go build` ships the UI.
-// For `npm run dev`, set SQUAD_TOKEN (from ~/.squad/run/server.json) to proxy the API.
-const target = process.env.SQUAD_URL ?? 'http://127.0.0.1:7420';
-const auth = process.env.SQUAD_TOKEN ? { Authorization: `Bearer ${process.env.SQUAD_TOKEN}` } : undefined;
+// For `npm run dev`, set TORRE_TOKEN (from ~/.torre/run/server.json) to proxy the API.
+const target = process.env.TORRE_URL ?? 'http://127.0.0.1:7420';
+const auth = process.env.TORRE_TOKEN ? { Authorization: `Bearer ${process.env.TORRE_TOKEN}` } : undefined;
 
 export default defineConfig({
   plugins: [react()],

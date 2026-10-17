@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bytes"
@@ -11,18 +11,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nathanribeiroo/squad/internal/config"
 	"golang.org/x/term"
 )
 
-// clientEnv is the identity a Squad terminal gives its processes.
+// clientEnv is the identity a Torre terminal gives its processes.
 type clientEnv struct {
 	url, id, token string
 }
 
 func readClientEnv() (clientEnv, error) {
-	e := clientEnv{os.Getenv("SQUAD_URL"), os.Getenv("SQUAD_TERMINAL_ID"), os.Getenv("SQUAD_TOKEN")}
+	e := clientEnv{config.Getenv("URL"), config.Getenv("TERMINAL_ID"), config.Getenv("TOKEN")}
 	if e.url == "" || e.id == "" || e.token == "" {
-		return e, fmt.Errorf("squad: this command only works inside a Squad terminal (SQUAD_TERMINAL_ID is not set)")
+		return e, fmt.Errorf("torre: this command only works inside a Torre terminal (TORRE_TERMINAL_ID is not set)")
 	}
 	return e, nil
 }
@@ -86,7 +87,7 @@ func runClient(args []string, stdout, stderr io.Writer) int {
 	}
 	code, out, err := callServer(context.Background(), env, args, false, timeout)
 	if err != nil {
-		fmt.Fprintf(stderr, "squad: can't reach the Squad server at %s: %v\nIf the request was sent, it may still be processed; check before repeating it.\n", env.url, err)
+		fmt.Fprintf(stderr, "torre: can't reach the Torre server at %s: %v\nIf the request was sent, it may still be processed; check before repeating it.\n", env.url, err)
 		return 1
 	}
 	if code >= 300 {
@@ -97,8 +98,8 @@ func runClient(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// callServer runs a CLI command on the Squad server as this terminal. safe
-// asks the server to refuse anything that would run a command (squad mcp's
+// callServer runs a CLI command on the Torre server as this terminal. safe
+// asks the server to refuse anything that would run a command (torre mcp's
 // tools that need no approval); timeout 0 waits as long as the call takes.
 func callServer(ctx context.Context, env clientEnv, args []string, safe bool, timeout time.Duration) (int, []byte, error) {
 	cwd, _ := os.Getwd()
@@ -109,7 +110,7 @@ func callServer(ctx context.Context, env clientEnv, args []string, safe bool, ti
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Terminal-ID", env.id)
-	req.Header.Set("X-Squad-Token", env.token)
+	req.Header.Set("X-Torre-Token", env.token)
 	resp, err := (&http.Client{Timeout: timeout}).Do(req)
 	if err != nil {
 		return 0, nil, err

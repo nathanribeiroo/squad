@@ -31,7 +31,7 @@ export function MiniMapAndZoom() {
   return (
     <>
       <MiniMap
-        className="squad-minimap"
+        className="torre-minimap"
         style={{ right: right - 15, bottom: 56 - 15, width: 220, height: 132 }}
         nodeComponent={MiniNode}
         maskColor="transparent"

@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"os"
@@ -53,7 +53,14 @@ func TestDockApp(t *testing.T) {
 	if dockApp(home) != "" {
 		t.Fatal("found an app that isn't there")
 	}
-	app := filepath.Join(home, "Applications", "Squad.app")
+	// The app added to the Dock before Squad became Torre still opens…
+	old := filepath.Join(home, "Applications", "Squad.app")
+	_ = os.MkdirAll(old, 0o700)
+	if dockApp(home) != old {
+		t.Fatalf("dockApp = %q, want %q", dockApp(home), old)
+	}
+	// …until there is one named Torre.
+	app := filepath.Join(home, "Applications", "Torre.app")
 	_ = os.MkdirAll(app, 0o700)
 	if dockApp(home) != app {
 		t.Fatalf("dockApp = %q, want %q", dockApp(home), app)

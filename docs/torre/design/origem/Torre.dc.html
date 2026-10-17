@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&amp;family=B612+Mono:wght@400;700&amp;family=Archivo:wdth,wght@62..125,400..900&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0,0&amp;display=block">
+<style>
+body{margin:0;background:#d9d5cc;color:#161512;font-family:'B612',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#161512;text-decoration:underline}a:hover{color:#48453e}
+</style>
+</helmet>
+<section id="torre" style="padding:56px 56px 80px;display:flex;flex-direction:column;gap:48px">
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:48px;align-items:end;max-width:1500px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:center;gap:16px">
+<svg width="56" height="64" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#161512"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#161512"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"></path><path d="M28 2 V12" stroke="#161512" stroke-width="2"></path><circle cx="28" cy="2" r="2" fill="#e05a2b"></circle></svg>
+<span style="font:700 62px/0.9 'B612',sans-serif;letter-spacing:.06em">TORRE</span>
+<a href="Cantaria.dc.html" style="font:500 12px 'IBM Plex Mono',monospace;color:#48453e">← Cantaria</a>
+</div>
+<p style="margin:0;font:400 20px/1.4 'B612',sans-serif;color:#2b2a27;text-wrap:balance">Dezenas de voos, cada um na sua rota, e ninguém colide.</p>
+<p style="margin:0;font-size:15px;line-height:1.55;color:#48453e;text-wrap:pretty;max-width:640px">A torre de controle faz o papel do orquestrador, e do próprio produto. Cada agente é um voo: trabalhar é estar no ar, aterrissar um andar é pousar, e a sua aprovação do merge é a autorização de pouso. Pausar as conversas coloca todo mundo em órbita de espera. Um agente que precisa de você é um voo pedindo prioridade. É o vocabulário que mais se encaixa no que o produto já faz.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;font-size:13px;line-height:1.5;color:#48453e">
+<div><div style="font:700 11px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.08em;text-transform:uppercase;color:#161512;margin-bottom:5px">Vocabulário</div>Voo = agente. No ar = trabalhando. Nível de voo = andar. Pista = térreo. Pouso = aterrissar. Órbita de espera = pausa. Prioridade = espera você. Rádio = mensagens.</div>
+<div><div style="font:700 11px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.08em;text-transform:uppercase;color:#161512;margin-bottom:5px">Ficha de voo</div>Cada agente tem uma tira com indicativo, papel, nível, estado e o que está fazendo. A faixa colorida na ponta da tira é o estado, sempre acompanhada da palavra.</div>
+<div><div style="font:700 11px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.08em;text-transform:uppercase;color:#161512;margin-bottom:5px">Tipos</div>B612 e B612 Mono, fontes feitas para cabines de avião, pensadas para leitura rápida em tela.</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<a href="#9a" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">9a</span>Radar</a>
+<a href="#9b" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">9b</span>Fichas · trabalho do dia</a>
+<a href="#9c" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">9c</span>Autorização de pouso</a>
+<a href="#9d" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#161512;color:#f3f1ec;border:1px solid #161512;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">9d</span>Sinóptico · a síntese animada</a>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+
+<div id="9a" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#9a" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">9a</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Radar</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">A tela de radar com a varredura girando. Cada agente é um ponto com o seu bloco de dados, e as fichas de voo ficam ao lado.</span></div>
+
+<div data-screen-label="9a Radar" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#040906;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.25)">
+<div style="position:absolute;left:0;top:0;width:1440px;height:48px;box-sizing:border-box;background:#08110c;border-bottom:1px solid #16301f;display:flex;align-items:center;gap:14px;padding:0 16px;white-space:nowrap">
+<svg width="18" height="22" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#cfeedd"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#cfeedd"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"></path></svg>
+<span style="font:700 17px/1 'B612',sans-serif;letter-spacing:.1em">TORRE</span>
+<span style="width:1px;height:20px;background:#1f3a29"></span>
+<span style="font-size:13px;font-weight:700">relatorios-api</span><span style="font:400 12px 'B612 Mono',monospace;color:#7fa892">aeroporto main · 4 voos</span>
+<span style="flex:1"></span>
+<span style="font:400 12px 'B612 Mono',monospace;color:#7fa892">rádio 12/30 por min · saltos ≤ 6</span>
+<span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #2c5a3d;font-size:12px;font-weight:700;letter-spacing:.04em"><span style="font-family:'Material Symbols Outlined';font-size:16px">all_inclusive</span>TODOS EM ESPERA<span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">⌥P</span></span>
+<span style="font:700 14px 'B612 Mono',monospace">14:32:07Z</span>
+</div>
+
+<svg width="900" height="900" style="position:absolute;left:0;top:0">
+<defs><linearGradient id="t-sw" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3cff8a" stop-opacity="0"></stop><stop offset="1" stop-color="#3cff8a" stop-opacity=".28"></stop></linearGradient></defs>
+<circle cx="450" cy="476" r="400" fill="#06120b" stroke="#1d3a26" stroke-width="1.5"></circle>
+<circle cx="450" cy="476" r="300" fill="none" stroke="#163020" stroke-width="1"></circle>
+<circle cx="450" cy="476" r="200" fill="none" stroke="#163020" stroke-width="1"></circle>
+<circle cx="450" cy="476" r="100" fill="none" stroke="#163020" stroke-width="1"></circle>
+<path d="M50 476 H850 M450 76 V876" stroke="#122818" stroke-width="1"></path>
+<path d="M450 476 L450 76 A400 400 0 0 1 650 129.6 Z" fill="url(#t-sw)"><animateTransform attributeName="transform" type="rotate" from="0 450 476" to="360 450 476" dur="6s" repeatCount="indefinite"></animateTransform></path>
+<rect x="436" y="486" width="28" height="70" fill="none" stroke="#3a6b4c" stroke-width="1.4"></rect>
+<path d="M450 490 V552" stroke="#3a6b4c" stroke-dasharray="4 4"></path>
+<path d="M190 250 a40 40 0 0 1 0 -80 h80 a40 40 0 0 1 0 80 z" fill="none" stroke="#3a6b4c" stroke-width="1.2" stroke-dasharray="5 5"></path>
+<path d="M450 470 L640 340" stroke="#ffcf6e" stroke-width="1.6" stroke-dasharray="6 5"></path>
+<path d="M410 560 L636 348" stroke="#5fe39a" stroke-width="1.4"></path>
+<path d="M660 330 L760 196" stroke="#5a8a6c" stroke-width="1" stroke-dasharray="2 4"></path>
+<g><animateTransform attributeName="transform" type="translate" values="0 0;10 -6;0 0" dur="8s" repeatCount="indefinite"></animateTransform>
+<path d="M650 330 l-6 -10 h12 z" fill="#a9c8ff" transform="rotate(35 650 330)"></path>
+<circle cx="650" cy="330" r="12" fill="none" stroke="#a9c8ff" stroke-width="1"><animate attributeName="r" values="8;16;8" dur="3s" repeatCount="indefinite"></animate></circle>
+<path d="M600 344 L640 336" stroke="#5a8a6c"></path>
+<path d="M640 340 L580 300 M640 340 L590 290" stroke="#2c5a3d" stroke-width="1" opacity=".7"></path></g>
+<g><circle cx="700" cy="600" r="7" fill="#ffcf6e"></circle><circle cx="700" cy="600" r="7" fill="none" stroke="#ffcf6e" stroke-width="2"><animate attributeName="r" values="8;26" dur="1s" repeatCount="indefinite"></animate><animate attributeName="stroke-opacity" values="1;0" dur="1s" repeatCount="indefinite"></animate></circle></g>
+<rect x="404" y="554" width="12" height="12" fill="none" stroke="#5fe39a" stroke-width="2"></rect>
+<path d="M180 200 l5 5 m0 -5 l-5 5" stroke="#3a6b4c" stroke-width="1.6"></path>
+<path d="M760 186 l9 16 h-18 z" fill="none" stroke="#cfeedd" stroke-width="1.4"></path>
+<path d="M450 456 l-8 14 h16 z" fill="#ffcf6e"></path>
+<text x="456" y="99" font-family="B612 Mono" font-size="10" fill="#3a6b4c">40</text><text x="456" y="199" font-family="B612 Mono" font-size="10" fill="#3a6b4c">30</text><text x="456" y="299" font-family="B612 Mono" font-size="10" fill="#3a6b4c">20</text><text x="456" y="399" font-family="B612 Mono" font-size="10" fill="#3a6b4c">10</text>
+</svg>
+
+<div style="position:absolute;left:470px;top:446px;display:flex;flex-direction:column;font:400 11px/1.35 'B612 Mono',monospace;white-space:nowrap"><b style="color:#ffcf6e;font-weight:700">TORRE · PLN</b><span>claude · orquestrador</span><span style="color:#ffcf6e">⧗ AGUARDA IMP 1:58</span></div>
+<span style="position:absolute;left:432px;top:562px;font:400 10px 'B612 Mono',monospace;color:#3a6b4c;white-space:nowrap">PISTA main</span>
+<div style="position:absolute;left:520px;top:282px;box-sizing:border-box;padding:4px 6px;border:1px solid #a9c8ff;background:rgba(4,9,6,.85);display:flex;flex-direction:column;font:400 11px/1.35 'B612 Mono',monospace;white-space:nowrap"><b style="color:#a9c8ff;font-weight:700">IMP · codex</b><span>FL1 feat/export-csv</span><span style="color:#a9c8ff">► NO AR 1:58 · 7f3a</span></div>
+<div style="position:absolute;left:720px;top:606px;box-sizing:border-box;padding:4px 6px;border:1.5px solid #ffcf6e;background:rgba(40,30,8,.9);display:flex;flex-direction:column;font:400 11px/1.35 'B612 Mono',monospace;white-space:nowrap"><b style="color:#ffcf6e;font-weight:700">TST · devin</b><span>FL1 feat/export-csv</span><span style="color:#ffcf6e;font-weight:700">PRIORIDADE · ESPERA VOCÊ</span></div>
+<div style="position:absolute;left:252px;top:572px;width:150px;display:flex;flex-direction:column;align-items:flex-end;font:400 11px/1.35 'B612 Mono',monospace;white-space:nowrap;text-align:right"><b style="color:#5fe39a;font-weight:700">REV · gemini</b><span>EM SOLO · pátio main</span><span style="color:#5fe39a">✓ c8d0 transmitido</span></div>
+<div style="position:absolute;left:96px;top:208px;display:flex;flex-direction:column;font:400 10.5px/1.35 'B612 Mono',monospace;color:#3a6b4c;white-space:nowrap"><span>PES · fora do radar</span><span>encerrado · FL2</span></div>
+<div style="position:absolute;left:780px;top:176px;display:flex;flex-direction:column;font:400 10.5px/1.35 'B612 Mono',monospace;white-space:nowrap"><span>PORTAL :5173</span><span style="color:#7fa892">auxílio · IMP usando</span></div>
+<span style="position:absolute;left:186px;top:154px;font:400 10.5px 'B612 Mono',monospace;color:#5a8a6c;white-space:nowrap">ÓRBITA DE ESPERA · vazia</span>
+<span style="position:absolute;left:520px;top:400px;padding:1px 5px;background:#2a2008;border:1px solid #8a6a26;font:700 10.5px 'B612 Mono',monospace;color:#ffcf6e;white-space:nowrap">7f3a ⧗ 1:58</span>
+
+<div style="position:absolute;left:24px;top:844px;display:flex;align-items:center;gap:16px;font:400 11px 'B612 Mono',monospace;color:#7fa892;white-space:nowrap">
+<span>▲ no ar</span><span style="color:#ffcf6e">● prioridade / aguardando</span><span style="color:#5fe39a">□ em solo</span><span>× fora do radar</span><span>△ auxílio (portal)</span>
+</div>
+
+<div style="position:absolute;left:900px;top:48px;width:540px;height:852px;box-sizing:border-box;background:#0a130e;border-left:1px solid #16301f;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;white-space:nowrap"><span style="font:700 12px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">FICHAS DE VOO</span><span style="flex:1"></span><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">ordem: prioridade</span></div>
+<div style="display:grid;grid-template-columns:10px 92px minmax(0,1fr) 96px;height:72px;background:#efe8cf;color:#1b1a14;font:400 12px/1.35 'B612 Mono',monospace"><span style="background:#e0a526"></span><span style="padding:8px 8px;border-right:1px solid #b9b08f;display:flex;flex-direction:column"><b style="font-size:15px">TST</b><span>devin</span></span><span style="padding:8px 10px;border-right:1px solid #b9b08f;display:flex;flex-direction:column;white-space:nowrap;overflow:hidden"><b>Testador</b><span>quer rodar npm run e2e</span></span><span style="padding:8px 8px;display:flex;flex-direction:column;white-space:nowrap"><b style="color:#7a4f00">PRIORIDADE</b><span>FL1 · 0:24</span></span></div>
+<div style="display:grid;grid-template-columns:10px 92px minmax(0,1fr) 96px;height:72px;background:#efe8cf;color:#1b1a14;font:400 12px/1.35 'B612 Mono',monospace;outline:2px solid #a9c8ff;outline-offset:2px"><span style="background:#3b74d0"></span><span style="padding:8px 8px;border-right:1px solid #b9b08f;display:flex;flex-direction:column"><b style="font-size:15px">IMP</b><span>codex</span></span><span style="padding:8px 10px;border-right:1px solid #b9b08f;display:flex;flex-direction:column;white-space:nowrap;overflow:hidden"><b>Implementador</b><span>escreve csv.ts · 7f3a</span></span><span style="padding:8px 8px;display:flex;flex-direction:column;white-space:nowrap"><b style="color:#1f4f9f">NO AR</b><span>FL1 · 1:58</span></span></div>
+<div style="display:grid;grid-template-columns:10px 92px minmax(0,1fr) 96px;height:72px;background:#efe8cf;color:#1b1a14;font:400 12px/1.35 'B612 Mono',monospace"><span style="background:#e0a526;background-image:repeating-linear-gradient(0deg,#e0a526 0 4px,#efe8cf 4px 7px)"></span><span style="padding:8px 8px;border-right:1px solid #b9b08f;display:flex;flex-direction:column"><b style="font-size:15px">PLN</b><span>claude</span></span><span style="padding:8px 10px;border-right:1px solid #b9b08f;display:flex;flex-direction:column;white-space:nowrap;overflow:hidden"><b>Planejador · torre</b><span>aguarda resposta de IMP</span></span><span style="padding:8px 8px;display:flex;flex-direction:column;white-space:nowrap"><b style="color:#7a4f00">AGUARDA</b><span>pista · 1:58</span></span></div>
+<div style="display:grid;grid-template-columns:10px 92px minmax(0,1fr) 96px;height:72px;background:#e4dec6;color:#1b1a14;font:400 12px/1.35 'B612 Mono',monospace"><span style="background:#2e9b5b"></span><span style="padding:8px 8px;border-right:1px solid #b9b08f;display:flex;flex-direction:column"><b style="font-size:15px">REV</b><span>gemini</span></span><span style="padding:8px 10px;border-right:1px solid #b9b08f;display:flex;flex-direction:column;white-space:nowrap;overflow:hidden"><b>Revisor</b><span>revisou o diff da tarefa 0</span></span><span style="padding:8px 8px;display:flex;flex-direction:column;white-space:nowrap"><b style="color:#1f6b3a">EM SOLO</b><span>pátio · 1:12</span></span></div>
+<div style="display:grid;grid-template-columns:10px 92px minmax(0,1fr) 96px;height:56px;background:#d8d2bb;color:#5a564a;font:400 12px/1.35 'B612 Mono',monospace"><span style="background:repeating-linear-gradient(135deg,#8a8572 0 3px,#d8d2bb 3px 6px)"></span><span style="padding:8px 8px;border-right:1px solid #b9b08f;display:flex;flex-direction:column"><b style="font-size:14px;text-decoration:line-through">PES</b></span><span style="padding:8px 10px;border-right:1px solid #b9b08f;display:flex;align-items:center;white-space:nowrap">Pesquisador · encerrado</span><span style="padding:8px 8px;display:flex;align-items:center">FL2</span></div>
+<div style="display:flex;align-items:center;margin-top:6px;white-space:nowrap"><span style="font:700 12px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">RÁDIO</span><span style="flex:1"></span><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">frequência relatorios-api</span></div>
+<div style="flex:1;border:1px solid #16301f;background:#06100a;padding:10px 12px;display:flex;flex-direction:column;gap:7px;font:400 12px/1.45 'B612 Mono',monospace;overflow:hidden">
+<div><span style="color:#7fa892">14:31 </span><b style="color:#5fe39a">REV → IMP</b> “c8d0: dois comentários em reports.ts, falta teste de BOM.”</div>
+<div><span style="color:#7fa892">14:30 </span><b style="color:#ffcf6e">TORRE → IMP</b> “7f3a: implemente a tarefa 1 do plano.” <span style="color:#ffcf6e">sem resposta 1:58</span></div>
+<div><span style="color:#7fa892">14:28 </span><b>IMP → REV</b> “Revise o diff da tarefa 0.”</div>
+<div><span style="color:#7fa892">14:24 </span><b>IMP → TORRE</b> “Tarefa 0 pronta, 4 testes passando.”</div>
+</div>
+<div style="height:48px;box-sizing:border-box;border:1.5px solid #cfeedd;display:flex;align-items:center;gap:10px;padding:0 6px 0 12px;white-space:nowrap"><span style="font:700 12px 'B612 Mono',monospace">TORRE → IMP</span><span style="flex:1;font-size:12.5px;color:#7fa892">transmitir…</span><span style="height:34px;padding:0 12px;display:inline-flex;align-items:center;background:#cfeedd;color:#040906;font:700 12px 'B612',sans-serif;letter-spacing:.06em">TRANSMITIR</span></div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Ligar.</b> Ligar dois voos é abrir uma frequência entre eles. A linha tracejada âmbar no radar é uma chamada sem resposta; a linha verde, uma resposta.</div>
+<div><b style="color:#161512">Prioridade.</b> O voo que pede você pisca com anel âmbar no radar e sobe para o topo das fichas. Isso não se perde nunca.</div>
+<div><b style="color:#161512">Andares.</b> O nível de voo no bloco de dados é o andar (FL1 = 1º). A pista no centro é o térreo, onde mora a torre.</div>
+</div>
+</div>
+
+<div id="9b" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#9b" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">9b</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Fichas</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">O quadro de fichas como tela de trabalho: colunas por estado, como na torre de verdade, e a ficha escolhida aberta com o terminal do voo.</span></div>
+
+<div data-screen-label="9b Fichas" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#20241f;font-family:'B612',sans-serif;color:#e8eadf;box-shadow:0 2px 14px rgba(0,0,0,.25)">
+<div style="position:absolute;left:0;top:0;width:1440px;height:48px;box-sizing:border-box;background:#141713;border-bottom:1px solid #333a31;display:flex;align-items:center;gap:14px;padding:0 16px;white-space:nowrap">
+<svg width="18" height="22" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#e8eadf"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#e8eadf"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"></path></svg>
+<span style="font:700 17px/1 'B612',sans-serif;letter-spacing:.1em">TORRE</span>
+<span style="width:1px;height:20px;background:#3a4237"></span>
+<span style="font-size:13px;font-weight:700">relatorios-api</span><span style="font:400 12px 'B612 Mono',monospace;color:#9aa391">quadro de fichas</span>
+<span style="flex:1"></span>
+<span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #4a5446;font-size:12px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">flight_takeoff</span>NOVO VOO</span>
+<span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #4a5446;font-size:12px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">all_inclusive</span>TODOS EM ESPERA</span>
+</div>
+
+<div style="position:absolute;left:20px;top:64px;width:920px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+<div style="display:flex;flex-direction:column;gap:8px"><div style="height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#2b3029;font:700 12px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap"><span style="width:8px;height:8px;background:#e0a526"></span>PRIORIDADE</div>
+<div style="background:#efe8cf;color:#1b1a14;display:flex;flex-direction:column;border-left:8px solid #e0a526"><div style="padding:8px 10px;display:flex;justify-content:space-between;font:700 15px 'B612 Mono',monospace">TST<span style="font-size:11px;font-weight:400">devin</span></div><div style="padding:0 10px 8px;font:400 11.5px/1.4 'B612 Mono',monospace">Testador · FL1<br>“Posso rodar npm run e2e?”</div><div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #b9b08f;font:700 11px 'B612',sans-serif;letter-spacing:.06em"><span style="padding:7px;text-align:center;background:#1b1a14;color:#efe8cf">AUTORIZAR</span><span style="padding:7px;text-align:center">NEGAR</span></div></div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#2b3029;font:700 12px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap"><span style="width:8px;height:8px;background:#3b74d0"></span>NO AR</div>
+<div style="background:#efe8cf;color:#1b1a14;display:flex;flex-direction:column;border-left:8px solid #3b74d0;outline:2px solid #e8eadf;outline-offset:3px"><div style="padding:8px 10px;display:flex;justify-content:space-between;font:700 15px 'B612 Mono',monospace">IMP<span style="font-size:11px;font-weight:400">codex</span></div><div style="padding:0 10px 8px;font:400 11.5px/1.4 'B612 Mono',monospace">Implementador · FL1<br>escreve csv.ts · 1:58<br>missão 7f3a da torre</div></div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#2b3029;font:700 12px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap"><span style="width:8px;height:8px;border:1.5px solid #e0a526;box-sizing:border-box"></span>AGUARDANDO</div>
+<div style="background:#efe8cf;color:#1b1a14;display:flex;flex-direction:column;border-left:8px solid #e0a526;border-left-style:dashed"><div style="padding:8px 10px;display:flex;justify-content:space-between;font:700 15px 'B612 Mono',monospace">PLN<span style="font-size:11px;font-weight:400">claude</span></div><div style="padding:0 10px 8px;font:400 11.5px/1.4 'B612 Mono',monospace">Planejador · torre<br>aguarda IMP · 1:58</div></div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#2b3029;font:700 12px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap"><span style="width:8px;height:8px;background:#2e9b5b"></span>EM SOLO</div>
+<div style="background:#e4dec6;color:#1b1a14;display:flex;flex-direction:column;border-left:8px solid #2e9b5b"><div style="padding:8px 10px;display:flex;justify-content:space-between;font:700 15px 'B612 Mono',monospace">REV<span style="font-size:11px;font-weight:400">gemini</span></div><div style="padding:0 10px 8px;font:400 11.5px/1.4 'B612 Mono',monospace">Revisor · pátio main<br>terminou · 1:12</div></div>
+<div style="background:#d8d2bb;color:#5a564a;display:flex;flex-direction:column;border-left:8px solid #8a8572"><div style="padding:8px 10px;font:700 14px 'B612 Mono',monospace;text-decoration:line-through">PES</div><div style="padding:0 10px 8px;font:400 11px 'B612 Mono',monospace">encerrado · FL2</div></div></div>
+</div>
+
+<div style="position:absolute;left:20px;top:420px;width:920px;display:flex;flex-direction:column;gap:8px">
+<div style="height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#2b3029;font:700 12px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:16px">flight_land</span>PEDINDO POUSO<span style="flex:1"></span><span style="font:400 11px 'B612 Mono',monospace;letter-spacing:0;color:#9aa391">aterrissar · sua autorização</span></div>
+<div style="display:grid;grid-template-columns:8px 120px minmax(0,1fr) 180px;background:#efe8cf;color:#1b1a14;font:400 12px/1.4 'B612 Mono',monospace;height:66px"><span style="background:#e8eadf;background-image:repeating-linear-gradient(0deg,#1b1a14 0 6px,#efe8cf 6px 12px)"></span><span style="padding:10px;border-right:1px solid #b9b08f;display:flex;flex-direction:column"><b style="font-size:15px">FL1</b><span>feat/export-csv</span></span><span style="padding:10px;border-right:1px solid #b9b08f;display:flex;flex-direction:column;white-space:nowrap"><b>4 alterações · +188 −14 · a1b9</b><span>testes ✓ · revisão c8d0 ✓ · sem conflito com a pista</span></span><span style="display:flex;align-items:center;justify-content:center;background:#1b1a14;color:#efe8cf;font:700 12px 'B612',sans-serif;letter-spacing:.08em">AUTORIZAR POUSO</span></div>
+<div style="height:30px;margin-top:10px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#2b3029;font:700 12px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:16px">all_inclusive</span>ÓRBITA DE ESPERA<span style="flex:1"></span><span style="font:400 11px 'B612 Mono',monospace;letter-spacing:0;color:#9aa391">vazia · ⌥P põe todos aqui</span></div>
+<div style="height:54px;border:1.5px dashed #4a5446;display:flex;align-items:center;justify-content:center;font:400 12px 'B612 Mono',monospace;color:#9aa391">arraste uma ficha para cá para segurar o voo sem encerrar</div>
+<div style="height:30px;margin-top:10px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#2b3029;font:700 12px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:16px">cell_tower</span>FREQUÊNCIAS ABERTAS</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;font:400 12px 'B612 Mono',monospace;white-space:nowrap"><span style="padding:5px 9px;border:1px solid #e0a526;color:#ffd27a">TORRE ↔ IMP · 7f3a aberta</span><span style="padding:5px 9px;border:1px solid #2e9b5b;color:#8fe8b4">IMP ↔ REV · c8d0 respondida</span><span style="padding:5px 9px;border:1px solid #4a5446">IMP ↔ TST</span><span style="padding:5px 9px;border:1px solid #4a5446">TORRE ↔ REV</span><span style="padding:5px 9px;border:1px solid #4a5446">IMP ↔ PORTAL</span></div>
+</div>
+
+<div style="position:absolute;left:960px;top:64px;width:460px;height:820px;box-sizing:border-box;background:#efe8cf;color:#1b1a14;display:flex;flex-direction:column;border-left:10px solid #3b74d0">
+<div style="padding:12px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;border-bottom:1px solid #b9b08f;font:400 12px 'B612 Mono',monospace;white-space:nowrap"><b style="font-size:24px;grid-row:span 2">IMP</b><b style="font-family:'B612',sans-serif;font-size:15px">Implementador</b><b style="color:#1f4f9f">NO AR 1:58</b><span>codex · FL1 feat/export-csv</span><span>teclado</span></div>
+<div style="padding:8px 14px;background:#f6dc96;font:400 12px 'B612 Mono',monospace;white-space:nowrap;border-bottom:1px solid #b9b08f">MISSÃO 7f3a da TORRE · a torre aguarda há 1:58</div>
+<div style="flex:1;background:#0c100c;color:#dfe8d9;padding:12px 14px;font:11.5px/16.5px 'B612 Mono',monospace;white-space:pre;overflow:hidden"><div style="color:#7fd0d6">[de: Planejador · pedido 7f3a]</div><div>Implemente a tarefa 1 do PLANO.md:</div><div>GET /reports/:id/export.</div><div style="height:16px"></div><div><span style="color:#8fb4f0">• </span>Criando src/reports/csv.ts</div><div style="color:#7f8a7a">  └ escape de aspas e BOM UTF-8</div><div style="height:16px"></div><div><span style="color:#c9a0f0">$ </span>npm test -- reports</div><div><span style="color:#8fd19e"> ✓ </span>reports.export<span style="color:#7f8a7a"> (42 ms)</span></div><div><span style="color:#8fd19e"> ✓ </span>csv.escape<span style="color:#7f8a7a"> (3 ms)</span></div><div><span style="color:#f08a84"> ✗ </span>csv.bom<span style="color:#e9c46a"> esperado "\uFEFF"</span></div><div style="height:16px"></div><div><span style="color:#8fb4f0">• </span>Corrigindo o BOM no stream…</div><div><span style="color:#8fb4f0">◦ </span>Trabalhando<span style="color:#7f8a7a"> (1m 58s)</span></div><div><span style="display:inline-block;width:7px;height:13px;background:#dfe8d9;vertical-align:-2px"></span></div></div>
+<div style="padding:8px 14px;background:#cfe7d4;font:400 12px 'B612 Mono',monospace;white-space:nowrap;border-top:1px solid #b9b08f">RECEBIDO c8d0 de REV · entra no próximo turno</div>
+<div style="height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 6px 0 14px;border-top:1px solid #b9b08f;white-space:nowrap"><span style="flex:1;font:400 12.5px 'B612 Mono',monospace;color:#5a564a">transmitir para IMP…</span><span style="height:38px;padding:0 12px;display:inline-flex;align-items:center;background:#1b1a14;color:#efe8cf;font:700 12px 'B612',sans-serif;letter-spacing:.08em">TRANSMITIR</span></div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Uso diário.</b> Arrastar a ficha entre colunas faz a ação: soltar em “Órbita de espera” pausa o voo, soltar em “Pedindo pouso” pede para aterrissar.</div>
+<div><b style="color:#161512">Ligações.</b> As frequências abertas são as ligações. A que tem chamada sem resposta fica âmbar, e a que acabou de ser respondida fica verde.</div>
+<div><b style="color:#161512">Pouso.</b> A ficha zebrada é um andar pedindo para pousar, com as checagens na própria ficha. O botão é a sua autorização.</div>
+</div>
+</div>
+
+<div id="9c" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#9c" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">9c</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Autorização de pouso</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">Aterrissar como aproximação final: o andar desce pela rampa de planeio, passa por cada checagem e para na curta final esperando você autorizar.</span></div>
+
+<div data-screen-label="9c Autorização de pouso" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#040906;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.25)">
+<div style="position:absolute;left:0;top:0;width:1440px;height:48px;box-sizing:border-box;background:#08110c;border-bottom:1px solid #16301f;display:flex;align-items:center;gap:14px;padding:0 16px;white-space:nowrap">
+<svg width="18" height="22" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#cfeedd"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#cfeedd"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"></path></svg>
+<span style="font:700 17px/1 'B612',sans-serif;letter-spacing:.1em">TORRE</span>
+<span style="width:1px;height:20px;background:#1f3a29"></span>
+<span style="font-size:13px">aproximação</span><span style="font-family:'Material Symbols Outlined';font-size:16px;color:#5a8a6c">chevron_right</span><span style="font-size:13px;font-weight:700">FL1 feat/export-csv → pista main</span>
+<span style="flex:1"></span><span style="font:700 14px 'B612 Mono',monospace">14:32:07Z</span>
+</div>
+<span style="position:absolute;left:40px;top:70px;font:700 12px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">PERFIL DE APROXIMAÇÃO</span>
+<svg width="900" height="760" style="position:absolute;left:0;top:90px">
+<path d="M40 40 H860" stroke="#122818"></path><path d="M40 600 H860" stroke="#1d3a26" stroke-width="1.5"></path>
+<text x="40" y="30" font-family="B612 Mono" font-size="11" fill="#5a8a6c">FL1 · feat/export-csv</text>
+<text x="40" y="624" font-family="B612 Mono" font-size="11" fill="#5a8a6c">PISTA · main</text>
+<path d="M60 70 L820 590" stroke="#5a8a6c" stroke-width="1.5" stroke-dasharray="8 6"></path>
+<path d="M60 70 L660 480" stroke="#5fe39a" stroke-width="3"></path>
+<rect x="700" y="594" width="170" height="12" fill="#1d3a26" stroke="#5a8a6c"></rect>
+<path d="M710 600 H860" stroke="#cfeedd" stroke-dasharray="10 8"></path>
+<circle cx="210" cy="172" r="8" fill="#5fe39a"></circle><circle cx="370" cy="282" r="8" fill="#5fe39a"></circle><circle cx="520" cy="384" r="8" fill="#5fe39a"></circle>
+<g><path d="M660 480 l-14 -6 l4 6 l-4 6 z M652 480 l-10 -14 h5 l12 14 l-12 14 h-5 z" fill="#ffcf6e"></path><circle cx="660" cy="480" r="16" fill="none" stroke="#ffcf6e" stroke-width="1.5"><animate attributeName="r" values="14;30" dur="1.4s" repeatCount="indefinite"></animate><animate attributeName="stroke-opacity" values="1;0" dur="1.4s" repeatCount="indefinite"></animate></circle></g>
+</svg>
+<div style="position:absolute;left:226px;top:236px;display:flex;flex-direction:column;font:400 12px/1.4 'B612 Mono',monospace;white-space:nowrap"><b style="color:#5fe39a">FIXO TESTES ✓</b><span>14/14 · TST · 14:24</span></div>
+<div style="position:absolute;left:386px;top:346px;display:flex;flex-direction:column;font:400 12px/1.4 'B612 Mono',monospace;white-space:nowrap"><b style="color:#5fe39a">FIXO REVISÃO ✓</b><span>c8d0 · REV · tratada</span></div>
+<div style="position:absolute;left:536px;top:448px;display:flex;flex-direction:column;font:400 12px/1.4 'B612 Mono',monospace;white-space:nowrap"><b style="color:#5fe39a">FIXO CONFLITO ✓</b><span>pista andou 0 commits</span></div>
+<div style="position:absolute;left:460px;top:596px;display:flex;flex-direction:column;align-items:flex-end;font:400 12px/1.4 'B612 Mono',monospace;white-space:nowrap;text-align:right"><b style="color:#ffcf6e">CURTA FINAL · AGUARDA VOCÊ</b><span>4 arquivos · +188 −14 · a1b9</span></div>
+
+<div style="position:absolute;left:920px;top:70px;width:496px;display:flex;flex-direction:column;gap:12px">
+<span style="font:700 12px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">RÁDIO DA APROXIMAÇÃO</span>
+<div style="border:1px solid #16301f;background:#06100a;padding:12px 14px;display:flex;flex-direction:column;gap:9px;font:400 12.5px/1.5 'B612 Mono',monospace">
+<div><b>IMP:</b> Torre, FL1 pede pouso na pista main com 4 alterações.</div>
+<div><b style="color:#5fe39a">TORRE:</b> Testes, revisão e conflito ok. Mantenha curta final.</div>
+<div><b style="color:#ffcf6e">TORRE → VOCÊ:</b> Autoriza o pouso de FL1?</div>
+</div>
+<span style="font:700 12px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892;margin-top:6px">CARGA</span>
+<div style="border:1px solid #16301f;display:flex;flex-direction:column;font:400 12.5px 'B612 Mono',monospace">
+<div style="display:flex;padding:9px 12px;border-bottom:1px solid #16301f;white-space:nowrap">src/reports/csv.ts<span style="flex:1"></span><span style="color:#5fe39a">+71</span></div>
+<div style="display:flex;padding:9px 12px;border-bottom:1px solid #16301f;white-space:nowrap">src/reports/reports.ts<span style="flex:1"></span><span style="color:#5fe39a">+48</span>&#160;<span style="color:#ff9d97">−6</span></div>
+<div style="display:flex;padding:9px 12px;border-bottom:1px solid #16301f;white-space:nowrap">src/export/index.ts<span style="flex:1"></span><span style="color:#5fe39a">+52</span>&#160;<span style="color:#ff9d97">−8</span></div>
+<div style="display:flex;padding:9px 12px;white-space:nowrap">test/export.spec.ts<span style="flex:1"></span><span style="color:#5fe39a">+17</span></div>
+</div>
+<div style="padding:10px 12px;border:1px solid #8a6a26;background:#1f1a08;font:400 12.5px/1.5 'B612',sans-serif;color:#f3dfa8;text-wrap:pretty">O IMP continua no ar no FL1. Pousa só o que está em a1b9; o resto segue voando.</div>
+<div style="height:54px;display:flex;align-items:center;justify-content:center;gap:10px;background:#cfeedd;color:#040906;font:700 15px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap;margin-top:6px"><span style="font-family:'Material Symbols Outlined';font-size:22px">flight_land</span>AUTORIZAR POUSO<span style="font:400 12px 'B612 Mono',monospace;letter-spacing:0">⌘↵</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><span style="height:42px;display:flex;align-items:center;justify-content:center;border:1px solid #2c5a3d;font:700 12px 'B612',sans-serif;letter-spacing:.08em">ARREMETER · SEGURAR</span><span style="height:42px;display:flex;align-items:center;justify-content:center;border:1px solid #2c5a3d;font:700 12px 'B612',sans-serif;letter-spacing:.08em">POUSAR E FECHAR FL1</span></div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Aterrissar.</b> Cada checagem é um ponto fixo na rampa de planeio. Se uma falha, o voo arremete sozinho e o rádio diz o motivo.</div>
+<div><b style="color:#161512">Autorização.</b> Nada pousa sem você. É o mesmo controle que já existe hoje, só que com nome e lugar claros.</div>
+<div><b style="color:#161512">Arremeter.</b> Segurar não perde nada: o voo volta para o FL1 e pode pedir pouso de novo depois.</div>
+</div>
+</div>
+
+<div id="9d" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#9d" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#e05a2b;color:#fff;border-radius:2px;text-decoration:none">9d</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Sinóptico · a síntese</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">O melhor das três numa tela só, animada: o radar girando, as fichas, a fila de pouso, o voo que pede você em destaque e o rádio correndo embaixo. É a tela para deixar aberta.</span></div>
+
+<div data-screen-label="9d Sinóptico" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<div style="position:absolute;left:0;top:0;width:1440px;height:48px;box-sizing:border-box;background:#07100b;border-bottom:1px solid #16301f;display:flex;align-items:center;gap:14px;padding:0 16px;white-space:nowrap">
+<svg width="18" height="22" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#cfeedd"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#cfeedd"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"></path></svg>
+<span style="font:700 17px/1 'B612',sans-serif;letter-spacing:.1em">TORRE</span>
+<span style="width:1px;height:20px;background:#1f3a29"></span>
+<span style="font-size:13px;font-weight:700">relatorios-api</span>
+<span style="display:flex;gap:6px;font:400 11.5px 'B612 Mono',monospace;white-space:nowrap"><span style="padding:3px 8px;border:1px solid #3b74d0;color:#a9c8ff">1 NO AR</span><span style="padding:3px 8px;border:1px solid #e0a526;color:#ffd27a">1 PRIORIDADE</span><span style="padding:3px 8px;border:1px dashed #e0a526;color:#ffd27a">1 AGUARDA</span><span style="padding:3px 8px;border:1px solid #2e9b5b;color:#8fe8b4">1 EM SOLO</span><span style="padding:3px 8px;border:1px solid #cfeedd">1 PEDE POUSO</span></span>
+<span style="flex:1"></span>
+<span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid #2c5a3d;font-size:12px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">all_inclusive</span>TODOS EM ESPERA</span>
+<span style="font:700 14px 'B612 Mono',monospace">14:32:07Z</span>
+</div>
+
+<svg width="620" height="800" style="position:absolute;left:0;top:48px">
+<defs><linearGradient id="s-sw" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3cff8a" stop-opacity="0"></stop><stop offset="1" stop-color="#3cff8a" stop-opacity=".32"></stop></linearGradient><radialGradient id="s-bg"><stop offset="0" stop-color="#0a1f12"></stop><stop offset="1" stop-color="#040b07"></stop></radialGradient></defs>
+<circle cx="310" cy="380" r="290" fill="url(#s-bg)" stroke="#1d3a26" stroke-width="1.5"></circle>
+<circle cx="310" cy="380" r="218" fill="none" stroke="#163020"></circle><circle cx="310" cy="380" r="145" fill="none" stroke="#163020"></circle><circle cx="310" cy="380" r="72" fill="none" stroke="#163020"></circle>
+<path d="M20 380 H600 M310 90 V670" stroke="#122818"></path>
+<g><animateTransform attributeName="transform" type="rotate" from="0 310 380" to="360 310 380" dur="5s" repeatCount="indefinite"></animateTransform><path d="M310 380 L310 90 A290 290 0 0 1 455 128.9 Z" fill="url(#s-sw)"></path><path d="M310 380 L455 128.9" stroke="#3cff8a" stroke-width="1.2" stroke-opacity=".7"></path></g>
+<path id="s-imp" d="M430 250 C 470 230, 500 270, 470 300 C 440 330, 400 290, 430 250 Z" fill="none" stroke="#2c5a3d" stroke-width="1" stroke-dasharray="2 4"></path>
+<g><path d="M0 0 l-7 -12 h14 z" fill="#a9c8ff"></path><animateMotion dur="14s" repeatCount="indefinite" rotate="auto"><mpath href="#s-imp"></mpath></animateMotion></g>
+<path id="s-hold" d="M120 200 a28 28 0 0 1 0 -56 h70 a28 28 0 0 1 0 56 z" fill="none" stroke="#3a6b4c" stroke-dasharray="5 5"></path>
+<path id="s-r1" d="M300 374 L440 270" fill="none" stroke="#ffcf6e" stroke-width="1.4" stroke-dasharray="6 5"></path>
+<path id="s-r2" d="M270 440 L440 270" fill="none" stroke="#5fe39a" stroke-width="1.2" stroke-opacity=".6"></path>
+<circle r="5" fill="#9fffc4"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#s-r2"></mpath></animateMotion></circle>
+<circle cx="470" cy="500" r="6" fill="#ffcf6e"></circle>
+<circle cx="470" cy="500" r="6" fill="none" stroke="#ffcf6e" stroke-width="2"><animate attributeName="r" values="7;24" dur="1s" repeatCount="indefinite"></animate><animate attributeName="stroke-opacity" values="1;0" dur="1s" repeatCount="indefinite"></animate></circle>
+<rect x="262" y="434" width="11" height="11" fill="none" stroke="#5fe39a" stroke-width="2"></rect>
+<path d="M310 362 l-8 14 h16 z" fill="#ffcf6e"><animate attributeName="opacity" values="1;.4;1" dur="2s" repeatCount="indefinite"></animate></path>
+<rect x="298" y="390" width="24" height="56" fill="none" stroke="#3a6b4c"></rect>
+<g><path d="M0 0 l-6 -10 h12 z" fill="#cfeedd"></path><animateMotion dur="9s" repeatCount="indefinite" path="M560 140 L330 380" rotate="auto"></animateMotion></g>
+</svg>
+<div style="position:absolute;left:330px;top:396px;font:400 10.5px/1.35 'B612 Mono',monospace;white-space:nowrap"><b style="color:#ffcf6e">TORRE · PLN</b><br><span style="color:#ffcf6e">⧗ aguarda IMP 1:58</span></div>
+<div style="position:absolute;left:480px;top:228px;padding:3px 5px;border:1px solid #a9c8ff;background:rgba(3,7,5,.85);font:400 10.5px/1.35 'B612 Mono',monospace;white-space:nowrap"><b style="color:#a9c8ff">IMP</b> FL1 ► 1:58</div>
+<div style="position:absolute;left:486px;top:510px;padding:3px 5px;border:1.5px solid #ffcf6e;background:rgba(40,30,8,.9);font:400 10.5px/1.35 'B612 Mono',monospace;white-space:nowrap"><b style="color:#ffcf6e">TST PRIORIDADE</b></div>
+<div style="position:absolute;left:180px;top:450px;font:400 10.5px 'B612 Mono',monospace;white-space:nowrap;color:#5fe39a"><b>REV</b> em solo ✓</div>
+<div style="position:absolute;left:120px;top:150px;font:400 10px 'B612 Mono',monospace;white-space:nowrap;color:#5a8a6c">ÓRBITA DE ESPERA · vazia</div>
+<div style="position:absolute;left:520px;top:160px;font:400 10px 'B612 Mono',monospace;white-space:nowrap;color:#7fa892">FL1 → pista</div>
+<div style="position:absolute;left:24px;top:740px;width:580px;display:flex;align-items:center;gap:12px;font:400 11px 'B612 Mono',monospace;color:#7fa892;white-space:nowrap"><span>▲ no ar</span><span style="color:#ffcf6e">● prioridade</span><span style="color:#5fe39a">□ em solo</span><span>△ andar pedindo pouso, descendo para a pista</span></div>
+
+<div style="position:absolute;left:630px;top:64px;width:330px;display:flex;flex-direction:column;gap:7px">
+<span style="font:700 11.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">FICHAS</span>
+<div style="display:grid;grid-template-columns:7px 54px minmax(0,1fr) 78px;height:46px;background:#efe8cf;color:#1b1a14;font:400 11px/1.35 'B612 Mono',monospace"><span style="background:#e0a526"><span style="display:block;width:100%;height:100%;background:#fff3c4"><svg width="7" height="46"><rect width="7" height="46" fill="#e0a526"><animate attributeName="opacity" values="1;.3;1" dur="1s" repeatCount="indefinite"></animate></rect></svg></span></span><b style="padding:6px;font-size:13px">TST</b><span style="padding:6px;white-space:nowrap;overflow:hidden">quer rodar e2e</span><b style="padding:6px;color:#7a4f00">PRIOR.</b></div>
+<div style="display:grid;grid-template-columns:7px 54px minmax(0,1fr) 78px;height:46px;background:#efe8cf;color:#1b1a14;font:400 11px/1.35 'B612 Mono',monospace"><span style="background:#3b74d0"></span><b style="padding:6px;font-size:13px">IMP</b><span style="padding:6px;white-space:nowrap;overflow:hidden">csv.ts · 7f3a</span><b style="padding:6px;color:#1f4f9f">NO AR</b></div>
+<div style="display:grid;grid-template-columns:7px 54px minmax(0,1fr) 78px;height:46px;background:#efe8cf;color:#1b1a14;font:400 11px/1.35 'B612 Mono',monospace"><span style="background:repeating-linear-gradient(0deg,#e0a526 0 4px,#efe8cf 4px 7px)"></span><b style="padding:6px;font-size:13px">PLN</b><span style="padding:6px;white-space:nowrap;overflow:hidden">aguarda IMP</span><b style="padding:6px;color:#7a4f00">1:58</b></div>
+<div style="display:grid;grid-template-columns:7px 54px minmax(0,1fr) 78px;height:46px;background:#e4dec6;color:#1b1a14;font:400 11px/1.35 'B612 Mono',monospace"><span style="background:#2e9b5b"></span><b style="padding:6px;font-size:13px">REV</b><span style="padding:6px;white-space:nowrap;overflow:hidden">diff revisado</span><b style="padding:6px;color:#1f6b3a">SOLO</b></div>
+<span style="font:700 11.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892;margin-top:10px">FILA DE POUSO</span>
+<div style="border:1.5px solid #cfeedd;padding:10px 12px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:baseline;gap:8px;white-space:nowrap"><b style="font:700 15px 'B612 Mono',monospace">FL1</b><span style="font:400 11.5px 'B612 Mono',monospace;color:#7fa892">feat/export-csv · 4 arq.</span></div><div style="display:flex;gap:5px;font:400 11px 'B612 Mono',monospace;white-space:nowrap"><span style="color:#5fe39a">testes ✓</span><span style="color:#5fe39a">revisão ✓</span><span style="color:#5fe39a">conflito ✓</span></div><svg width="300" height="10"><rect width="300" height="4" y="3" fill="#16301f"></rect><rect width="230" height="4" y="3" fill="#5fe39a"><animate attributeName="width" values="210;250;210" dur="3s" repeatCount="indefinite"></animate></rect></svg><span style="height:34px;display:flex;align-items:center;justify-content:center;background:#cfeedd;color:#030705;font:700 12px 'B612',sans-serif;letter-spacing:.08em">AUTORIZAR POUSO</span></div>
+<span style="font:700 11.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892;margin-top:10px">FREQUÊNCIAS</span>
+<div style="display:flex;flex-direction:column;gap:5px;font:400 11.5px 'B612 Mono',monospace;white-space:nowrap"><span style="color:#ffd27a">TORRE ↔ IMP · 7f3a aberta</span><span style="color:#8fe8b4">IMP ↔ REV · c8d0 ok</span><span style="color:#7fa892">IMP ↔ TST · IMP ↔ PORTAL</span></div>
+</div>
+
+<div style="position:absolute;left:984px;top:64px;width:432px;height:250px;box-sizing:border-box;border:2px solid #e0a526;background:#1a1407;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;gap:8px;white-space:nowrap"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#ffcf6e"><animate attributeName="opacity" values="1;.25;1" dur="1s" repeatCount="indefinite"></animate></circle></svg><span style="font:700 12px 'B612',sans-serif;letter-spacing:.12em;color:#ffd27a">PRIORIDADE · PEDE VOCÊ</span><span style="flex:1"></span><span style="font:700 13px 'B612 Mono',monospace;color:#ffd27a">0:24</span></div>
+<div style="display:flex;align-items:baseline;gap:8px;white-space:nowrap"><b style="font:700 26px 'B612 Mono',monospace">TST</b><span style="font-size:15px;font-weight:700">Testador</span><span style="font:400 11.5px 'B612 Mono',monospace;color:#c9b07a">devin · FL1</span></div>
+<div style="background:#0c0a04;padding:9px 11px;font:400 12px/1.5 'B612 Mono',monospace;color:#f3e6c4"><div style="color:#ffd27a">? Posso executar este comando?</div><div>  npm run e2e -- --grep export</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:auto"><span style="height:38px;display:flex;align-items:center;justify-content:center;background:#ffd27a;color:#1a1407;font:700 12px 'B612',sans-serif;letter-spacing:.06em">AUTORIZAR</span><span style="height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #8a6a26;font:700 12px 'B612',sans-serif;letter-spacing:.06em">NEGAR</span><span style="height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #8a6a26;font:700 12px 'B612',sans-serif;letter-spacing:.06em">SEMPRE</span></div>
+</div>
+<div style="position:absolute;left:984px;top:330px;width:432px;height:450px;box-sizing:border-box;border:1px solid #2c4a6e;background:#05080e;display:flex;flex-direction:column">
+<div style="height:38px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #16263a;white-space:nowrap"><b style="font:700 14px 'B612 Mono',monospace;color:#a9c8ff">IMP</b><span style="font-size:13px;font-weight:700">Implementador</span><span style="font:400 11px 'B612 Mono',monospace;color:#7f8fa8">codex · FL1</span><span style="flex:1"></span><span style="font:700 11.5px 'B612 Mono',monospace;color:#a9c8ff">► NO AR 1:58</span></div>
+<div style="flex:1;padding:10px 12px;font:11.5px/16.5px 'B612 Mono',monospace;white-space:pre;color:#d6dfe9;overflow:hidden"><div style="color:#7fd0d6">[de: Planejador · pedido 7f3a]</div><div><span style="color:#8fb4f0">• </span>Criando src/reports/csv.ts</div><div style="height:16px"></div><div><span style="color:#c9a0f0">$ </span>npm test -- reports</div><div><span style="color:#8fd19e"> ✓ </span>reports.export<span style="color:#7f8a7a"> (42 ms)</span></div><div><span style="color:#8fd19e"> ✓ </span>csv.escape<span style="color:#7f8a7a"> (3 ms)</span></div><div><span style="color:#f08a84"> ✗ </span>csv.bom<span style="color:#e9c46a"> esperado "\uFEFF"</span></div><div style="height:16px"></div><div><span style="color:#8fb4f0">• </span>Corrigindo o BOM no stream…</div><div><span style="color:#8fb4f0">◦ </span>Trabalhando<span style="color:#7f8a7a"> (1m 58s)</span></div><div><svg width="8" height="13" style="vertical-align:-2px"><rect width="7" height="13" fill="#d6dfe9"><animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"></animate></rect></svg></div></div>
+<div style="height:46px;flex:none;display:flex;align-items:center;gap:8px;padding:0 5px 0 12px;border-top:1px solid #16263a;white-space:nowrap"><span style="flex:1;font:400 12px 'B612 Mono',monospace;color:#7f8fa8">transmitir para IMP…</span><span style="height:34px;padding:0 12px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 11.5px 'B612',sans-serif;letter-spacing:.06em">TRANSMITIR</span></div>
+</div>
+
+<div style="position:absolute;left:0;top:800px;width:1440px;height:100px;box-sizing:border-box;background:#07100b;border-top:1px solid #16301f"></div>
+<span style="position:absolute;left:16px;top:812px;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;background:#e05a2b;color:#fff;font:700 11px 'B612',sans-serif;letter-spacing:.1em;white-space:nowrap"><svg width="8" height="8"><circle cx="4" cy="4" r="4" fill="#fff"><animate attributeName="opacity" values="1;.2;1" dur="1.2s" repeatCount="indefinite"></animate></circle></svg>RÁDIO AO VIVO</span>
+<svg width="1300" height="60" style="position:absolute;left:140px;top:808px">
+<g><animateTransform attributeName="transform" type="translate" from="0 0" to="-1100 0" dur="28s" repeatCount="indefinite"></animateTransform>
+<text x="0" y="20" font-family="B612 Mono" font-size="13" fill="#cfeedd"><tspan fill="#7fa892">14:32 </tspan><tspan fill="#ffd27a" font-weight="700">TST → TORRE </tspan>pedindo prioridade: autorização para npm run e2e   ·   <tspan fill="#7fa892">14:31 </tspan><tspan fill="#8fe8b4" font-weight="700">REV → IMP </tspan>c8d0, dois comentários, falta teste de BOM   ·   <tspan fill="#7fa892">14:31 </tspan><tspan font-weight="700">FL1 → TORRE </tspan>pede pouso na pista main com 4 alterações   ·   <tspan fill="#7fa892">14:30 </tspan><tspan fill="#ffd27a" font-weight="700">TORRE → IMP </tspan>7f3a, implemente a tarefa 1   ·   <tspan fill="#7fa892">14:32 </tspan><tspan fill="#ffd27a" font-weight="700">TST → TORRE </tspan>pedindo prioridade: autorização para npm run e2e</text>
+</g>
+</svg>
+<div style="position:absolute;left:16px;top:846px;width:1408px;height:42px;box-sizing:border-box;border:1.5px solid #cfeedd;display:flex;align-items:center;gap:10px;padding:0 5px 0 12px;white-space:nowrap"><span style="font:700 12px 'B612 Mono',monospace">TORRE →</span><span style="height:26px;padding:0 9px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:400 12px 'B612 Mono',monospace">IMP</span><span style="flex:1;font-size:12.5px;color:#7fa892">transmitir para qualquer voo… @ escolhe a frequência</span><span style="height:32px;padding:0 14px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 12px 'B612',sans-serif;letter-spacing:.08em">TRANSMITIR</span></div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">O que junta.</b> O radar da 9a para ver o espaço, as fichas e a fila de pouso da 9b e 9c no meio, e o voo prioritário mais o terminal ativo à direita.</div>
+<div><b style="color:#161512">O que se move.</b> A varredura gira, o IMP faz a sua rota no FL1, a resposta do Revisor corre pela frequência, o andar desce para a pista e o rádio passa embaixo.</div>
+<div><b style="color:#161512">Calmo de propósito.</b> Só pisca o que pede você: a prioridade e o cursor. Todo o resto se move devagar, para dar para deixar aberto o dia inteiro.</div>
+</div>
+</div>
+
+</div>
+<p style="margin:0;font-size:13px;line-height:1.5;color:#48453e">Ver também: <a href="Micelio.dc.html">Micélio</a> · <a href="Pauta.dc.html">Pauta</a> · <a href="Cantaria.dc.html">Cantaria</a> · <a href="Ofan.dc.html">Ofan</a> · <a href="Pilar.dc.html">Pilar</a></p>
+</section>
+</x-dc>
+</body>
+</html>

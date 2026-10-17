@@ -112,7 +112,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
           </span>
         )}
         {creator && (
-          <span className="pn-creator" title={`${creator.name} criou esta nota (squad note create); o nome é o que ela deu`}>
+          <span className="pn-creator" title={`${creator.name} criou esta nota (torre note create); o nome é o que ela deu`}>
             <i style={{ background: `var(--r-${creator.color})` }} />
             por {creator.name}
           </span>
@@ -184,7 +184,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
       ) : (
         <div className="nn-body nodrag nowheel" onDoubleClick={() => !note.locked && startEdit()}>
           {content === null ? null : content.trim() === '' ? (
-            <span className="nn-empty">Nota vazia. Clique em Editar, ou ligue um agente a ela para ele escrever com squad note.</span>
+            <span className="nn-empty">Nota vazia. Clique em Editar, ou ligue um agente a ela para ele escrever com torre note.</span>
           ) : (
             <Markdown text={content} highlight={highlight} onToggleTask={note.locked ? undefined : toggleTask} />
           )}
@@ -196,7 +196,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
 
 /** The title's tooltip: the name agents use, and who may change it. */
 function titleHint(note: NoteData, creator: string | undefined, canRename: boolean): string {
-  const use = `Os agentes usam este nome: squad note read "${note.title}"`;
+  const use = `Os agentes usam este nome: torre note read "${note.title}"`;
   const former = note.aliases?.length ? `\nNomes antigos, que continuam valendo: ${note.aliases.map((a) => `"${a}"`).join(', ')}` : '';
   if (!canRename) return `${use}\nNome dado por ${creator ?? 'um agente'}; não muda.${former}`;
   return `${use}${former}\nDuplo clique para renomear (o nome antigo continua valendo para os agentes).`;

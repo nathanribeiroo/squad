@@ -79,7 +79,7 @@ export function ActivityDrawer() {
         ))}
       </div>
       <div className="ad-list">
-        {shown.length === 0 && <div className="ad-empty">Nenhuma conversa ainda. Ligue dois terminais e use squad ask.</div>}
+        {shown.length === 0 && <div className="ad-empty">Nenhuma conversa ainda. Ligue dois terminais e use torre ask.</div>}
         {shown.map((a) => {
           const o = OUTCOME[a.outcome];
           return (

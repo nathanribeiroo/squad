@@ -86,7 +86,7 @@ func TestManagerUsesFloors(t *testing.T) {
 		t.Fatalf("create: %d %s", r.Code, r.Body)
 	}
 	f, ok := e.app.Server.Store().FindFloor("login")
-	if !ok || f.Path != filepath.Join(e.dir, ".squad", "floors", "repo--login") {
+	if !ok || f.Path != filepath.Join(e.dir, ".torre", "floors", "repo--login") {
 		t.Fatalf("floor: %+v", f)
 	}
 

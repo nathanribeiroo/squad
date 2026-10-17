@@ -238,12 +238,12 @@ func TestRoutingByWorkspaceAndTerminal(t *testing.T) {
 		_ = h.hub.App(map[string]string{otherA.ID: a.ID, otherB.ID: b.ID}[n.ID]).Server.Terminals().Get(n.ID).Input([]byte("echo " + marker + "\r"))
 	}
 	tok := h.hub.App(a.ID).Server.TerminalToken(shellA.ID)
-	cli := map[string]string{"X-Terminal-ID": shellA.ID, "X-Squad-Token": tok}
+	cli := map[string]string{"X-Terminal-ID": shellA.ID, "X-Torre-Token": tok}
 	waitFor(t, "check Other from A", func() bool {
 		code, data := h.do("POST", "/cli", map[string]any{"args": []string{"check", "Other"}}, cli)
 		return code == 200 && strings.Contains(string(data), "screen-of-"+otherA.ID[:4]) && !strings.Contains(string(data), "screen-of-"+otherB.ID[:4])
 	})
-	if code, _ := h.do("POST", "/cli", map[string]any{"args": []string{"list"}}, map[string]string{"X-Terminal-ID": shellA.ID, "X-Squad-Token": "wrong"}); code != 401 {
+	if code, _ := h.do("POST", "/cli", map[string]any{"args": []string{"list"}}, map[string]string{"X-Terminal-ID": shellA.ID, "X-Torre-Token": "wrong"}); code != 401 {
 		t.Fatalf("wrong terminal token: %d", code)
 	}
 	if code, _ := h.do("POST", "/cli", map[string]any{"args": []string{"list"}}, map[string]string{"X-Terminal-ID": "nope"}); code != 401 {

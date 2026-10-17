@@ -2,12 +2,11 @@
 
 // End-to-end test with the real Claude Code CLI. It costs one tiny prompt.
 // Run: go test -tags e2e -run TestRealClaude -v ./internal/app/
-// SQUAD_E2E_CWD must be a folder Claude Code already trusts (default: repo root).
+// TORRE_E2E_CWD must be a folder Claude Code already trusts (default: repo root).
 
 package app
 
 import (
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/agentbus"
+	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
@@ -40,7 +40,7 @@ func askRealClaude(t *testing.T, rolePrompt, msg string) (agentbus.Result, strin
 	if _, err := exec.LookPath("claude"); err != nil {
 		t.Skip("claude CLI not installed")
 	}
-	cwd := os.Getenv("SQUAD_E2E_CWD")
+	cwd := config.Getenv("E2E_CWD")
 	if cwd == "" {
 		cwd, _ = filepath.Abs("../..")
 	}

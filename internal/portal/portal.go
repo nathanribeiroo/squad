@@ -40,7 +40,7 @@ type Service struct {
 	port    int
 	log     *slog.Logger
 
-	canvas Canvas // creates and removes portals for agents (squad portal create)
+	canvas Canvas // creates and removes portals for agents (torre portal create)
 
 	mu    sync.Mutex
 	pages map[string]*tab // open portals

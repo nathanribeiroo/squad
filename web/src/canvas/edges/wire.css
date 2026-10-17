@@ -108,6 +108,6 @@
 }
 .wire-unlink:hover { border-color: var(--st-err); color: var(--st-err); }
 
-/* An agent acting on the portal at the other end (squad portal click…). */
+/* An agent acting on the portal at the other end (torre portal click…). */
 .wire-pill.act { animation: wire-fade 2500ms ease-in forwards; }
 .wire-light.act { animation: wire-travel 600ms ease-out forwards, wire-fade 2500ms ease-in forwards; }

@@ -75,7 +75,7 @@ function Settings({ onClose }: { onClose: () => void }) {
               );
             })}
           </div>
-          {none && <p className="fl-warn">Nenhuma CLI de agente foi encontrada no PATH do Squad. Os cartões funcionam; o botão Resumir não aparece.</p>}
+          {none && <p className="fl-warn">Nenhuma CLI de agente foi encontrada no PATH da Torre. Os cartões funcionam; o botão Resumir não aparece.</p>}
           <p className="field-hint">
             Cada resumo gasta um pouco do plano da ferramenta que o escreve, e só roda quando você clica. Ele roda numa pasta vazia, sem ferramentas, e não mexe no
             projeto.

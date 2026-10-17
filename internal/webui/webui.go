@@ -1,5 +1,5 @@
 // Package webui embeds the built web interface (web/ → internal/webui/dist)
-// so the squad binary serves the canvas without external files.
+// so the torre binary serves the canvas without external files.
 package webui
 
 import (

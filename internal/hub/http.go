@@ -77,7 +77,7 @@ func (h *Hub) handleTerminal(w http.ResponseWriter, r *http.Request) {
 	if ws == nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte("squad: this command only works inside a Squad terminal (missing or invalid terminal credentials)\n"))
+		_, _ = w.Write([]byte("torre: this command only works inside a Torre terminal (missing or invalid terminal credentials)\n"))
 		return
 	}
 	ws.term.ServeHTTP(w, r)

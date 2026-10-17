@@ -1,3 +1,4 @@
+import './lib/legacyStorage'; // before the store reads its settings
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/geist';

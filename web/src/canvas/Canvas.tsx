@@ -35,11 +35,11 @@ const edgeTypes = { wire: WireEdge };
 // Each session of a workspace (a canvas of its own), and each of its floors,
 // keeps its own pan and zoom; before sessions, the workspace kept it.
 const viewportKey = (ws: string | null, session: string | null, floor: string) =>
-  `squad.viewport.${ws ?? ''}${session ? `.s.${session}` : ''}${floor ? `.${floor}` : ''}`;
+  `torre.viewport.${ws ?? ''}${session ? `.s.${session}` : ''}${floor ? `.${floor}` : ''}`;
 
 function savedViewport(ws: string | null, session: string | null, floor: string): Viewport {
   try {
-    const legacy = floor ? null : localStorage.getItem('squad.viewport');
+    const legacy = floor ? null : localStorage.getItem('torre.viewport');
     const saved = localStorage.getItem(viewportKey(ws, session, floor)) ?? localStorage.getItem(viewportKey(ws, null, floor));
     const v = JSON.parse(saved ?? legacy ?? '') as Viewport;
     if (Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.zoom)) return v;

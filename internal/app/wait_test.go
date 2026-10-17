@@ -22,7 +22,7 @@ func waitEnv(t *testing.T) *env {
 }
 
 // An ask that times out while the agent is still in its turn says so;
-// squad wait then returns the agent's final answer when it finishes, and
+// torre wait then returns the agent's final answer when it finishes, and
 // its last answer once it's done.
 func TestWaitAfterTimeout(t *testing.T) {
 	e := waitEnv(t)
@@ -31,7 +31,7 @@ func TestWaitAfterTimeout(t *testing.T) {
 	e.connect(a, arq)
 
 	r := e.run(a, "ask", "Arq", "SLEEP:3")
-	if r.Source != "timeout" || !strings.Contains(r.Body, `squad wait "Arq"`) {
+	if r.Source != "timeout" || !strings.Contains(r.Body, `torre wait "Arq"`) {
 		t.Fatalf("ask: source=%s body=%s", r.Source, r.Body)
 	}
 
@@ -71,11 +71,11 @@ func TestWaitReceivesMessages(t *testing.T) {
 	b := e.agentOfType("B", "claude", "FAKEAGENT_HOOK=claude")
 	e.connect(a, b)
 
-	if r := e.run(a, "ask", "B", "RUN:sleep 3; squad ask A pergunta-de-b"); r.Source != "timeout" {
+	if r := e.run(a, "ask", "B", "RUN:sleep 3; torre ask A pergunta-de-b"); r.Source != "timeout" {
 		t.Fatalf("ask: source=%s body=%s", r.Source, r.Body)
 	}
 	r := e.run(a, "wait", "B")
-	m := regexp.MustCompile(`^\[de: B · pedido ([0-9a-f]+)\] pergunta-de-b\n\[squad: "B" sent this while you were waiting for its answer`).FindStringSubmatch(r.Body)
+	m := regexp.MustCompile(`^\[de: B · pedido ([0-9a-f]+)\] pergunta-de-b\n\[torre: "B" sent this while you were waiting for its answer`).FindStringSubmatch(r.Body)
 	if r.Source != "message" || m == nil {
 		t.Fatalf("wait: source=%s body=%s", r.Source, r.Body)
 	}
@@ -98,11 +98,11 @@ func TestWaitRefusesCycle(t *testing.T) {
 	b := e.agent("B")
 	c := e.agent("C")
 	e.connect(a, b)
-	r := e.run(a, "ask", "B", "RUN:squad wait A")
+	r := e.run(a, "ask", "B", "RUN:torre wait A")
 	if !strings.Contains(r.Body, `"A" is waiting for you (its request `) {
 		t.Fatalf("cycle: %s", r.Body)
 	}
-	for args, want := range map[string]string{"wait C": "not connected", "wait": "Usage: squad wait", "wait --x": "Usage: squad wait"} {
+	for args, want := range map[string]string{"wait C": "not connected", "wait": "Usage: torre wait", "wait --x": "Usage: torre wait"} {
 		if r := e.run(a, strings.Fields(args)...); r.Code < 400 || !strings.Contains(r.Body, want) {
 			t.Fatalf("%s: %d %s", args, r.Code, r.Body)
 		}

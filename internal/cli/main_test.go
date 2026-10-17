@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bytes"
@@ -10,13 +10,27 @@ import (
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 )
 
+// squad, the name from before Squad became Torre, runs the same commands.
+func TestLegacyName(t *testing.T) {
+	var out, errb bytes.Buffer
+	if code := Legacy([]string{"version"}, &out, &errb); code != 0 || !strings.HasPrefix(out.String(), "torre ") || !strings.Contains(errb.String(), "squad is now torre") {
+		t.Fatalf("squad version: code=%d out=%q err=%q", code, out.String(), errb.String())
+	}
+	errb.Reset()
+	t.Setenv("TORRE_URL", "")
+	t.Setenv("SQUAD_URL", "")
+	if code := Legacy([]string{"hook", "claude-stop", "{}"}, &out, &errb); code != 0 || errb.Len() != 0 {
+		t.Fatalf("squad hook (agents run it): code=%d err=%q", code, errb.String())
+	}
+}
+
 func TestRunDispatch(t *testing.T) {
 	var out, errb bytes.Buffer
-	if code := run([]string{"version"}, &out, &errb); code != 0 || !strings.HasPrefix(out.String(), "squad ") {
+	if code := run([]string{"version"}, &out, &errb); code != 0 || !strings.HasPrefix(out.String(), "torre ") {
 		t.Fatalf("version: code=%d out=%q", code, out.String())
 	}
 	out.Reset()
-	if code := run(nil, &out, &errb); code != 0 || !strings.Contains(out.String(), "Usage: squad") {
+	if code := run(nil, &out, &errb); code != 0 || !strings.Contains(out.String(), "Usage: torre") {
 		t.Fatalf("help: code=%d out=%q", code, out.String())
 	}
 	errb.Reset()
@@ -33,8 +47,8 @@ func TestTerminalCommandsAreRouted(t *testing.T) {
 	}
 	for _, line := range strings.Split(agentbus.Usage, "\n") {
 		f := strings.Fields(line)
-		if len(f) > 1 && f[0] == "squad" && !known[f[1]] {
-			t.Errorf("squad %s is in the terminal help but not a command of the squad binary", f[1])
+		if len(f) > 1 && f[0] == "torre" && !known[f[1]] {
+			t.Errorf("torre %s is in the terminal help but not a command of the torre binary", f[1])
 		}
 	}
 	for _, args := range [][]string{{"ask", "A", "m"}, {"wait", "A"}} {
@@ -49,12 +63,27 @@ func TestTerminalCommandsAreRouted(t *testing.T) {
 
 func TestInstallSkill(t *testing.T) {
 	dir := t.TempDir()
+	// The skill installed before Squad became Torre goes; a skill of the
+	// user's that happens to be named squad stays.
+	_ = os.MkdirAll(filepath.Join(dir, "squad"), 0o755)
+	_ = os.WriteFile(filepath.Join(dir, "squad", "SKILL.md"), []byte("---\nname: squad\ndescription: x\n---\n"), 0o644)
 	var out, errb bytes.Buffer
 	if code := run([]string{"install-skill", "-dir", dir}, &out, &errb); code != 0 {
 		t.Fatalf("install-skill: %d %s", code, errb.String())
 	}
-	data, err := os.ReadFile(filepath.Join(dir, "squad", "SKILL.md"))
-	if err != nil || !strings.Contains(string(data), "name: squad") || !strings.Contains(string(data), "squad reply") {
+	if _, err := os.Stat(filepath.Join(dir, "squad")); err == nil {
+		t.Fatalf("the old squad skill is still there: %s", out.String())
+	}
+	_ = os.MkdirAll(filepath.Join(dir, "squad"), 0o755)
+	_ = os.WriteFile(filepath.Join(dir, "squad", "SKILL.md"), []byte("---\nname: my-squad\n---\n"), 0o644)
+	if code := run([]string{"install-skill", "-dir", dir}, &out, &errb); code != 0 {
+		t.Fatalf("install-skill again: %d %s", code, errb.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "squad", "SKILL.md")); err != nil {
+		t.Fatal("removed a skill that isn't the old one")
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "torre", "SKILL.md"))
+	if err != nil || !strings.Contains(string(data), "name: torre") || !strings.Contains(string(data), "torre reply") {
 		t.Fatalf("skill file: %v\n%s", err, data)
 	}
 }
@@ -67,12 +96,12 @@ func TestInstallSkillDevin(t *testing.T) {
 	if code := run([]string{"install-skill", "-agent", "devin"}, &out, &errb); code != 0 {
 		t.Fatalf("install-skill devin: %d %s", code, errb.String())
 	}
-	if _, err := os.Stat(filepath.Join(cfg, "devin", "skills", "squad", "SKILL.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(cfg, "devin", "skills", "torre", "SKILL.md")); err != nil {
 		t.Fatalf("devin skill: %v (%s)", err, out.String())
 	}
 	// Devin reads MCP servers only from its mcp_config.json.
 	if data, err := os.ReadFile(filepath.Join(cfg, "devin", "mcp_config.json")); err != nil ||
-		!strings.Contains(string(data), `"squad"`) || !strings.Contains(string(data), `"mcp"`) {
+		!strings.Contains(string(data), `"torre"`) || !strings.Contains(string(data), `"mcp"`) {
 		t.Fatalf("devin mcp config: %v %s", err, data)
 	}
 	if code := run([]string{"install-skill", "-agent", "gemini"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unknown agent") {
@@ -85,7 +114,7 @@ func TestClientOutsideTerminal(t *testing.T) {
 	var out, errb bytes.Buffer
 	for _, cmd := range [][]string{{"list"}, {"note", "list"}, {"portal", "snapshot"}} {
 		errb.Reset()
-		if code := run(cmd, &out, &errb); code != 1 || !strings.Contains(errb.String(), "only works inside a Squad terminal") {
+		if code := run(cmd, &out, &errb); code != 1 || !strings.Contains(errb.String(), "only works inside a Torre terminal") {
 			t.Fatalf("%s outside: %d %q", cmd[0], code, errb.String())
 		}
 	}
@@ -107,12 +136,12 @@ func TestInstallSkillFindsTheAgents(t *testing.T) {
 	if code := run([]string{"install-skill"}, &out, &errb); code != 0 {
 		t.Fatalf("install-skill: %d %s", code, errb.String())
 	}
-	claude := filepath.Join(home, ".claude", "skills", "squad", "SKILL.md")
-	devin := filepath.Join(cfg, "devin", "skills", "squad", "SKILL.md")
+	claude := filepath.Join(home, ".claude", "skills", "torre", "SKILL.md")
+	devin := filepath.Join(cfg, "devin", "skills", "torre", "SKILL.md")
 	if _, err := os.Stat(claude); err != nil {
 		t.Fatalf("no agent found: Claude Code's skill expected: %v", err)
 	}
-	if _, err := os.Stat(devin); err == nil || !strings.Contains(out.String(), "squad install-skill -agent devin") {
+	if _, err := os.Stat(devin); err == nil || !strings.Contains(out.String(), "torre install-skill -agent devin") {
 		t.Fatalf("Devin's skill installed without Devin, or no hint:\n%s", out.String())
 	}
 	_ = os.MkdirAll(filepath.Join(cfg, "devin"), 0o700) // Devin is set up here
@@ -121,7 +150,7 @@ func TestInstallSkillFindsTheAgents(t *testing.T) {
 		t.Fatalf("install-skill: %d %s", code, errb.String())
 	}
 	if _, err := os.Stat(devin); err != nil || !strings.Contains(out.String(), "Claude Code") || !strings.Contains(out.String(), "MCP") ||
-		strings.Contains(out.String(), "não encontrado") || !strings.HasPrefix(out.String(), "squad ") {
+		strings.Contains(out.String(), "não encontrado") || !strings.HasPrefix(out.String(), "torre ") {
 		t.Fatalf("both agents: %v\n%s", err, out.String())
 	}
 	if code := run([]string{"install-skill", "-agent", "all", "-dir", t.TempDir()}, &out, &errb); code != 2 {

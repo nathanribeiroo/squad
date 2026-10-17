@@ -27,16 +27,16 @@ func TestDefaults(t *testing.T) {
 	if strings.Join(ids, ",") != "plan,arch,impl,rev,test" || got[4].Name != "Testador" || !got[4].Builtin || got[4].Edited {
 		t.Fatalf("defaults: %+v", got)
 	}
-	if !strings.Contains(got[4].Prompt, "squad portal snapshot") {
+	if !strings.Contains(got[4].Prompt, "torre portal snapshot") {
 		t.Fatalf("the tester tests web pages through the portal: %q", got[4].Prompt)
 	}
-	if !got[0].Manager || got[1].Manager || got[4].Manager || !strings.Contains(got[0].Prompt, "squad new") || !strings.Contains(got[4].Prompt, "squad portal create") {
+	if !got[0].Manager || got[1].Manager || got[4].Manager || !strings.Contains(got[0].Prompt, "torre new") || !strings.Contains(got[4].Prompt, "torre portal create") {
 		t.Fatal("the Planejador is a manager that creates its team; the Testador opens portals")
 	}
 	// The Arquiteto designs in a note; the Planejador calls it and shares the
 	// note; the Implementador and the Revisor follow it.
 	arch := got[1]
-	if arch.Name != "Arquiteto" || arch.Color != "indigo" || arch.Icon != "architecture" || !strings.Contains(arch.Prompt, `squad note create "Arquitetura`) {
+	if arch.Name != "Arquiteto" || arch.Color != "indigo" || arch.Icon != "architecture" || !strings.Contains(arch.Prompt, `torre note create "Arquitetura`) {
 		t.Fatalf("arquiteto: %+v", arch)
 	}
 	for i, want := range map[int]string{0: "--role arch", 2: "nota de arquitetura", 3: "nota de arquitetura"} {
@@ -145,7 +145,7 @@ func TestOpenBadFile(t *testing.T) {
 	}
 }
 
-// A built-in role added by a newer Squad keeps its name; a role the user made
+// A built-in role added by a newer Torre keeps its name; a role the user made
 // with that name keeps its id and instructions under another name.
 func TestBuiltinNameClash(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "roles.json")

@@ -1,5 +1,5 @@
-// Package server is Squad's local HTTP server: the REST API for the canvas,
-// WebSockets for events and terminal I/O, the endpoint used by the `squad`
+// Package server is Torre's local HTTP server: the REST API for the canvas,
+// WebSockets for events and terminal I/O, the endpoint used by the `torre`
 // CLI from inside terminals, and the embedded web UI. It only listens on
 // loopback and checks Host/Origin to defend against DNS rebinding.
 package server
@@ -27,15 +27,20 @@ import (
 	"github.com/nathanribeiroo/squad/internal/webui"
 )
 
-// SessionCookie holds the browser session token.
-const SessionCookie = "squad_session"
+// SessionCookie holds the browser session token. LegacySessionCookie is
+// its name before Squad became Torre: still accepted, so nobody has to log
+// in again (the UI replaces it with the new one).
+const (
+	SessionCookie       = "torre_session"
+	LegacySessionCookie = "squad_session"
+)
 
 // Options configure a Server.
 type Options struct {
 	Port    int          // loopback port the server listens on
 	Token   string       // session token for the browser and admin clients
 	Store   *store.Store // the workspace
-	CLIPath string       // absolute path of the squad binary (put on terminals' PATH)
+	CLIPath string       // absolute path of the torre binary (put on terminals' PATH)
 	Logger  *slog.Logger
 }
 
@@ -226,6 +231,8 @@ func ValidSession(r *http.Request, token string) bool {
 	tok := ""
 	if c, err := r.Cookie(SessionCookie); err == nil {
 		tok = c.Value
+	} else if c, err := r.Cookie(LegacySessionCookie); err == nil {
+		tok = c.Value
 	}
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		tok = strings.TrimPrefix(h, "Bearer ")
@@ -257,7 +264,7 @@ var PublicFiles = map[string]bool{
 
 // UI accepts ?token= once, sets the session cookie and redirects to the URL
 // without it (other parameters, like ?ws=, are kept); without a session it
-// shows a page to paste the URL that `squad serve` printed.
+// shows a page to paste the URL that `torre serve` printed.
 func UI(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Registered as "/" (a "GET /" pattern would clash with "/api/").
@@ -275,10 +282,7 @@ func UI(token string, next http.Handler) http.Handler {
 				loginPage(w, "Esse link é de uma sessão antiga ou está incompleto.")
 				return
 			}
-			http.SetCookie(w, &http.Cookie{
-				Name: SessionCookie, Value: token, Path: "/", MaxAge: SessionMaxAge,
-				HttpOnly: true, SameSite: http.SameSiteStrictMode,
-			})
+			setSessionCookie(w, token)
 			q.Del("token")
 			dest := r.URL.Path
 			if len(q) > 0 {
@@ -291,7 +295,18 @@ func UI(token string, next http.Handler) http.Handler {
 			loginPage(w, "")
 			return
 		}
+		if _, err := r.Cookie(SessionCookie); err != nil {
+			setSessionCookie(w, token) // logged in with the cookie from before Torre
+			http.SetCookie(w, &http.Cookie{Name: LegacySessionCookie, Path: "/", MaxAge: -1})
+		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+func setSessionCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: SessionCookie, Value: token, Path: "/", MaxAge: SessionMaxAge,
+		HttpOnly: true, SameSite: http.SameSiteStrictMode,
 	})
 }
 
@@ -307,17 +322,18 @@ func loginPage(w http.ResponseWriter, problem string) {
 	fmt.Fprint(w, strings.Replace(loginHTML, "{{problem}}", problem, 1))
 }
 
-const loginHTML = `<!doctype html><html lang="pt-BR" translate="no"><meta charset="utf-8"><title>Squad</title>
+const loginHTML = `<!doctype html><html lang="pt-BR" translate="no"><meta charset="utf-8"><title>Torre</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.svg">
 <style>
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#111214;color:#e8e9ec;font:14px/1.5 system-ui,sans-serif}
-main{max-width:480px;padding:24px}h1{font:700 18px ui-monospace,monospace;margin:0 0 12px}p{color:#a9acb3;margin:0 0 14px}
-code{color:#e8e9ec}.err{color:#f0a35e}form{display:flex;gap:8px}
-input{flex:1;min-width:0;height:32px;padding:0 10px;border-radius:6px;border:1px solid #3c3f46;background:#1a1b1e;color:inherit;font:inherit}
-button{height:32px;padding:0 14px;border-radius:6px;border:1px solid #3c3f46;background:#2b2d32;color:inherit;font:inherit;cursor:pointer}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#030705;color:#cfeedd;font:14px/1.5 system-ui,sans-serif}
+main{max-width:480px;padding:24px}h1{display:flex;align-items:center;gap:10px;font:700 15px/1 system-ui,sans-serif;letter-spacing:.1em;margin:0 0 16px}
+p{color:#9fc4ae;margin:0 0 14px}code{color:#cfeedd}.err{color:#ffd27a}form{display:flex;gap:8px}
+input{flex:1;min-width:0;height:34px;padding:0 10px;border-radius:0;border:1px solid #2c5a3d;background:#07100b;color:inherit;font:inherit}
+input:focus{outline:2px solid #cfeedd;outline-offset:1px}
+button{height:34px;padding:0 16px;border-radius:0;border:0;background:#cfeedd;color:#030705;font:700 12px system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
 </style>
-<main><h1>squad</h1>{{problem}}
-<p>Para entrar, rode <code>squad serve</code> no terminal: ele abre o Squad já com o login. Ou cole aqui a URL que ele mostrou.</p>
+<main><h1><svg width="16" height="20" viewBox="0 0 56 64" aria-hidden="true"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#cfeedd"/><path d="M10 26 H46 L40 12 H16 Z" fill="#cfeedd"/><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"/><circle cx="28" cy="4" r="3" fill="#e05a2b"/></svg>TORRE</h1>{{problem}}
+<p>Para entrar, rode <code>torre serve</code> no terminal: ele abre a Torre já com o login. Ou cole aqui a URL que ele mostrou.</p>
 <form id="f"><input id="u" placeholder="http://127.0.0.1:…/?token=…" autofocus><button>Entrar</button></form></main>
 <script>
 document.getElementById('f').onsubmit = function (e) {
@@ -334,16 +350,19 @@ type ctxKey int
 const callerKey ctxKey = 0
 
 // terminalAuth authenticates calls from inside a terminal: X-Terminal-ID
-// plus that terminal's X-Squad-Token.
+// plus that terminal's X-Torre-Token.
 func (s *Server) terminalAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Terminal-ID")
-		tok := r.Header.Get("X-Squad-Token")
+		tok := r.Header.Get("X-Torre-Token")
+		if tok == "" {
+			tok = r.Header.Get("X-Squad-Token") // a squad binary from before the rename
+		}
 		s.mu.Lock()
 		want, ok := s.termTokens[id]
 		s.mu.Unlock()
 		if id == "" || !ok || subtle.ConstantTimeCompare([]byte(tok), []byte(want)) != 1 {
-			writeText(w, http.StatusUnauthorized, "squad: this command only works inside a Squad terminal (missing or invalid terminal credentials)")
+			writeText(w, http.StatusUnauthorized, "torre: this command only works inside a Torre terminal (missing or invalid terminal credentials)")
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), callerKey, id)))
@@ -358,7 +377,7 @@ func CallerID(r *http.Request) string {
 
 func (s *Server) handleCLI(w http.ResponseWriter, r *http.Request) {
 	if s.cliHandler == nil {
-		writeText(w, http.StatusNotImplemented, "squad: CLI not available yet")
+		writeText(w, http.StatusNotImplemented, "torre: CLI not available yet")
 		return
 	}
 	s.cliHandler.ServeHTTP(w, r)
@@ -366,7 +385,7 @@ func (s *Server) handleCLI(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 	if s.hookHandler == nil {
-		writeText(w, http.StatusNotImplemented, "squad: hooks not available yet")
+		writeText(w, http.StatusNotImplemented, "torre: hooks not available yet")
 		return
 	}
 	s.hookHandler.ServeHTTP(w, r)

@@ -153,7 +153,7 @@ func (s *Service) load() {
 		return
 	}
 	for _, c := range list {
-		c.Summarizing = false // that run ended with the last Squad
+		c.Summarizing = false // that run ended with the last Torre process
 		s.cards[c.Terminal] = &c
 	}
 }

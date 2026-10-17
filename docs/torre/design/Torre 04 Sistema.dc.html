@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&amp;family=B612+Mono:wght@400;700&amp;family=Archivo:wdth,wght@62..125,400..900&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0,0&amp;display=block">
+<style>
+body{margin:0;background:#d9d5cc;color:#161512;font-family:'B612',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#161512;text-decoration:underline}a:hover{color:#48453e}
+</style>
+</helmet>
+<section id="torre-sistema" style="padding:56px 56px 80px;display:flex;flex-direction:column;gap:48px">
+
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:1500px">
+<svg width="34" height="40" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#161512"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#161512"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"></path><circle cx="28" cy="2" r="2" fill="#e05a2b"></circle></svg>
+<span style="font:700 36px/0.9 'B612',sans-serif;letter-spacing:.06em">TORRE</span>
+<span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;color:#48453e">Produto · 04 Sistema</span>
+<span style="flex:1"></span>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<a href="Torre 01 Nucleo.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">01</span>Núcleo</a>
+<a href="Torre 02 Comunicacao.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">02</span>Comunicação</a>
+<a href="Torre 03 Estrutura.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#f3f1ec;border:1px solid #a39d90;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">03</span>Estrutura</a>
+<a href="Torre 04 Sistema.dc.html" style="display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;background:#161512;color:#f3f1ec;border:1px solid #161512;border-radius:2px;font-size:12.5px;font-weight:600;text-decoration:none"><span style="font:600 11px 'IBM Plex Mono',monospace">04</span>Sistema</a>
+</div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+
+<div id="16" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#16" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">16</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Novo voo e menu do voo</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">Abrir um agente, um shell ou um comando próprio; e tudo o que dá para fazer com ele depois.</span></div>
+<div data-screen-label="16 Novo voo" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<dc-import name="TorreBar" view="espaco" level="pista" hint-size="1440px,48px" style="position:absolute;left:0;top:0"></dc-import>
+<div style="position:absolute;left:0;top:48px;width:1440px;height:852px;background-color:#050b08;background-image:radial-gradient(#15301f 1px,transparent 1px);background-size:20px 20px"></div>
+<div style="position:absolute;left:12px;top:64px;width:40px;height:320px;box-sizing:border-box;background:#07100b;border:1px solid #1f3a29;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0"><span style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#9fc4ae;font-family:'Material Symbols Outlined';font-size:18px">near_me</span><span style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#9fc4ae;font-family:'Material Symbols Outlined';font-size:18px">pan_tool</span><span style="width:22px;height:1px;background:#1f3a29;margin:3px 0"></span><span style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#cfeedd;color:#030705;font-family:'Material Symbols Outlined';font-size:18px">terminal</span></div>
+
+<div style="position:absolute;left:62px;top:64px;width:420px;box-sizing:border-box;background:#07100b;border:1.5px solid #cfeedd;box-shadow:0 14px 36px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 8px 0 16px;border-bottom:1px solid #16301f"><b style="font:700 13px 'B612',sans-serif;letter-spacing:.1em">NOVO VOO</b><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">na pista · main</span><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#7fa892">close</span></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">AGENTE</span>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font:400 12px 'B612 Mono',monospace">
+<span style="height:44px;display:flex;flex-direction:column;justify-content:center;padding:0 9px;border:1.5px solid #cfeedd;background:#10241a"><b>Claude Code</b><span style="font-size:10px;color:#5fe39a">✓ instalado</span></span>
+<span style="height:44px;display:flex;flex-direction:column;justify-content:center;padding:0 9px;border:1px solid #2c5a3d"><b>Codex</b><span style="font-size:10px;color:#5fe39a">✓ instalado</span></span>
+<span style="height:44px;display:flex;flex-direction:column;justify-content:center;padding:0 9px;border:1px solid #2c5a3d"><b>Devin</b><span style="font-size:10px;color:#5fe39a">✓ instalado</span></span>
+<span style="height:44px;display:flex;flex-direction:column;justify-content:center;padding:0 9px;border:1px solid #2c5a3d;color:#7fa892"><b>Gemini</b><span style="font-size:10px;color:#ff9a8f">✕ não achado</span></span>
+<span style="height:44px;display:flex;flex-direction:column;justify-content:center;padding:0 9px;border:1px solid #2c5a3d"><b>Shell</b><span style="font-size:10px;color:#7fa892">bash</span></span>
+<span style="height:44px;display:flex;flex-direction:column;justify-content:center;padding:0 9px;border:1px solid #2c5a3d"><b>Comando</b><span style="font-size:10px;color:#7fa892">próprio</span></span>
+</div></div>
+<div style="display:grid;grid-template-columns:1fr 84px;gap:8px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">NOME</span><span style="height:32px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1.5px solid #cfeedd;font-size:13px">Revisor 2</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">INDICATIVO</span><span style="height:32px;display:flex;align-items:center;justify-content:center;background:#030705;border:1px solid #2c5a3d;font:700 13px 'B612 Mono',monospace">RV2</span></label>
+</div>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">PAPEL</span><span style="height:32px;display:flex;align-items:center;gap:8px;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font-size:13px"><span style="width:8px;height:8px;background:#f29ac0"></span>Revisor<span style="flex:1"></span><span style="font-size:11.5px;text-decoration:underline;color:#9fc4ae">editar papéis…</span><span style="font-family:'Material Symbols Outlined';font-size:16px;color:#7fa892">expand_more</span></span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">PASTA <span style="font-weight:400;letter-spacing:0">(opcional)</span></span><span style="height:32px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font:400 12px 'B612 Mono',monospace;color:#5a8a6c">relativa ao nível · ex.: packages/api</span></label>
+<div style="height:34px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid #1f3a29;font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#9fc4ae"><span style="font-family:'Material Symbols Outlined';font-size:16px">chevron_right</span>AVANÇADO<span style="font:400 11px 'B612 Mono',monospace;letter-spacing:0;color:#5a8a6c">comando · shell · líder</span></div>
+</div>
+<div style="height:54px;display:flex;align-items:center;gap:8px;padding:0 16px;border-top:1px solid #16301f"><span style="font:400 11px 'B612 Mono',monospace;color:#5a8a6c">nasce no centro da tela</span><span style="flex:1"></span><span style="height:34px;padding:0 16px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">DECOLAR</span></div>
+</div>
+
+<div style="position:absolute;left:520px;top:64px;width:420px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;display:flex;flex-direction:column">
+<div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 8px 0 16px;border-bottom:1px solid #16301f"><b style="font:700 13px 'B612',sans-serif;letter-spacing:.1em">CONFIGURAR IMP</b><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#7fa892">close</span></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">COMANDO</span><span style="height:32px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1.5px solid #cfeedd;font:400 12px 'B612 Mono',monospace">codex --model gpt-5-codex</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">SHELL</span><span style="height:32px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font-size:13px">Padrão (zsh)<span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:16px;color:#7fa892">expand_more</span></span></label>
+<span style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="width:16px;height:16px;box-sizing:border-box;border:1.5px solid #7fa892"></span>Líder · pode criar voos e níveis</span>
+<div style="padding:10px 12px;border:1.5px solid #e0a526;background:#1a1407;display:flex;gap:8px;font-size:12.5px;line-height:1.5;color:#f3e6c4"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#ffd27a">restart_alt</span>O voo reinicia e a sessão atual do codex é encerrada.</div>
+</div>
+<div style="height:54px;display:flex;align-items:center;gap:8px;padding:0 16px;border-top:1px solid #16301f"><span style="flex:1"></span><span style="height:34px;padding:0 12px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CANCELAR</span><span style="height:34px;padding:0 14px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">SALVAR E REINICIAR</span></div>
+</div>
+
+<div style="position:absolute;left:980px;top:64px;width:420px;height:40px;box-sizing:border-box;border:1px solid #1f3a29;border-bottom:none;background:#07100b;display:flex;align-items:center;gap:7px;padding:0 6px 0 0;white-space:nowrap"><span style="width:6px;align-self:stretch;background:#3b74d0"></span><span style="width:8px;height:8px;background:#6fd3d8"></span><b style="font:700 13px 'B612 Mono',monospace">IMP</b><span style="font-size:12.5px;font-weight:700">Implementador</span><span style="flex:1"></span><span style="font:700 11px 'B612 Mono',monospace;color:#a9c8ff">▲ NO AR</span><span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#cfeedd;color:#030705;font-family:'Material Symbols Outlined';font-size:18px">more_horiz</span></div>
+<div style="position:absolute;left:1150px;top:108px;width:250px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 14px 36px rgba(0,0,0,.6);display:flex;flex-direction:column;padding:4px 0;font-size:13px">
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">stop</span>Parar<span style="flex:1"></span><span style="font:400 10.5px 'B612 Mono',monospace;color:#5a8a6c">vai ao hangar</span></div>
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">restart_alt</span>Reiniciar</div>
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">add_comment</span>Nova conversa…</div>
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">content_copy</span>Copiar comando de retomada</div>
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#10241a"><span style="font-family:'Material Symbols Outlined';font-size:17px">tune</span>Configurar…</div>
+<div style="height:1px;background:#16301f;margin:4px 0"></div>
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">open_in_full</span>Foco<span style="flex:1"></span><span style="font:400 10.5px 'B612 Mono',monospace;color:#5a8a6c">⌥F</span></div>
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">visibility_off</span>Ocultar a tela</div>
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">groups</span>Líder<span style="flex:1"></span><span style="width:14px;height:14px;box-sizing:border-box;border:1.5px solid #7fa892"></span></div>
+<div style="height:1px;background:#16301f;margin:4px 0"></div>
+<div style="padding:4px 12px 2px;font:700 10px 'B612',sans-serif;letter-spacing:.12em;color:#5a8a6c">PAPEL</div>
+<div style="height:30px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="width:8px;height:8px;background:#b49cff"></span>Planejador</div>
+<div style="height:30px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="width:8px;height:8px;background:#6fd3d8"></span>Implementador<span style="flex:1"></span>✓</div>
+<div style="height:30px;display:flex;align-items:center;gap:10px;padding:0 12px"><span style="width:8px;height:8px;background:#f29ac0"></span>Revisor</div>
+<div style="height:30px;display:flex;align-items:center;gap:10px;padding:0 12px;color:#9fc4ae"><span style="width:8px"></span>Editar papéis…</div>
+<div style="height:1px;background:#16301f;margin:4px 0"></div>
+<div style="height:32px;display:flex;align-items:center;gap:10px;padding:0 12px;color:#ff9a8f"><span style="font-family:'Material Symbols Outlined';font-size:17px">delete</span>Remover…</div>
+</div>
+
+<div style="position:absolute;left:62px;top:640px;width:880px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+<div style="height:150px;box-sizing:border-box;border:1px solid #6a2a26;background:#040806;display:flex;flex-direction:column"><div style="height:32px;display:flex;align-items:center;gap:7px;padding-right:8px;background:#07100b;border-bottom:1px solid #16301f"><span style="width:6px;align-self:stretch;background:#d9443c"></span><b style="font:700 12.5px 'B612 Mono',monospace">DEV</b><span style="font-size:12px">npm run dev</span><span style="flex:1"></span><span style="font:700 10.5px 'B612 Mono',monospace;color:#ff9a8f">✕ PANE · saída 1</span></div><div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 12px;background:repeating-linear-gradient(135deg,#0d0605 0 8px,#120807 8px 16px);font-size:12.5px;color:#ffc9c2">Processo encerrado (saída 1).<span style="align-self:flex-start;height:26px;padding:0 10px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 10.5px 'B612',sans-serif;letter-spacing:.08em">INICIAR</span></div></div>
+<div style="height:150px;box-sizing:border-box;border:1px solid #1f3a29;background:#040806;display:flex;flex-direction:column"><div style="height:32px;display:flex;align-items:center;gap:7px;padding-right:8px;background:#07100b;border-bottom:1px solid #16301f"><span style="width:6px;align-self:stretch;background:#26332b"></span><b style="font:700 12.5px 'B612 Mono',monospace">ARQ</b><span style="font-size:12px">Arquiteto</span><span style="flex:1"></span><span style="font:700 10.5px 'B612 Mono',monospace;color:#7fa892">☾ HANGAR</span></div><div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 12px;font-size:12.5px;color:#9fc4ae">Processo parado. A conversa está guardada.<span style="align-self:flex-start;height:26px;padding:0 10px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 10.5px 'B612',sans-serif;letter-spacing:.08em">INICIAR</span></div></div>
+<div style="height:150px;box-sizing:border-box;border:1px solid #1f3a29;background:#040806;display:flex;flex-direction:column"><div style="height:32px;display:flex;align-items:center;gap:7px;padding-right:8px;background:#07100b;border-bottom:1px solid #16301f"><span style="width:6px;align-self:stretch;background:#26332b"></span><b style="font:700 12.5px 'B612 Mono',monospace">GMN</b><span style="font-size:12px">Gemini</span><span style="flex:1"></span><span style="font:700 10.5px 'B612 Mono',monospace;color:#ff9a8f">✕ PANE</span></div><div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 12px;font-size:12.5px;line-height:1.45;color:#ffc9c2">gemini não está no PATH.<span style="font:400 11px 'B612 Mono',monospace;color:#9fc4ae">npm i -g @google/gemini-cli</span></div></div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Formulário mais curto.</b> Agente em blocos, com "instalado" ou "não achado" (aviso que o brief pedia). Nome e indicativo lado a lado. Comando, shell e líder em AVANÇADO. Erros do servidor traduzidos ("pasta não encontrada").</div>
+<div><b style="color:#161512">Configurar.</b> Mesmo formulário; quando muda o que inicia o voo, o botão vira SALVAR E REINICIAR com o aviso âmbar.</div>
+<div><b style="color:#161512">Menu ⋯</b> ganha Foco e Ocultar a tela. Remover abre a confirmação da interface (<a href="Torre 03 Estrutura.dc.html#15">15</a>). Processo parado: tarja listrada opaca com INICIAR, nunca por cima de texto vivo.</div>
+</div>
+</div>
+
+<div id="17" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#17" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">17</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Papéis</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">As instruções que o agente recebe ao decolar. Valem para todos os workspaces.</span></div>
+<div data-screen-label="17 Papéis" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<div style="position:absolute;left:120px;top:60px;width:1200px;height:780px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:60px;flex:none;display:flex;align-items:center;gap:12px;padding:0 12px 0 22px;border-bottom:1px solid #16301f"><b style="font:700 15px 'B612',sans-serif;letter-spacing:.1em">PAPÉIS</b><span style="font-size:12.5px;color:#7fa892">As instruções que o agente recebe ao decolar. Valem para todos os workspaces.</span><span style="flex:1"></span><span style="font-family:'Material Symbols Outlined';font-size:20px;color:#7fa892">close</span></div>
+<div style="flex:1;display:grid;grid-template-columns:280px 1fr;min-height:0">
+<div style="border-right:1px solid #16301f;display:flex;flex-direction:column;padding:8px 0">
+<div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#10241a;box-shadow:inset 2px 0 0 #cfeedd"><span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#1b1530;color:#b49cff;font-family:'Material Symbols Outlined';font-size:17px">account_tree</span><b style="font-size:13.5px">Planejador</b><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">PLN</span><span style="flex:1"></span><span style="padding:0 5px;border:1px solid #2c5a3d;font:400 10px 'B612 Mono',monospace;color:#9fc4ae">editado</span></div>
+<div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#141a33;color:#8fa2ff;font-family:'Material Symbols Outlined';font-size:17px">architecture</span><span style="font-size:13.5px">Arquiteto</span><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">ARQ</span></div>
+<div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#0b2426;color:#6fd3d8;font-family:'Material Symbols Outlined';font-size:17px">code</span><span style="font-size:13.5px">Implementador</span><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">IMP</span></div>
+<div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#2a1220;color:#f29ac0;font-family:'Material Symbols Outlined';font-size:17px">rate_review</span><span style="font-size:13.5px">Revisor</span><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">REV</span></div>
+<div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#1e2408;color:#c6e06a;font-family:'Material Symbols Outlined';font-size:17px">science</span><span style="font-size:13.5px">Testador</span><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">TST</span></div>
+<div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#2a1607;color:#f0a66a;font-family:'Material Symbols Outlined';font-size:17px">shield</span><span style="font-size:13.5px">Segurança</span><span style="font:400 10.5px 'B612 Mono',monospace;color:#7fa892">SEG</span></div>
+<span style="flex:1"></span>
+<div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 16px;border-top:1px solid #16301f;font:700 11px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:17px">add</span>NOVO PAPEL</div>
+</div>
+<div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;min-width:0">
+<div style="display:grid;grid-template-columns:1fr 100px;gap:12px">
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">NOME</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font-size:13.5px">Planejador</span></label>
+<label style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">SIGLA</span><span style="height:34px;display:flex;align-items:center;justify-content:center;background:#030705;border:1px solid #2c5a3d;font:700 13.5px 'B612 Mono',monospace">PLN</span></label>
+</div>
+<div style="display:grid;grid-template-columns:auto 1fr;gap:28px">
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">COR</span><div style="display:flex;gap:6px"><span style="width:26px;height:26px;background:#b49cff;box-shadow:0 0 0 2px #07100b,0 0 0 4px #cfeedd"></span><span style="width:26px;height:26px;background:#6fd3d8"></span><span style="width:26px;height:26px;background:#f29ac0"></span><span style="width:26px;height:26px;background:#c6e06a"></span><span style="width:26px;height:26px;background:#5fd6b4"></span><span style="width:26px;height:26px;background:#8fa2ff"></span><span style="width:26px;height:26px;background:#e08ae8"></span><span style="width:26px;height:26px;background:#f0a66a"></span></div></div>
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">ÍCONE</span><div style="display:flex;gap:4px;flex-wrap:wrap;font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae"><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:#cfeedd;color:#030705">account_tree</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">code</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">rate_review</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">science</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">bug_report</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">palette</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">description</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">shield</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">database</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">rocket_launch</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">psychology</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">build</span><span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #1f3a29">architecture</span></div></div>
+</div>
+<span style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="width:16px;height:16px;background:#cfeedd;color:#030705;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">✓</span><b>Líder</b><span style="color:#9fc4ae">pode criar voos ligados a ele, ligar nós e abrir níveis. Cada voo pode desligar no menu ⋯.</span></span>
+<label style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0"><span style="display:flex;font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">INSTRUÇÕES<span style="flex:1"></span><span style="font:400 10.5px 'B612 Mono',monospace;letter-spacing:0">1831/4000</span></span><span style="flex:1;padding:12px;background:#030705;border:1px solid #2c5a3d;font:400 12px/18px 'B612 Mono',monospace;color:#d6e8de;white-space:pre-wrap;overflow:hidden">Você é o planejador da equipe. Divida o pedido em frentes pequenas e independentes, escreva o plano numa NOTAM e mande cada frente para quem está na sua frequência com squad ask.
+
+Quando houver frentes em paralelo que mexem nos mesmos arquivos, abra um nível de voo para cada uma (squad floor create) e ponha um implementador lá.
+
+Não escreva o código do produto. Acompanhe as respostas, atualize a NOTAM e, quando tudo estiver pronto, peça o pouso.</span></label>
+<div style="padding:10px 12px;border:1px solid #2e9b5b;background:#07190f;display:flex;align-items:center;gap:10px;font-size:12.5px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#5fe39a">check</span>Salvo. PLN recebe as instruções novas ao reiniciar.<span style="flex:1"></span><span style="height:26px;padding:0 10px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 10.5px 'B612',sans-serif;letter-spacing:.08em">REINICIAR AGORA</span></div>
+</div>
+</div>
+<div style="height:60px;flex:none;display:flex;align-items:center;gap:10px;padding:0 22px;border-top:1px solid #16301f"><span style="height:34px;padding:0 12px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;font:700 11px 'B612',sans-serif;letter-spacing:.08em">RESTAURAR PADRÃO</span><span style="font:400 11.5px 'B612 Mono',monospace;color:#7fa892">neste workspace: PLN</span><span style="flex:1"></span><span style="height:36px;padding:0 18px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">SALVAR</span></div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Sigla do papel.</b> Novo campo de 3 letras: vira o indicativo padrão dos voos com esse papel (PLN, IMP…). Dois voos com o mesmo papel ganham número (IMP, IM2).</div>
+<div><b style="color:#161512">Cores revistas</b> para o fundo verde da Torre, longe dos matizes de estado (azul, âmbar, verde, vermelho). 8 cores, 13 ícones, como hoje.</div>
+<div><b style="color:#161512">Regras que ficam.</b> "editado" nos prontos alterados; Restaurar só neles; Remover só nos criados por você e fora de uso; sair com alterações pede confirmação.</div>
+</div>
+</div>
+
+<div id="18" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#18" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#e05a2b;color:#fff;border-radius:2px;text-decoration:none">18</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Configurações</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">O menu ⚙ vira um painel de verdade: aparência, agentes, limites, resumos e atalhos.</span></div>
+<div data-screen-label="18 Configurações" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<div style="position:absolute;left:120px;top:60px;width:1200px;height:780px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:60px;flex:none;display:flex;align-items:center;gap:12px;padding:0 12px 0 22px;border-bottom:1px solid #16301f"><span style="font-family:'Material Symbols Outlined';font-size:20px">settings</span><b style="font:700 15px 'B612',sans-serif;letter-spacing:.1em">CONFIGURAÇÕES</b><span style="flex:1"></span><span style="font:400 10.5px 'B612 Mono',monospace;color:#5a8a6c">Esc fecha</span><span style="font-family:'Material Symbols Outlined';font-size:20px;color:#7fa892">close</span></div>
+<div style="flex:1;display:grid;grid-template-columns:220px 1fr;min-height:0">
+<div style="border-right:1px solid #16301f;display:flex;flex-direction:column;padding:8px 0;font-size:13.5px">
+<div style="height:40px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">contrast</span>Aparência</div>
+<div style="height:40px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">smart_toy</span>Agentes</div>
+<div style="height:40px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#10241a;box-shadow:inset 2px 0 0 #cfeedd;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:17px">tune</span>Limites</div>
+<div style="height:40px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">psychology</span>Resumos</div>
+<div style="height:40px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">account_tree</span>Papéis…</div>
+<div style="height:40px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">keyboard</span>Atalhos</div>
+<div style="height:40px;display:flex;align-items:center;gap:10px;padding:0 16px"><span style="font-family:'Material Symbols Outlined';font-size:17px;color:#9fc4ae">notifications</span>Avisos</div>
+</div>
+<div style="padding:22px 28px;display:grid;grid-template-columns:1fr 1fr;gap:22px 32px;align-content:start;overflow:hidden">
+<div style="grid-column:1 / -1;display:flex;align-items:baseline;gap:10px"><b style="font:700 13px 'B612',sans-serif;letter-spacing:.1em">LIMITES DE CONVERSA</b><span style="font-size:12.5px;color:#7fa892">por workspace · relatorios-api</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><span style="display:flex;align-items:baseline;font-size:13px;font-weight:700">Saltos encadeados<span style="flex:1"></span><span style="font:700 15px 'B612 Mono',monospace">6</span></span><svg width="100%" height="20" viewBox="0 0 400 20" preserveAspectRatio="none"><rect y="8" width="400" height="4" fill="#16301f"></rect><rect y="8" width="150" height="4" fill="#cfeedd"></rect><rect x="144" y="2" width="12" height="16" fill="#cfeedd"></rect></svg><span style="font-size:12px;line-height:1.5;color:#9fc4ae">A pede a B, que pede a C… Passou disso, tudo entra em espera geral sozinho.</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><span style="display:flex;align-items:baseline;font-size:13px;font-weight:700">Pedidos por minuto<span style="flex:1"></span><span style="font:700 15px 'B612 Mono',monospace">30</span></span><svg width="100%" height="20" viewBox="0 0 400 20" preserveAspectRatio="none"><rect y="8" width="400" height="4" fill="#16301f"></rect><rect y="8" width="200" height="4" fill="#cfeedd"></rect><rect x="194" y="2" width="12" height="16" fill="#cfeedd"></rect></svg><span style="font-size:12px;line-height:1.5;color:#9fc4ae">O excedente fica retido e sai quando o minuto vira.</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><span style="display:flex;align-items:baseline;font-size:13px;font-weight:700">Voos por líder<span style="flex:1"></span><span style="font:700 15px 'B612 Mono',monospace">6</span></span><span style="font-size:12px;line-height:1.5;color:#9fc4ae">Quantos voos um líder pode criar com squad new.</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><span style="display:flex;align-items:baseline;font-size:13px;font-weight:700">Portais por voo<span style="flex:1"></span><span style="font:700 15px 'B612 Mono',monospace">3</span></span><span style="font-size:12px;line-height:1.5;color:#9fc4ae">Quantos portais cada agente pode abrir.</span></div>
+<div style="grid-column:1 / -1;height:1px;background:#16301f"></div>
+<div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:10px"><b style="font:700 13px 'B612',sans-serif;letter-spacing:.1em">QUANDO UM VOO PEDE VOCÊ</b>
+<div style="display:flex;gap:28px;flex-wrap:wrap;font-size:13px"><span style="display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;background:#cfeedd;color:#030705;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">✓</span>Contar no título da janela</span><span style="display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;background:#cfeedd;color:#030705;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">✓</span>Notificação do sistema</span><span style="display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;box-sizing:border-box;border:1.5px solid #7fa892"></span>Som curto</span></div></div>
+<div style="grid-column:1 / -1;height:1px;background:#16301f"></div>
+<div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:10px"><b style="font:700 13px 'B612',sans-serif;letter-spacing:.1em">AGENTES <span style="font:400 12px 'B612',sans-serif;letter-spacing:0;color:#7fa892">· na aba Agentes</span></b>
+<div style="display:grid;grid-template-columns:110px 90px 1fr 80px;gap:0;font:400 12px 'B612 Mono',monospace">
+<span style="padding:8px 0;border-top:1px solid #16301f;font-weight:700">claude</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#5fe39a">✓ 2.1.302</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#9fc4ae">claude --permission-mode default</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#7fa892;text-align:right">editar</span>
+<span style="padding:8px 0;border-top:1px solid #16301f;font-weight:700">codex</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#5fe39a">✓ 0.48</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#9fc4ae">codex</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#7fa892;text-align:right">editar</span>
+<span style="padding:8px 0;border-top:1px solid #16301f;font-weight:700">devin</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#5fe39a">✓ 1.4</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#9fc4ae">devin</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#7fa892;text-align:right">editar</span>
+<span style="padding:8px 0;border-top:1px solid #16301f;font-weight:700;color:#7fa892">gemini</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#ff9a8f">✕ não achado</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#5a8a6c">npm i -g @google/gemini-cli</span><span style="padding:8px 0;border-top:1px solid #16301f;color:#7fa892;text-align:right">procurar</span>
+</div></div>
+</div>
+</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Aparência.</b> Tema da interface (Escuro · Claro · Sistema) e tema dos terminais (Noite · Papel), separados como hoje. Fecha com Esc e clique fora, não quando o mouse sai.</div>
+<div><b style="color:#161512">Limites e Agentes</b> eram fixos ou escondidos. Agora: saltos, pedidos/min, voos por líder e portais por voo; e cada CLI com versão, comando padrão e caminho.</div>
+<div><b style="color:#161512">Resumos</b> = o diálogo de hoje (boletim ao fim do turno, quem resume, aviso de custo). <b style="color:#161512">Atalhos</b> lista e permite trocar os de ⌥. <b style="color:#161512">Avisos</b> é novo, para a PRIORIDADE.</div>
+</div>
+</div>
+
+<div id="19" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#19" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#e05a2b;color:#fff;border-radius:2px;text-decoration:none">19</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Primeira abertura</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">Login, pasta e agentes instalados, numa sequência só. Hoje o login é uma página solta e a primeira vez não existe.</span></div>
+<div data-screen-label="19 Primeira abertura" style="position:relative;width:1440px;height:900px;overflow:hidden;background:#030705;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<svg width="1440" height="900" style="position:absolute;left:0;top:0"><circle cx="720" cy="450" r="420" fill="none" stroke="#0e2015"></circle><circle cx="720" cy="450" r="300" fill="none" stroke="#0e2015"></circle><circle cx="720" cy="450" r="180" fill="none" stroke="#0e2015"></circle><path d="M300 450 H1140 M720 30 V870" stroke="#0b1a11"></path></svg>
+<div style="position:absolute;left:60px;top:60px;display:flex;align-items:center;gap:12px"><svg width="26" height="30" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#cfeedd"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#cfeedd"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#7fe0a0"></path><circle cx="28" cy="4" r="3" fill="#e05a2b"></circle></svg><b style="font:700 22px 'B612',sans-serif;letter-spacing:.1em">TORRE</b></div>
+<div style="position:absolute;left:60px;top:110px;display:flex;gap:6px;font:700 10.5px 'B612',sans-serif;letter-spacing:.1em"><span style="height:26px;padding:0 10px;display:inline-flex;align-items:center;background:#2e9b5b;color:#03140a">1 ENLACE ✓</span><span style="height:26px;padding:0 10px;display:inline-flex;align-items:center;background:#cfeedd;color:#030705">2 PASTA</span><span style="height:26px;padding:0 10px;display:inline-flex;align-items:center;border:1px solid #2c5a3d;color:#7fa892">3 AGENTES</span></div>
+
+<div style="position:absolute;left:60px;top:200px;width:400px;box-sizing:border-box;border:1px solid #1f3a29;background:#07100b;padding:22px;display:flex;flex-direction:column;gap:14px;opacity:.75">
+<b style="font:700 13px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">1 · ENLACE COM O SERVIDOR</b>
+<span style="font-size:13.5px;line-height:1.55">Para entrar, rode <b style="font-family:'B612 Mono',monospace">squad serve</b> no terminal: ele abre a Torre já com o login. Ou cole aqui a URL que ele mostrou.</span>
+<span style="height:36px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1px solid #2c5a3d;font:400 11.5px 'B612 Mono',monospace;color:#9fc4ae;overflow:hidden;white-space:nowrap">http://127.0.0.1:7420/?token=7c1f…a9</span>
+<span style="height:36px;display:flex;align-items:center;justify-content:center;gap:8px;background:#2e9b5b;color:#03140a;font:700 12px 'B612',sans-serif;letter-spacing:.08em">✓ CONECTADO</span>
+<span style="font:400 11px 'B612 Mono',monospace;color:#5a8a6c">só 127.0.0.1 · o token fica num cookie</span>
+</div>
+
+<div style="position:absolute;left:500px;top:200px;width:460px;box-sizing:border-box;border:1.5px solid #cfeedd;background:#07100b;padding:22px;display:flex;flex-direction:column;gap:14px">
+<b style="font:700 13px 'B612',sans-serif;letter-spacing:.12em">2 · ONDE A EQUIPE VAI TRABALHAR</b>
+<span style="font-size:13.5px;line-height:1.55;color:#9fc4ae">Escolha a pasta do projeto. Ela vira o primeiro workspace; dá para abrir outros depois.</span>
+<span style="height:38px;display:flex;align-items:center;padding:0 10px;background:#030705;border:1.5px solid #cfeedd;font:400 13px 'B612 Mono',monospace">~/proj/relatorios-api</span>
+<div style="display:flex;flex-direction:column;gap:6px;font:400 12px 'B612 Mono',monospace;padding:10px 12px;border:1px solid #1f3a29">
+<span style="color:#5fe39a">✓ repositório git · main · limpo</span>
+<span style="color:#5fe39a">✓ níveis de voo disponíveis</span>
+<span style="color:#9fc4ae">○ .env encontrado · será copiado para os níveis</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">RECENTES</span><span style="font:400 12px 'B612 Mono',monospace;color:#9fc4ae">~/proj/loja-demo · ~/site</span></div>
+<span style="height:40px;display:flex;align-items:center;justify-content:center;background:#cfeedd;color:#030705;font:700 12px 'B612',sans-serif;letter-spacing:.08em">CONTINUAR</span>
+</div>
+
+<div style="position:absolute;left:1000px;top:200px;width:380px;box-sizing:border-box;border:1px dashed #2c5a3d;padding:22px;display:flex;flex-direction:column;gap:12px">
+<b style="font:700 13px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">3 · AGENTES NESTA MÁQUINA</b>
+<div style="display:flex;flex-direction:column;font:400 12.5px 'B612 Mono',monospace">
+<span style="display:flex;padding:9px 0;border-top:1px solid #16301f"><b style="width:80px">claude</b><span style="color:#5fe39a">✓ 2.1.302</span></span>
+<span style="display:flex;padding:9px 0;border-top:1px solid #16301f"><b style="width:80px">codex</b><span style="color:#5fe39a">✓ 0.48</span></span>
+<span style="display:flex;padding:9px 0;border-top:1px solid #16301f"><b style="width:80px">devin</b><span style="color:#5fe39a">✓ 1.4</span></span>
+<span style="display:flex;padding:9px 0;border-top:1px solid #16301f"><b style="width:80px;color:#7fa892">gemini</b><span style="color:#ff9a8f">✕ não achado</span></span>
+<span style="display:flex;padding:9px 0;border-top:1px solid #16301f"><b style="width:80px">chrome</b><span style="color:#5fe39a">✓ para os portais</span></span>
+</div>
+<span style="font-size:12.5px;line-height:1.5;color:#9fc4ae">Depois: começar vazio ou com um plano de voo (<a href="#20" style="color:#cfeedd">20</a>).</span>
+</div>
+
+<div style="position:absolute;left:500px;top:700px;width:460px;box-sizing:border-box;border:1px solid #1f3a29;background:#07100b;padding:16px 18px;display:flex;align-items:center;gap:12px"><span style="font-family:'Material Symbols Outlined';font-size:22px;color:#ffd27a">sync</span><div style="display:flex;flex-direction:column;gap:3px"><b style="font-size:13px">Sem enlace com o servidor</b><span style="font:400 11.5px 'B612 Mono',monospace;color:#9fc4ae">o squad serve parou? tentando de novo em 3 s…</span></div></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Enlace.</b> A página do servidor Go ganha a cara da Torre e passa a ser o passo 1. Com a URL do squad serve, pula direto para o 2.</div>
+<div><b style="color:#161512">Pasta.</b> Mostra na hora se é git (e se os níveis vão funcionar) e o que será copiado para eles.</div>
+<div><b style="color:#161512">Agentes.</b> O brief pedia "mostrar quais agentes estão instalados". O que falta vem com o comando de instalação.</div>
+</div>
+</div>
+
+<div id="20" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#20" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#e05a2b;color:#fff;border-radius:2px;text-decoration:none">20</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Espaço vazio e planos de voo</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">O workspace vazio deixa de ser só a grade. E os planos de voo (os "modelos" do brief) salvam e restauram uma equipe inteira.</span></div>
+<div data-screen-label="20 Vazio e planos" style="position:relative;width:1440px;height:900px;overflow:hidden;background-color:#050b08;background-image:radial-gradient(#15301f 1px,transparent 1px);background-size:20px 20px;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<dc-import name="TorreBar" view="espaco" level="pista" session="Nova sessão · 17/10 14:32" radio="0" hint-size="1440px,48px" style="position:absolute;left:0;top:0"></dc-import>
+
+<div style="position:absolute;left:80px;top:110px;width:520px;display:flex;flex-direction:column;gap:18px">
+<span style="font:700 11.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">ESPAÇO AÉREO VAZIO · relatorios-api</span>
+<b style="font:700 28px/1.2 'B612',sans-serif;text-wrap:balance">Ponha a primeira equipe no ar.</b>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="height:52px;display:flex;align-items:center;gap:12px;padding:0 14px;border:1.5px solid #cfeedd;background:#07100b"><span style="font-family:'Material Symbols Outlined';font-size:20px">flight_class</span><div style="display:flex;flex-direction:column;gap:2px"><b style="font-size:13.5px">Usar um plano de voo</b><span style="font-size:12px;color:#9fc4ae">equipe pronta, com papéis e frequências</span></div><span style="flex:1"></span><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">⌥M</span></div>
+<div style="height:52px;display:flex;align-items:center;gap:12px;padding:0 14px;border:1px solid #2c5a3d;background:#07100b"><span style="font-family:'Material Symbols Outlined';font-size:20px;color:#9fc4ae">terminal</span><div style="display:flex;flex-direction:column;gap:2px"><b style="font-size:13.5px">Novo voo</b><span style="font-size:12px;color:#9fc4ae">um agente por vez</span></div><span style="flex:1"></span><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">T</span></div>
+<div style="height:52px;display:flex;align-items:center;gap:12px;padding:0 14px;border:1px solid #2c5a3d;background:#07100b"><span style="font-family:'Material Symbols Outlined';font-size:20px;color:#9fc4ae">sticky_note_2</span><div style="display:flex;flex-direction:column;gap:2px"><b style="font-size:13.5px">Escrever o plano numa NOTAM</b><span style="font-size:12px;color:#9fc4ae">e depois ligar os voos a ela</span></div><span style="flex:1"></span><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">N</span></div>
+</div>
+<span style="font-size:12.5px;line-height:1.55;color:#7fa892">Ligar é o que deixa conversar: arraste de uma bolinha de um voo até outro. Sem frequência, ninguém se ouve.</span>
+</div>
+
+<div style="position:absolute;left:660px;top:80px;width:740px;height:780px;box-sizing:border-box;background:#07100b;border:1px solid #2c5a3d;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column">
+<div style="height:56px;flex:none;display:flex;align-items:center;gap:10px;padding:0 10px 0 20px;border-bottom:1px solid #16301f"><span style="font-family:'Material Symbols Outlined';font-size:20px">flight_class</span><b style="font:700 14px 'B612',sans-serif;letter-spacing:.1em">PLANOS DE VOO</b><span style="flex:1"></span><span style="height:30px;padding:0 10px;display:inline-flex;align-items:center;gap:5px;border:1px solid #2c5a3d;font:700 10.5px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:15px">upload</span>IMPORTAR</span><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#7fa892">close</span></div>
+<div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div style="border:1.5px solid #cfeedd;background:#10241a;padding:12px;display:flex;flex-direction:column;gap:10px">
+<div style="height:90px;position:relative;background:#050b08;background-image:radial-gradient(#11251a 1px,transparent 1px);background-size:6px 6px"><svg width="300" height="90" style="position:absolute;left:0;top:0"><path d="M60 30 L140 30 M140 30 L220 30 M140 30 L140 66" stroke="#3f6b52" stroke-width="1.5"></path></svg><span style="position:absolute;left:30px;top:20px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">PLN</span><span style="position:absolute;left:124px;top:20px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">IMP</span><span style="position:absolute;left:206px;top:20px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">REV</span><span style="position:absolute;left:124px;top:60px;padding:2px 5px;background:#c9c2a6;color:#1b1a14;font:700 9px 'B612',sans-serif">NOTAM</span></div>
+<b style="font-size:14px">Trio clássico</b><span style="font:400 11px 'B612 Mono',monospace;color:#9fc4ae">PLN · IMP · REV · 1 NOTAM · 3 frequências</span>
+</div>
+<div style="border:1px solid #2c5a3d;padding:12px;display:flex;flex-direction:column;gap:10px">
+<div style="height:90px;position:relative;background:#050b08;background-image:radial-gradient(#11251a 1px,transparent 1px);background-size:6px 6px"><svg width="300" height="90" style="position:absolute;left:0;top:0"><path d="M60 30 L150 30 L240 30 M150 30 L150 66 L230 66" stroke="#3f6b52" stroke-width="1.5"></path></svg><span style="position:absolute;left:30px;top:20px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">PLN</span><span style="position:absolute;left:134px;top:20px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">IMP</span><span style="position:absolute;left:226px;top:20px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">TST</span><span style="position:absolute;left:214px;top:58px;padding:2px 5px;border:1px solid #3f6b52;font:700 9px 'B612 Mono',monospace">⊕ Portal</span></div>
+<b style="font-size:14px">Front-end com teste visual</b><span style="font:400 11px 'B612 Mono',monospace;color:#9fc4ae">PLN · IMP · TST · portal localhost:5173</span>
+</div>
+<div style="border:1px solid #2c5a3d;padding:12px;display:flex;flex-direction:column;gap:10px">
+<div style="height:90px;position:relative;background:#050b08;background-image:radial-gradient(#11251a 1px,transparent 1px);background-size:6px 6px"><span style="position:absolute;left:20px;top:14px;font:400 9px 'B612 Mono',monospace;color:#5a8a6c">PISTA</span><span style="position:absolute;left:20px;top:30px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">PLN</span><span style="position:absolute;left:130px;top:14px;font:400 9px 'B612 Mono',monospace;color:#5a8a6c">FL1</span><span style="position:absolute;left:130px;top:30px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">IMP</span><span style="position:absolute;left:220px;top:14px;font:400 9px 'B612 Mono',monospace;color:#5a8a6c">FL2</span><span style="position:absolute;left:220px;top:30px;padding:2px 5px;background:#efe8cf;color:#1b1a14;font:700 10px 'B612 Mono',monospace">IM2</span></div>
+<b style="font-size:14px">Duas frentes em paralelo</b><span style="font:400 11px 'B612 Mono',monospace;color:#9fc4ae">líder na pista · 2 níveis com 1 IMP cada</span>
+</div>
+<div style="border:1px dashed #2c5a3d;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;font-size:12.5px;line-height:1.5;color:#9fc4ae"><span style="font-family:'Material Symbols Outlined';font-size:22px">library_add</span><b style="color:#cfeedd">Salvar a seleção como plano</b>Selecione voos, NOTAMs e portais no Espaço e use ⌥⇧M ou o menu da seleção.</div>
+</div>
+<div style="margin:0 20px;border-top:1px solid #16301f;padding-top:14px;display:flex;flex-direction:column;gap:10px;flex:1;min-height:0">
+<b style="font:700 10.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">ANTES DE DECOLAR · TRIO CLÁSSICO</b>
+<div style="font:400 12px/1.7 'B612 Mono',monospace;background:#030705;padding:10px 12px;color:#d6e8de">claude <span style="color:#7fa892">--append-system-prompt-file</span> papeis/planejador.md<br>codex <span style="color:#7fa892">-c developer_instructions=…</span><br>claude <span style="color:#7fa892">--append-system-prompt-file</span> papeis/revisor.md</div>
+<span style="font-size:12.5px;line-height:1.5;color:#9fc4ae">Um plano importado pode trazer comandos próprios. Eles aparecem aqui antes de rodar.</span>
+</div>
+<div style="height:60px;flex:none;display:flex;align-items:center;gap:8px;padding:0 20px;border-top:1px solid #16301f"><span style="font:400 11px 'B612 Mono',monospace;color:#7fa892">3 voos novos, conversas novas</span><span style="flex:1"></span><span style="height:38px;padding:0 18px;display:inline-flex;align-items:center;gap:8px;background:#cfeedd;color:#030705;font:700 12px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:17px">flight_takeoff</span>DECOLAR A EQUIPE</span></div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Vazio com propósito.</b> Três caminhos com o atalho de cada um e uma frase sobre frequências. Some assim que o primeiro nó entra.</div>
+<div><b style="color:#161512">Plano de voo</b> guarda voos (agente, papel, nome, posição), NOTAMs, portais, frequências e níveis. Restaurar cria tudo com conversas novas.</div>
+<div><b style="color:#161512">Segurança.</b> Importar sempre lista os comandos que vão rodar antes de DECOLAR, como o brief pedia.</div>
+</div>
+</div>
+
+<div id="21" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#21" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">21</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Arremetida, espera geral e falhas</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">Quando algo para no meio: voos interrompidos, conversas em espera, laço, servidor fora e os avisos curtos.</span></div>
+<div data-screen-label="21 Falhas" style="position:relative;width:1440px;height:900px;overflow:hidden;background-color:#050b08;background-image:radial-gradient(#15301f 1px,transparent 1px);background-size:20px 20px;font-family:'B612',sans-serif;color:#cfeedd;box-shadow:0 2px 14px rgba(0,0,0,.3)">
+<dc-import name="TorreBar" view="espaco" level="pista" paused="{{ true }}" conn="off" hint-size="1440px,48px" style="position:absolute;left:0;top:0"></dc-import>
+
+<div style="position:absolute;left:290px;top:62px;width:860px;height:44px;box-sizing:border-box;background:#1a1407;border:1.5px solid #e0a526;display:flex;align-items:center;gap:10px;padding:0 6px 0 14px;white-space:nowrap;font-size:13px"><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#ffd27a">u_turn_left</span><b style="font:700 11px 'B612',sans-serif;letter-spacing:.1em;color:#ffd27a">ARREMETIDA</b><span style="color:#f3e6c4"><b style="font-family:'B612 Mono',monospace">PLN</b> e <b style="font-family:'B612 Mono',monospace">REV</b> foram interrompidos no meio do turno. A conversa voltou; falta só continuar.</span><span style="flex:1"></span><span style="height:32px;padding:0 14px;display:inline-flex;align-items:center;background:#ffd27a;color:#1a1407;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">CONTINUAR</span><span style="height:32px;padding:0 12px;display:inline-flex;align-items:center;border:1px solid #8a6a26;font:700 11.5px 'B612',sans-serif;letter-spacing:.08em">DISPENSAR</span></div>
+
+<div style="position:absolute;left:80px;top:150px;width:400px;height:240px;box-sizing:border-box;border:1px solid #1f3a29;background:#040806;display:flex;flex-direction:column">
+<div style="height:34px;flex:none;display:flex;align-items:center;gap:7px;padding-right:8px;background:#07100b;border-bottom:1px solid #16301f"><span style="width:6px;align-self:stretch;background:#3a4a40"></span><span style="width:8px;height:8px;background:#f29ac0"></span><b style="font:700 13px 'B612 Mono',monospace">REV</b><span style="font-size:12.5px;font-weight:700">Revisor</span><span style="flex:1"></span><span style="font:700 11px 'B612 Mono',monospace;color:#ffd27a;display:inline-flex;align-items:center;gap:4px"><span style="font-family:'Material Symbols Outlined';font-size:14px">u_turn_left</span>ARREMETIDA</span></div>
+<div style="flex:1;padding:8px 10px;font:11px/15.5px 'B612 Mono',monospace;white-space:pre;color:#8a9a90">● Revisando src/reports/csv.ts…
+  (interrompido · a Torre fechou)
+
+<span style="color:#d6dfe9">› </span></div>
+</div>
+
+<svg width="1440" height="900" style="position:absolute;left:0;top:0"><path d="M480 270 C 530 340, 570 340, 620 270" fill="none" stroke="#3f6b52" stroke-width="2.5" stroke-dasharray="2 5"></path></svg>
+<span style="position:absolute;left:518px;top:316px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#07100b;border:1px dashed #e0a526;color:#ffd27a;font-family:'Material Symbols Outlined';font-size:16px">all_inclusive</span>
+<div style="position:absolute;left:620px;top:150px;width:400px;height:240px;box-sizing:border-box;border:1px solid #1f3a29;background:#040806;opacity:.85"><div style="height:34px;display:flex;align-items:center;gap:7px;padding-right:8px;background:#07100b;border-bottom:1px solid #16301f"><span style="width:6px;align-self:stretch;background:#2e9b5b"></span><span style="width:8px;height:8px;background:#6fd3d8"></span><b style="font:700 13px 'B612 Mono',monospace">IMP</b><span style="font-size:12.5px;font-weight:700">Implementador</span><span style="flex:1"></span><span style="font:700 11px 'B612 Mono',monospace;color:#8fe8b4">■ EM SOLO</span></div><div style="padding:10px;font:400 11px 'B612 Mono',monospace;color:#7fa892">os terminais continuam no último estado conhecido enquanto o enlace volta</div></div>
+
+<div style="position:absolute;left:1060px;top:150px;width:340px;display:flex;flex-direction:column;gap:12px">
+<div style="border:1.5px solid #e0a526;background:#1a1407;padding:12px 14px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#ffd27a">all_inclusive</span><b style="font:700 11px 'B612',sans-serif;letter-spacing:.1em;color:#ffd27a">ESPERA GERAL · LAÇO</b></div><span style="font-size:12.5px;line-height:1.5;color:#f3e6c4">PLN → IMP → REV → IMP → REV → IMP passou de 6 saltos. Tudo em espera até você liberar.</span><span style="align-self:flex-start;height:28px;padding:0 10px;display:inline-flex;align-items:center;background:#ffd27a;color:#1a1407;font:700 10.5px 'B612',sans-serif;letter-spacing:.08em">LIBERAR TODOS ⌥P</span></div>
+<div style="border:1px dashed #e0a526;padding:12px 14px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Material Symbols Outlined';font-size:18px;color:#ffd27a">sync</span><b style="font:700 11px 'B612',sans-serif;letter-spacing:.1em;color:#ffd27a">RECONECTANDO…</b></div><span style="font-size:12.5px;line-height:1.5;color:#9fc4ae">Sem enlace com o servidor. Os agentes continuam trabalhando num processo à parte; a tela volta sozinha.</span></div>
+</div>
+
+<span style="position:absolute;left:80px;top:430px;font:700 11.5px 'B612',sans-serif;letter-spacing:.12em;color:#7fa892">AVISOS CURTOS</span>
+<div style="position:absolute;left:80px;top:458px;width:1320px;display:flex;flex-wrap:wrap;gap:10px">
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#cfeedd;color:#030705;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">link</span>PLN ↔ IMP na mesma frequência</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#cfeedd;color:#030705;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">link_off</span>PLN ↔ IMP desligados</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#cfeedd;color:#030705;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">check</span>Transmitido a 2 voos</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#cfeedd;color:#030705;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">flight_land</span>FL1 pousou: feat/export-csv em main (a91c2f0)</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#cfeedd;color:#030705;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">layers</span>FL2 criado: branch feat/cupom</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#cfeedd;color:#030705;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">content_copy</span>Copiado: claude --resume 4b1e…</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#2a1f07;border:1px solid #e0a526;color:#ffd27a;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">history</span>Não deu para retomar a conversa do ARQ: começou uma nova.</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#2a0d0b;border:1px solid #d9443c;color:#ffc9c2;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">error</span>Não transmitido · ARQ está no hangar</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#2a0d0b;border:1px solid #d9443c;color:#ffc9c2;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">lock</span>NOTAM travada: destrave para editar.</span>
+<span style="height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;background:#2a0d0b;border:1px solid #d9443c;color:#ffc9c2;font-size:12.5px;font-weight:700"><span style="font-family:'Material Symbols Outlined';font-size:16px">error</span>Pasta não encontrada: ~/proj/fin</span>
+</div>
+
+<div style="position:absolute;left:80px;top:620px;width:1320px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px;font-size:13px;line-height:1.55;color:#9fc4ae">
+<div><b style="color:#cfeedd">Arremetida.</b> Faixa âmbar no topo do canvas, com os indicativos e CONTINUAR (manda "continue de onde parou") e DISPENSAR. O voo também mostra ARREMETIDA no cabeçalho até continuar.</div>
+<div><b style="color:#cfeedd">Espera geral.</b> O botão da barra vira LIBERAR TODOS em âmbar cheio; cada frequência ganha o ícone ∞ no meio. Pela pausa ou por laço, o motivo aparece no Rádio e no cartão do laço.</div>
+<div><b style="color:#cfeedd">Avisos.</b> Claro para confirmação, âmbar para espera, vermelho para erro, sempre com ícone. Embaixo, no centro, 4 s. Mensagens do servidor em português.</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Barra superior</b> nesta tela: espera geral ativa e enlace perdido, os dois ao mesmo tempo.</div>
+<div><b style="color:#161512">Arremetida</b> funciona no Claude e no Devin (o turno interrompido é detectado na volta).</div>
+<div><b style="color:#161512">Nada cobre o terminal.</b> Faixas e cartões ficam no canvas, nunca sobre a tela de um voo.</div>
+</div>
+</div>
+
+<div id="22" style="flex:none;width:1440px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><a href="#22" style="font:600 11px 'IBM Plex Mono',monospace;padding:3px 7px;background:#161512;color:#f3f1ec;border-radius:2px;text-decoration:none">22</a><span style="font:800 22px 'Archivo',sans-serif;font-stretch:80%;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Tema claro · ficha de papel</span><span style="font-size:14px;color:#48453e;text-wrap:pretty">O mesmo Espaço de dia. O canvas vira o papel das fichas, e os terminais usam o tema Papel.</span></div>
+<div data-screen-label="22 Tema claro" style="position:relative;width:1440px;height:900px;overflow:hidden;background-color:#e9e3cf;background-image:radial-gradient(#cfc6a6 1px,transparent 1px);background-size:20px 20px;font-family:'B612',sans-serif;color:#1b1a14;box-shadow:0 2px 14px rgba(0,0,0,.2)">
+<div style="position:absolute;left:0;top:0;width:1440px;height:48px;box-sizing:border-box;background:#f6f2e4;border-bottom:1px solid #cfc6a6;display:flex;align-items:center;gap:8px;padding:0 12px 0 16px;white-space:nowrap">
+<span style="display:flex;align-items:center;gap:8px;padding-right:6px"><svg width="16" height="20" viewBox="0 0 56 64"><path d="M20 62 L24 26 H32 L36 62 Z" fill="#1b1a14"></path><path d="M10 26 H46 L40 12 H16 Z" fill="#1b1a14"></path><path d="M18 14 H38 L35 22 H21 Z" fill="#2e9b5b"></path><circle cx="28" cy="4" r="3" fill="#e05a2b"></circle></svg><span style="font:700 15px/1 'B612',sans-serif;letter-spacing:.1em">TORRE</span></span>
+<span style="width:1px;height:20px;background:#cfc6a6"></span>
+<span style="display:flex;align-items:center;gap:7px;padding:0 6px 0 8px"><span style="width:8px;height:8px;background:#178a92"></span><b style="font-size:13px">relatorios-api</b><span style="font:400 10.5px 'B612 Mono',monospace;color:#6b6450">⌥1</span></span>
+<span style="color:#9a917a">›</span><span style="font-size:12.5px;font-weight:700;padding:0 6px">Export CSV</span><span style="color:#9a917a">›</span>
+<span style="display:flex;height:30px;border:1px solid #cfc6a6"><span style="display:flex;align-items:center;gap:6px;padding:0 10px;background:#fffbea;box-shadow:inset 0 -2px 0 #1b1a14"><span style="font:700 10px 'B612',sans-serif;letter-spacing:.12em;color:#6b6450">PISTA</span><span style="font:700 12px 'B612 Mono',monospace">main</span></span><span style="width:1px;background:#cfc6a6"></span><span style="display:flex;align-items:center;gap:6px;padding:0 10px;color:#6b6450"><span style="font:700 10px 'B612',sans-serif;letter-spacing:.12em">FL1</span><span style="font:400 12px 'B612 Mono',monospace;color:#1b1a14">export-csv</span><span style="width:7px;height:7px;border-radius:50%;background:#c98a00"></span></span></span>
+<span style="flex:1"></span>
+<span style="display:flex;height:30px;border:1px solid #cfc6a6;font:700 11px 'B612',sans-serif;letter-spacing:.1em"><span style="display:flex;align-items:center;padding:0 10px;color:#6b6450">SINÓPTICO</span><span style="display:flex;align-items:center;padding:0 10px;background:#1b1a14;color:#f6f2e4">ESPAÇO</span></span>
+<span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid #b8ae8a;font:700 11px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:16px">all_inclusive</span>ESPERA GERAL</span>
+<span style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid #b8ae8a;font:700 11px 'B612',sans-serif;letter-spacing:.08em"><span style="font-family:'Material Symbols Outlined';font-size:16px">cell_tower</span>RÁDIO<span style="min-width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;background:#e0a526;color:#1a1407;font:700 10.5px 'B612 Mono',monospace">1</span></span>
+<span style="display:flex;align-items:center;gap:5px;font:400 11px 'B612 Mono',monospace;color:#1f6b3a"><span style="width:7px;height:7px;border-radius:50%;background:#2e9b5b"></span>ENLACE</span>
+<span style="font-family:'Material Symbols Outlined';font-size:18px;color:#6b6450">settings</span>
+<span style="font:700 13px 'B612 Mono',monospace">14:32:07</span>
+</div>
+
+<svg width="1440" height="900" style="position:absolute;left:0;top:0"><path d="M520 250 C 548 320, 596 320, 624 250" fill="none" stroke="#c98a00" stroke-width="2.5" stroke-dasharray="7 6"></path><path d="M834 412 C 836 440, 832 460, 834 486" fill="none" stroke="#9a917a" stroke-width="2.5"></path><path d="M200 412 C 202 450, 198 470, 200 500" fill="none" stroke="#9a917a" stroke-width="2.5"></path></svg>
+<span style="position:absolute;left:526px;top:290px;display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 7px;background:#fff1c9;border:1px solid #c98a00;font:700 11px 'B612 Mono',monospace;color:#6b4500;white-space:nowrap"><span style="font-family:'Material Symbols Outlined';font-size:13px">hourglass_top</span>1:58 · 7f3a</span>
+
+<div style="position:absolute;left:100px;top:96px;width:420px;height:316px;box-sizing:border-box;border:1px solid #b8ae8a;background:#fbf8ee;display:flex;flex-direction:column">
+<div style="height:34px;flex:none;display:flex;align-items:center;gap:7px;padding-right:8px;border-bottom:1px solid #d9d0b2;background:#f6f2e4;white-space:nowrap"><span style="width:6px;align-self:stretch;background:repeating-linear-gradient(0deg,#e0a526 0 4px,#f6f2e4 4px 7px)"></span><span style="width:8px;height:8px;background:#7b5ce0"></span><b style="font:700 13px 'B612 Mono',monospace">PLN</b><span style="font-size:12.5px;font-weight:700">Planejador</span><span style="padding:1px 5px;border:1px solid #cfc6a6;font:400 10.5px 'B612 Mono',monospace;color:#6b6450">claude</span><span style="flex:1"></span><span style="font:700 11px 'B612 Mono',monospace;color:#7a4f00">⧗ AGUARDA 1:58</span></div>
+<div style="flex:none;height:24px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#fff1c9;border-bottom:1px solid #e8d49a;font:400 11px 'B612 Mono',monospace;color:#6b4500">⧗ Aguardando IMP · pedido 7f3a · enviado há 1:58</div>
+<div style="flex:1;padding:8px 10px;font:11px/15.5px 'B612 Mono',monospace;white-space:pre;color:#2b2a22;overflow:hidden"><div style="color:#8a836c">❯ Divida a exportação CSV em frentes</div><div style="height:15px"></div><div><span style="color:#1f4f9f">● </span>Três tarefas. A 1 vai para o IMP no FL1.</div><div><span style="color:#1f4f9f">● </span>squad<span style="color:#8a836c"> - ask (IMP, "7f3a · tarefa 1")</span></div><div><span style="color:#8a5a00">  ⧗ aguardando resposta (1m 58s)</span></div></div>
+<div style="flex:none;height:22px;display:flex;align-items:center;gap:10px;padding:0 10px;border-top:1px solid #d9d0b2;font:400 10.5px 'B612 Mono',monospace;color:#8a836c"><span>PISTA · main</span><span>81×24</span></div>
+</div>
+
+<div style="position:absolute;left:622px;top:94px;width:424px;height:320px;box-sizing:border-box;border:2px solid #1b1a14;background:#fbf8ee;display:flex;flex-direction:column">
+<div style="height:34px;flex:none;display:flex;align-items:center;gap:7px;padding-right:8px;border-bottom:1px solid #d9d0b2;background:#f6f2e4;white-space:nowrap"><span style="width:6px;align-self:stretch;background:#3b74d0"></span><span style="width:8px;height:8px;background:#178a92"></span><b style="font:700 13px 'B612 Mono',monospace">IMP</b><span style="font-size:12.5px;font-weight:700">Implementador</span><span style="padding:1px 6px;background:#1b1a14;color:#f6f2e4;font:700 10px 'B612',sans-serif;letter-spacing:.06em">⌨ TECLADO</span><span style="flex:1"></span><span style="font:700 11px 'B612 Mono',monospace;color:#1f4f9f">▲ NO AR 1:58</span></div>
+<div style="flex:none;height:24px;display:flex;align-items:center;gap:6px;padding:0 10px;background:#ece6fb;border-bottom:1px solid #d5ccf0;font:400 11px 'B612 Mono',monospace;color:#4a3596">↙ Pedido 7f3a de PLN · a resposta volta para ele</div>
+<div style="flex:1;padding:8px 10px;font:11px/15.5px 'B612 Mono',monospace;white-space:pre;color:#2b2a22;overflow:hidden"><div style="color:#11727a">[de: PLN · pedido 7f3a] implemente a tarefa 1</div><div><span style="color:#1f4f9f">• </span>Criando src/reports/csv.ts</div><div><span style="color:#7b3fb0">$ </span>npm test -- reports</div><div><span style="color:#1f6b3a"> ✓ </span>reports.export<span style="color:#8a836c"> (42 ms)</span></div><div><span style="color:#b3261e"> ✗ </span>csv.bom<span style="color:#8a5a00"> esperado "\uFEFF"</span></div><div><span style="color:#1f4f9f">◦ </span>Trabalhando<span style="color:#8a836c"> (1m 58s)</span></div></div>
+<div style="flex:none;height:22px;display:flex;align-items:center;gap:10px;padding:0 10px;border-top:1px solid #d9d0b2;font:400 10.5px 'B612 Mono',monospace;color:#8a836c"><span>FL1 · feat/export-csv</span><span style="color:#7a4f00">caixa 1</span></div>
+</div>
+
+<div style="position:absolute;left:100px;top:500px;width:340px;height:240px;box-sizing:border-box;background:#fffbea;border:1px solid #cfc6a6;color:#1b1a14;display:flex;flex-direction:column">
+<div style="height:32px;display:flex;align-items:center;gap:7px;padding:0 8px;border-bottom:1px solid #e3dabb;white-space:nowrap"><span style="font:700 10px 'B612',sans-serif;letter-spacing:.12em;padding:2px 5px;background:#1b1a14;color:#fffbea">NOTAM</span><b style="font-size:12.5px">Plano: export CSV</b><span style="font:400 10.5px 'B612 Mono',monospace;color:#6b6450">plano-export.md</span></div>
+<div style="padding:10px 12px;display:flex;flex-direction:column;gap:5px;font-size:12.5px;line-height:1.45"><b style="font-size:15px">Exportar relatórios em CSV</b><span>☑ Ler src/reports</span><span>☐ Stream com BOM</span><span>☐ Botão no relatório</span></div>
+</div>
+
+<div style="position:absolute;left:624px;top:486px;width:420px;height:200px;box-sizing:border-box;border:1px solid #b8ae8a;background:#fbf8ee"><div style="height:34px;display:flex;align-items:center;gap:7px;padding-right:8px;border-bottom:1px solid #d9d0b2;background:#f6f2e4"><span style="width:6px;align-self:stretch;background:#2e9b5b"></span><span style="width:8px;height:8px;background:#c4507f"></span><b style="font:700 13px 'B612 Mono',monospace">REV</b><span style="font-size:12.5px;font-weight:700">Revisor</span><span style="flex:1"></span><span style="font:700 11px 'B612 Mono',monospace;color:#1f6b3a">■ EM SOLO</span></div></div>
+
+<div style="position:absolute;left:1110px;top:96px;width:300px;display:flex;flex-direction:column;gap:6px;font:400 11.5px 'B612 Mono',monospace">
+<span style="font:700 11px 'B612',sans-serif;letter-spacing:.12em;color:#6b6450;margin-bottom:4px">ESTADOS NO CLARO</span>
+<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:20px;background:#3b74d0"></span><b style="color:#1f4f9f">NO AR</b></span>
+<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:20px;background:repeating-linear-gradient(0deg,#e0a526 0 4px,#e9e3cf 4px 7px)"></span><b style="color:#7a4f00">AGUARDA</b></span>
+<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:20px;background:#e0a526"></span><b style="color:#7a4f00">PRIORIDADE</b></span>
+<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:20px;background:#2e9b5b"></span><b style="color:#1f6b3a">EM SOLO</b></span>
+<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:20px;background:#d9443c"></span><b style="color:#a3231b">PANE</b></span>
+<span style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:20px;background:#9a917a"></span><b style="color:#5b5747">HANGAR</b></span>
+<span style="margin-top:10px;font-size:12px;line-height:1.5;color:#5b5747;font-family:'B612',sans-serif">As faixas são as mesmas nos dois temas; muda só a tinta do texto, para passar de 4,5:1 no papel.</span>
+</div>
+
+<div style="position:absolute;left:470px;top:840px;width:500px;height:40px;box-sizing:border-box;border:1.5px solid #1b1a14;background:#f6f2e4;display:flex;align-items:center;gap:10px;padding:0 4px 0 12px;white-space:nowrap"><span style="font:700 11.5px 'B612 Mono',monospace">TRANSMITIR →</span><span style="font:400 12px 'B612 Mono',monospace">IMP</span><span style="flex:1;font-size:12.5px;color:#6b6450">escreva para o voo…</span><span style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:#1b1a14;color:#f6f2e4;font-family:'Material Symbols Outlined';font-size:18px">arrow_upward</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;font-size:13px;line-height:1.5;color:#48453e">
+<div><b style="color:#161512">Neutros do claro.</b> Canvas #e9e3cf, superfície #f6f2e4, terminal #fbf8ee, linha #cfc6a6, tinta #1b1a14 e #6b6450. NOTAM clareia para #fffbea para se destacar do canvas.</div>
+<div><b style="color:#161512">Primeiro uso</b> segue o tema do sistema; a escolha fica guardada. O tema dos terminais (Noite · Papel) é separado e pode ser outro.</div>
+<div><b style="color:#161512">O escuro é a referência.</b> A Torre nasceu verde-fósforo; o claro existe para quem trabalha de dia e para gravações.</div>
+</div>
+</div>
+
+</div>
+</section>
+</x-dc>
+</body>
+</html>

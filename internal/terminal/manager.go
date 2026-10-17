@@ -17,7 +17,7 @@ type Manager struct {
 }
 
 // NewManager creates a manager; cliDir is prepended to every terminal's PATH
-// (normally the directory of the squad binary). listener may be nil.
+// (normally the directory of the torre binary). listener may be nil.
 func NewManager(cliDir string, listener func(Event)) *Manager {
 	if listener == nil {
 		listener = func(Event) {}

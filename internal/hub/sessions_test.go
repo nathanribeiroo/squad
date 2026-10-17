@@ -335,7 +335,7 @@ func TestSessionInACopy(t *testing.T) {
 	if code != http.StatusCreated {
 		t.Fatalf("new session in a copy: %d %s", code, data)
 	}
-	copyDir := filepath.Join(filepath.Dir(repo), ".squad", "sessions", "app--login-novo")
+	copyDir := filepath.Join(filepath.Dir(repo), ".torre", "sessions", "app--login-novo")
 	cur := h.sessions(ws.ID).current()
 	if cur.Branch != "login-novo" || cur.Copy != copyDir {
 		t.Fatalf("session: %+v", cur)

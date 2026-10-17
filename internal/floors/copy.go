@@ -18,7 +18,7 @@ import (
 // another session left uncommitted there. It is made like a floor (a git
 // worktree on a new branch, the untracked files the workspace lists, the
 // setup command), from the last commit of a branch the user picks, and lives
-// next to the repository in .squad/sessions/<repository>--<branch>. Merging
+// next to the repository in .torre/sessions/<repository>--<branch>. Merging
 // it keeps it: the session goes on working there and can merge again.
 // Removing the session removes the copy and keeps the branch.
 
@@ -79,7 +79,7 @@ func NewCopy(ctx context.Context, req CopyRequest) (store.Floor, error) {
 	if id == "" {
 		return store.Floor{}, invalidError("a branch name needs a letter or a digit")
 	}
-	path := filepath.Join(parent, ".squad", "sessions", filepath.Base(main)+"--"+id)
+	path := filepath.Join(parent, ".torre", "sessions", filepath.Base(main)+"--"+id)
 	if _, err := os.Stat(path); err == nil {
 		return store.Floor{}, invalidError(fmt.Sprintf("the folder %s already exists (left by an older session?): remove it or pick another branch name", path))
 	}

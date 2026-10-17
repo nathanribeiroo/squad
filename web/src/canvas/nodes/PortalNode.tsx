@@ -17,7 +17,7 @@ export type PortalFlowNode = Node<{ node: WNode }, 'portal'>;
  * Browser portal (design handoff §4): the page, rendered by a headless
  * browser on the server, streamed as images. Click the page to use it (the
  * keyboard goes to the page until ⌥Esc); the address bar navigates. Agents
- * wired to it use it too (squad portal …): their cursor shows on the page.
+ * wired to it use it too (torre portal …): their cursor shows on the page.
  */
 export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
   const portal: PortalData = data.node.portal ?? { url: '' };
@@ -50,14 +50,14 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
         ) : (
           <span
             className="pn-title"
-            title={`${stream.state?.title ? `${stream.state.title}\n` : ''}Os agentes usam este nome: squad portal "${portal.name || 'Portal'}" … (duplo clique para renomear)`}
+            title={`${stream.state?.title ? `${stream.state.title}\n` : ''}Os agentes usam este nome: torre portal "${portal.name || 'Portal'}" … (duplo clique para renomear)`}
             onDoubleClick={() => setRenaming(true)}
           >
             {portal.name || 'Portal'}
           </span>
         )}
         {creator && (
-          <span className="pn-creator" title={`${creator.name} abriu este portal (squad portal create)`}>
+          <span className="pn-creator" title={`${creator.name} abriu este portal (torre portal create)`}>
             <i style={{ background: `var(--r-${creator.color})` }} />
             por {creator.name}
           </span>
@@ -291,7 +291,7 @@ function PortalScreen({ id, stream, url, onFocusChange }: { id: string; stream: 
       <div className="pn-msg">
         <Icon name="public_off" size={28} />
         <span>Nenhum navegador encontrado para mostrar a página.</span>
-        <span className="pn-hint">Instale o Chrome ou o Edge, ou defina SQUAD_BROWSER com o caminho do executável, e reinicie o Squad.</span>
+        <span className="pn-hint">Instale o Chrome ou o Edge, ou defina TORRE_BROWSER com o caminho do executável, e reinicie a Torre.</span>
       </div>
     );
   } else if (stream.error) {
