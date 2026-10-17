@@ -2,6 +2,59 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F0a: Squad agora é Torre
+
+- **Pedido do usuário:** trocar o nome para Torre e redesenhar a interface a partir do handoff (agora em `docs/torre/`). O plano por fases foi aprovado com as recomendações, e as fases entram na branch `feat/torre` sem esperar a aprovação de cada uma (veja o PLAN).
+- **O que a revisão do handoff achou no código** (decidido com as recomendações aprovadas):
+  - **hook `Notification`:** o handoff diz que ele "já é tratado"; não é. O Claude registra só `Stop`, `StopFailure`, `UserPromptSubmit` e `SessionStart`, e o Devin só `Stop`, `UserPromptSubmit` e `SessionStart`. O Claude 2.1.302 e o Devin 3000.11.92 têm `PermissionRequest` e `Notification`, que a F3 vai usar;
+  - **SEMPRE não é sempre a tecla 2:** neste container, a opção 2 do Claude apareceu como "Yes, and switch to auto mode". A F3 lê as opções na tela e só oferece SEMPRE quando é "não perguntar de novo";
+  - **níveis e indicativos são por sessão**, não por workspace: desde o S2, os andares são da sessão;
+  - **erros em português:** a API ganha `code` e a interface traduz; os agentes e a CLI continuam em inglês;
+  - **variáveis que o handoff não listava:** `SQUAD_PORT`, `SQUAD_DEBUG`, `SQUAD_CLI` e as que o servidor põe nos terminais;
+  - **lugares do nome fora da lista:** o app do Dock no Mac, o cookie, o backup do Devin, o zip da skill e o agente falso dos testes.
+- **Comando:**
+  - o código da CLI foi para `internal/cli`;
+  - `cmd/torre` e `cmd/squad` são dois `main` de poucas linhas. O `squad` é o mesmo comando: avisa no stderr que o nome mudou, menos em `hook` e `mcp`, que os agentes rodam;
+  - a instalação vira `go install …/cmd/...@main`, que instala os dois.
+- **Pasta de dados:**
+  - `TORRE_HOME`, depois `SQUAD_HOME`, depois `~/.torre`;
+  - o `torre serve` move `~/.squad` para `~/.torre` na primeira vez, com tudo dentro (workspaces, sessões, papéis, token de login, perfis);
+  - se um `squad serve` antigo ainda roda dali, a pasta não se move e é usada como está (o `serve` novo abre o workspace no servidor antigo, como já fazia com um servidor rodando);
+  - se mover falhar (no Windows, um arquivo aberto, como a janela de app de antes), usa `~/.squad` desta vez e tenta de novo no próximo início.
+- **Variáveis:**
+  - `TORRE_PORT`, `TORRE_SHELL`, `TORRE_BROWSER` e `TORRE_DEBUG`, com reserva nos nomes `SQUAD_…` e aviso no log;
+  - os terminais recebem `TORRE_URL`, `_TOKEN`, `_TERMINAL_ID`, `_TERMINAL_NAME` e `_CLI`, e também as `SQUAD_…`. Assim, um `squad` antigo que tenha ficado no PATH, e agentes que retomam conversas de antes, continuam funcionando. O mesmo vale para `TORRE_FLOOR` no comando de preparo;
+  - o servidor aceita o cabeçalho `X-Squad-Token` além do novo.
+- **Agentes:**
+  - servidor MCP `torre` (`mcp__torre__*`) no Claude, no Codex e no Devin; hooks chamando `torre hook`;
+  - o `install-skill` instala a skill `torre`, remove a `squad` (só se for a que o Squad escreveu) e, no Devin, troca a entrada `squad` do `mcp_config.json` pela `torre` (só se for a do Squad: o binário `squad` com o argumento `mcp`);
+  - textos da skill, dos papéis prontos, da ajuda da CLI e do MCP com `torre`.
+- **Outros:**
+  - andares e cópias de sessão novos em `<pasta-pai>/.torre/…`;
+  - `TERM_PROGRAM=Torre`;
+  - no Mac, o app do Dock `Torre.app`, ou o `Squad.app` de antes;
+  - o cookie `torre_session`: o antigo continua valendo e é trocado na primeira página.
+- **Interface:**
+  - logo da torre (SVG do handoff) com "TORRE";
+  - favicon e ícones PNG (192, 512 e 180, desenhados a partir do SVG);
+  - manifest e cor da barra de título (`#07100b` / `#f6f2e4`);
+  - título "workspace · Torre";
+  - as chaves do navegador `squad.*` (workspace, andar, posição do canvas, temas) passam para `torre.*` na primeira carga;
+  - página de login com a marca nova (a primeira abertura completa é a F4c).
+- **Decisões tomadas sem consulta:**
+  - **o atalho `squad` é um binário completo**, e não um script que chama o `torre`: funciona igual no Windows, sem depender de achar o outro no PATH;
+  - **as chaves do navegador ficam com ponto** (`torre.theme`), como eram, e não `torre:` como no handoff;
+  - **o `.squad-backup` do Devin vale como backup:** se ele existe, não se cria um `.torre-backup`, porque o original do usuário já está guardado.
+- **Testado aqui:**
+  - testes do `config`: a migração com servidor antigo rodando e sem ele, uma vez só, e os nomes antigos das variáveis;
+  - testes do `cli`: o atalho `squad` e a remoção da skill antiga;
+  - teste do Devin: a entrada antiga do MCP trocada, e uma do usuário com o mesmo nome mantida;
+  - teste do servidor: o cookie antigo aceito e trocado;
+  - `go vet` (Linux e Windows) e todos os testes, com o navegador;
+  - `TestRealClaude` e `TestRealClaudeRole` (hooks e papel pelo `torre hook`), e `TestRealDevinConfig` (o Devin vê o MCP `torre`);
+  - de ponta a ponta, com o binário: um `~/.squad` de teste foi movido para `~/.torre` no primeiro `torre serve`, com o mesmo token. Um terminal recebeu as duas famílias de variáveis, e `squad list` (com o aviso) e `torre list` funcionaram dentro dele.
+- **Não testado:** Windows (a migração com arquivo preso, `torre.exe` e `squad.exe`), o `Squad.app` no Mac, o Devin com login, Codex e Gemini.
+
 ## 2026-10-17, S4: sessão numa cópia isolada
 
 - **Pedido do usuário:** criar uma sessão nova enquanto a sessão 1 está no meio do trabalho, sem misturar os arquivos, com a opção de um branch novo a partir de um branch escolhido, e sem encher a tela de opções.

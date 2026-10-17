@@ -1,4 +1,6 @@
-# Plano de desenvolvimento do Squad
+# Plano de desenvolvimento da Torre (antes Squad)
+
+O Squad passou a se chamar Torre em 2026-10-17 (veja "Torre (F0–F5)", no fim). As seções antigas mantêm os nomes da época (`squad`, `~/.squad`, andar, térreo).
 
 Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-conversam.md` (comportamento da conversa) e `design_handoff_squad/` (interface).
 
@@ -47,7 +49,19 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | S1 Conversas que continuam | `feat/resume-conversations` | concluído |
 | S2 Sessões: servidor | `feat/sessions` | concluído |
 | S3 Sessões: interface | `feat/sessions-ui` | concluído |
-| S4 Sessão numa cópia isolada | `feat/session-copy` | concluído (PR) |
+| S4 Sessão numa cópia isolada | `feat/session-copy` | concluído |
+| Torre F0a Renomeação | `feat/torre-f0a-renomeacao` → `feat/torre` | concluído |
+| Torre F0b Base visual e vocabulário | `feat/torre-f0b-visual` → `feat/torre` | pendente |
+| Torre F1 Redesenho do que existe | `feat/torre-f1-redesenho` → `feat/torre` | pendente |
+| Torre F2 Confirmações, vazios e erros | `feat/torre-f2-confirmacoes` → `feat/torre` | pendente |
+| Torre F3 PRIORIDADE | `feat/torre-f3-prioridade` → `feat/torre` | pendente |
+| Torre F4a Configurações | `feat/torre-f4a-configuracoes` → `feat/torre` | pendente |
+| Torre F4b Sinóptico | `feat/torre-f4b-sinoptico` → `feat/torre` | pendente |
+| Torre F4c Primeira abertura | `feat/torre-f4c-primeira-abertura` → `feat/torre` | pendente |
+| Torre F5a Extras (nível, pedidos, NOTAM, pouso) | `feat/torre-f5a-extras` → `feat/torre` | pendente |
+| Torre F5b Foco, encaixe, ocultar, Tab | `feat/torre-f5b-foco` → `feat/torre` | pendente |
+| Torre F5c @ELEMENTOS no portal | `feat/torre-f5c-elementos` → `feat/torre` | pendente |
+| Torre F5d Planos de voo | `feat/torre-f5d-planos` → `feat/torre` | pendente |
 
 ## B0, esqueleto
 
@@ -192,3 +206,42 @@ Pedido do usuário: fechar o `squad serve` e voltar exatamente onde estava, e te
 - funcionalidades: Modelos (salvar um arranjo de agentes), chat por terminal, simulador de iPhone.
 
 **Validação no Windows real** continua pendente (ver DEVLOG).
+
+## Torre (F0–F5)
+
+Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a interface inteira, com funcionalidades novas, a partir do handoff em [`docs/torre/`](torre/) (`README.md`, `RENOMEACAO.md`, `NOVIDADES-E-BACKEND.md`, `TELAS.md`, tokens e mockups). O plano por fases foi aprovado com as recomendações da revisão (as diferenças entre o handoff e o código estão no DEVLOG, entrada F0a).
+
+**Como as fases andam:** a branch `feat/torre` sai da `main` e recebe as fases. Cada fase tem a sua branch, a partir da `feat/torre`, e entra nela por merge quando está pronta (o usuário pediu para não esperar a aprovação de cada fase). No fim, um PR leva a `feat/torre` para a `main`, e o usuário faz esse merge.
+
+- **F0a, renomeação:**
+  - binário `torre` (`cmd/torre`) e o atalho `squad` (`cmd/squad`), os dois sobre `internal/cli`;
+  - `~/.torre` com a migração de `~/.squad`;
+  - `TORRE_*` com reserva em `SQUAD_*`; os terminais recebem as duas formas;
+  - cookie novo com o antigo aceito;
+  - MCP `torre`; skill `torre`, com a remoção da `squad` e a troca do MCP no Devin;
+  - `.torre/` para os andares e as cópias novas;
+  - `Torre.app` e depois `Squad.app` no Mac;
+  - marca na interface: logo, favicon, ícones, manifest, título e chaves do navegador migradas.
+- **F0b, base visual e vocabulário:** tokens da Torre, fontes B612 e B612 Mono, os ícones novos e o vocabulário em todos os textos (voo, frequência, nível FLn, pista, pousar, espera geral, Rádio, Transmitir, NOTAM, boletim, briefing, líder, arremetida, ENLACE, estados TAXIANDO…HANGAR), sem mudar o layout.
+- **F1, redesenho do que existe:** sigla do papel (`RoleDef.abbr`), indicativo do voo (`callsign`, único por sessão) e número do nível (`Floor.number`, por sessão, nunca reaproveitado), e depois cada tela dos quadros 02–04, 06–17 e 22.
+- **F2, confirmações, vazios e erros:** `ConfirmDialog` no lugar das 10 `window.confirm` e dos diálogos de troca e descarte; espaço vazio com primeiros passos; arremetida e espera geral no estilo novo; erros da API com `code`, traduzidos pela interface (os agentes e a CLI continuam em inglês).
+- **F3, PRIORIDADE:** o estado `ask` ("o voo pede você"): hooks `PermissionRequest`/`Notification` do Claude e do Devin, detecção pela tela no Codex e no Gemini, resposta pela interface (só pela interface, conferindo a tela), fila, avisos no título, no nível e nos outros workspaces.
+- **F4a, configurações:** painel com abas (Aparência com o tema Sistema, Agentes, Limites por workspace, Resumos, Papéis, Atalhos, Avisos); `GET /api/agents` e o comando padrão de cada agente; `GET/PUT /w/<id>/api/limits`.
+- **F4b, Sinóptico:** a vista nova (⌥S), com radar, fichas, fila de pouso, frequências, prioridade, terminal e rádio.
+- **F4c, primeira abertura:** login redesenhado, pasta (`GET /api/dirs/info`) e agentes.
+- **F5a:** renomear nível, cancelar pedido, pedido inteiro no Rádio, NOTAM redimensionável, transmitir a um nível inteiro, conflito checado antes do pouso, indicativo na CLI e no MCP.
+- **F5b:** foco ⌥F, encaixe ⌥⇧←/→, ocultar a tela, Tab entre os nós.
+- **F5c:** @ELEMENTOS no portal.
+- **F5d:** planos de voo (salvar, importar, aplicar com revisão dos comandos).
+
+**Para depois (fora destas fases), com a referência no handoff:**
+
+- **Pilha de NOTAMs** (`docs/torre/NOVIDADES-E-BACKEND.md`, "Depois"; quadro 09 em `TELAS.md`): `stack` nas notas. A frequência ligada à pilha valeria para todas, o que mexe na regra de permissão; precisa de desenho próprio.
+- **Desenho e Grupo** (mesmo item; quadro 02): os botões ficam na barra de ferramentas, desligados com "em breve", até os nós `drawing` e `group` terem desenho.
+- **Trocar os atalhos** (`TELAS.md`, quadro 18, aba Atalhos: "os de ⌥ podem ser trocados"): a aba só lista os atalhos.
+- **Histórico do Rádio guardado** (`NOVIDADES-E-BACKEND.md`, item 12): hoje fica só no navegador (até 200 itens) e some ao recarregar; guardar por sessão.
+- **"✓ testes · ✓ revisão" na fila de pouso** (item 6): não existem; poderiam vir de um agente marcando o nível (`torre floor ready --check testes`).
+- **Modelo no boletim** ("por claude -p · haiku", quadro 08): o resumo só sabe a CLI que usou, não o modelo.
+- **Autor dos commits por indicativo** (quadro 14): no git o autor é a pessoa; seria preciso marcar os commits de cada voo.
+- **Fim da compatibilidade com o nome antigo** (`RENOMEACAO.md`, 1.2): tirar o atalho `squad`, a leitura de `SQUAD_*`, o cookie e o cabeçalho antigos e a busca por `Squad.app`, quando o usuário quiser.
+- **Renomear o repositório e o módulo Go** para `torre`: muda o caminho do `go install`.
