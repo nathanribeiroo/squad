@@ -8,7 +8,8 @@ import { WS_COLORS, wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
 import { DirInput } from './DirInput';
 import { Icon } from './Icon';
-import { BusyConfirm, useLeave } from './SessionsMenu';
+import { confirmDialog, confirmOpen } from './ConfirmDialog';
+import { useLeave } from './SessionsMenu';
 import './SessionsMenu.css';
 import './WorkspaceMenu.css';
 
@@ -49,9 +50,10 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const away = (e: PointerEvent) => {
       // The top bar button toggles the menu itself.
-      if (!ref.current?.contains(e.target as Node) && !(e.target as Element).closest?.('.tb-workspace')) onClose();
+      const t = e.target as Element;
+      if (!ref.current?.contains(t) && !t.closest?.('.tb-workspace, .dlg-backdrop')) onClose();
     };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && !confirmOpen() && onClose();
     window.addEventListener('pointerdown', away, true);
     window.addEventListener('keydown', esc);
     return () => {
@@ -150,7 +152,7 @@ function SessionsPeek({ ws, top, onDone }: { ws: WorkspaceSummary; top: number; 
       onDone();
       return;
     }
-    leave.run(s.id, async (confirm) => {
+    leave.run(async (confirm) => {
       useSquad.getState().setSessions(await hub.openSession(ws.id, s.id, confirm));
       switchTo(ws.id);
       onDone();
@@ -172,7 +174,6 @@ function SessionsPeek({ ws, top, onDone }: { ws: WorkspaceSummary; top: number; 
                 {s.current ? 'aberta agora' : ago(s.openedAt, now)} · {contents(s)}
               </span>
             </button>
-            {leave.busy?.target === s.id && <BusyConfirm why={leave.busy.why} onConfirm={leave.busy.confirm} onCancel={leave.cancel} />}
           </div>
         ))}
         {!list && !error && <div className="ses-empty">Carregando…</div>}
@@ -217,10 +218,24 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
     });
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!ws) return;
-    const msg = `Remover o workspace "${ws.name}"?\n\nOs voos dele são encerrados, e o canvas e as NOTAMs vão para a lixeira da Torre (~/.torre/trash).`;
-    if (!window.confirm(msg)) return;
+    const ok = await confirmDialog({
+      title: `Remover o workspace ${ws.name}?`,
+      tone: 'danger',
+      lose: [
+        ws.terminals ? `${ws.terminals === 1 ? 'O voo dele é encerrado' : `Os ${ws.terminals} voos dele são encerrados`}` : '',
+        `${ws.sessions === 1 ? 'A sessão sai' : `As ${ws.sessions} sessões saem`} da lista: o canvas e as NOTAMs vão para a lixeira da Torre (~/.torre/trash)`,
+      ],
+      keep: [
+        <>
+          A pasta do projeto, <span className="mono">{shortPath(ws.cwd)}</span>, como está
+        </>,
+        'As conversas, guardadas nos agentes',
+      ],
+      action: 'Remover workspace',
+    });
+    if (!ok) return;
     void run(async () => {
       await hub.remove(ws.id);
       const st = useSquad.getState();

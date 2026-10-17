@@ -129,6 +129,9 @@ interface SquadState {
   runtime: Record<string, TerminalRuntime>;
   extra: StateExtra;
   connection: 'connecting' | 'connected' | 'reconnecting';
+  /** Since when the link is down (0 while connected), and when it tries again. */
+  linkLostAt: number;
+  retryAt: number;
   activity: ActivityItem[];
   flights: Record<string, Flight>;
   noteEdits: Record<string, NoteEdit>;
@@ -167,7 +170,7 @@ interface SquadState {
   clearFocusRequest(): void;
   load(s: StateResponse): void;
   apply(ev: ServerEvent): void;
-  setConnection(c: SquadState['connection']): void;
+  setConnection(c: SquadState['connection'], retryAt?: number): void;
   setDrawer(open: boolean): void;
   /** Opens or closes the Composer; draft is text to start with. */
   setComposer(open: boolean, target?: string | null, draft?: string): void;
@@ -229,6 +232,8 @@ const perWorkspace = {
   runtime: {},
   extra: emptyExtra,
   connection: 'connecting',
+  linkLostAt: 0,
+  retryAt: 0,
   activity: [],
   flights: {},
   noteEdits: {},
@@ -295,6 +300,8 @@ export const useSquad = create<SquadState>((set, get) => ({
   runtime: {},
   extra: emptyExtra,
   connection: 'connecting',
+  linkLostAt: 0,
+  retryAt: 0,
   activity: [],
   flights: {},
   noteEdits: {},
@@ -546,7 +553,12 @@ export const useSquad = create<SquadState>((set, get) => ({
     }
   },
 
-  setConnection: (connection) => set({ connection }),
+  setConnection: (connection, retryAt) =>
+    set((s) => ({
+      connection,
+      linkLostAt: connection === 'connected' ? 0 : s.linkLostAt || Date.now(),
+      retryAt: retryAt ?? s.retryAt,
+    })),
   setDrawer: (drawerOpen) => set({ drawerOpen }),
   setComposer: (composerOpen, target, draft) =>
     set({ composerOpen, composerTarget: target === undefined ? get().composerTarget : target, composerDraft: draft ?? null }),

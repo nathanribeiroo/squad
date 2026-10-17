@@ -1,0 +1,29 @@
+/* Espaço aéreo vazio (docs/torre/TELAS.md, quadro 20). */
+.ae { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 5; }
+.ae-card { pointer-events: auto; width: min(560px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 14px; }
+.ae-card h1 { margin: 0 0 6px; font-size: 28px; font-weight: 700; line-height: 1.2; color: var(--text); }
+.ae-card p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--text-3); }
+.ae-actions { display: flex; flex-direction: column; gap: 6px; }
+.ae-btn {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px 0 16px;
+  border: 1px solid var(--line-3);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.ae-btn > span:nth-child(2) { flex: 1; }
+.ae-btn .msi { color: var(--text-2); }
+.ae-btn:not(:disabled):hover { border-color: var(--text-3); background: var(--surface-2); }
+.ae-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.ae-btn.primary .msi, .ae-btn.primary .kbd { color: inherit; border-color: currentColor; }
+.ae-btn.primary:hover { filter: brightness(1.08); background: var(--primary); }
+.ae-btn:disabled { opacity: 0.45; cursor: default; }

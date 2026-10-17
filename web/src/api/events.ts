@@ -29,9 +29,10 @@ export function connectEvents(): () => void {
     };
     ws.onclose = () => {
       if (stopped) return;
-      useSquad.getState().setConnection('reconnecting');
       retry++;
-      timer = window.setTimeout(open, Math.min(5000, 300 * retry));
+      const delay = Math.min(5000, 300 * retry);
+      useSquad.getState().setConnection('reconnecting', Date.now() + delay);
+      timer = window.setTimeout(open, delay);
     };
   };
   open();

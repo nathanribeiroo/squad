@@ -19,6 +19,7 @@ import type {
   StateExtra,
   WorkspaceSummary,
 } from './types';
+import { errorMessage } from './errors';
 
 let base = '';
 
@@ -56,7 +57,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     let data: Record<string, unknown> = {};
     try {
       data = await res.json();
-      msg = (data.error as string) ?? msg;
+      msg = errorMessage(data, msg);
     } catch {
       /* not JSON */
     }

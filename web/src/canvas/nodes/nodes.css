@@ -163,6 +163,7 @@
 .tn-agent { font-size: 10.5px; line-height: 16px; color: var(--text-3); border: 1px solid var(--line-3); padding: 0 5px; flex: none; }
 .tn-chip { height: 18px; padding: 0 6px 0 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); border: 1px solid var(--line-3); flex: none; }
 .tn-chip.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.tn-chip.wait { color: var(--stt-wait); border-color: var(--st-wait); background: var(--stb-wait); }
 .tn-creator { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .tn-creator i { width: 7px; height: 7px; display: block; }
 .tn-inbox { color: var(--stt-wait); font-weight: 700; }

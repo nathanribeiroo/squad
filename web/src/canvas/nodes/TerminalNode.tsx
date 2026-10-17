@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NodeResizer, useReactFlow, type Node, type NodeProps, type ResizeParams } from '@xyflow/react';
 import { api } from '../../api/client';
 import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
+import { confirmDialog } from '../../components/ConfirmDialog';
 import { Icon } from '../../components/Icon';
 import { STATE_META, callsign, elapsed, stateLabel } from '../../lib/model';
 import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, useRole, useRoleLookup } from '../../lib/roles';
@@ -183,9 +184,17 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
   const manager = isManager(t, role);
   const running = rt?.status === 'running' || rt?.status === 'starting';
   const act = (a: 'start' | 'stop' | 'restart' | 'new-conversation') => api.nodeAction(id, a).catch((e: Error) => toast(e.message, 'err'));
-  const newConversation = () => {
-    if (window.confirm(`Começar uma conversa nova em ${t.name}? O voo reinicia sem o contexto da conversa atual (ela continua guardada no agente).`))
-      act('new-conversation');
+  const cs = callsign(t);
+  const newConversation = async () => {
+    const ok = await confirmDialog({
+      title: `Nova conversa em ${cs}?`,
+      icon: 'edit_square',
+      tone: 'info',
+      lose: ['O contexto: o voo reinicia e começa do zero'],
+      keep: ['A conversa atual, guardada no agente (Copiar comando de retomada a abre fora da Torre)'],
+      action: 'Nova conversa',
+    });
+    if (ok) act('new-conversation');
   };
   const copyResume = () => {
     const line = resumeLine(t);
@@ -195,8 +204,15 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
       () => toast(line),
     );
   };
-  const remove = () => {
-    if (window.confirm(`Remover o voo "${t.name}"? O processo dele é encerrado.`)) api.removeNode(id).catch((e: Error) => toast(e.message, 'err'));
+  const remove = async () => {
+    const ok = await confirmDialog({
+      title: `Remover o voo ${cs}?`,
+      tone: 'danger',
+      lose: [running ? `O processo de ${t.name} é encerrado, no meio do que estiver fazendo` : `${t.name} sai do canvas`, 'As frequências dele'],
+      keep: [ROLE_AGENTS.has(t.agent) && 'A conversa, guardada no agente', 'Os arquivos que ele mudou'],
+      action: 'Remover voo',
+    });
+    if (ok) api.removeNode(id).catch((e: Error) => toast(e.message, 'err'));
   };
   const items: MenuEntry[] = [
     running
@@ -263,6 +279,12 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
         </span>
       )}
       <span className="tn-spacer" />
+      {rt?.interrupted && (
+        <span className="tn-chip wait" title="Interrompido no meio do turno: Continuar, na faixa do topo, manda seguir">
+          <Icon name="u_turn_left" size={14} />
+          arremetida
+        </span>
+      )}
       <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} />
       <NodeMenu items={items} />
     </header>

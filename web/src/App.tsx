@@ -6,11 +6,14 @@ import { connectWorkspaces } from './api/workspaces';
 import type { WNode } from './api/types';
 import { Canvas } from './canvas/Canvas';
 import { ActivityDrawer } from './components/ActivityDrawer';
+import { AirspaceEmpty } from './components/AirspaceEmpty';
 import { Composer } from './components/Composer';
 import { ComposerPill } from './components/ComposerPill';
+import { ConfirmHost } from './components/ConfirmDialog';
 import { FloorDialogs } from './components/FloorDialogs';
 import { FloorEmpty } from './components/FloorEmpty';
 import { InterruptedBar } from './components/InterruptedBar';
+import { NoLink } from './components/NoLink';
 import { RolesPanel } from './components/RolesPanel';
 import { SummaryDialogs } from './components/SummaryDialogs';
 import { Toolbar } from './components/Toolbar';
@@ -107,7 +110,7 @@ function Stage() {
         return;
       }
       // Plain letters only act on the canvas, never while typing (or in a dialog).
-      if (e.metaKey || e.ctrlKey || typing(e.target) || st.rolesPanel !== false) return;
+      if (e.metaKey || e.ctrlKey || typing(e.target) || st.rolesPanel !== false || document.querySelector('[aria-modal="true"]')) return;
       const plain: Record<string, () => void> = {
         KeyV: () => st.setTool('select'),
         KeyH: () => st.setTool('pan'),
@@ -129,6 +132,7 @@ function Stage() {
     <main className="stage">
       <Canvas />
       <FloorEmpty />
+      <AirspaceEmpty onNote={() => create('note')} />
       <InterruptedBar />
       <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
       <ComposerPill />
@@ -137,6 +141,8 @@ function Stage() {
       <RolesPanel />
       <FloorDialogs />
       <SummaryDialogs />
+      <NoLink />
+      <ConfirmHost />
       <Toast />
     </main>
   );
