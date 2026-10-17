@@ -64,7 +64,7 @@ func TestTurnCardsAndSummary(t *testing.T) {
 		t.Fatalf("summary: %+v", done.Summary)
 	}
 	material, _ := os.ReadFile(filepath.Join(bin, "stdin.txt"))
-	if !strings.Contains(string(material), `"Claude" (agente claude, papel Implementador, térreo`) || !strings.Contains(string(material), "diga pong") {
+	if !strings.Contains(string(material), `"Claude" (agente claude, papel Implementador, pista`) || !strings.Contains(string(material), "diga pong") {
 		t.Fatalf("what claude read:\n%s", material)
 	}
 	if code, body := e.api("GET", "/api/summary", ""); code != 200 || len(body["cards"].([]any)) != 1 {
