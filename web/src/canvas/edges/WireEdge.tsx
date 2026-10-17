@@ -78,10 +78,10 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
     api
       .removeEdge(id)
       .then(() => toast(`${aName} ↔ ${bName} desligados`))
-      .catch((e: Error) => toast(e.message));
+      .catch((e: Error) => toast(e.message, 'err'));
   };
 
-  const wireClass = `wire${selected ? ' selected' : ''}${pending?.kind === 'pending' ? ' pending' : ''}`;
+  const wireClass = `wire${selected ? ' selected' : ''}${pending?.kind === 'pending' ? ' pending' : ''}${paused && !pending ? ' held' : ''}`;
   const endClass = (isOrigin: boolean) => (pending?.kind === 'pending' ? (isOrigin ? ' origin' : ' dest') : '');
 
   return (
@@ -106,8 +106,8 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
           style={{ stroke: `var(--r-${portalAct.role})` }}
         />
       )}
-      <circle className={`wire-end${endClass(originIsSource)}`} cx={w.s.x} cy={w.s.y} r={6} />
-      <circle className={`wire-end${endClass(!originIsSource)}`} cx={w.t.x} cy={w.t.y} r={6} />
+      <circle className={`wire-end${endClass(originIsSource)}`} cx={w.s.x} cy={w.s.y} r={4} />
+      <circle className={`wire-end${endClass(!originIsSource)}`} cx={w.t.x} cy={w.t.y} r={4} />
       {selected && <RopePoints edgeId={id} rope={rope} onDrag={setDragRope} />}
       <EdgeLabelRenderer>
         {visuals.map((v, i) => {
@@ -138,8 +138,14 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
               );
             case 'pending':
               return (
-                <div key={`${v.f.id}-pill`} className="wire-pill wait" style={at} title={`Pedido ${v.f.id} aguardando resposta`}>
-                  <Icon name="hourglass_top" size={17} />
+                <div
+                  key={`${v.f.id}-pill`}
+                  className="wire-pill wait nodrag nopan"
+                  style={at}
+                  title={`Pedido ${v.f.id} aguardando resposta · clique para ver no Rádio`}
+                  onClick={() => useSquad.getState().setDrawer(true)}
+                >
+                  <Icon name="hourglass_top" size={14} />
                   <span className="mono wire-time">{elapsed(v.f.startedAt, now)}</span>
                   <span className="mono wire-id">{v.f.id}</span>
                 </div>
@@ -147,7 +153,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
             case 'done':
               return (
                 <div key={`${v.f.id}-done`} className="wire-pill done fade" style={at}>
-                  <Icon name="check" size={17} />
+                  <Icon name="check" size={14} />
                   <span className="mono wire-id">{v.f.id}</span>
                   {v.f.elapsedMs !== undefined && <span className="mono wire-time">· {elapsed(Date.now() - v.f.elapsedMs, Date.now())}</span>}
                 </div>
@@ -155,7 +161,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
             case 'cancelled':
               return (
                 <div key={`${v.f.id}-x`} className="wire-pill err fade" style={at}>
-                  <Icon name="block" size={17} />
+                  <Icon name="block" size={14} />
                   <span className="mono wire-id">{v.f.id}</span>
                   cancelado
                 </div>
@@ -173,13 +179,14 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
             }}
             title={`${portalAct.act.byName || 'Agente'} ${actionVerb(portalAct.act.kind)}${portalAct.act.label ? ` ${portalAct.act.label}` : ''}`}
           >
-            <Icon name="ads_click" size={17} />
+            <Icon name="ads_click" size={14} />
             {actionVerb(portalAct.act.kind)}
           </div>
         )}
         {paused && visuals.length === 0 && !selected && (
-          <div className="wire-paused" style={{ transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y}px)` }} title="Espera geral">
-            <Icon name="pause" size={16} />
+          <div className="wire-paused" style={{ transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y}px)` }} title="Espera geral: os pedidos ficam retidos">
+            <Icon name="all_inclusive" size={14} />
+            retido
           </div>
         )}
         {selected && visuals.length === 0 && (
@@ -189,7 +196,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
             onClick={unlink}
             title="Desligar (Delete)"
           >
-            <Icon name="link_off" size={16} />
+            <Icon name="link_off" size={14} />
             Desligar
           </button>
         )}
@@ -204,7 +211,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
  */
 function RopePoints({ edgeId, rope, onDrag }: { edgeId: string; rope: [number, number][]; onDrag: (r: [number, number][] | null) => void }) {
   const rf = useReactFlow();
-  const save = (r: [number, number][]) => api.updateEdge(edgeId, r).catch((e: Error) => toast(e.message));
+  const save = (r: [number, number][]) => api.updateEdge(edgeId, r).catch((e: Error) => toast(e.message, 'err'));
   const startDrag = (e: React.PointerEvent, i: number) => {
     e.stopPropagation();
     const live = rope.map((p) => [...p] as [number, number]);

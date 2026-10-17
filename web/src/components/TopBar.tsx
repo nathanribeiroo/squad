@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import { useActiveFloor, useBranch } from '../lib/floors';
-import { shortPath } from '../lib/paths';
 import { useNow } from '../lib/useNow';
+import { usePopoverClose } from '../lib/usePopoverClose';
 import { wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
 import { FloorBar } from './FloorBar';
@@ -33,8 +32,6 @@ function Logo() {
 }
 
 export function TopBar() {
-  const ws = useSquad((s) => s.workspace);
-  const runtime = useSquad((s) => s.runtime);
   const extra = useSquad((s) => s.extra);
   const connection = useSquad((s) => s.connection);
   const drawerOpen = useSquad((s) => s.drawerOpen);
@@ -44,7 +41,9 @@ export function TopBar() {
   const [sesMenu, setSesMenu] = useState(false);
   const workspaces = useSquad((s) => s.workspaces);
   const activeWs = useSquad((s) => s.activeWs);
+  const ws = workspaces.find((w) => w.id === activeWs);
   const index = workspaces.findIndex((w) => w.id === activeWs);
+  const wsName = useSquad((s) => s.workspace?.name) ?? ws?.name;
   // The session list comes first: the workspace list follows a moment later.
   const session = useSquad(
     (s) => s.sessionLists[s.activeWs ?? '']?.sessions.find((x) => x.id === s.activeSession) ?? s.workspaces.find((w) => w.id === s.activeWs)?.session,
@@ -55,14 +54,6 @@ export function TopBar() {
     setWsMenu(false);
     setSesMenu(false);
   }, [activeWs]);
-  const floor = useActiveFloor();
-  const branch = useBranch(floor?.id ?? '');
-  const cwd = floor?.cwd ?? ws?.copy?.cwd ?? ws?.cwd ?? '';
-
-  const sendTimes = useSquad((s) => s.sendTimes);
-  const now = useNow(5000, sendTimes.length > 0);
-  const rate = sendTimes.filter((t) => now - t < 60_000).length;
-  const active = Object.values(runtime).filter((r) => r.activity === 'work' || r.activity === 'wait').length;
   const pending = extra.pending.length;
 
   const togglePause = () => {
@@ -73,69 +64,75 @@ export function TopBar() {
     <header className="topbar">
       <Logo />
       <span className="tb-divider" />
-      <div style={{ position: 'relative' }}>
-        <button className="tb-workspace" title="Workspaces" aria-expanded={wsMenu} onClick={() => setWsMenu(!wsMenu)}>
+      <div className="tb-anchor">
+        <button className="tb-crumb tb-workspace" title="Workspaces" aria-expanded={wsMenu} onClick={() => setWsMenu(!wsMenu)}>
           <span className="tb-ws-color" style={{ background: wsColor(ws?.color) }} />
-          <span className="tb-ws-name">{ws?.name ?? '…'}</span>
-          <span className="tb-ws-sub">
-            {active} {active === 1 ? 'voo no ar' : 'voos no ar'}
-          </span>
+          <span className="tb-ws-name">{wsName ?? '…'}</span>
           {elsewhere && <span className="tb-ws-elsewhere" title="Voos no ar em outro workspace" />}
-          {index >= 0 && index < 9 && <span className="kbd">⌥{index + 1}</span>}
-          <Icon name="expand_more" size={18} />
+          {index >= 0 && index < 9 && <span className="tb-kbd mono">⌥{index + 1}</span>}
+          <Icon name="expand_more" size={16} className="tb-caret" />
         </button>
         {wsMenu && <WorkspaceMenu onClose={() => setWsMenu(false)} />}
       </div>
-      <Icon name="chevron_right" size={18} style={{ color: 'var(--text-3)' }} />
-      <div style={{ position: 'relative', minWidth: 0 }}>
+      <span className="tb-sep">›</span>
+      <div className="tb-anchor tb-shrink">
         <button
-          className="tb-session"
+          className="tb-crumb tb-session"
           title={session ? `Sessão: ${session.name}` : 'Sessões'}
           aria-expanded={sesMenu}
           onClick={() => setSesMenu(!sesMenu)}
         >
-          <Icon name="history" size={16} />
+          <Icon name="history" size={16} className="tb-caret" />
           <span className="tb-session-name">{session?.name ?? '…'}</span>
-          <Icon name="expand_more" size={18} />
+          <Icon name="expand_more" size={16} className="tb-caret" />
         </button>
         {sesMenu && <SessionsMenu onClose={() => setSesMenu(false)} />}
       </div>
-      <Icon name="chevron_right" size={18} style={{ color: 'var(--text-3)' }} />
+      <span className="tb-sep">›</span>
       <FloorBar />
-      <span className="tb-path mono" title={cwd}>
-        {branch && `⎇ ${branch} · `}
-        {shortPath(cwd)}
-      </span>
       <span className="tb-spacer" />
-      <span className="tb-rate" title="Pedidos entre agentes no último minuto">
-        <Icon name="swap_horiz" size={18} />
-        <span className="mono">
-          {rate}/{extra.limits.perMinute}
-        </span>
-        <span className="tb-rate-label">por min</span>
-      </span>
-      <button className="btn" onClick={togglePause} title={extra.paused ? 'Liberar todos (⌥P)' : 'Espera geral: segura os pedidos entre os voos (⌥P)'}>
-        <Icon name={extra.paused ? 'play_arrow' : 'pause'} />
+      <button
+        className={`tb-btn${extra.paused ? ' hold' : ''}`}
+        onClick={togglePause}
+        title={extra.paused ? 'Liberar todos: os pedidos retidos seguem (⌥P)' : 'Espera geral: segura os pedidos entre os voos (⌥P)'}
+      >
+        <Icon name={extra.paused ? 'play_arrow' : 'all_inclusive'} size={16} />
         {extra.paused ? 'Liberar todos' : 'Espera geral'}
-        <span className="kbd">⌥P</span>
+        <span className="tb-kbd mono">⌥P</span>
       </button>
-      <button className={`btn${drawerOpen ? ' filled' : ''}`} onClick={() => setDrawer(!drawerOpen)} title="Rádio (⌥A)">
-        <Icon name="cell_tower" />
+      <button className={`tb-btn${drawerOpen ? ' on' : ''}`} onClick={() => setDrawer(!drawerOpen)} title="Rádio: os pedidos entre os voos (⌥A)">
+        <Icon name="cell_tower" size={16} />
         Rádio
         {pending > 0 && <span className="tb-count mono">{pending}</span>}
       </button>
-      <span className={`tb-server ${connection === 'connected' ? 'ok' : 'wait'}`}>
-        <Icon name="lan" size={18} />
-        {connection === 'connected' ? 'Enlace' : 'Reconectando…'}
-      </span>
-      <div style={{ position: 'relative' }}>
-        <button className="icon-btn" onClick={() => setMenu(!menu)} title="Configurações">
-          <Icon name="settings" />
+      {connection === 'connected' ? (
+        <span className="tb-link ok" title="Enlace com o servidor da Torre">
+          <i />
+          Enlace
+        </span>
+      ) : (
+        <span className="tb-link wait" title="O torre serve parou ou está reiniciando">
+          <Icon name="sync" size={15} className="spin" />
+          Reconectando…
+        </span>
+      )}
+      <div className="tb-anchor">
+        <button className="icon-btn tb-gear" onClick={() => setMenu(!menu)} title="Configurações" aria-expanded={menu}>
+          <Icon name="settings" size={18} />
         </button>
         {menu && <SettingsMenu onClose={() => setMenu(false)} />}
       </div>
+      <Clock />
     </header>
   );
+}
+
+/** The tower's clock: hh:mm:ss. */
+function Clock() {
+  const now = useNow(1000);
+  const d = new Date(now);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return <span className="tb-clock mono">{`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`}</span>;
 }
 
 function SettingsMenu({ onClose }: { onClose: () => void }) {
@@ -143,8 +140,9 @@ function SettingsMenu({ onClose }: { onClose: () => void }) {
   const term = useSquad((s) => s.termTheme);
   const setTheme = useSquad((s) => s.setTheme);
   const setTerm = useSquad((s) => s.setTermTheme);
+  const ref = usePopoverClose(onClose, '.tb-gear');
   return (
-    <div className="popover tb-menu" onMouseLeave={onClose}>
+    <div className="popover tb-menu" ref={ref}>
       <div className="tb-menu-title">Tema</div>
       {(['dark', 'light'] as const).map((t) => (
         <button key={t} className={`tb-menu-item${theme === t ? ' on' : ''}`} onClick={() => setTheme(t)}>

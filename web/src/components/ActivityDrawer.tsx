@@ -1,65 +1,85 @@
 import { useMemo, useState } from 'react';
-import { useBranch } from '../lib/floors';
 import type { IconName } from '../lib/icons';
-import { clock, elapsed } from '../lib/model';
+import { callsign, clock, elapsed } from '../lib/model';
 import { useNodeRoleColor } from '../lib/roles';
 import { useNow } from '../lib/useNow';
 import { useSquad, type ActivityItem } from '../state/store';
 import { Icon } from './Icon';
 import './ActivityDrawer.css';
 
-const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: number) => string; icon: IconName; state: string }> = {
-  pending: { label: (a, now) => `Pendente · ${elapsed(a.time, now)}`, icon: 'hourglass_top', state: 'wait' },
-  replied: { label: (a) => `Respondido em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`, icon: 'reply', state: 'done' },
-  delivered: { label: () => 'Entregue', icon: 'check', state: 'done' },
-  cancelled: { label: () => 'Cancelado', icon: 'block', state: 'err' },
-  held: { label: (a) => (a.text.startsWith('Retido: limite') ? 'Retido · limite por minuto' : 'Retido · espera geral'), icon: 'all_inclusive', state: 'wait' },
-  note: { label: () => 'NOTAM editado', icon: 'description', state: 'idle' },
-  turn: { label: () => 'Em solo', icon: 'flight_land', state: 'done' },
+// Outcome pills (docs/torre/TELAS.md, quadro 07): style is the pill's look.
+const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: number) => string; icon: IconName; style: string }> = {
+  pending: { label: (a, now) => `Pendente · ${elapsed(a.time, now)}`, icon: 'hourglass_top', style: 'wait dashed' },
+  replied: { label: (a) => `Respondido em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`, icon: 'reply', style: 'done' },
+  delivered: { label: () => 'Entregue', icon: 'check', style: 'done' },
+  cancelled: { label: () => 'Cancelado', icon: 'block', style: 'err' },
+  held: { label: (a) => (a.text.startsWith('Retido: limite') ? 'Retido · limite por minuto' : 'Retido · espera geral'), icon: 'all_inclusive', style: 'wait dashed' },
+  note: { label: () => 'NOTAM editado', icon: 'description', style: 'idle' },
+  turn: { label: () => 'Em solo', icon: 'flight_land', style: 'done' },
 };
 
+type Filter = { kind: 'all' } | { kind: 'pending' } | { kind: 'node'; id: string };
+
+/** The Rádio (Atividade): who asked what of whom, and how it ended. */
 export function ActivityDrawer() {
   const open = useSquad((s) => s.drawerOpen);
   const setDrawer = useSquad((s) => s.setDrawer);
   const items = useSquad((s) => s.activity);
   const ws = useSquad((s) => s.workspace);
   const extra = useSquad((s) => s.extra);
+  const sendTimes = useSquad((s) => s.sendTimes);
+  const session = useSquad((s) => s.sessionLists[s.activeWs ?? '']?.sessions.find((x) => x.id === s.activeSession)?.name);
   const roleOf = useNodeRoleColor();
-  const [filter, setFilter] = useState<string | null>(null);
-  const branch = useBranch(useSquad((s) => s.activeFloor));
+  const [filter, setFilter] = useState<Filter>({ kind: 'all' });
   const canSummarize = useSquad((s) => !!s.summarySettings && s.summarySettings.engine !== 'off' && s.summarySettings.engines.some((e) => e.available));
 
-  const people = useMemo(() => {
-    const names = new Map<string, string>();
-    for (const n of ws?.nodes ?? []) if (n.terminal) names.set(n.id, n.terminal.name);
-    return [...names.entries()];
+  // Flights by id: callsign and floor (the drawer speaks in callsigns).
+  const flights = useMemo(() => {
+    const m = new Map<string, { cs: string; floor: string }>();
+    for (const n of ws?.nodes ?? []) if (n.terminal) m.set(n.id, { cs: callsign(n.terminal), floor: n.floor ?? '' });
+    return m;
   }, [ws]);
-  const shown = filter ? items.filter((a) => a.from === filter || a.to === filter) : items;
+  const pendingIds = new Set(extra.pending.map((p) => p.id));
+  const isPending = (a: ActivityItem) => a.outcome === 'pending' && !!a.id && pendingIds.has(a.id);
+  let shown = items;
+  if (filter.kind === 'pending') shown = items.filter(isPending);
+  if (filter.kind === 'node') shown = items.filter((a) => a.from === filter.id || a.to === filter.id);
+  // What is still open goes first.
+  shown = [...shown.filter(isPending), ...shown.filter((a) => !isPending(a))];
   const pending = extra.pending.length;
-  const now = useNow(1000, open && pending > 0);
+  const now = useNow(1000, open);
+  const rate = sendTimes.filter((t) => now - t < 60_000).length;
 
   if (!open) {
     return (
       <button className="ad-tab" onClick={() => setDrawer(true)} aria-label="Abrir o Rádio">
-        <Icon name="chevron_left" size={18} />
+        <Icon name="chevron_left" size={16} />
         <span className="ad-tab-label">Rádio</span>
         {pending > 0 && <span className="tb-count mono">{pending}</span>}
       </button>
     );
   }
 
+  const who = (id: string | undefined, name: string) => (id && flights.get(id)?.cs) || (name === 'Você' || !name ? 'VOCÊ' : name);
+  const color = (id?: string) => (id && flights.has(id) ? `var(--rt-${roleOf(id)})` : 'var(--text)');
+  const goTo = (id?: string) => {
+    if (!id || !flights.has(id)) return;
+    useSquad.getState().setFloor(flights.get(id)!.floor, id);
+  };
+
   return (
     <aside className="activity-drawer" aria-label="Rádio">
       <header className="ad-head">
+        <Icon name="cell_tower" size={18} className="ad-icon" />
         <span className="ad-title">Rádio</span>
-        <span className="ad-sub">
+        <span className="ad-sub mono">
           {ws?.name ?? ''}
-          {branch && ` · ${branch}`}
+          {session && ` · ${session}`}
         </span>
         <span style={{ flex: 1 }} />
         {canSummarize && (
           <button className="btn ad-overview" onClick={() => useSquad.getState().setSummaryDialog('overview')} title="Briefing: uma visão geral do que os voos estão fazendo">
-            <Icon name="psychology" size={16} />
+            <Icon name="summarize" size={15} />
             Briefing
           </button>
         )}
@@ -68,53 +88,68 @@ export function ActivityDrawer() {
         </button>
       </header>
       <div className="ad-filters">
-        <button className={`ad-chip${filter === null ? ' on' : ''}`} onClick={() => setFilter(null)}>
+        <button className={`ad-chip${filter.kind === 'all' ? ' on' : ''}`} onClick={() => setFilter({ kind: 'all' })}>
           Todos
         </button>
-        {people.map(([id, name]) => (
-          <button key={id} className={`ad-chip${filter === id ? ' on' : ''}`} onClick={() => setFilter(filter === id ? null : id)}>
-            <i style={{ background: `var(--r-${roleOf(id)})` }} />
-            {name}
-          </button>
-        ))}
+        <button className={`ad-chip wait${filter.kind === 'pending' ? ' on' : ''}`} onClick={() => setFilter(filter.kind === 'pending' ? { kind: 'all' } : { kind: 'pending' })}>
+          Pendentes {pending}
+        </button>
+        {[...flights.entries()].map(([id, f]) => {
+          const on = filter.kind === 'node' && filter.id === id;
+          return (
+            <button key={id} className={`ad-chip mono${on ? ' on' : ''}`} onClick={() => setFilter(on ? { kind: 'all' } : { kind: 'node', id })}>
+              <i style={{ background: `var(--r-${roleOf(id)})` }} />
+              {f.cs}
+            </button>
+          );
+        })}
       </div>
       <div className="ad-list">
         {shown.length === 0 && <div className="ad-empty">Rádio em silêncio. Ponha dois voos na mesma frequência e use torre ask.</div>}
         {shown.map((a) => {
           const o = OUTCOME[a.outcome];
+          const open = isPending(a);
           return (
-            <div key={a.key} className="ad-item">
-              <span className="ad-time mono">{clock(a.time)}</span>
-              <div>
-                <div className="ad-line">
-                  <span style={{ color: a.from ? `var(--r-${roleOf(a.from)})` : 'var(--text)' }}>{a.fromName || 'Você'}</span>
-                  {a.outcome === 'turn' ? (
-                    <span className="ad-turn">pousou</span>
-                  ) : (
-                    <>
-                      <Icon name={a.outcome === 'note' ? 'edit' : 'arrow_forward'} size={15} style={{ color: 'var(--text-2)' }} />
-                      <span style={{ color: a.to ? `var(--r-${roleOf(a.to)})` : 'var(--text)' }}>{a.toName}</span>
-                    </>
-                  )}
-                  {a.id && <span className="mono ad-id">{a.id}</span>}
-                </div>
-                {a.text && <div className="ad-msg">{a.text}</div>}
-                <span className="ad-pill" style={{ background: `var(--stb-${o.state})`, color: `var(--stt-${o.state})` }}>
-                  <Icon name={o.icon} size={14} />
+            <div key={a.key} className={`ad-item${open ? ' pinned' : ''}`}>
+              <div className="ad-line mono">
+                <span className="ad-time">{clock(a.time)}</span>
+                <b style={{ color: color(a.from) }}>{who(a.from, a.fromName)}</b>
+                {a.outcome === 'turn' ? (
+                  <span className="ad-turn">fim do turno</span>
+                ) : (
+                  <>
+                    <span className="ad-arrow">→</span>
+                    <b style={{ color: color(a.to) }}>{a.outcome === 'note' ? a.toName : who(a.to, a.toName)}</b>
+                  </>
+                )}
+                {a.id && <span className="ad-id">{a.id}</span>}
+                <span style={{ flex: 1 }} />
+                <span className={`ad-pill ${o.style}`}>
+                  <Icon name={o.icon} size={13} />
                   {o.label(a, now)}
                 </span>
               </div>
+              {a.text && a.outcome !== 'turn' && <div className="ad-msg">{a.text}</div>}
+              {open && (
+                <div className="ad-actions">
+                  <button className="btn" onClick={() => goTo(a.to)}>
+                    Ver no espaço
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-      <footer className="ad-foot">
-        <Icon name="tune" size={16} style={{ color: 'var(--text-3)' }} />
-        <span className="mono">
-          máx. {extra.limits.maxHops} saltos · {extra.limits.perMinute} pedidos/min
+      <footer className="ad-foot mono">
+        <Icon name="swap_horiz" size={15} />
+        <span>
+          {rate}/{extra.limits.perMinute} por min · máx. {extra.limits.maxHops} saltos
         </span>
         <span style={{ flex: 1 }} />
-        <span className="ad-limits">Limites</span>
+        <button className="btn ad-limits" disabled title="Os limites vão para Configurações → Limites">
+          Limites
+        </button>
       </footer>
     </aside>
   );

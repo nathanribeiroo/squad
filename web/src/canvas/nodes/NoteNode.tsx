@@ -67,7 +67,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
   const save = (text: string) => {
     shown.current = text;
     setContent(text);
-    api.saveNote(id, text).catch((e: Error) => toast(e.message.includes('locked') ? 'NOTAM travada: destrave para editar.' : e.message));
+    api.saveNote(id, text).catch((e: Error) => toast(e.message.includes('locked') ? 'NOTAM travada: destrave para editar.' : e.message, 'err'));
   };
 
   const startEdit = () => {
@@ -88,10 +88,10 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
     save(lines.join('\n'));
   };
 
-  const setLocked = (locked: boolean) => api.updateNode(id, { note: { ...note, locked } }).catch((e: Error) => toast(e.message));
+  const setLocked = (locked: boolean) => api.updateNode(id, { note: { ...note, locked } }).catch((e: Error) => toast(e.message, 'err'));
   const remove = () => {
     const kept = note.file ? ` O arquivo ${note.file} continua no disco.` : '';
-    if (window.confirm(`Remover a NOTAM "${note.title}" do canvas?${kept}`)) api.removeNode(id).catch((e: Error) => toast(e.message));
+    if (window.confirm(`Remover a NOTAM "${note.title}" do canvas?${kept}`)) api.removeNode(id).catch((e: Error) => toast(e.message, 'err'));
   };
 
   const authorRole = (name: string) => roleColor(roleOf(nodes?.find((n) => n.terminal?.name === name)?.terminal?.role));
@@ -100,10 +100,10 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
     : null;
 
   return (
-    <div className={`nnode${selected ? ' selected' : ''}${connectClass(target)}`}>
+    <div className={`nnode${selected ? ' selected' : ''}${note.locked ? ' locked' : ''}${connectClass(target)}`}>
       <NodeHandles id={id} />
       <header className="nn-head node-drag">
-        <Icon name="description" size={18} style={{ color: 'var(--text-2)' }} />
+        <span className="nn-tag">NOTAM</span>
         {note.draft || renaming ? (
           <NoteNameInput id={id} note={note} onDone={() => setRenaming(false)} />
         ) : (
@@ -114,7 +114,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
         {creator && (
           <span className="pn-creator" title={`${creator.name} criou esta NOTAM (torre note create); o nome é o que o voo deu`}>
             <i style={{ background: `var(--r-${creator.color})` }} />
-            por {creator.name}
+            por {creator.callsign}
           </span>
         )}
         {note.file && <span className="nn-file mono">{note.file}</span>}
@@ -162,7 +162,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
             </div>
           )}
           <textarea
-            className="nn-editor nodrag nowheel mono"
+            className="nn-editor nodrag nowheel"
             value={draft}
             autoFocus
             spellCheck={false}
@@ -180,6 +180,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
               }
             }}
           />
+          <footer className="nn-foot mono">grava sozinha 0,8 s depois · Esc volta à prévia</footer>
         </>
       ) : (
         <div className="nn-body nodrag nowheel" onDoubleClick={() => !note.locked && startEdit()}>
@@ -217,7 +218,7 @@ function NoteNameInput({ id, note, onDone }: { id: string; note: NoteData; onDon
     }
     const problem = !name ? 'Dê um nome à NOTAM.' : name.startsWith('-') ? 'O nome não pode começar com "-".' : '';
     if (problem) {
-      toast(problem);
+      toast(problem, 'err');
       input.current?.focus();
       return;
     }
@@ -227,7 +228,7 @@ function NoteNameInput({ id, note, onDone }: { id: string; note: NoteData; onDon
       .then(onDone)
       .catch((e: Error) => {
         done.current = false;
-        toast(e instanceof ApiError && e.status === 409 ? `Já existe uma NOTAM chamada "${name}" (ou que já teve esse nome).` : e.message);
+        toast(e instanceof ApiError && e.status === 409 ? `Já existe uma NOTAM chamada "${name}" (ou que já teve esse nome).` : e.message, 'err');
         input.current?.focus();
         input.current?.select();
       });

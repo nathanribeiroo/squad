@@ -21,17 +21,17 @@
 .fl-prep .field-hint { margin: 0; }
 
 .fl-section { display: flex; flex-direction: column; gap: 6px; }
-.fl-section-title { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.fl-section-title { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
 .fl-muted { font-weight: 400; color: var(--text-2); }
-.fl-commits, .fl-files { list-style: none; margin: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 0; background: var(--surface-2); font-size: 11.5px; max-height: 150px; overflow-y: auto; }
-.fl-commits li, .fl-files li { padding: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fl-hash { color: var(--stt-work); }
+.fl-commits, .fl-files { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); font-size: 11.5px; max-height: 180px; overflow-y: auto; }
+.fl-commits li, .fl-files li { padding: 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-hash { color: var(--stt-wait); margin-right: 10px; }
 .fl-file-st { display: inline-block; width: 22px; color: var(--stt-wait); }
 .fl-more { color: var(--text-3); }
 
 .fl-options { display: flex; flex-direction: column; gap: 6px; }
-.fl-option { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 0; cursor: pointer; }
-.fl-option.on { border-color: var(--line-2); background: var(--surface-2); }
+.fl-option { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line-3); cursor: pointer; }
+.fl-option.on { border-color: var(--text-2); background: var(--surface-3); }
 .fl-option input { margin-top: 2px; accent-color: var(--text); }
 .fl-option > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .fl-option b { font-weight: 600; }
@@ -52,27 +52,42 @@
 
 .fl-log { margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 0; background: var(--surface-2); font-size: 11.5px; line-height: 1.5; max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
 
-/* A floor with nothing on it (FloorEmpty), over the empty canvas. */
+/* An empty level (FloorEmpty, TELAS.md quadro 13): a 420 card on the canvas. */
 .fl-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 5; }
 .fl-empty-card {
   pointer-events: auto;
-  width: min(440px, calc(100% - 32px));
+  width: min(420px, calc(100% - 32px));
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
+  gap: 10px;
   padding: 22px 24px;
-  text-align: center;
   background: var(--surface);
-  border: 1px dashed var(--line-2);
-  border-radius: 0;
+  border: 1px solid var(--line-2);
   color: var(--text-2);
   font-size: 12.5px;
   line-height: 1.5;
 }
-.fl-empty-card > .msi { color: var(--text-3); }
-.fl-empty-card strong { font-size: 15px; color: var(--text); }
-.fl-empty-card p { margin: 4px 0; }
+.fl-empty-card strong { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.fl-empty-card p { margin: 4px 0 0; }
 .fl-empty-path { font-size: 11px; color: var(--text-3); }
-.fl-empty-state { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; color: var(--stt-wait); }
-.fl-empty-state.err { color: var(--stt-err); }
+.fl-empty-state { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line-3); color: var(--stt-work); font-size: 12px; }
+.fl-empty-state.err { color: var(--stt-err); border-color: var(--st-err); }
+.fl-empty-cmd { display: block; padding: 8px 10px; background: var(--bg); color: var(--text); font-size: 11.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fl-empty-btn { height: 38px; justify-content: center; }
+
+/* New level: NÍVEL (automatic) · NOME · BRANCH in a row. */
+.fl-row { display: grid; grid-template-columns: 70px 1fr 1fr; gap: 10px; }
+.fl-level-box { height: 34px; display: flex; align-items: center; justify-content: center; background: var(--surface-3); border: 1px solid var(--line-3); color: var(--text); font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+/* Landing: four checks before the button. */
+.fl-checks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.fl-check { min-height: 52px; padding: 8px 10px; border: 1px solid var(--line-3); display: flex; flex-direction: column; gap: 3px; font-family: var(--font-mono); }
+.fl-check b { font-size: 11.5px; font-weight: 700; color: var(--text); }
+.fl-check span { font-size: 10.5px; color: var(--text-3); }
+.fl-check.ok { border-color: var(--st-done); }
+.fl-check.ok b { color: var(--stt-done); }
+.fl-check.wait { border-color: var(--st-wait); border-style: dashed; }
+.fl-check.wait b { color: var(--stt-wait); }
+.fl-check.err { border-color: var(--st-err); }
+.fl-check.err b { color: var(--stt-err); }
+.fl-who { font-size: 10.5px; color: var(--text-3); }

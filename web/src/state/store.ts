@@ -70,6 +70,8 @@ export const PORTAL_ACTION_MS = 2500;
 /** Last reply an origin terminal got (its "reply" strip). */
 export interface LastReply {
   id: string;
+  /** The flight that answered (its node id) and its name. */
+  from?: string;
   fromName: string;
   elapsedMs: number;
   at: number;
@@ -411,7 +413,7 @@ export const useSquad = create<SquadState>((set, get) => ({
         set({ runtime: { ...st.runtime, [d.id]: { ...st.runtime[d.id], title: d.title } } });
         return;
       case 'terminal.notice':
-        if (d.kind === 'not-resumed') toast(`Não deu para retomar a conversa de ${d.name}: começou uma nova.`);
+        if (d.kind === 'not-resumed') toast(`Não deu para retomar a conversa de ${d.name}: começou uma nova.`, 'wait');
         return;
       case 'request.sent': {
         const now = Date.now();
@@ -448,7 +450,7 @@ export const useSquad = create<SquadState>((set, get) => ({
         const flights = { ...st.flights };
         const now = Date.now();
         if (f) flights[d.id] = { ...f, phase: cancelled ? 'cancelled' : 'received', updatedAt: now, replyAt: f.replyAt ?? now, elapsedMs: d.elapsedMs };
-        const lastReply = cancelled ? st.lastReply : { ...st.lastReply, [d.from]: { id: d.id, fromName: d.toName, elapsedMs: d.elapsedMs ?? 0, at: now } };
+        const lastReply = cancelled ? st.lastReply : { ...st.lastReply, [d.from]: { id: d.id, from: d.to, fromName: d.toName, elapsedMs: d.elapsedMs ?? 0, at: now } };
         set({
           flights,
           lastReply,

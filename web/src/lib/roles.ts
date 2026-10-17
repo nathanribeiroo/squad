@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import type { RoleDef, TerminalData } from '../api/types';
 import { useSquad } from '../state/store';
 import type { IconName } from './icons';
+import { callsign } from './model';
 import { toast } from './toast';
 
 /** Same lists as internal/roles (the server refuses others). */
@@ -77,7 +78,7 @@ export async function changeRole(nodeId: string, t: TerminalData, roleId: string
     // only when a conversation begins).
     if (restart) await api.nodeAction(nodeId, 'new-conversation');
   } catch (e) {
-    toast((e as Error).message);
+    toast((e as Error).message, 'err');
   }
 }
 
@@ -87,23 +88,23 @@ export function isManager(t: TerminalData, role?: RoleDef): boolean {
 }
 
 /** The node (terminal) that created a node, for "criado por". */
-export function useCreator(createdBy?: string): { name: string; color: string } | null {
+export function useCreator(createdBy?: string): { name: string; callsign: string; color: string } | null {
   return useSquad((s) => {
     if (!createdBy) return null;
     const n = s.workspace?.nodes.find((x) => x.id === createdBy);
     if (!n?.terminal) return null;
     const role = n.terminal.role ? s.roles.find((r) => r.id === n.terminal!.role) : undefined;
-    return creatorCache(n.terminal.name, roleColor(role));
+    return creatorCache(n.terminal.name, callsign(n.terminal), roleColor(role));
   });
 }
 
 // useSquad selectors must return stable objects.
-const creators = new Map<string, { name: string; color: string }>();
-function creatorCache(name: string, color: string) {
-  const key = `${name}\u0000${color}`;
+const creators = new Map<string, { name: string; callsign: string; color: string }>();
+function creatorCache(name: string, cs: string, color: string) {
+  const key = `${name}\u0000${cs}\u0000${color}`;
   let v = creators.get(key);
   if (!v) {
-    v = { name, color };
+    v = { name, callsign: cs, color };
     creators.set(key, v);
   }
   return v;

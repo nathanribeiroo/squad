@@ -3,6 +3,7 @@ import { api } from '../../api/client';
 import type { TurnCard as Card } from '../../api/types';
 import { Icon } from '../../components/Icon';
 import { Markdown } from '../../lib/markdown';
+import { callsign, clock } from '../../lib/model';
 import { toast } from '../../lib/toast';
 import { useSquad } from '../../state/store';
 
@@ -46,6 +47,10 @@ export function useCanSummarize(): boolean {
  */
 export function TurnCard({ id, working }: { id: string; working: boolean }) {
   const card = useSquad((s) => s.cards[id]);
+  const who = useSquad((s) => {
+    const t = s.workspace?.nodes.find((n) => n.id === id)?.terminal;
+    return t ? callsign(t) : '';
+  });
   const shown = useCardShown(id, working);
   const canSummarize = useCanSummarize();
   const [open, setOpen] = useState(false);
@@ -53,7 +58,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
 
   const summarize = () =>
     api.summarize(id).catch((e: Error) => {
-      toast(e.message);
+      toast(e.message, 'err');
     });
   const send = (step: string) => {
     const st = useSquad.getState();
@@ -72,7 +77,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
             <section>
               <div className="tc-label">
                 <Icon name="psychology" size={14} />
-                Resumo <span className="tc-by">· {card.summary.by}</span>
+                Resumo <span className="tc-by">· por {card.summary.by} -p · {clock(card.summary.at)}</span>
               </div>
               <div className="tc-summary">
                 <Markdown text={card.summary.text} />
@@ -81,7 +86,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
                 <div className="tc-steps">
                   {steps.map((s) => (
                     <button key={s} className="tc-step" onClick={() => send(s)} title="Abrir no Transmitir, para este voo">
-                      <Icon name="arrow_forward" size={14} />
+                      <span className="tc-step-to mono">→ {who}</span>
                       {plain(s)}
                     </button>
                   ))}
@@ -107,8 +112,10 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
           </section>
         </div>
       )}
-      <Icon name={card.summary ? 'psychology' : 'check_circle'} size={15} className="tc-icon" />
-      <span className="tc-head">Turno{dur && ` · ${dur}`}</span>
+      <Icon name="flight_land" size={15} className="tc-icon" />
+      <span className="tc-head">
+        Boletim{dur && <span className="mono"> · {dur}</span>}
+      </span>
       <button className="tc-gist" onClick={() => setOpen(!open)} title={open ? 'Fechar' : 'Ver o boletim inteiro'}>
         {gist(card)}
         {steps.length > 0 && <span className="tc-count"> · {steps.length === 1 ? '1 passo' : `${steps.length} passos`}</span>}
@@ -123,7 +130,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
         !card.summary && (
           <button className="tc-btn" onClick={summarize} title={card.error ? `O último resumo falhou: ${card.error}` : 'Resumir com um agente (gasta do plano dele)'}>
             {card.error && <Icon name="error" size={14} style={{ color: 'var(--stt-err)' }} />}
-            Resumir
+            {card.error ? 'De novo' : 'Resumir'}
           </button>
         )
       )}

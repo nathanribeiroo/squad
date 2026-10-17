@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/client';
+import { callsign } from '../lib/model';
 import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -14,7 +15,7 @@ export function InterruptedBar() {
   const names = useSquad((s) =>
     (s.workspace?.nodes ?? [])
       .filter((n) => n.terminal && s.runtime[n.id]?.interrupted)
-      .map((n) => n.terminal!.name)
+      .map((n) => callsign(n.terminal!))
       .join('\u0000'),
   );
   const [busy, setBusy] = useState(false);
@@ -25,7 +26,7 @@ export function InterruptedBar() {
     setBusy(true);
     api
       .interrupted(action)
-      .catch((e: Error) => toast(e.message))
+      .catch((e: Error) => toast(e.message, 'err'))
       .finally(() => setBusy(false));
   };
   return (

@@ -6,6 +6,8 @@ export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'done' | 'err' | 'off'
 
 export interface TerminalData {
   name: string;
+  /** Short code shown with the name (PLN, IMP, IM2…), unique in the canvas. */
+  callsign?: string;
   agent: AgentType | string;
   command?: string;
   shell?: string;
@@ -67,6 +69,8 @@ export interface WNode {
 export interface Floor {
   id: string;
   name: string;
+  /** The flight level: FL1, FL2…, in creation order, never given again. */
+  number?: number;
   branch: string;
   /** Branch it started from (landing merges there by default). */
   base?: string;
@@ -172,6 +176,8 @@ export interface Workspace {
   edges: WEdge[];
   floors?: Floor[];
   floorConfig?: FloorConfig;
+  /** The last flight level given (FL1, FL2…); the next floor is one more. */
+  floorSeq?: number;
   /** The session works in a copy of the repository, on a branch of its own
    * (internal/floors copy.go); its terminals and floors start there. */
   copy?: Floor;
@@ -223,6 +229,8 @@ export interface ServerEvent<T = any> {
 export interface RoleDef {
   id: string;
   name: string;
+  /** Three letters (PLN, IMP…): the callsign of its flights. */
+  abbr?: string;
   /** The instructions the agent receives. */
   prompt: string;
   /** --r-<color> / --rb-<color> */
