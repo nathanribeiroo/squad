@@ -4,11 +4,11 @@ package roles
 // values terminals stored before roles had instructions.
 func Defaults() []Role {
 	return []Role{
-		{ID: "plan", Name: "Planejador", Color: "plan", Icon: "account_tree", Manager: true, Builtin: true, Prompt: planPrompt},
-		{ID: "arch", Name: "Arquiteto", Color: "indigo", Icon: "architecture", Builtin: true, Prompt: archPrompt},
-		{ID: "impl", Name: "Implementador", Color: "impl", Icon: "code", Builtin: true, Prompt: implPrompt},
-		{ID: "rev", Name: "Revisor", Color: "rev", Icon: "rate_review", Builtin: true, Prompt: revPrompt},
-		{ID: "test", Name: "Testador", Color: "test", Icon: "science", Builtin: true, Prompt: testPrompt},
+		{ID: "plan", Name: "Planejador", Abbr: "PLN", Color: "plan", Icon: "account_tree", Manager: true, Builtin: true, Prompt: planPrompt},
+		{ID: "arch", Name: "Arquiteto", Abbr: "ARQ", Color: "indigo", Icon: "architecture", Builtin: true, Prompt: archPrompt},
+		{ID: "impl", Name: "Implementador", Abbr: "IMP", Color: "impl", Icon: "code", Builtin: true, Prompt: implPrompt},
+		{ID: "rev", Name: "Revisor", Abbr: "REV", Color: "rev", Icon: "rate_review", Builtin: true, Prompt: revPrompt},
+		{ID: "test", Name: "Testador", Abbr: "TST", Color: "test", Icon: "science", Builtin: true, Prompt: testPrompt},
 	}
 }
 

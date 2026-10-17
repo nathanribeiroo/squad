@@ -39,6 +39,9 @@ type Workspace struct {
 	// canvas; FloorConfig seeds new ones (nil: DefaultFloorConfig).
 	Floors      []Floor      `json:"floors,omitempty"`
 	FloorConfig *FloorConfig `json:"floorConfig,omitempty"`
+	// FloorSeq is the last floor number given (FL1, FL2…): numbers of
+	// discarded floors aren't given again.
+	FloorSeq int `json:"floorSeq,omitempty"`
 	// Copy: the canvas (a session) works in a copy of the repository instead
 	// of the workspace folder (copy.go).
 	Copy *Floor `json:"copy,omitempty"`
@@ -82,14 +85,17 @@ func (n Node) Label() string {
 
 // TerminalData configures a terminal node.
 type TerminalData struct {
-	Name    string `json:"name"`
-	Agent   string `json:"agent"`             // claude | codex | devin | gemini | shell | custom
-	Command string `json:"command,omitempty"` // launch line; empty = plain shell
-	Shell   string `json:"shell,omitempty"`
-	Cwd     string `json:"cwd,omitempty"`
-	Role    string `json:"role,omitempty"` // a role of the library: plan | impl | rev | test | …
-	Cols    int    `json:"cols,omitempty"`
-	Rows    int    `json:"rows,omitempty"`
+	Name string `json:"name"`
+	// Callsign: a short code, unique in the canvas (PLN, IMP, IM2…), that the
+	// UI shows next to the name; the store makes it unique (callsigns.go).
+	Callsign string `json:"callsign,omitempty"`
+	Agent    string `json:"agent"`             // claude | codex | devin | gemini | shell | custom
+	Command  string `json:"command,omitempty"` // launch line; empty = plain shell
+	Shell    string `json:"shell,omitempty"`
+	Cwd      string `json:"cwd,omitempty"`
+	Role     string `json:"role,omitempty"` // a role of the library: plan | impl | rev | test | …
+	Cols     int    `json:"cols,omitempty"`
+	Rows     int    `json:"rows,omitempty"`
 	// Manager lets the agent create and connect terminals (torre new); nil
 	// follows its role.
 	Manager *bool `json:"manager,omitempty"`
@@ -194,6 +200,9 @@ func Open(path string, def Workspace) (*Store, error) {
 	}
 	if s.ws, err = parse(path, data); err != nil {
 		return nil, err
+	}
+	if s.migrateLocked() {
+		return s, s.save()
 	}
 	return s, nil
 }
@@ -393,6 +402,11 @@ func (s *Store) AddNode(n Node) (Node, error) {
 			return Node{}, fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name)
 		}
 	}
+	if n.Terminal != nil {
+		t := *n.Terminal
+		t.Callsign = s.freeCallsignLocked(t.Callsign, t.Name, n.ID)
+		n.Terminal = &t
+	}
 	s.ws.Nodes = append(s.ws.Nodes, cloneNode(n))
 	return cloneNode(n), s.save()
 }
@@ -415,6 +429,9 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 				if other.ID != id && other.Terminal != nil && other.Terminal.Name == n.Terminal.Name {
 					return Node{}, fmt.Errorf("%w: a terminal named %q", ErrDuplicate, n.Terminal.Name)
 				}
+			}
+			if err := s.checkCallsignLocked(&n, s.ws.Nodes[i]); err != nil {
+				return Node{}, err
 			}
 		}
 		s.ws.Nodes[i] = n

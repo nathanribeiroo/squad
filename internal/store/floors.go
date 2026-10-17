@@ -19,8 +19,11 @@ const (
 // its own branch) with its own canvas: the nodes whose Floor is its id.
 // Wires may cross floors.
 type Floor struct {
-	ID     string `json:"id"`     // slug of the name: "login"
-	Name   string `json:"name"`   // "Login"
+	ID   string `json:"id"`   // slug of the name: "login"
+	Name string `json:"name"` // "Login"
+	// Number: the flight level, FL1, FL2…, in the order floors were
+	// created in this canvas (never given again).
+	Number int    `json:"number,omitempty"`
 	Branch string `json:"branch"` // the floor's branch
 	// Base is the branch the floor started from, where landing merges by
 	// default ("" when the ground floor was on a detached HEAD); BaseCommit
@@ -98,9 +101,13 @@ func (s *Store) AddFloor(f Floor) (Floor, error) {
 			return Floor{}, fmt.Errorf("%w: a floor named %q", ErrDuplicate, o.Name)
 		}
 	}
+	seq := s.ws.FloorSeq
+	s.ws.FloorSeq++
+	f.Number = s.ws.FloorSeq
 	s.ws.Floors = append(s.ws.Floors, cloneFloor(f))
 	if err := s.save(); err != nil {
 		s.ws.Floors = s.ws.Floors[:len(s.ws.Floors)-1]
+		s.ws.FloorSeq = seq
 		return Floor{}, err
 	}
 	return cloneFloor(f), nil

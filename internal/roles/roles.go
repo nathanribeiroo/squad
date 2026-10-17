@@ -23,6 +23,9 @@ import (
 type Role struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
+	// Abbr: three letters (PLN, IMP…) that give its terminals their
+	// callsigns; made from the name when not given.
+	Abbr   string `json:"abbr,omitempty"`
 	Prompt string `json:"prompt"` // the instruction the agent receives
 	Color  string `json:"color"`  // one of Colors
 	Icon   string `json:"icon"`   // one of Icons
@@ -94,6 +97,9 @@ func Open(path string) (*Library, error) {
 	for _, r := range f.Roles {
 		if i := l.index(r.ID); i >= 0 && l.roles[i].Builtin {
 			if r.Builtin { // an edited built-in role
+				if r.Abbr == "" { // edited before roles had abbreviations
+					r.Abbr = l.roles[i].Abbr
+				}
 				r.Edited = true
 				l.roles[i] = r
 				continue
@@ -104,6 +110,9 @@ func Open(path string) (*Library, error) {
 			continue
 		}
 		r.Builtin, r.Edited = false, false
+		if r.Abbr == "" { // made before roles had abbreviations
+			r.Abbr = l.freeAbbr(ids.Callsign(r.Name), r.ID)
+		}
 		// A built-in role added by a newer Torre may take the name of one the
 		// user made (e.g. "Arquiteto"): theirs keeps its id and instructions
 		// under another name, so --role and the role picker stay unambiguous.
@@ -190,7 +199,7 @@ func (l *Library) Update(id string, r Role) (Role, error) {
 		}
 		r.ID, r.Builtin, r.Edited = id, l.roles[i].Builtin, false
 		if d, ok := defaultOf(id); ok && r.Builtin {
-			r.Edited = r.Name != d.Name || r.Prompt != d.Prompt || r.Color != d.Color || r.Icon != d.Icon || r.Manager != d.Manager
+			r.Edited = r.Name != d.Name || r.Abbr != d.Abbr || r.Prompt != d.Prompt || r.Color != d.Color || r.Icon != d.Icon || r.Manager != d.Manager
 		}
 		l.roles[i] = r
 		return r, nil
@@ -287,6 +296,16 @@ func (l *Library) check(r *Role, except string) error {
 			return invalidError(fmt.Sprintf("there is already a role named %q", o.Name))
 		}
 	}
+	if r.Abbr = ids.CleanCallsign(r.Abbr); r.Abbr != "" {
+		if len(r.Abbr) > 3 {
+			return invalidError("a role's abbreviation has at most 3 letters")
+		}
+		if o := l.abbrOwner(r.Abbr, except); o != "" {
+			return invalidError(fmt.Sprintf("the role %q already has the abbreviation %s", o, r.Abbr))
+		}
+	} else {
+		r.Abbr = l.freeAbbr(ids.Callsign(r.Name), except)
+	}
 	if r.Color == "" {
 		r.Color = Colors[len(l.roles)%len(Colors)]
 	}
@@ -300,6 +319,30 @@ func (l *Library) check(r *Role, except string) error {
 		return invalidError("unknown role icon " + r.Icon)
 	}
 	return nil
+}
+
+// abbrOwner is the name of the role (other than except) whose abbreviation
+// is abbr, "" when none.
+func (l *Library) abbrOwner(abbr, except string) string {
+	for _, o := range l.roles {
+		if o.ID != except && strings.EqualFold(o.Abbr, abbr) {
+			return o.Name
+		}
+	}
+	return ""
+}
+
+// freeAbbr is base, numbered when another role has it (RVS, RV2…).
+func (l *Library) freeAbbr(base, except string) string {
+	if base == "" {
+		base = "PPL"
+	}
+	abbr := base
+	for i := 2; i < 100 && l.abbrOwner(abbr, except) != ""; i++ {
+		n := fmt.Sprint(i)
+		abbr = base[:max(1, min(len(base), 3)-len(n))] + n
+	}
+	return abbr
 }
 
 // freeID turns a name into a readable id that no role uses yet.

@@ -97,6 +97,15 @@ func New(o Options) (*App, error) {
 		return ""
 	}
 	bus.SetRoleNames(roleName)
+	// Callsigns come from the role's abbreviation (PLN, IMP…).
+	srv.SetRoleAbbr(func(id string) string {
+		if o.Roles != nil && id != "" {
+			if r, ok := o.Roles.Get(id); ok {
+				return r.Abbr
+			}
+		}
+		return ""
+	})
 	// Turn cards and summaries (R6).
 	summaries = summary.New(summary.Options{
 		Canvas: srv, Logger: o.Server.Logger, IsAgent: agentbus.IsAgent, HasHooks: agents.HasHooks, RoleName: roleName,
