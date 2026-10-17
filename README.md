@@ -172,7 +172,11 @@ cd web && SQUAD_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
   - Sem nenhuma CLI no PATH, o botão "Resumir" não aparece, e os cartões continuam funcionando.
 - **Custo:** cada resumo gasta um pouco do plano da ferramenta que o escreve, e só roda quando você clica.
 - **Isolamento:** o resumo roda numa pasta vazia, sem ferramentas e sem mexer no projeto. No Claude, também sem as suas configurações, os seus hooks e sem salvar sessão no histórico.
-- **Duração:** os cartões ficam em memória e somem quando o `squad serve` reinicia.
+- **Duração:**
+  - cada terminal guarda o cartão do último turno, com o resumo, se você pediu um;
+  - os cartões ficam no disco, com a sessão (`cards.json`, na pasta dela), e voltam quando o `squad serve` reinicia ou quando você reabre a sessão;
+  - um resumo que estava sendo escrito quando o Squad fechou não continua: clique em "Resumir" de novo;
+  - o × esconde o cartão só nesta janela: ao recarregar a página, ele volta.
 
 **Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
 
