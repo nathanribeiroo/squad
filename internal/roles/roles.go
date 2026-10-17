@@ -1,9 +1,9 @@
 // Package roles is the library of roles: reusable instructions that a
 // terminal's agent receives when it starts. The built-in roles always
 // exist; the user may edit them (and restore their default) or add new ones.
-// The library is global, shared by every workspace (~/.squad/roles.json),
+// The library is global, shared by every workspace (~/.torre/roles.json),
 // which stores only new roles and edited built-in ones, so a built-in role
-// nobody edited follows the defaults of newer Squad versions.
+// nobody edited follows the defaults of newer Torre versions.
 package roles
 
 import (
@@ -26,7 +26,7 @@ type Role struct {
 	Prompt string `json:"prompt"` // the instruction the agent receives
 	Color  string `json:"color"`  // one of Colors
 	Icon   string `json:"icon"`   // one of Icons
-	// Manager: its terminals may create and connect terminals (squad new),
+	// Manager: its terminals may create and connect terminals (torre new),
 	// unless a terminal turns it off.
 	Manager bool `json:"manager,omitempty"`
 	Builtin bool `json:"builtin,omitempty"`
@@ -104,7 +104,7 @@ func Open(path string) (*Library, error) {
 			continue
 		}
 		r.Builtin, r.Edited = false, false
-		// A built-in role added by a newer Squad may take the name of one the
+		// A built-in role added by a newer Torre may take the name of one the
 		// user made (e.g. "Arquiteto"): theirs keeps its id and instructions
 		// under another name, so --role and the role picker stay unambiguous.
 		for l.nameTaken(r.Name) {
@@ -352,6 +352,6 @@ func Summary(r Role) string {
 // Instructions is what an agent receives for its role: a header that names
 // the terminal and the role, then the role's prompt.
 func Instructions(r Role, terminal string) string {
-	return fmt.Sprintf("# Papel no Squad: %s\n\nVocê está no terminal %q do Squad, com o papel %q. Siga estas instruções do papel:\n\n%s\n",
+	return fmt.Sprintf("# Papel na Torre: %s\n\nVocê está no terminal %q da Torre, com o papel %q. Siga estas instruções do papel:\n\n%s\n",
 		r.Name, terminal, r.Name, r.Prompt)
 }

@@ -14,19 +14,19 @@ import (
 	"github.com/nathanribeiroo/squad/internal/terminal"
 )
 
-// Conversations: each agent CLI keeps its own conversations. Squad remembers
+// Conversations: each agent CLI keeps its own conversations. Torre remembers
 // the id of the one a terminal is in (store.TerminalData.Conversation) and
 // continues it when the terminal starts again:
 //
 //	agent   new conversation              continue            id learned from
-//	claude  --session-id <id> (Squad's)    --resume <id>       Squad; hooks after /clear or /resume
+//	claude  --session-id <id> (Torre's)    --resume <id>       Torre; hooks after /clear or /resume
 //	devin   its own id                     --resume <id>       hooks (SessionStart, prompt, stop)
 //	codex   its own id                     codex resume <id>   notify (thread-id, at turn ends)
-//	gemini  --session-id <id> (Squad's)    --resume <id>       Squad (versions with --session-id)
+//	gemini  --session-id <id> (Torre's)    --resume <id>       Torre (versions with --session-id)
 //
 // Continuing falls back on the launch line itself (terminal.OrElse): an agent
 // that can't find the conversation exits with an error, and a new one starts,
-// with the same id where Squad picks it, so the id it remembers stays valid.
+// with the same id where Torre picks it, so the id it remembers stays valid.
 
 var conversationID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 
@@ -38,7 +38,7 @@ func ValidConversation(id string) bool { return conversationID.MatchString(id) }
 func newConversationID() string { return strings.ToLower(ids.New()) }
 
 // userPicksConversation reports whether the user's own launch line already
-// picks the conversation; Squad then leaves it alone.
+// picks the conversation; Torre then leaves it alone.
 func userPicksConversation(agent, cmd string) bool {
 	for _, f := range strings.Fields(cmd) {
 		name, _, _ := strings.Cut(f, "=")

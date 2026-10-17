@@ -11,7 +11,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/terminal"
 )
 
-// waiter is a caller blocked in squad wait on another terminal's turn.
+// waiter is a caller blocked in torre wait on another terminal's turn.
 type waiter struct {
 	From, To string
 	ToName   string
@@ -40,7 +40,7 @@ func (b *Bus) finishWait(w *waiter, r Result) bool {
 // wait (handToWaiter).
 func (b *Bus) Wait(ctx context.Context, caller, target string) Result {
 	if n, ok := b.store.Node(caller); !ok || n.Terminal == nil {
-		return Result{Code: 400, Body: "squad: unknown calling terminal"}
+		return Result{Code: 400, Body: "torre: unknown calling terminal"}
 	}
 	tn, code, emsg := b.connectedTerminal(caller, target)
 	if code != 0 {
@@ -57,16 +57,16 @@ func (b *Bus) Wait(ctx context.Context, caller, target string) Result {
 		how := "through other agents"
 		for _, p := range b.pending {
 			if p.From == tn.ID && p.To == caller && !p.resolved {
-				how = fmt.Sprintf("its request %s: answer with squad reply %s \"…\", or finish your turn", p.ID, p.ID)
+				how = fmt.Sprintf("its request %s: answer with torre reply %s \"…\", or finish your turn", p.ID, p.ID)
 			}
 		}
 		for o := range b.waiters {
 			if o.From == tn.ID && o.To == caller {
-				how = "it is in squad wait for you: finish your turn"
+				how = "it is in torre wait for you: finish your turn"
 			}
 		}
 		b.mu.Unlock()
-		return Result{Code: 409, Body: fmt.Sprintf("squad: %s is waiting for you (%s), so its turn can't end before yours", quote(name), how)}
+		return Result{Code: 409, Body: fmt.Sprintf("torre: %s is waiting for you (%s), so its turn can't end before yours", quote(name), how)}
 	}
 	b.waiters[w] = true
 	b.mu.Unlock()
@@ -100,7 +100,7 @@ func (b *Bus) Wait(ctx context.Context, caller, target string) Result {
 		case r := <-w.done:
 			return r
 		case <-ctx.Done():
-			b.finishWait(w, Result{Code: 499, Body: "squad: caller went away", Source: "cancelled"})
+			b.finishWait(w, Result{Code: 499, Body: "torre: caller went away", Source: "cancelled"})
 			return <-w.done
 		case <-timeout.C:
 			now := time.Now()
@@ -109,13 +109,13 @@ func (b *Bus) Wait(ctx context.Context, caller, target string) Result {
 				continue
 			}
 			b.finishWait(w, Result{Code: 200, Source: "timeout", Body: fmt.Sprintf(
-				"[screen of %s · its turn hasn't ended]\n%s\n[squad: no activity from %s for a while. If its screen shows a question or a permission prompt, it is waiting for the user: tell the user. Otherwise run squad wait %s again.]",
+				"[screen of %s · its turn hasn't ended]\n%s\n[torre: no activity from %s for a while. If its screen shows a question or a permission prompt, it is waiting for the user: tell the user. Otherwise run torre wait %s again.]",
 				name, t.Snapshot(), quote(name), quote(name))})
 		}
 	}
 }
 
-// lastAnswer is what squad wait returns for a terminal that isn't in a
+// lastAnswer is what torre wait returns for a terminal that isn't in a
 // turn: its last final answer, or its screen.
 func (b *Bus) lastAnswer(tn store.Node, t *terminal.Terminal) Result {
 	b.mu.Lock()
@@ -131,7 +131,7 @@ func (b *Bus) lastAnswer(tn store.Node, t *terminal.Terminal) Result {
 	return Result{Code: 200, Body: fmt.Sprintf("[screen of %s · it isn't in a turn]\n%s", tn.Terminal.Name, t.Snapshot()), Source: "screen"}
 }
 
-// turnEnded keeps each terminal's last final turn end for squad wait (a turn
+// turnEnded keeps each terminal's last final turn end for torre wait (a turn
 // end guessed from the screen isn't final for agents with hooks).
 func (b *Bus) turnEnded(te activity.TurnEnd) {
 	n, ok := b.store.Node(te.ID)
@@ -144,7 +144,7 @@ func (b *Bus) turnEnded(te activity.TurnEnd) {
 }
 
 // handToWaiter gives request p to its target when the target is blocked in
-// squad wait for the sender (or for someone who, through a chain, waits for
+// torre wait for the sender (or for someone who, through a chain, waits for
 // the sender), instead of pasting it into a terminal that can't read it yet.
 func (b *Bus) handToWaiter(p *Pending, msg string) bool {
 	b.mu.Lock()
@@ -164,7 +164,7 @@ func (b *Bus) handToWaiter(p *Pending, msg string) bool {
 		while = "while you were waiting for " + quote(w.ToName)
 	}
 	return b.finishWait(w, Result{Code: 200, Source: "message", Body: fmt.Sprintf(
-		"%s\n[squad: %s sent this %s, and waits for yours: squad reply %s \"…\". Then run squad wait %s again to get %s's final answer.]",
+		"%s\n[torre: %s sent this %s, and waits for yours: torre reply %s \"…\". Then run torre wait %s again to get %s's final answer.]",
 		Envelope(p.FromName, p.ID, msg, false), quote(p.FromName), while, p.ID, quote(w.ToName), w.ToName)})
 }
 

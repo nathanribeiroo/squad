@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/browser"
 )
 
-// How `squad serve` shows the canvas (-open).
+// How `torre serve` shows the canvas (-open).
 const (
 	openApp     = "app"     // a window of its own, without the browser's bars
 	openBrowser = "browser" // a tab in the default browser
@@ -39,7 +39,7 @@ func openUI(mode, url, home string) string {
 		if runtime.GOOS == "darwin" {
 			if u, err := os.UserHomeDir(); err == nil {
 				if app := dockApp(u); app != "" && exec.Command("open", "-a", app).Start() == nil {
-					return "no app Squad do Dock"
+					return "no app " + strings.TrimSuffix(filepath.Base(app), ".app") + " do Dock"
 				}
 			}
 		}
@@ -67,11 +67,13 @@ func appWindow(exe, url, profile string) *exec.Cmd {
 }
 
 // dockApp is the Safari web app made with File → Add to Dock, if its name was
-// kept as Squad.
+// kept as Torre (or as Squad, the name from before).
 func dockApp(userHome string) string {
-	p := filepath.Join(userHome, "Applications", "Squad.app")
-	if fi, err := os.Stat(p); err == nil && fi.IsDir() {
-		return p
+	for _, name := range []string{"Torre.app", "Squad.app"} {
+		p := filepath.Join(userHome, "Applications", name)
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			return p
+		}
 	}
 	return ""
 }

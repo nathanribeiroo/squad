@@ -1,6 +1,6 @@
 package browser
 
-// What agents do with a page (squad portal …): read it as a list of elements
+// What agents do with a page (torre portal …): read it as a list of elements
 // with refs (@e1, @e2…), act on refs or coordinates, and wait for the page to
 // settle before answering.
 

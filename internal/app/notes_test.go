@@ -141,7 +141,7 @@ func TestNoteWriteFromRealCLI(t *testing.T) {
 	if r := e.run(b, "note", "create", "Relatorio"); r.Code != 200 {
 		t.Fatalf("create: %s", r.Body)
 	}
-	r := e.run(a, "ask", "B", "RUN:squad note write Relatorio 'escrito pelo B'")
+	r := e.run(a, "ask", "B", "RUN:torre note write Relatorio 'escrito pelo B'")
 	if r.Code != 200 {
 		t.Fatalf("ask: %d %s", r.Code, r.Body)
 	}
@@ -172,7 +172,7 @@ func TestComposerSend(t *testing.T) {
 	}
 	e.waitScreen(a.ID, "received: Revise com @B", 5*time.Second)
 	msg := lastSubmit(t, e.log("A"))
-	for _, want := range []string{"Revise com @B usando @Plano\n\n", "/attachments/", `[menções: @B = terminal ligado (squad ask "B" "…") · @Plano = nota ligada plano.md (squad note read "plano.md")]`} {
+	for _, want := range []string{"Revise com @B usando @Plano\n\n", "/attachments/", `[menções: @B = terminal ligado (torre ask "B" "…") · @Plano = nota ligada plano.md (torre note read "plano.md")]`} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("message lacks %q:\n%s", want, msg)
 		}

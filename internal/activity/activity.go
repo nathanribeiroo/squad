@@ -383,7 +383,7 @@ func (m *Monitor) Working(id string) bool {
 }
 
 // ExpectTurn marks a turn as started on an agent whose turns end with a
-// hook (Squad just delivered it a message): like a turn a hook started, it
+// hook (Torre just delivered it a message): like a turn a hook started, it
 // lasts until a hook ends it (InTurn). For agents without a start hook.
 func (m *Monitor) ExpectTurn(id string) {
 	m.mu.Lock()

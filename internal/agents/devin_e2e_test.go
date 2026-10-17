@@ -15,9 +15,9 @@ import (
 )
 
 // TestRealDevinConfig runs the real Devin CLI (no login needed) on the
-// config Squad gives it: Devin must read the copy of the user's config
-// (it writes its schema version into it) and list the squad MCP server
-// registered by squad install-skill next to the user's own.
+// config Torre gives it: Devin must read the copy of the user's config
+// (it writes its schema version into it) and list the torre MCP server
+// registered by torre install-skill next to the user's own.
 //
 //	go test -tags e2e -run TestRealDevinConfig ./internal/agents/
 func TestRealDevinConfig(t *testing.T) {
@@ -27,17 +27,17 @@ func TestRealDevinConfig(t *testing.T) {
 	}
 	home := t.TempDir()
 	cfg := filepath.Join(home, ".config")
-	t.Setenv("SQUAD_HOME", filepath.Join(home, ".squad"))
+	t.Setenv("TORRE_HOME", filepath.Join(home, ".torre"))
 	t.Setenv("XDG_CONFIG_HOME", cfg)
 	user := filepath.Join(cfg, "devin", "config.json")
 	_ = os.MkdirAll(filepath.Dir(user), 0o700)
 	_ = os.WriteFile(user, []byte("{\n  // mine\n  \"permissions\": {\"allow\": [\"Exec(git status)\"]},\n}\n"), 0o600)
 	_ = os.WriteFile(filepath.Join(cfg, "devin", "mcp_config.json"), []byte(`{"mcpServers": {"mine": {"command": "true"}}}`), 0o600)
-	if _, err := AddDevinMCP(filepath.Join(cfg, "devin", "mcp_config.json"), "/opt/squad/bin/squad"); err != nil {
+	if _, err := AddDevinMCP(filepath.Join(cfg, "devin", "mcp_config.json"), "/opt/torre/bin/torre"); err != nil {
 		t.Fatal(err)
 	}
 
-	l, err := NewLauncher("/opt/squad/bin/squad")
+	l, err := NewLauncher("/opt/torre/bin/torre")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,12 +49,12 @@ func TestRealDevinConfig(t *testing.T) {
 	cmd.Env = append(os.Environ(), "HOME="+home)
 	cmd.Dir = home
 	out, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(out), "squad") || !strings.Contains(string(out), "mine") {
+	if err != nil || !strings.Contains(string(out), "torre") || !strings.Contains(string(out), "mine") {
 		t.Fatalf("devin mcp list: %v\n%s", err, out)
 	}
 	var doc map[string]any
 	data, _ := os.ReadFile(l.DevinConfig)
 	if json.Unmarshal(data, &doc) != nil || doc["version"] == nil || doc["hooks"] == nil {
-		t.Fatalf("Devin didn't read Squad's config copy:\n%s", data)
+		t.Fatalf("Devin didn't read Torre's config copy:\n%s", data)
 	}
 }

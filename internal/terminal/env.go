@@ -9,7 +9,7 @@ import (
 )
 
 // sessionMarkers are variables a parent agent session sets for its own
-// children; a Squad terminal must not inherit them (Claude Code would treat
+// children; a Torre terminal must not inherit them (Claude Code would treat
 // itself as a nested child session, e.g. with transcript saving off).
 var sessionMarkers = map[string]bool{
 	"CLAUDECODE":                   true,
@@ -25,14 +25,14 @@ var sessionMarkers = map[string]bool{
 	"CLAUDE_CODE_SSE_PORT":         true,
 }
 
-// replacedVars are set by Squad itself.
+// replacedVars are set by Torre itself.
 var replacedVars = map[string]bool{
 	"TERM": true, "COLORTERM": true, "TERM_PROGRAM": true, "TERM_PROGRAM_VERSION": true,
 }
 
 // BuildEnv returns the environment for a terminal: base (usually
-// os.Environ()) without session markers, plus overrides, plus Squad's
-// terminal variables; cliDir is prepended to PATH so `squad` is found.
+// os.Environ()) without session markers, plus overrides, plus Torre's
+// terminal variables; cliDir is prepended to PATH so `torre` is found.
 func BuildEnv(base []string, overrides map[string]string, cliDir string) []string {
 	env := map[string]string{}
 	var pathKey = "PATH"
@@ -51,7 +51,7 @@ func BuildEnv(base []string, overrides map[string]string, cliDir string) []strin
 	}
 	env["TERM"] = "xterm-256color"
 	env["COLORTERM"] = "truecolor"
-	env["TERM_PROGRAM"] = "Squad"
+	env["TERM_PROGRAM"] = "Torre"
 	if runtime.GOOS != "windows" {
 		if _, ok := env["LANG"]; !ok {
 			env["LANG"] = "en_US.UTF-8"
@@ -77,7 +77,7 @@ func BuildEnv(base []string, overrides map[string]string, cliDir string) []strin
 	return out
 }
 
-// ExecutableDir returns the directory of the running binary (the `squad` CLI).
+// ExecutableDir returns the directory of the running binary (the `torre` CLI).
 func ExecutableDir() string {
 	exe, err := os.Executable()
 	if err != nil {

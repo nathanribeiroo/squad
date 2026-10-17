@@ -2,7 +2,7 @@
 // copies of its git repository, each a git worktree on its own branch with
 // its own canvas, so agents can work in parallel without touching the same
 // files. A floor lives outside the project, like Maestri's, in
-// <parent of the repository>/.squad/floors/<repository>--<floor>. A session
+// <parent of the repository>/.torre/floors/<repository>--<floor>. A session
 // may work in a copy of its own, made the same way (copy.go); its floors are
 // made from that copy.
 //
@@ -30,6 +30,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -99,7 +100,7 @@ type Options struct {
 	// IsManager tells which terminals may create and land floors.
 	IsManager func(store.Node) bool
 	// SetupTimeout stops a setup command (30 min); ReadyWait is how long
-	// squad floor create waits for it (45 s, within the CLI's 60 s).
+	// torre floor create waits for it (45 s, within the CLI's 60 s).
 	SetupTimeout time.Duration
 	ReadyWait    time.Duration
 }
@@ -145,7 +146,7 @@ func (s *Service) Start() {
 	for _, f := range st.Floors() {
 		if f.Status == store.FloorPreparing {
 			_, _ = st.UpdateFloor(f.ID, func(f *store.Floor) {
-				f.Status, f.Error = store.FloorFailed, "the setup command was interrupted (Squad stopped)"
+				f.Status, f.Error = store.FloorFailed, "the setup command was interrupted (Torre stopped)"
 			})
 		}
 	}
@@ -281,7 +282,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (store.Floor, e
 		return store.Floor{}, invalidError(fmt.Sprintf("there is no branch named %q", branch))
 	}
 	// Next to the repository; a session's copy names its floors after it.
-	path := filepath.Join(parent, ".squad", "floors", filepath.Base(root)+"--"+id)
+	path := filepath.Join(parent, ".torre", "floors", filepath.Base(root)+"--"+id)
 	if _, err := os.Stat(path); err == nil {
 		return store.Floor{}, invalidError(fmt.Sprintf("the folder %s already exists (left by an older floor?): remove it or pick another name", path))
 	}
@@ -588,7 +589,7 @@ func mergeInto(ctx context.Context, root string, f store.Floor, into string) (co
 	if err != nil {
 		return "", false, err
 	}
-	if _, err := git(ctx, root, "update-ref", "-m", "squad: land floor "+f.Name, "refs/heads/"+into, commit, old); err != nil {
+	if _, err := git(ctx, root, "update-ref", "-m", "torre: land floor "+f.Name, "refs/heads/"+into, commit, old); err != nil {
 		return "", false, err
 	}
 	return commit, false, nil
@@ -656,7 +657,7 @@ func removeWorktree(ctx context.Context, root, path string) error {
 	return nil
 }
 
-// removeEmptyParents removes .squad/floors (or .squad/sessions) and .squad
+// removeEmptyParents removes .torre/floors (or .torre/sessions) and .torre
 // next to the repository when nothing else is in them.
 func removeEmptyParents(path string) {
 	floors := filepath.Dir(path)
@@ -865,7 +866,7 @@ func (s *Service) startSetup(key string, f store.Floor, cmdline, logPath string,
 		err := runSetup(ctx, f, cmdline, logPath, s.o.SetupTimeout)
 		cancelled := errors.Is(ctx.Err(), context.Canceled)
 		cancel()
-		if !cancelled { // a discarded floor (or Squad stopping) leaves it be
+		if !cancelled { // a discarded floor (or Torre stopping) leaves it be
 			uerr := update(func(f *store.Floor) {
 				f.Status, f.Error = store.FloorReady, ""
 				if err != nil {
@@ -902,7 +903,7 @@ func runSetup(ctx context.Context, f store.Floor, cmdline, logPath string, timeo
 		argv := commandArgv(sh, cmdline)
 		cmd := exec.Command(argv[0], argv[1:]...)
 		cmd.Dir = f.Cwd
-		env := map[string]string{"SQUAD_FLOOR": f.Name} // the copy's branch for a session's copy
+		env := config.Env(map[string]string{"FLOOR": f.Name}) // the copy's branch for a session's copy
 		for k, v := range sh.Env {
 			env[k] = v
 		}

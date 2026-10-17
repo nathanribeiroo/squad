@@ -1,6 +1,6 @@
 // Package notes stores canvas notes as Markdown files (the file is the
 // source of truth; external edits are picked up by a watcher) and serves the
-// `squad note …` commands, limited to notes connected to the caller.
+// `torre note …` commands, limited to notes connected to the caller.
 //
 // A note's name is its title. Names are unique in the workspace, ignoring
 // case, and agents find a note by its title, a former title (Aliases) or its
@@ -230,7 +230,7 @@ func (s *Service) prepare(n *store.Node) error {
 
 // Finalize ends a note's draft: it gets its file, named after its current
 // name, and the name is no longer provisional. It happens when the user
-// confirms the name, writes content, connects the note, or Squad restarts.
+// confirms the name, writes content, connects the note, or Torre restarts.
 func (s *Service) Finalize(id string) (store.Node, error) {
 	s.nameMu.Lock()
 	defer s.nameMu.Unlock()
@@ -297,7 +297,7 @@ func (s *Service) Rename(id, title string) (store.Node, error) {
 	return s.finalize(id)
 }
 
-// finalizeAll ends every draft (Squad restarted: the UI that was naming
+// finalizeAll ends every draft (Torre restarted: the UI that was naming
 // them is gone).
 func (s *Service) finalizeAll() {
 	for _, n := range s.store.Snapshot().Nodes {
@@ -358,9 +358,9 @@ func (s *Service) Write(n store.Node, content, author string) error {
 }
 
 // ErrLocked is returned when writing a locked note.
-var ErrLocked = errors.New("the note is locked; the user must unlock it in Squad")
+var ErrLocked = errors.New("the note is locked; the user must unlock it in Torre")
 
-// Watch publishes note.edited for changes made outside Squad (editors,
+// Watch publishes note.edited for changes made outside Torre (editors,
 // agents writing the file directly) and ends the draft of a note when it is
 // connected to anything. It stops when ctx ends.
 func (s *Service) Watch(ctx context.Context) error {
@@ -485,7 +485,7 @@ func (s *Service) find(caller, name string) (n store.Node, renamed bool, r agent
 			}
 		}
 	}
-	return store.Node{}, false, agentbus.Result{Code: 404, Body: fmt.Sprintf("squad: no connected note named %q (run `squad note list`)", name)}, false
+	return store.Node{}, false, agentbus.Result{Code: 404, Body: fmt.Sprintf("torre: no connected note named %q (run `torre note list`)", name)}, false
 }
 
 // renamedNote is the line that tells an agent a note's current name.
@@ -494,17 +494,17 @@ func renamedNote(n store.Node) string {
 }
 
 const noteUsage = `Usage:
-  squad note list                         notes connected to you (chained notes included)
-  squad note read "Name" [from] [count]   read with line numbers
-  squad note write "Name" "content"       replace the content (use - to read stdin)
-  squad note edit "Name" "old" "new"      replace text that appears exactly once
-  squad note create "Name" ["content"]    create a note connected to you
+  torre note list                         notes connected to you (chained notes included)
+  torre note read "Name" [from] [count]   read with line numbers
+  torre note write "Name" "content"       replace the content (use - to read stdin)
+  torre note edit "Name" "old" "new"      replace text that appears exactly once
+  torre note create "Name" ["content"]    create a note connected to you
 
 A note's name is unique in the workspace and permanent: choose a clear one
 when you create it. Names ignore case, and a note the user renamed still
 answers to its former names.`
 
-// Extension handles `squad note …` for the agent bus.
+// Extension handles `torre note …` for the agent bus.
 func (s *Service) Extension(_ context.Context, caller string, args []string) (agentbus.Result, bool) {
 	if len(args) == 0 || args[0] != "note" {
 		return agentbus.Result{}, false
@@ -537,7 +537,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		return agentbus.Result{Code: 200, Body: sb.String()}, true
 	case "read":
 		if len(args) < 3 || len(args) > 5 {
-			return agentbus.Result{Code: 400, Body: `Usage: squad note read "Name" [from] [count]`}, true
+			return agentbus.Result{Code: 400, Body: `Usage: torre note read "Name" [from] [count]`}, true
 		}
 		n, renamed, r, ok := s.find(caller, args[2])
 		if !ok {
@@ -545,7 +545,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		}
 		content, err := s.Read(n.Note.File)
 		if err != nil {
-			return agentbus.Result{Code: 500, Body: "squad: " + err.Error()}, true
+			return agentbus.Result{Code: 500, Body: "torre: " + err.Error()}, true
 		}
 		from, count := 1, 0
 		if len(args) >= 4 {
@@ -561,7 +561,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		return agentbus.Result{Code: 200, Body: body}, true
 	case "write":
 		if len(args) != 4 {
-			return agentbus.Result{Code: 400, Body: `Usage: squad note write "Name" "content"`}, true
+			return agentbus.Result{Code: 400, Body: `Usage: torre note write "Name" "content"`}, true
 		}
 		n, renamed, r, ok := s.find(caller, args[2])
 		if !ok {
@@ -573,7 +573,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		return agentbus.Result{Code: 200, Body: okLine("wrote", n, renamed)}, true
 	case "edit":
 		if len(args) != 5 {
-			return agentbus.Result{Code: 400, Body: `Usage: squad note edit "Name" "old" "new"`}, true
+			return agentbus.Result{Code: 400, Body: `Usage: torre note edit "Name" "old" "new"`}, true
 		}
 		n, renamed, r, ok := s.find(caller, args[2])
 		if !ok {
@@ -581,13 +581,13 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		}
 		content, err := s.Read(n.Note.File)
 		if err != nil {
-			return agentbus.Result{Code: 500, Body: "squad: " + err.Error()}, true
+			return agentbus.Result{Code: 500, Body: "torre: " + err.Error()}, true
 		}
 		switch c := strings.Count(content, args[3]); {
 		case args[3] == "" || c == 0:
-			return agentbus.Result{Code: 409, Body: "squad: the old text was not found in the note (read it again)"}, true
+			return agentbus.Result{Code: 409, Body: "torre: the old text was not found in the note (read it again)"}, true
 		case c > 1:
-			return agentbus.Result{Code: 409, Body: fmt.Sprintf("squad: the old text appears %d times; include more context so it is unique", c)}, true
+			return agentbus.Result{Code: 409, Body: fmt.Sprintf("torre: the old text appears %d times; include more context so it is unique", c)}, true
 		}
 		if err := s.Write(n, strings.Replace(content, args[3], args[4], 1), author); err != nil {
 			return writeErr(err), true
@@ -595,7 +595,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		return agentbus.Result{Code: 200, Body: okLine("edited", n, renamed)}, true
 	case "create":
 		if len(args) < 3 || len(args) > 4 {
-			return agentbus.Result{Code: 400, Body: `Usage: squad note create "Name" ["content"]`}, true
+			return agentbus.Result{Code: 400, Body: `Usage: torre note create "Name" ["content"]`}, true
 		}
 		content := ""
 		if len(args) == 4 {
@@ -610,7 +610,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 			case errors.Is(err, store.ErrInvalid):
 				code = 400
 			}
-			return agentbus.Result{Code: code, Body: "squad: " + err.Error()}, true
+			return agentbus.Result{Code: code, Body: "torre: " + err.Error()}, true
 		}
 		return agentbus.Result{Code: 200, Body: fmt.Sprintf("Created note %q (file %s), connected to you.", n.Note.Title, n.Note.File)}, true
 	}
@@ -637,9 +637,9 @@ func quoteAll(names []string) string {
 
 func writeErr(err error) agentbus.Result {
 	if errors.Is(err, ErrLocked) {
-		return agentbus.Result{Code: 423, Body: "squad: " + err.Error()}
+		return agentbus.Result{Code: 423, Body: "torre: " + err.Error()}
 	}
-	return agentbus.Result{Code: 500, Body: "squad: " + err.Error()}
+	return agentbus.Result{Code: 500, Body: "torre: " + err.Error()}
 }
 
 // Create makes a note connected to caller, placed left of it on the canvas.

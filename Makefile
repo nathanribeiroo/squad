@@ -4,10 +4,14 @@ LDFLAGS := -s -w -X github.com/nathanribeiroo/squad/internal/version.Version=$(V
 
 .PHONY: build build-windows test vet check web icons skill-zip clean
 
+# torre, and squad: the same command under its name from before Squad
+# became Torre.
 build:
+	go build -ldflags "$(LDFLAGS)" -o bin/torre ./cmd/torre
 	go build -ldflags "$(LDFLAGS)" -o bin/squad ./cmd/squad
 
 build-windows:
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/torre.exe ./cmd/torre
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/squad.exe ./cmd/squad
 
 test:
@@ -31,12 +35,12 @@ icons:
 	test -d web/node_modules || (cd web && npm ci)
 	cd web && python3 scripts/subset-icons.py
 
-# Packs the skill that `squad install-skill` writes into squad-skill.zip
-# (folder squad/ with SKILL.md), ready to copy or upload.
+# Packs the skill that `torre install-skill` writes into torre-skill.zip
+# (folder torre/ with SKILL.md), ready to copy or upload.
 skill-zip: build
-	rm -rf bin/skill squad-skill.zip
-	bin/squad install-skill -dir bin/skill
-	cd bin/skill && zip -qrX ../../squad-skill.zip squad
+	rm -rf bin/skill torre-skill.zip
+	bin/torre install-skill -dir bin/skill
+	cd bin/skill && zip -qrX ../../torre-skill.zip torre
 
 clean:
 	rm -rf bin

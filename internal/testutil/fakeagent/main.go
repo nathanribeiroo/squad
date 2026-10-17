@@ -4,14 +4,14 @@
 // "turn": progress lines for $FAKEAGENT_WORK seconds, an answer line, then
 // "DONE". Special messages:
 //
-//	RUN:<shell command>   runs the command (e.g. `squad ask …`) and prints its output;
+//	RUN:<shell command>   runs the command (e.g. `torre ask …`) and prints its output;
 //	                      {id} and {from} are replaced from the [de: … · pedido …] envelope
 //	SLEEP:<seconds>       stays silent for that long before answering
 //
 // $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
-// $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Squad's hooks:
-// `squad hook claude-session-start` when it starts, `squad hook claude-prompt`
-// when a turn starts and `squad hook claude-stop` (with last_assistant_message)
+// $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Torre's hooks:
+// `torre hook claude-session-start` when it starts, `torre hook claude-prompt`
+// when a turn starts and `torre hook claude-stop` (with last_assistant_message)
 // when it ends, each with its session_id. $FAKEAGENT_HOOK=devin does the same
 // with Devin CLI's hook names (devin-session-start, devin-prompt, devin-stop).
 //
@@ -145,7 +145,7 @@ var sessionID string
 
 var envelopeRe = regexp.MustCompile(`^\[de: (.+?) · pedido ([0-9a-f]+)\]`)
 
-// hook runs `squad hook <agent>-<event>` when $FAKEAGENT_HOOK names an agent
+// hook runs `torre hook <agent>-<event>` when $FAKEAGENT_HOOK names an agent
 // with hooks (claude or devin).
 func hook(event string, payload string) {
 	agent := os.Getenv("FAKEAGENT_HOOK")
@@ -153,7 +153,7 @@ func hook(event string, payload string) {
 		return
 	}
 	name := agent + "-" + event
-	cmd := exec.Command("squad", "hook", name)
+	cmd := exec.Command("torre", "hook", name)
 	cmd.Stdin = strings.NewReader(payload)
 	o, err := cmd.CombinedOutput()
 	logf("HOOK %s err=%v out=%q", name, err, o)

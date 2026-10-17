@@ -1,4 +1,4 @@
-// Package hub runs several workspaces in one Squad server. Each workspace is
+// Package hub runs several workspaces in one Torre server. Each workspace is
 // a complete app (canvas, terminals, agent bus, notes, activity monitor),
 // mounted under /w/<id>/; the hub routes the calls made from inside
 // terminals (/cli, /hooks) to the workspace that owns the terminal, and keeps
@@ -61,16 +61,16 @@ func invalidf(format string, a ...any) error { return invalidError(fmt.Sprintf(f
 type Options struct {
 	Port       int    // loopback port (terminals reach the server through it)
 	Token      string // browser session token
-	CLIPath    string // squad binary, put on terminals' PATH
+	CLIPath    string // torre binary, put on terminals' PATH
 	Logger     *slog.Logger
-	Root       string // one subfolder per workspace (~/.squad/workspaces)
-	Trash      string // removed workspaces are moved here (~/.squad/trash)
+	Root       string // one subfolder per workspace (~/.torre/workspaces)
+	Trash      string // removed workspaces are moved here (~/.torre/trash)
 	Activity   activity.Options
 	Limits     agentbus.Limits
 	Extensions []agentbus.Extension
 	Setup      func(*app.App) error // runs on every workspace's app before it starts
 	Browser    *browser.Manager     // the portals' browser, shared by all workspaces (nil: no portals)
-	Roles      *roles.Library       // nil: roles.json next to Root (~/.squad/roles.json)
+	Roles      *roles.Library       // nil: roles.json next to Root (~/.torre/roles.json)
 }
 
 // Summary is a workspace as the selector shows it.
@@ -373,7 +373,7 @@ func (h *Hub) Create(name, dir, color, session string) (Summary, error) {
 }
 
 // Open returns the workspace whose folder is dir, creating it if needed
-// (used by `squad serve -dir`).
+// (used by `torre serve -dir`).
 func (h *Hub) Open(dir string) (Summary, error) {
 	cwd, err := checkFolder(dir)
 	if err != nil {

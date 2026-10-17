@@ -120,8 +120,22 @@ func TestGuardsAndSession(t *testing.T) {
 		t.Fatalf("cookie flags: %+v", cookie)
 	}
 	resp, body := h.do("GET", "/", nil, func(r *http.Request) { r.Header.Del("Authorization"); r.AddCookie(cookie) })
-	if resp.StatusCode != 200 || !strings.Contains(string(body), "Squad") {
+	if resp.StatusCode != 200 || !strings.Contains(string(body), "Torre") {
 		t.Fatalf("ui with cookie: %d", resp.StatusCode)
+	}
+	// The cookie from before Squad became Torre still logs in, and is
+	// replaced by the new one.
+	old := &http.Cookie{Name: LegacySessionCookie, Value: testToken}
+	resp, _ = h.do("GET", "/", nil, func(r *http.Request) { r.Header.Del("Authorization"); r.AddCookie(old) })
+	names := map[string]int{}
+	for _, c := range resp.Cookies() {
+		names[c.Name] = c.MaxAge
+	}
+	if resp.StatusCode != 200 || names[SessionCookie] != SessionMaxAge || names[LegacySessionCookie] >= 0 {
+		t.Fatalf("legacy cookie: %d %v", resp.StatusCode, names)
+	}
+	if resp, _ := h.do("GET", "/api/state", nil, func(r *http.Request) { r.Header.Del("Authorization"); r.AddCookie(old) }); resp.StatusCode != 200 {
+		t.Fatalf("api with the legacy cookie: %d", resp.StatusCode)
 	}
 }
 
@@ -240,21 +254,21 @@ func TestCLIAuth(t *testing.T) {
 	tok := h.srv.TerminalToken(n.ID)
 	resp, _ = h.do("POST", "/cli", map[string]any{"args": []string{"list"}}, func(r *http.Request) {
 		r.Header.Set("X-Terminal-ID", n.ID)
-		r.Header.Set("X-Squad-Token", "wrong")
+		r.Header.Set("X-Torre-Token", "wrong")
 	})
 	if resp.StatusCode != 401 {
 		t.Fatalf("wrong token: %d", resp.StatusCode)
 	}
 	resp, _ = h.do("POST", "/cli", map[string]any{"args": []string{"list"}}, func(r *http.Request) {
 		r.Header.Set("X-Terminal-ID", n.ID)
-		r.Header.Set("X-Squad-Token", tok)
+		r.Header.Set("X-Torre-Token", tok)
 	})
 	if resp.StatusCode != http.StatusNotImplemented {
 		t.Fatalf("valid creds before B3: %d", resp.StatusCode)
 	}
 	// The terminal sees its identity in the environment.
 	term := h.srv.Terminals().Get(n.ID)
-	_ = term.Input([]byte("echo id=$SQUAD_TERMINAL_ID\r"))
+	_ = term.Input([]byte("echo id=$TORRE_TERMINAL_ID\r"))
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) && !strings.Contains(term.Snapshot(), "id="+n.ID) {
 		time.Sleep(50 * time.Millisecond)

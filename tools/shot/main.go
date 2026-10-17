@@ -1,7 +1,7 @@
 // Command shot takes a PNG screenshot of a URL with a headless Chrome/Edge
 // over CDP (chromedp). Used to compare the web UI with the design reference.
 //
-//	go run . -url http://127.0.0.1:8000/Squad.dc.html -w 1760 -h 1040 -out ref.png
+//	go run . -url http://127.0.0.1:8000/Torre.dc.html -w 1760 -h 1040 -out ref.png
 //	go run . -url … -wait 3s -full -dark=false
 package main
 

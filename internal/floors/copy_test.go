@@ -31,7 +31,7 @@ func TestSessionCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(filepath.Dir(repo), ".squad", "sessions", "app--login-novo")
+	want := filepath.Join(filepath.Dir(repo), ".torre", "sessions", "app--login-novo")
 	if f.Path != want || f.Cwd != want || f.Branch != "login-novo" || f.Base != "dev" || !f.NewBranch || f.Status != store.FloorPreparing ||
 		len(f.Copied) != 1 || f.Copied[0] != ".env" {
 		t.Fatalf("copy: %+v", f)
@@ -83,7 +83,7 @@ func TestSessionCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fl.Path != filepath.Join(filepath.Dir(repo), ".squad", "floors", "app--login-novo--api") || fl.Base != "login-novo" {
+	if fl.Path != filepath.Join(filepath.Dir(repo), ".torre", "floors", "app--login-novo--api") || fl.Base != "login-novo" {
 		t.Fatalf("floor of the copy: %+v", fl)
 	}
 	if err := svc.Discard(ctx, fl.ID); err != nil {
@@ -128,7 +128,7 @@ func TestSessionCopy(t *testing.T) {
 	if isDir(f.Path) || !hasRef(ctx, repo, "refs/heads/login-novo") {
 		t.Fatalf("after removing: folder %v, branch %v", isDir(f.Path), hasRef(ctx, repo, "refs/heads/login-novo"))
 	}
-	if _, err := os.Stat(filepath.Join(filepath.Dir(repo), ".squad")); !os.IsNotExist(err) {
-		t.Fatalf(".squad left behind: %v", err)
+	if _, err := os.Stat(filepath.Join(filepath.Dir(repo), ".torre")); !os.IsNotExist(err) {
+		t.Fatalf(".torre left behind: %v", err)
 	}
 }

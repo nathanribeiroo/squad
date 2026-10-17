@@ -9,7 +9,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/activity"
 )
 
-// HookEvent is what an agent hook means for Squad.
+// HookEvent is what an agent hook means for Torre.
 type HookEvent struct {
 	TurnStart    bool   // the agent started working on a prompt
 	Prompt       string // that prompt (when TurnStart)

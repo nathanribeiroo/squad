@@ -1,4 +1,4 @@
-// Package terminal runs Squad terminals: a shell (and optionally an agent
+// Package terminal runs Torre terminals: a shell (and optionally an agent
 // launched inside it) on a PTY, mirrored by a headless screen, with a
 // serialized input queue and fan-out of output to attached clients.
 package terminal
@@ -26,7 +26,7 @@ type Spec struct {
 	Command string // line typed into the shell after start; empty = plain shell
 	Shell   string // preferred shell executable; empty = platform default
 	Cwd     string
-	Env     map[string]string // extra variables (Squad identity, tokens)
+	Env     map[string]string // extra variables (Torre identity, tokens)
 	Cols    int
 	Rows    int
 }

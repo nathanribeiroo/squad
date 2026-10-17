@@ -63,12 +63,12 @@ func TestWindowsCandidatesPreferGitBash(t *testing.T) {
 	if got := w.candidates("bash.exe", ""); got[0].Argv[0] != bash {
 		t.Fatalf("pref bash.exe → %s", got[0].Argv[0])
 	}
-	// SQUAD_SHELL comes before the defaults; the preferred shell before both.
+	// TORRE_SHELL comes before the defaults; the preferred shell before both.
 	if got := w.candidates("", "pwsh.exe"); got[0].Argv[0] != pwsh || got[1].Argv[0] != bash || len(got) != 4 {
-		t.Fatalf("SQUAD_SHELL=pwsh → %q", argv0s(got))
+		t.Fatalf("TORRE_SHELL=pwsh → %q", argv0s(got))
 	}
 	if got := w.candidates("cmd.exe", "pwsh.exe"); got[0].Argv[0] != cmd || got[1].Argv[0] != pwsh {
-		t.Fatalf("pref cmd + SQUAD_SHELL pwsh → %q", argv0s(got))
+		t.Fatalf("pref cmd + TORRE_SHELL pwsh → %q", argv0s(got))
 	}
 }
 

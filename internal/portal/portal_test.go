@@ -32,7 +32,7 @@ const site = `<!doctype html><html><head><title>Teste</title></head><body style=
 
 type harness struct {
 	t    *testing.T
-	base string // squad server
+	base string // torre server
 	site string // test web site
 	st   *store.Store
 	br   *browser.Manager
@@ -44,7 +44,7 @@ func newHarness(t *testing.T, withBrowser bool) *harness {
 	if withBrowser {
 		path := browser.Find()
 		if path == "" {
-			t.Skip("no Chromium-based browser (set SQUAD_BROWSER)")
+			t.Skip("no Chromium-based browser (set TORRE_BROWSER)")
 		}
 		br = browser.New(browser.Options{ExecPath: path, Profile: t.TempDir()})
 		t.Cleanup(br.Shutdown)
@@ -274,7 +274,7 @@ func TestNormalizeURL(t *testing.T) {
 		"http://example.com":   "http://example.com",
 		"https://a.b/c?d=1":    "https://a.b/c?d=1",
 		"about:blank":          "about:blank",
-		"  docs.squad.dev/a  ": "https://docs.squad.dev/a",
+		"  docs.torre.dev/a  ": "https://docs.torre.dev/a",
 		"":                     "",
 	} {
 		if got := NormalizeURL(in); got != want {

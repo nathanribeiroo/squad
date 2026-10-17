@@ -88,7 +88,7 @@ func command(engine, path, dir string, j job) (args []string, stdin string, outF
 // run executes a job with an engine in a fresh empty folder and returns its
 // answer text.
 func run(ctx context.Context, engine, path string, j job, timeout time.Duration) (string, error) {
-	dir, err := os.MkdirTemp("", "squad-summary-")
+	dir, err := os.MkdirTemp("", "torre-summary-")
 	if err != nil {
 		return "", err
 	}

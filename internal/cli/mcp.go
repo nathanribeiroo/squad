@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"context"
@@ -18,32 +18,32 @@ import (
 	"github.com/nathanribeiroo/squad/internal/version"
 )
 
-const mcpInstructions = `Squad: a canvas where agents and terminals are connected by wires; you can only reach what is connected to you.
+const mcpInstructions = `Torre: a canvas where agents and terminals are connected by wires; you can only reach what is connected to you.
 Start with list. ask sends a message to a connected agent and waits for its reply (its final answer; it can take minutes). If it times out while the agent is still working, wait returns the answer when it finishes: don't resend.
 note reads and writes connected notes; portal drives a connected browser page the user watches live.
 Managers (list says so) create their team with new (roles lists the roles: Planejador, Arquiteto, Implementador, Revisor, Testador…) and wire nodes with connect; floors give a team its own copy of the repository (a git worktree on a branch).
 keys, portal_eval and new_shell can run commands, and floor_land merges branches, so they ask the user first.`
 
-const mcpOutside = `Squad: this session is not running inside a Squad terminal, so Squad's tools are not available here.`
+const mcpOutside = `Torre: this session is not running inside a Torre terminal, so Torre's tools are not available here.`
 
-// runMCP serves Squad's commands as MCP tools over stdio (squad mcp). The
-// agent starts it inside a Squad terminal; each call goes to the Squad server
+// runMCP serves Torre's commands as MCP tools over stdio (torre mcp). The
+// agent starts it inside a Torre terminal; each call goes to the Torre server
 // as that terminal, like the CLI.
 //
-// Outside a Squad terminal it serves no tools instead of failing: Devin
-// starts it in every session (squad install-skill registers it globally).
+// Outside a Torre terminal it serves no tools instead of failing: Devin
+// starts it in every session (torre install-skill registers it globally).
 func runMCP(_ []string, _, stderr io.Writer) int {
 	instructions := mcpInstructions
 	env, err := readClientEnv()
 	if err != nil {
 		instructions = mcpOutside
 	}
-	s := mcp.NewServer(&mcp.Implementation{Name: "squad", Version: version.Version}, &mcp.ServerOptions{Instructions: instructions})
+	s := mcp.NewServer(&mcp.Implementation{Name: "torre", Version: version.Version}, &mcp.ServerOptions{Instructions: instructions})
 	if err == nil {
 		addMCPTools(s, env)
 	}
 	if err := s.Run(context.Background(), &mcp.StdioTransport{}); err != nil && !errors.Is(err, io.EOF) {
-		fmt.Fprintln(stderr, "squad mcp:", err)
+		fmt.Fprintln(stderr, "torre mcp:", err)
 		return 1
 	}
 	return 0
@@ -74,7 +74,7 @@ func addTool[In any](s *mcp.Server, env clientEnv, name, desc string, blocking b
 			return textResult(cutShort(ctx, env, args), false), nil, nil
 		}
 		if err != nil {
-			return textResult("can't reach the Squad server: "+err.Error(), true), nil, nil
+			return textResult("can't reach the Torre server: "+err.Error(), true), nil, nil
 		}
 		return textResult(strings.TrimRight(string(out), "\n"), code >= 300), nil, nil
 	})
@@ -85,7 +85,7 @@ func addTool[In any](s *mcp.Server, env clientEnv, name, desc string, blocking b
 // sees whether it is still working or waiting for the user (the server's own
 // note on inactivity comes only after a longer wait), and what to do next.
 func cutShort(ctx context.Context, env clientEnv, args []string) string {
-	note := fmt.Sprintf("[squad: your agent stops tool calls after %d s (MCP_TOOL_TIMEOUT), so this call returned before the answer. ", int(clientToolTimeout().Seconds()))
+	note := fmt.Sprintf("[torre: your agent stops tool calls after %d s (MCP_TOOL_TIMEOUT), so this call returned before the answer. ", int(clientToolTimeout().Seconds()))
 	if len(args) < 2 || (args[0] != "ask" && args[0] != "wait") || strings.HasPrefix(args[1], "-") {
 		return note + "The agents you asked are still working: don't resend; call wait with each name to get their answers.]"
 	}
@@ -419,7 +419,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 		})
 }
 
-// buildPortal turns the portal tool's input into squad portal arguments.
+// buildPortal turns the portal tool's input into torre portal arguments.
 func buildPortal(in portalInput) ([]string, error) {
 	switch in.Action {
 	case "list":

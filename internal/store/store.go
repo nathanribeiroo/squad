@@ -57,8 +57,8 @@ type Node struct {
 	Terminal *TerminalData `json:"terminal,omitempty"`
 	Note     *NoteData     `json:"note,omitempty"`
 	Portal   *PortalData   `json:"portal,omitempty"`
-	// CreatedBy is the terminal whose agent created this node (squad new,
-	// squad portal create); empty when the user did.
+	// CreatedBy is the terminal whose agent created this node (torre new,
+	// torre portal create); empty when the user did.
 	CreatedBy string `json:"createdBy,omitempty"`
 	// Floor is the floor the node is on (a Floor id); "" is the ground floor.
 	Floor string `json:"floor,omitempty"`
@@ -90,15 +90,15 @@ type TerminalData struct {
 	Role    string `json:"role,omitempty"` // a role of the library: plan | impl | rev | test | …
 	Cols    int    `json:"cols,omitempty"`
 	Rows    int    `json:"rows,omitempty"`
-	// Manager lets the agent create and connect terminals (squad new); nil
+	// Manager lets the agent create and connect terminals (torre new); nil
 	// follows its role.
 	Manager *bool `json:"manager,omitempty"`
 	// Conversation is the agent's own id for the conversation the terminal
 	// continues when it starts again (claude/devin/gemini --resume, codex
-	// resume); empty starts a new one. Squad keeps it (Server.SetConversation).
+	// resume); empty starts a new one. Torre keeps it (Server.SetConversation).
 	Conversation string `json:"conversation,omitempty"`
 	// Busy: the agent was in the middle of a turn. A terminal that stops
-	// while busy (Squad closed or restarted) resumes as interrupted.
+	// while busy (Torre closed or restarted) resumes as interrupted.
 	Busy bool `json:"busy,omitempty"`
 	// Empty: the conversation hasn't had a turn yet, so there is nothing to
 	// continue (the agent wouldn't find it): the terminal starts a new one.
@@ -164,7 +164,7 @@ type Store struct {
 // Dir returns the directory holding a workspace's files.
 func Dir(wsID string) (string, error) { return config.Dir("workspaces", wsID) }
 
-// OpenDefault loads (or creates) the default workspace under ~/.squad.
+// OpenDefault loads (or creates) the default workspace under ~/.torre.
 func OpenDefault(cwd string) (*Store, error) {
 	dir, err := Dir("default")
 	if err != nil {

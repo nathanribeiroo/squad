@@ -1,5 +1,5 @@
-// Package app assembles the Squad server: HTTP server, terminals, activity
-// monitor and the agent bus. Used by `squad serve` and integration tests.
+// Package app assembles the Torre server: HTTP server, terminals, activity
+// monitor and the agent bus. Used by `torre serve` and integration tests.
 package app
 
 import (
@@ -34,7 +34,7 @@ type Options struct {
 	Roles      *roles.Library       // shared by every workspace; nil: roles are only labels
 }
 
-// App is a wired Squad instance.
+// App is a wired Torre instance.
 type App struct {
 	Server  *server.Server
 	Monitor *activity.Monitor
@@ -222,7 +222,7 @@ func New(o Options) (*App, error) {
 	var app *App
 	srv.HandleSession("POST /api/nodes/{id}/send", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleSend(w, r) }))
 
-	// Agents interrupted mid-turn (Squad closed or restarted): continue them,
+	// Agents interrupted mid-turn (Torre closed or restarted): continue them,
 	// or forget it.
 	srv.HandleSession("POST /api/interrupted/{action}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		action := r.PathValue("action")
