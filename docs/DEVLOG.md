@@ -2,6 +2,37 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F1: redesenho do que existe
+
+- **Indicativo do voo (`callsign`):**
+  - até 4 letras e números, único no canvas da sessão (`workspace.json`, `TerminalData.callsign`);
+  - vem da sigla do papel; o segundo voo com a mesma sigla ganha número (IMP, IM2, IM3… e IM10, cortando a sigla para caber em 4);
+  - sem papel, vem das consoantes do nome (`ids.Callsign`: Claude → CLD, Gemini → GMN, Ana → NAA);
+  - escolhido na criação, é usado como está e numerado se já existe; numa edição, um repetido é recusado (409);
+  - trocar o papel troca o indicativo junto só se ele tinha vindo da sigla ou do nome; um escolhido fica;
+  - voos de antes ganham indicativo quando o workspace abre.
+- **Sigla do papel (`RoleDef.abbr`):** até 3 letras, única. Os prontos têm PLN, ARQ, IMP, REV e TST. Um papel sem sigla ganha as consoantes do nome (numeradas se repetem); uma sigla repetida escolhida por você é recusada. Papéis de antes ganham a sigla quando a biblioteca abre.
+- **Número do nível (`Floor.number`):** FL1, FL2… por sessão (`workspace.json`, `floorSeq`); um número não volta depois que o nível pousa ou é descartado. Níveis de antes são numerados na ordem em que existem. O `torre floor list` mostra o número.
+- **Decisão sem consulta: indicativo e número por sessão**, como o plano aprovado (as sessões têm canvas próprio desde o S2). Duas sessões podem ter um IMP cada.
+- **Telas redesenhadas** (quadros 02–04, 06–17 e 22 do `docs/torre/TELAS.md`):
+  - **topo:** caminho logo › workspace › sessão › níveis; à direita, ESPERA GERAL, RÁDIO com a contagem, ENLACE e o relógio;
+  - **níveis:** abas com PISTA ou FL{n}, nome, branch, estado do git e ▲ quando há voo no ar; o cartão "Nível vazio"; Novo nível com o número; "Autorizar pouso · FL2" com as checagens; Descartar FL2;
+  - **voo:** faixa de estado à esquerda, cabeçalho com quadradinho do papel, indicativo, nome, agente, chips (líder, teclado) e estado em texto; rodapé com nível, branch, pasta e "criado por PLN"; tarja de Hangar e Pane com INICIAR; retrato (zoom < 60%) e faixa de progresso em papel (zoom < 35%);
+  - **frequências:** tracejado correndo durante um pedido, pontilhado quando retido, pílulas quadradas e DESLIGAR;
+  - **Transmitir:** a barra fechada com o indicativo do voo selecionado; aberto, com chips de destino;
+  - **Rádio:** filtros (Todos, Pendentes, um chip por voo), pedidos abertos no topo com "Ver no espaço", linhas em indicativos com o desfecho, rodapé com a taxa e o limite;
+  - **boletim** (BOLETIM · duração), **briefing** (PEDE ATENÇÃO em âmbar, POR VOO com o indicativo), **NOTAM** (etiqueta, papel e tinta), **portal**, **minimapa** com a varredura, **barra de ferramentas**, **arremetida**;
+  - **Novo voo:** 420 de largura, agentes em blocos com "✓ instalado"/"✕ não achado", NOME + INDICATIVO, PAPEL, PASTA, AVANÇADO (comando, shell, líder) e DECOLAR; em Configurar, o aviso âmbar e SALVAR E REINICIAR;
+  - **menu ⋯ do voo:** "Parar · vai ao hangar", "Nova conversa…", "Líder", a seção PAPEL e "Remover…";
+  - **Papéis:** 1200×780, lista de 280 com a sigla, editor com NOME + SIGLA, faixa verde "Salvo. PLN recebe…" com REINICIAR AGORA, rodapé "neste workspace: PLN";
+  - **workspaces e sessões:** linhas com a cor, o nome com ⌥N, a pasta e "2 no ar · 1 pendente"; ATUAL na sessão aberta.
+  - **avisos (toasts):** ok, aguarde e erro, com ícone.
+- **Decisão sem consulta: "✓ instalado" no Novo voo** vem da mesma busca no PATH que os resumos já faziam (`summary` → `engines`). A F4a traz `GET /api/agents`, com a versão.
+- **Decisão sem consulta: os chips "teclado" e "líder"** ficaram no cabeçalho (o handoff mostra os dois ali), e o estado virou texto sem fundo, com a cor do estado.
+- **README:** o texto de uso foi revisto com o vocabulário novo e ganhou "Indicativos e níveis".
+- **Testado aqui:** testes Go novos (`TestCallsigns`, `TestFloorNumbers`, `TestCallsignsFromRoles` pela API, e os de papéis com sigla), a suíte inteira, `tsc`, build da web e capturas no escuro e no claro: canvas, Novo voo (com Avançado), Papéis, workspaces, sessões, menu ⋯, Rádio e um Claude real com o papel Revisor (REV).
+- **Não testado:** o Devin real no formulário (o "instalado" depende do PATH do servidor); renderização no Windows e no Mac; o retrato e a faixa de progresso com agentes trabalhando (os estados aparecem na F3, com a PRIORIDADE).
+
 ## 2026-10-17, Torre F0b: base visual e vocabulário
 
 - **Tokens:** os da Torre (`docs/torre/tokens/torre-tokens.css`) em `web/src/theme/tokens.css`:
