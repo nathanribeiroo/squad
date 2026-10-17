@@ -70,7 +70,9 @@ export const api = {
   addNode: (n: Partial<WNode>) => req<WNode>('POST', wsPath('/api/nodes'), n),
   updateNode: (id: string, patch: Partial<WNode>) => req<WNode>('PATCH', wsPath(`/api/nodes/${id}`), patch),
   removeNode: (id: string) => req<void>('DELETE', wsPath(`/api/nodes/${id}`)),
-  nodeAction: (id: string, action: 'start' | 'stop' | 'restart') => req<unknown>('POST', wsPath(`/api/nodes/${id}/${action}`)),
+  nodeAction: (id: string, action: 'start' | 'stop' | 'restart' | 'new-conversation') => req<unknown>('POST', wsPath(`/api/nodes/${id}/${action}`)),
+  /** Agents interrupted mid-turn: send them "continue", or forget it (all, or ids). */
+  interrupted: (action: 'continue' | 'dismiss', ids?: string[]) => req<{ ids: string[] }>('POST', wsPath(`/api/interrupted/${action}`), { ids }),
   addEdge: (a: string, b: string) => req<WEdge>('POST', wsPath('/api/edges'), { a, b }),
   updateEdge: (id: string, ropePoints: [number, number][]) => req<WEdge>('PATCH', wsPath(`/api/edges/${id}`), { ropePoints }),
   removeEdge: (id: string) => req<void>('DELETE', wsPath(`/api/edges/${id}`)),

@@ -16,6 +16,10 @@ export interface TerminalData {
   manager?: boolean;
   cols?: number;
   rows?: number;
+  /** The agent's id for the conversation the terminal continues (Squad keeps it). */
+  conversation?: string;
+  /** The agent was in the middle of a turn. */
+  busy?: boolean;
 }
 
 export interface ShellOption {
@@ -176,6 +180,8 @@ export interface TerminalRuntime {
   error?: string;
   activity: UIState;
   activitySince: string;
+  /** Continued a conversation it was in the middle of (Squad closed or restarted). */
+  interrupted?: boolean;
 }
 
 export interface PendingRequest {

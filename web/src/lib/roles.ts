@@ -73,7 +73,9 @@ export async function changeRole(nodeId: string, t: TerminalData, roleId: string
   }
   try {
     await api.updateNode(nodeId, { terminal: { ...t, role: roleId || undefined } });
-    if (restart) await api.nodeAction(nodeId, 'restart');
+    // A new conversation: the new role holds from its start (Devin gets it
+    // only when a conversation begins).
+    if (restart) await api.nodeAction(nodeId, 'new-conversation');
   } catch (e) {
     toast((e as Error).message);
   }
