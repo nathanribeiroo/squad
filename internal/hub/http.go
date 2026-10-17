@@ -52,6 +52,10 @@ func (h *Hub) Handler() http.Handler {
 	mux.Handle("DELETE /api/roles/{id}", sess(h.handleRoleDelete))
 	mux.Handle("GET /api/agents", sess(h.handleAgents))
 	mux.Handle("PUT /api/agents/{agent}", sess(h.handleAgentCommand))
+	mux.Handle("GET /api/plans", sess(h.handlePlans))
+	mux.Handle("GET /api/plans/{id}", sess(h.handlePlan))
+	mux.Handle("DELETE /api/plans/{id}", sess(h.handlePlanDelete))
+	mux.Handle("POST /api/plans/import", sess(h.handlePlanImport))
 	mux.Handle("GET /ws/workspaces", sess(h.handleWorkspacesWS))
 	mux.Handle("/api/", sess(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not found (a workspace's API is under /w/<id>/api/…)")

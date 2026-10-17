@@ -16,6 +16,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/notes"
+	"github.com/nathanribeiroo/squad/internal/plans"
 	"github.com/nathanribeiroo/squad/internal/portal"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
@@ -32,6 +33,7 @@ type Options struct {
 	Extensions []agentbus.Extension // extra CLI commands (notes, …)
 	Browser    *browser.Manager     // shared by the portals of every workspace; nil disables them
 	Roles      *roles.Library       // shared by every workspace; nil: roles are only labels
+	Plans      *plans.Library       // flight plans, shared by every workspace; nil: none
 }
 
 // App is a wired Torre instance.
@@ -47,6 +49,8 @@ type App struct {
 
 	exts     []agentbus.Extension
 	cancel   context.CancelFunc
+	plans    *plans.Library
+	roles    *roles.Library
 	defaults store.Limits // the server's limits, before the workspace's
 }
 
@@ -293,11 +297,16 @@ func New(o Options) (*App, error) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	// Flight plans: save this canvas (or part of it), and put one in the air.
+	if o.Plans != nil {
+		srv.HandleSession("POST /api/plans", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handlePlanSave(w, r) }))
+		srv.HandleSession("POST /api/plans/{id}/apply", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handlePlanApply(w, r) }))
+	}
 	// Limits (Configurações → Limites): the workspace's, else the server's.
 	srv.HandleSession("GET /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	srv.HandleSession("PUT /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	bl := bus.Limits()
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, exts: exts,
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, exts: exts, plans: o.Plans, roles: o.Roles,
 		defaults: store.Limits{MaxHops: bl.MaxHops, PerMinute: bl.PerMinute, MaxTeam: teamSvc.MaxTeam(), PortalsPerAgent: portal.MaxCreated}}
 	app.applyLimits()
 	return app, nil
