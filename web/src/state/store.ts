@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { api, setWorkspace } from '../api/client';
 import { askPhrase } from '../lib/askText';
+import { noticeAsk } from '../lib/notify';
 import { toast } from '../lib/toast';
 import type {
   Floor,
@@ -156,8 +157,12 @@ interface SquadState {
   zoomLevel: ZoomLevel;
   /** Zoom content is laid out for; updated when a gesture ends. */
   renderZoom: number;
+  /** The theme on screen; themePref may follow the system. */
   theme: 'dark' | 'light';
+  themePref: 'dark' | 'light' | 'system';
   termTheme: 'noite' | 'papel';
+  /** Configurações, open on a tab (null: closed). */
+  settingsTab: SettingsTab | null;
 
   setWorkspaces(list: WorkspaceSummary[]): void;
   /** A workspace's sessions (from the "sessions" event, or a request). */
@@ -189,7 +194,8 @@ interface SquadState {
   setSelectedNode(id: string | null): void;
   setTool(t: SquadState['tool']): void;
   setZoom(z: number, settled: boolean): void;
-  setTheme(t: SquadState['theme']): void;
+  setTheme(t: SquadState['themePref']): void;
+  openSettings(tab?: SettingsTab | null): void;
   setTermTheme(t: SquadState['termTheme']): void;
   moveNodeLocal(id: string, x: number, y: number): void;
 }
@@ -212,6 +218,15 @@ function nameOf(ws: Workspace | null, id?: string): string {
 function prefersDark(): boolean {
   return typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)').matches : true;
 }
+
+/** The theme the user chose; before Configurações had "Sistema", the one they picked. */
+function initialPref(): 'dark' | 'light' | 'system' {
+  const p = stored<'dark' | 'light' | 'system' | ''>('torre.themePref', '');
+  if (p) return p;
+  return stored<'dark' | 'light' | ''>('torre.theme', '') || 'system';
+}
+
+export type SettingsTab = 'appearance' | 'agents' | 'limits' | 'summaries' | 'shortcuts' | 'notices';
 
 function stored<T extends string>(key: string, fallback: T): T {
   try {
@@ -323,10 +338,13 @@ export const useSquad = create<SquadState>((set, get) => ({
   tool: 'select',
   zoomLevel: 'live',
   renderZoom: 1,
-  theme: stored<'dark' | 'light'>('torre.theme', prefersDark() ? 'dark' : 'light'),
+  theme: initialPref() === 'system' ? (prefersDark() ? 'dark' : 'light') : stored<'dark' | 'light'>('torre.theme', prefersDark() ? 'dark' : 'light'),
+  themePref: initialPref(),
+  settingsTab: null,
   termTheme: stored<'noite' | 'papel'>('torre.term', stored('torre.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
 
   setRoles: (roles) => set({ roles }),
+  openSettings: (tab = 'appearance') => set({ settingsTab: tab }),
   openRoles: (id = null) => set({ rolesPanel: id }),
   closeRoles: () => set({ rolesPanel: false }),
 
@@ -424,6 +442,11 @@ export const useSquad = create<SquadState>((set, get) => ({
         const next: TerminalRuntime = { ...prev, ...(d as TerminalRuntime), attention: (d as TerminalRuntime).attention };
         const runtime = { ...st.runtime, [d.id]: next };
         const patch: Partial<SquadState> = { runtime, askingIds: askingOf(runtime, st.askingIds) };
+        // A new ask: a notification and a sound, as chosen in Avisos.
+        if (prev?.activity !== 'ask' && next.activity === 'ask') {
+          const t = ws?.nodes.find((n) => n.id === d.id)?.terminal;
+          if (t) noticeAsk(t.callsign || t.name, [askPhrase(next.attention), next.attention?.detail].filter(Boolean).join(': '));
+        }
         // An answered ask goes into the Rádio, with how long it waited.
         if (prev?.activity === 'ask' && next.activity !== 'ask' && prev.attention) {
           const t = ws?.nodes.find((n) => n.id === d.id)?.terminal;
@@ -445,6 +468,9 @@ export const useSquad = create<SquadState>((set, get) => ({
         set(patch);
         return;
       }
+      case 'limits.changed':
+        set({ extra: { ...st.extra, limits: { ...st.extra.limits, ...(d as Partial<StateExtra['limits']>) } } });
+        return;
       case 'terminal.title':
         set({ runtime: { ...st.runtime, [d.id]: { ...st.runtime[d.id], title: d.title } } });
         return;
@@ -643,11 +669,13 @@ export const useSquad = create<SquadState>((set, get) => ({
     if (settled && z !== st.renderZoom) set({ renderZoom: z });
   },
   // The terminal palette follows the UI theme; it can still be overridden afterwards.
-  setTheme: (theme) => {
+  setTheme: (themePref) => {
+    const theme = themePref === 'system' ? (prefersDark() ? 'dark' : 'light') : themePref;
     const termTheme = theme === 'dark' ? 'noite' : 'papel';
+    persist('torre.themePref', themePref);
     persist('torre.theme', theme);
     persist('torre.term', termTheme);
-    set({ theme, termTheme });
+    set({ theme, themePref, termTheme });
   },
   setTermTheme: (termTheme) => {
     persist('torre.term', termTheme);

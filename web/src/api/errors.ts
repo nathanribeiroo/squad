@@ -75,6 +75,9 @@ const MESSAGES: Record<string, (p: Params) => string> = {
   'attention.no_keys': () => 'Essa resposta não pode ser enviada daqui para este agente: abra a tela do voo.',
   'attention.not_agent': () => 'Só os agentes respondem por aqui.',
 
+  'limits.range': (p) => `Esse limite vai de ${p.min} a ${p.max}.`,
+  'agents.bad_command': () => 'O comando é uma linha só, com até 300 caracteres.',
+
   'summary.no_turn': () => 'Este voo ainda não terminou um turno.',
   'summary.no_engine': () => 'Nenhuma CLI de agente para escrever resumos (claude, devin, codex ou gemini) foi achada, ou os resumos estão desligados.',
 };

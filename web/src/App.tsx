@@ -16,10 +16,12 @@ import { InterruptedBar } from './components/InterruptedBar';
 import { NoLink } from './components/NoLink';
 import { PriorityBanner } from './components/PriorityBanner';
 import { RolesPanel } from './components/RolesPanel';
+import { SettingsPanel } from './components/SettingsPanel';
 import { SummaryDialogs } from './components/SummaryDialogs';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
 import { goToNextAsk, respond } from './lib/attention';
+import { noticePrefs } from './lib/notify';
 import { Toast, toast } from './lib/toast';
 import { useSquad } from './state/store';
 import './App.css';
@@ -37,10 +39,20 @@ export function App() {
   // how many flights ask you, here and in the other workspaces.
   const wsName = useSquad((s) => s.workspace?.name);
   const asks = useSquad((s) => s.askingIds.length + s.workspaces.reduce((n, w) => n + (w.id !== s.activeWs ? (w.attention ?? 0) : 0), 0));
+  const settingsOpen = useSquad((s) => s.settingsTab !== null); // Avisos may have changed
   useEffect(() => {
     const name = wsName ? `${wsName} · Torre` : 'Torre';
-    document.title = asks > 0 ? `(${asks}) ${name}` : name;
-  }, [wsName, asks]);
+    document.title = asks > 0 && noticePrefs().title ? `(${asks}) ${name}` : name;
+  }, [wsName, asks, settingsOpen]);
+  // "Sistema" follows the system's theme as it changes.
+  const themePref = useSquad((s) => s.themePref);
+  useEffect(() => {
+    if (themePref !== 'system' || typeof matchMedia !== 'function') return;
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const on = () => useSquad.getState().setTheme('system');
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, [themePref]);
   useEffect(() => {
     document.documentElement.dataset.term = term;
   }, [term]);
@@ -153,6 +165,7 @@ function Stage() {
       <Composer />
       <ActivityDrawer />
       <RolesPanel />
+      <SettingsPanel />
       <FloorDialogs />
       <SummaryDialogs />
       <NoLink />

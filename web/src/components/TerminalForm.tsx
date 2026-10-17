@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { api } from '../api/client';
-import type { ShellOption, WNode } from '../api/types';
+import { api, hub } from '../api/client';
+import type { AgentInfo, ShellOption, WNode } from '../api/types';
 import { flightLevel, useBranch, workdir } from '../lib/floors';
 import { AGENTS, callsign } from '../lib/model';
 import { ROLE_AGENTS } from '../lib/roles';
@@ -18,6 +18,27 @@ const SHORT_LABELS: Record<string, string> = { custom: 'Comando' };
 function uniqueName(base: string, taken: Set<string>): string {
   if (!taken.has(base)) return base;
   for (let i = 2; ; i++) if (!taken.has(`${base} ${i}`)) return `${base} ${i}`;
+}
+
+// The agents found on this computer (GET /api/agents), once per page.
+let agentsReq: Promise<AgentInfo[]> | null = null;
+function useAgents(): AgentInfo[] | null {
+  const [agents, setAgents] = useState<AgentInfo[] | null>(null);
+  useEffect(() => {
+    agentsReq ??= hub.agents().then(
+      (d) => d.agents,
+      () => {
+        agentsReq = null;
+        return [];
+      },
+    );
+    let live = true;
+    void agentsReq.then((a) => live && setAgents(a));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return agents;
 }
 
 // The installed shells don't change while the page is open.
@@ -61,7 +82,7 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
   const wsCwd = useSquad((s) => workdir(s.workspace, floor) ?? '');
   const suggestDirs = useCallback((p: string) => api.dirs(p, floor), [floor]);
   const shells = useShells();
-  const engines = useSquad((s) => s.summarySettings?.engines);
+  const found = useAgents();
   const t = node?.terminal;
   const [agent, setAgent] = useState(t?.agent ?? 'claude');
   const [name, setName] = useState(t?.name ?? '');
@@ -134,9 +155,9 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
   const status = (a: string): { text: string; cls: string } | null => {
     if (a === 'shell') return { text: def?.label ?? 'shell', cls: '' };
     if (a === 'custom') return { text: 'próprio', cls: '' };
-    const e = engines?.find((x) => x.name === a);
+    const e = found?.find((x) => x.agent === a);
     if (!e) return null;
-    return e.available ? { text: '✓ instalado', cls: 'ok' } : { text: '✕ não achado', cls: 'err' };
+    return e.found ? { text: '✓ instalado', cls: 'ok' } : { text: '✕ não achado', cls: 'err' };
   };
 
   return (

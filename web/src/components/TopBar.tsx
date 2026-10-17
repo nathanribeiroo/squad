@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useNow } from '../lib/useNow';
-import { usePopoverClose } from '../lib/usePopoverClose';
 import { wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
 import { FloorBar } from './FloorBar';
@@ -36,7 +35,6 @@ export function TopBar() {
   const connection = useSquad((s) => s.connection);
   const drawerOpen = useSquad((s) => s.drawerOpen);
   const setDrawer = useSquad((s) => s.setDrawer);
-  const [menu, setMenu] = useState(false);
   const [wsMenu, setWsMenu] = useState(false);
   const [sesMenu, setSesMenu] = useState(false);
   const workspaces = useSquad((s) => s.workspaces);
@@ -121,12 +119,9 @@ export function TopBar() {
           Reconectando…
         </span>
       )}
-      <div className="tb-anchor">
-        <button className="icon-btn tb-gear" onClick={() => setMenu(!menu)} title="Configurações" aria-expanded={menu}>
-          <Icon name="settings" size={18} />
-        </button>
-        {menu && <SettingsMenu onClose={() => setMenu(false)} />}
-      </div>
+      <button className="icon-btn tb-gear" onClick={() => useSquad.getState().openSettings()} title="Configurações">
+        <Icon name="settings" size={18} />
+      </button>
       <Clock />
     </header>
   );
@@ -140,49 +135,3 @@ function Clock() {
   return <span className="tb-clock mono">{`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`}</span>;
 }
 
-function SettingsMenu({ onClose }: { onClose: () => void }) {
-  const theme = useSquad((s) => s.theme);
-  const term = useSquad((s) => s.termTheme);
-  const setTheme = useSquad((s) => s.setTheme);
-  const setTerm = useSquad((s) => s.setTermTheme);
-  const ref = usePopoverClose(onClose, '.tb-gear');
-  return (
-    <div className="popover tb-menu" ref={ref}>
-      <div className="tb-menu-title">Tema</div>
-      {(['dark', 'light'] as const).map((t) => (
-        <button key={t} className={`tb-menu-item${theme === t ? ' on' : ''}`} onClick={() => setTheme(t)}>
-          <Icon name={t === 'dark' ? 'dark_mode' : 'light_mode'} size={18} />
-          {t === 'dark' ? 'Escuro' : 'Claro'}
-        </button>
-      ))}
-      <div className="tb-menu-title">Agentes</div>
-      <button
-        className="tb-menu-item"
-        onClick={() => {
-          onClose();
-          useSquad.getState().openRoles();
-        }}
-      >
-        <Icon name="badge" size={18} />
-        Papéis…
-      </button>
-      <button
-        className="tb-menu-item"
-        onClick={() => {
-          onClose();
-          useSquad.getState().setSummaryDialog('settings');
-        }}
-      >
-        <Icon name="psychology" size={18} />
-        Resumos e briefing…
-      </button>
-      <div className="tb-menu-title">Terminal</div>
-      {(['noite', 'papel'] as const).map((t) => (
-        <button key={t} className={`tb-menu-item${term === t ? ' on' : ''}`} onClick={() => setTerm(t)}>
-          <Icon name="terminal" size={18} />
-          {t === 'noite' ? 'Noite' : 'Papel'}
-        </button>
-      ))}
-    </div>
-  );
-}
