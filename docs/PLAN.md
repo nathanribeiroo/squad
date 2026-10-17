@@ -56,7 +56,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Torre F2 Confirmações, vazios e erros | `feat/torre-f2-confirmacoes` → `feat/torre` | concluído |
 | Torre F3 PRIORIDADE | `feat/torre-f3-prioridade` → `feat/torre` | concluído |
 | Torre F4a Configurações | `feat/torre-f4a-configuracoes` → `feat/torre` | concluído |
-| Torre F4b Sinóptico | `feat/torre-f4b-sinoptico` → `feat/torre` | pendente |
+| Torre F4b Sinóptico | `feat/torre-f4b-sinoptico` → `feat/torre` | concluído |
 | Torre F4c Primeira abertura | `feat/torre-f4c-primeira-abertura` → `feat/torre` | pendente |
 | Torre F5a Extras (nível, pedidos, NOTAM, pouso) | `feat/torre-f5a-extras` → `feat/torre` | pendente |
 | Torre F5b Foco, encaixe, ocultar, Tab | `feat/torre-f5b-foco` → `feat/torre` | pendente |

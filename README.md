@@ -110,8 +110,18 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 
 **Atalhos:**
 - canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal;
-- globais: `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥1`–`⌥9` workspaces;
+- globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥1`–`⌥9` workspaces;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
+
+**Sinóptico (`⌥S`, ou ESPAÇO · SINÓPTICO no topo):** a sessão inteira de relance, para deixar aberta o dia todo.
+- **Radar:** cada voo é um símbolo no seu nível (a pista no centro, um anel por nível), na posição que tem no canvas: ▲ no ar, ● pede você (com o anel pulsando), △ aguarda, □ em solo, ○ hangar. Linhas âmbar tracejadas são pedidos abertos; verdes, respostas recentes. Os contadores ficam em cima e a legenda embaixo. Clique seleciona; duplo clique abre o voo no Espaço.
+- **Fichas:** uma faixa de papel por voo, na ordem pede você › aguarda › no ar › em solo › hangar, com o que ele está fazendo, o agente, o nível e o tempo no estado.
+- **Fila de pouso:** os níveis com commits, com as checagens (tudo commitado, ninguém no ar) e "Autorizar pouso…".
+- **Frequências:** os pares de voos, com pedido aberto (âmbar) ou resposta recente (verde), mais a taxa e os saltos.
+- **Prioridade:** o voo que pede você há mais tempo ("1 de N"), com a pergunta, o comando e AUTORIZAR (1), SEMPRE (2) e NEGAR (3). Sem prioridade, o cartão some.
+- **Terminal:** a tela do voo selecionado, ao vivo; clique para digitar; o alfinete fixa o voo, que deixa de seguir a seleção.
+- **Rodapé:** o Rádio passando (clique abre) e a barra Transmitir.
+- A vista escolhida fica guardada no navegador.
 
 **Configurações** (⚙ no topo; fecha com Esc ou clique fora):
 - **Aparência:** tema da interface (Escuro, Claro ou Sistema, que segue o computador) e dos terminais (Noite ou Papel);

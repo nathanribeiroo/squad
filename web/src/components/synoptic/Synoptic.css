@@ -1,0 +1,122 @@
+/* Sinóptico (docs/torre/TELAS.md, quadro 01): radar · strips, landing queue,
+   frequencies · priority and terminal · radio and Transmitir. */
+.syn {
+  position: absolute; inset: 0; display: grid; gap: 10px; padding: 10px 44px 10px 10px; /* the Rádio tab on the right */
+  grid-template-columns: minmax(380px, 620px) minmax(300px, 330px) minmax(360px, 1fr);
+  grid-template-rows: minmax(0, 1fr) 100px;
+  grid-template-areas: 'radar mid right' 'foot foot foot';
+  background: var(--canvas);
+}
+.syn-radar { grid-area: radar; display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 0; }
+.syn-mid { grid-area: mid; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
+.syn-right { grid-area: right; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.syn-foot { grid-area: foot; display: flex; flex-direction: column; gap: 8px; }
+
+/* Radar */
+.syn-counters { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.syn-scope { width: 100%; max-width: 600px; flex: 1; min-height: 0; }
+.syn-bgc { stroke: #163020; stroke-width: 1.5; }
+.syn-ring { fill: none; stroke: #163020; stroke-width: 1; }
+.syn-cross { stroke: #122818; stroke-width: 1; }
+.syn-ring-label { fill: #3f6b52; font-family: var(--font-mono); font-size: 10px; text-anchor: middle; letter-spacing: 0.08em; }
+.syn-sweep { transform-origin: 300px 300px; animation: syn-sweep 6s linear infinite; pointer-events: none; }
+@keyframes syn-sweep { to { transform: rotate(360deg); } }
+.syn-link { stroke-width: 1.5; }
+.syn-link.pending { stroke: var(--st-wait); stroke-dasharray: 5 4; }
+.syn-link.reply { stroke: var(--st-done); }
+.syn-flight { cursor: pointer; }
+.syn-sym { font-size: 16px; fill: var(--stt-idle); }
+.syn-flight.st-work .syn-sym, .syn-flight.st-boot .syn-sym { fill: #a9c8ff; }
+.syn-flight.st-ask .syn-sym { fill: var(--st-ask); }
+.syn-flight.st-wait .syn-sym { fill: var(--stt-wait); }
+.syn-flight.st-done .syn-sym, .syn-flight.st-idle .syn-sym { fill: var(--stt-done); }
+.syn-flight.st-off .syn-sym { fill: var(--stt-off); }
+.syn-flight.st-err .syn-sym { fill: var(--stt-err); }
+.syn-flight.st-work { animation: syn-orbit 8s ease-in-out infinite; }
+@keyframes syn-orbit { 50% { translate: 3px -2px; } }
+.syn-ping { fill: none; stroke: var(--st-ask); stroke-width: 1.5; animation: syn-ping 1.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes syn-ping { from { opacity: 1; transform: scale(0.6); } to { opacity: 0; transform: scale(1.6); } }
+.syn-tag { fill: var(--text); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; }
+.syn-tag-sub { fill: var(--text-3); font-family: var(--font-mono); font-size: 9px; }
+.syn-flight.sel .syn-tag { fill: var(--focus); text-decoration: underline; }
+.syn-legend { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; font-size: 10.5px; color: var(--text-3); }
+@media (prefers-reduced-motion: reduce) {
+  .syn-sweep, .syn-flight.st-work, .syn-ping { animation: none; }
+}
+
+/* Boxes in the middle */
+.syn-box { border: 1px solid var(--line-3); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+.syn-box:first-child { flex: 1 1 auto; }
+.syn-box-head { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.syn-empty { margin: 0; padding: 10px; font-size: 12px; color: var(--text-3); }
+.syn-strips { display: flex; flex-direction: column; gap: 4px; padding: 6px; overflow-y: auto; min-height: 0; }
+.syn-strip {
+  display: grid; grid-template-columns: 7px 50px 1fr 82px; align-items: stretch; height: 44px; padding: 0; border: 0;
+  background: var(--paper); color: var(--ink); text-align: left; cursor: pointer; flex: none; outline-offset: 1px;
+}
+.syn-strip-band { background: var(--band, var(--st-idle)); }
+.syn-strip.st-ask { box-shadow: 0 0 0 2px var(--st-ask); }
+.syn-strip.st-ask .syn-strip-band { animation: ask-blink var(--dur-ask-blink) steps(1, end) infinite; }
+.syn-strip.sel { outline: 2px solid var(--focus); }
+.syn-strip-cs { align-self: center; padding-left: 8px; font-size: 13px; font-weight: 700; }
+.syn-strip-what { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; padding: 0 6px; }
+.syn-strip-doing { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.syn-strip-sub { font-size: 10px; color: var(--ink-2); }
+.syn-strip-state { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 8px; border-left: 1px dashed var(--paper-line-2); font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-2); }
+.syn-strip.st-work .syn-strip-state { color: var(--ink-work); }
+.syn-strip.st-wait .syn-strip-state, .syn-strip.st-ask .syn-strip-state { color: var(--ink-wait); }
+.syn-strip.st-done .syn-strip-state { color: var(--ink-done); }
+.syn-land { margin: 8px; padding: 10px; border: 1.5px solid var(--text); display: flex; flex-direction: column; gap: 8px; }
+.syn-land-head { font-size: 11.5px; }
+.syn-land-checks { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; }
+.syn-land-checks .ok { color: var(--stt-done); }
+.syn-land-checks .bad { color: var(--stt-err); }
+.syn-land .btn { align-self: flex-start; }
+.syn-freqs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
+.syn-freq { font-size: 11px; padding: 2px 6px; border: 1px solid var(--line-3); color: var(--text-3); }
+.syn-freq.pending { border-color: var(--st-wait); color: var(--stt-wait); border-style: dashed; }
+.syn-freq.reply { border-color: var(--st-done); color: var(--stt-done); }
+.syn-freq-foot { padding: 6px 10px 8px; font-size: 10.5px; color: var(--text-3); border-top: 1px solid var(--line); }
+
+/* PRIORIDADE card */
+.syn-prio { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 2px solid var(--st-ask); background: var(--stb-ask); }
+.syn-prio-head { display: flex; align-items: center; gap: 8px; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stt-ask); }
+.syn-prio-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--st-ask); animation: ask-blink var(--dur-ask-blink) steps(1, end) infinite; }
+.syn-prio-nav { display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0; }
+.syn-prio-nav button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 14px; }
+.syn-prio-who { display: flex; align-items: center; gap: 10px; }
+.syn-prio-who > span:nth-child(2) { display: flex; flex-direction: column; }
+.syn-prio-cs { font-size: 24px; font-weight: 700; color: var(--text); }
+.syn-prio-sub { font-size: 10.5px; color: var(--text-3); }
+.syn-prio-q { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: #0c0a04; color: var(--text); font-size: 12px; overflow-wrap: anywhere; max-height: 110px; overflow-y: auto; }
+.syn-prio-text { color: var(--text-3); }
+.syn-prio-actions { display: flex; gap: 6px; align-items: center; }
+.syn-prio-note { font-size: 12px; color: var(--stt-ask); }
+
+/* The selected flight's terminal */
+.syn-term { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line-2); background: var(--term-bg, var(--surface)); }
+.syn-term.st-ask { border-color: var(--st-ask); }
+.syn-term-head { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 6px 0 10px; border-bottom: 1px solid var(--line); background: var(--surface); font-size: 12.5px; flex: none; }
+.syn-term-head > i { width: 8px; height: 8px; flex: none; }
+.syn-term-agent { font-size: 10.5px; color: var(--text-3); border: 1px solid var(--line-3); padding: 0 5px; }
+.syn-term-head .mono { font-size: 11px; font-weight: 700; }
+.syn-term-head .icon-btn.on { color: var(--focus); }
+.syn-term-body { flex: 1; min-height: 0; position: relative; padding: 4px 0 0 6px; overflow: hidden; }
+.syn-term-foot { height: 22px; display: flex; align-items: center; padding: 0 10px; font-size: 10.5px; color: var(--text-3); border-top: 1px solid var(--line); background: var(--surface); flex: none; }
+
+/* Radio and Transmitir */
+.syn-radio { height: 36px; display: flex; align-items: center; gap: 10px; border: 1px solid var(--line-3); background: var(--surface); padding: 0 0 0 0; cursor: pointer; overflow: hidden; color: var(--text-2); }
+.syn-radio-tag { height: 100%; display: flex; align-items: center; padding: 0 12px; background: #e05a2b; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; flex: none; }
+.syn-radio-track { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 11.5px; }
+.syn-radio-run { display: inline-block; padding-left: 100%; animation: syn-ticker 40s linear infinite; }
+@keyframes syn-ticker { to { transform: translateX(-100%); } }
+@media (prefers-reduced-motion: reduce) { .syn-radio-run { animation: none; padding-left: 0; } }
+.syn-transmit { height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px; border: 1.5px solid var(--line-3); background: var(--surface); color: var(--text-3); cursor: text; text-align: left; }
+.syn-transmit:hover { border-color: var(--focus); }
+.syn-transmit-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); }
+.syn-transmit-cs { font-weight: 700; color: var(--text); }
+.syn-transmit-ph { flex: 1; font-size: 13px; }
+
+@media (max-width: 1100px) {
+  .syn { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 100px; grid-template-areas: 'radar right' 'mid mid' 'foot foot'; overflow-y: auto; }
+}

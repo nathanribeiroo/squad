@@ -163,6 +163,11 @@ interface SquadState {
   termTheme: 'noite' | 'papel';
   /** Configurações, open on a tab (null: closed). */
   settingsTab: SettingsTab | null;
+  /** The view: the canvas (Espaço) or the Sinóptico (⌥S). */
+  view: 'space' | 'synoptic';
+  /** The flight the Sinóptico shows on the right, and whether it stays there. */
+  synPick: string | null;
+  synPinned: boolean;
 
   setWorkspaces(list: WorkspaceSummary[]): void;
   /** A workspace's sessions (from the "sessions" event, or a request). */
@@ -196,6 +201,9 @@ interface SquadState {
   setZoom(z: number, settled: boolean): void;
   setTheme(t: SquadState['themePref']): void;
   openSettings(tab?: SettingsTab | null): void;
+  setView(v: SquadState['view']): void;
+  setSynPick(id: string | null): void;
+  setSynPinned(pinned: boolean, id: string): void;
   setTermTheme(t: SquadState['termTheme']): void;
   moveNodeLocal(id: string, x: number, y: number): void;
 }
@@ -341,10 +349,20 @@ export const useSquad = create<SquadState>((set, get) => ({
   theme: initialPref() === 'system' ? (prefersDark() ? 'dark' : 'light') : stored<'dark' | 'light'>('torre.theme', prefersDark() ? 'dark' : 'light'),
   themePref: initialPref(),
   settingsTab: null,
+  view: stored<'space' | 'synoptic'>('torre.view', 'space'),
+  synPick: null,
+  synPinned: false,
   termTheme: stored<'noite' | 'papel'>('torre.term', stored('torre.theme', prefersDark() ? 'dark' : 'light') === 'dark' ? 'noite' : 'papel'),
 
   setRoles: (roles) => set({ roles }),
   openSettings: (tab = 'appearance') => set({ settingsTab: tab }),
+  setView: (view) => {
+    persist('torre.view', view);
+    set({ view, focusedTerminal: null });
+  },
+  // A pinned flight stays until unpinned; picking another only moves the selection.
+  setSynPick: (id) => set((s) => (s.synPinned ? {} : { synPick: id })),
+  setSynPinned: (synPinned, id) => set({ synPinned, synPick: id }),
   openRoles: (id = null) => set({ rolesPanel: id }),
   closeRoles: () => set({ rolesPanel: false }),
 
