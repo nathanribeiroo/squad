@@ -113,6 +113,17 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥1`–`⌥9` workspaces;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
 
+**Primeira abertura:** numa instalação nova (sem workspace guardado), a Torre mostra três passos sobre um radar:
+- **1 Enlace:** a página de login, para quando a janela abre sem o token (cole a URL que o `torre serve` mostrou). Com o `?token=` certo, ela pula direto para o passo 2;
+- **2 Pasta:** a pasta do projeto (a do `torre serve`, já preenchida), com o que o git diz dela: repositório, branch, alterações, se os níveis de voo funcionam (precisam de um commit) e os `.env*` que vão para os níveis. Trocar a pasta aqui troca a do workspace;
+- **3 Agentes:** os agentes e o navegador achados, com o comando de instalação dos que faltam, e **Começar vazio** (os planos de voo ainda não chegaram).
+- "Pular" fecha os passos; eles não aparecem de novo neste navegador.
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/dirs/info?path=` | `exists`, `git`, `branch`, `commits`, `changes`, `envFiles` e as pastas dos workspaces (`recent`) |
+| `GET /api/welcome` | `firstRun`: o servidor subiu sem nenhum workspace guardado |
+
 **Sinóptico (`⌥S`, ou ESPAÇO · SINÓPTICO no topo):** a sessão inteira de relance, para deixar aberta o dia todo.
 - **Radar:** cada voo é um símbolo no seu nível (a pista no centro, um anel por nível), na posição que tem no canvas: ▲ no ar, ● pede você (com o anel pulsando), △ aguarda, □ em solo, ○ hangar. Linhas âmbar tracejadas são pedidos abertos; verdes, respostas recentes. Os contadores ficam em cima e a legenda embaixo. Clique seleciona; duplo clique abre o voo no Espaço.
 - **Fichas:** uma faixa de papel por voo, na ordem pede você › aguarda › no ar › em solo › hangar, com o que ele está fazendo, o agente, o nível e o tempo no estado.
