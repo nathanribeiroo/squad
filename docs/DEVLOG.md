@@ -2,6 +2,18 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F5b: foco, encaixe, ocultar e Tab
+
+- **Uma tela por voo:** o terminal tem uma tela só (um xterm), então ela fica num lugar de cada vez: no foco, senão na borda, senão no nó (`web/src/lib/screens.ts`). O nó de um voo no foco ou na borda mostra "Em foco"/"Encaixado à esquerda" com "Trazer de volta"; o retrato e a ficha continuam iguais.
+- **Foco (`⌥F`):** cobre o palco (o Espaço ou o Sinóptico), abaixo da barra do topo, e dá o teclado ao voo. `⌥F` de novo, Esc ou o botão do cabeçalho voltam; o zoom do canvas não muda. Age sobre o voo com o teclado, senão o selecionado.
+- **Encaixe (`⌥⇧←`/`⌥⇧→`):** um painel de 46% (de 420 a 1100 px) com o divisor de 2 px do quadro 04, e o canvas ao lado, com a barra de ferramentas, o Transmitir e o minimapa dentro da parte que sobra. As mesmas teclas desencaixam. **Decisão sem consulta:** um voo encaixado por vez; o encaixe fica no navegador, por workspace (como o zoom de cada nível), e volta ao abrir.
+- **Tamanho da tela:** no foco e na borda, o terminal ganha as colunas e linhas do painel (o mesmo `PATCH` do redimensionar), e volta às do nó ao sair. Ao fechar a página com o painel aberto, a volta vai num `fetch` com `keepalive`.
+- **Ocultar a tela** (menu ⋯): listras opacas, não desfoque, no nó, no retrato, no painel e no Sinóptico; "Mostrar a tela" desfaz. **Decisão sem consulta:** guardado no navegador, por workspace (o handoff deixa o `redacted` no nó como opcional; ficou no PLAN).
+- **Tab / ⇧Tab:** o próximo nó do nível, na ordem de leitura (faixas de 160 px de altura, depois da esquerda para a direita), trazido para a tela no mesmo zoom quando está fora. **Enter** dá o teclado ao voo selecionado (num zoom pequeno, aproxima antes). Só com a página em foco: um botão ou um campo com o foco ficam com o Tab e o Enter deles.
+- **Do terminal:** `⌥F` e `⌥⇧←/→` chegam à Torre mesmo com o teclado num voo ou num portal (como `⌥A`, `⌥P` e `⌥K`). No Windows, `Alt+F` deixa de ir para o shell (avançar uma palavra no readline); o PLAN lembra que trocar os atalhos ainda não existe.
+- **Testado aqui:** `tsc`, build e, no navegador com agentes falsos, encaixar o IMP (a tela foi de 80×24 para 96×53), desencaixar (voltou a 80×24), o foco em tela cheia, voltar, ocultar pelo menu e Tab passando por PLN → IMP → REV → NOTAM.
+- **Não testado:** com o Claude e o Devin reais redesenhando no tamanho novo (é o mesmo redimensionar do canto do nó, que já funcionava com os dois); o `keepalive` ao fechar uma janela de app de verdade.
+
 ## 2026-10-17, Torre F5a: extras
 
 - **Indicativo na CLI e no MCP:** `torre ask IMP "…"`, `check`, `wait`, `connect` e `close` acham o voo pelo indicativo, em qualquer caixa; o nome vale primeiro. O `torre list` mostra `callsign: IMP` no fim de cada linha (no fim para não mudar o começo das linhas, que os agentes já conhecem). O texto da skill e do MCP diz isso.

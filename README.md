@@ -109,9 +109,15 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 **Ícones:** a fonte Material Symbols é cortada para os ícones listados em `web/src/lib/icons.ts` (cerca de 9 KB em vez de 4 MB). Para usar um ícone novo, acrescente o nome nessa lista e rode `make icons`. O `npm run build` recusa uma fonte desatualizada.
 
 **Atalhos:**
-- canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal;
-- globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥1`–`⌥9` workspaces;
+- canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal, `Tab`/`⇧Tab` o próximo/anterior nó (na ordem de leitura, trazendo o nó para a tela), `⏎` dá o teclado ao voo selecionado;
+- globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥F` foco, `⌥⇧←`/`⌥⇧→` encaixar, `⌥1`–`⌥9` workspaces;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
+
+**Foco, encaixe e ocultar** (também no menu ⋯ do voo):
+- **Foco (`⌥F`):** o voo selecionado (ou o que tem o teclado) ocupa a área inteira, abaixo da barra do topo; `⌥F` ou Esc voltam ao canvas no mesmo zoom;
+- **Encaixar (`⌥⇧←`/`⌥⇧→`):** o voo fica numa borda, com um divisor, e o canvas continua ao lado. As mesmas teclas desencaixam; a seta no cabeçalho troca de borda. O encaixe fica guardado por workspace, neste navegador;
+- no foco e na borda, a tela do agente ganha o tamanho do painel (ele redesenha para as colunas e linhas novas) e volta ao tamanho do nó quando sai, mesmo se a página fechar. O nó no canvas mostra "Encaixado à esquerda"/"Em foco", com "Trazer de volta";
+- **Ocultar a tela:** troca a tela do voo por um padrão listrado opaco (para gravar ou mostrar a tela sem expor o que o agente faz), no canvas, no retrato, na borda, no foco e no Sinóptico. O cabeçalho e o estado continuam à vista. Fica guardado por workspace, neste navegador.
 
 **Primeira abertura:** numa instalação nova (sem workspace guardado), a Torre mostra três passos sobre um radar:
 - **1 Enlace:** a página de login, para quando a janela abre sem o token (cole a URL que o `torre serve` mostrou). Com o `?token=` certo, ela pula direto para o passo 2;
