@@ -75,6 +75,7 @@
 .tb-floor-sub.dirty { color: var(--stt-wait); }
 .tb-floor-sub.err { color: var(--stt-err); }
 .tb-floor-air { color: var(--stt-work); font-size: 9px; line-height: 1; }
+.tb-floor-ask { width: 8px; height: 8px; border-radius: 50%; background: var(--st-ask); flex: none; animation: ask-blink var(--dur-ask-blink) steps(1, end) infinite; }
 .tb-floor-add {
   width: 30px;
   display: flex;
@@ -159,3 +160,4 @@
 .tb-menu-item:hover, .tb-menu-item.on { background: var(--surface-3); }
 .tb-menu-item.on { box-shadow: inset 2px 0 0 var(--text); }
 .tb-menu-item.fl-danger, .tb-menu-item.fl-danger .msi { color: var(--stt-err); }
+.tb-count.ask { background: var(--st-ask); color: var(--stb-ask); }

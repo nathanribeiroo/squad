@@ -52,3 +52,5 @@
 
 /* Activity in workspaces other than the one on screen. */
 .tb-ws-elsewhere { width: 6px; height: 6px; border-radius: 50%; background: var(--stt-work); }
+.tb-ws-elsewhere.ask { width: 8px; height: 8px; background: var(--st-ask); }
+.ws-ask { color: var(--stt-ask); font-weight: 700; }

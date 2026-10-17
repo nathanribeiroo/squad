@@ -1,6 +1,7 @@
 // Global client state, fed by /ws/events.
 import { create } from 'zustand';
 import { api, setWorkspace } from '../api/client';
+import { askPhrase } from '../lib/askText';
 import { toast } from '../lib/toast';
 import type {
   Floor,
@@ -21,7 +22,7 @@ import type {
   WorkspaceSummary,
 } from '../api/types';
 
-export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn';
+export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn' | 'answered';
 
 export interface ActivityItem {
   key: string;
@@ -127,6 +128,8 @@ interface SquadState {
   composerDraft: string | null;
   workspace: Workspace | null;
   runtime: Record<string, TerminalRuntime>;
+  /** Flights asking the user (PRIORIDADE), the oldest first. */
+  askingIds: string[];
   extra: StateExtra;
   connection: 'connecting' | 'connected' | 'reconnecting';
   /** Since when the link is down (0 while connected), and when it tries again. */
@@ -230,6 +233,7 @@ function persist(key: string, value: string) {
 const perWorkspace = {
   workspace: null,
   runtime: {},
+  askingIds: [],
   extra: emptyExtra,
   connection: 'connecting',
   linkLostAt: 0,
@@ -298,6 +302,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   composerDraft: null,
   workspace: null,
   runtime: {},
+  askingIds: [],
   extra: emptyExtra,
   connection: 'connecting',
   linkLostAt: 0,
@@ -384,7 +389,8 @@ export const useSquad = create<SquadState>((set, get) => ({
     }
     // The server only reports a count; spread it as "now" so it decays.
     const sendTimes = Array.from({ length: s.extra?.rate ?? 0 }, () => Date.now());
-    set({ workspace: s.workspace, runtime: s.runtime ?? {}, extra: s.extra ?? emptyExtra, flights: pending, sendTimes });
+    const runtime = s.runtime ?? {};
+    set({ workspace: s.workspace, runtime, askingIds: askingOf(runtime, []), extra: s.extra ?? emptyExtra, flights: pending, sendTimes });
     // A floor landed while we were away (or a stale link): the ground floor.
     const st = get();
     const floor = validFloor(st.activeFloor, s.workspace.floors);
@@ -413,9 +419,32 @@ export const useSquad = create<SquadState>((set, get) => ({
       case 'edge.removed':
         if (ws) set({ workspace: { ...ws, edges: ws.edges.filter((e) => e.id !== d.id) } });
         return;
-      case 'terminal.state':
-        set({ runtime: { ...st.runtime, [d.id]: { ...st.runtime[d.id], ...(d as TerminalRuntime) } } });
+      case 'terminal.state': {
+        const prev = st.runtime[d.id];
+        const next: TerminalRuntime = { ...prev, ...(d as TerminalRuntime), attention: (d as TerminalRuntime).attention };
+        const runtime = { ...st.runtime, [d.id]: next };
+        const patch: Partial<SquadState> = { runtime, askingIds: askingOf(runtime, st.askingIds) };
+        // An answered ask goes into the Rádio, with how long it waited.
+        if (prev?.activity === 'ask' && next.activity !== 'ask' && prev.attention) {
+          const t = ws?.nodes.find((n) => n.id === d.id)?.terminal;
+          const since = Date.parse(prev.attention.since);
+          patch.activity = [
+            {
+              key: `ask-${d.id}-${prev.attention.since}`,
+              time: prev.attention.since,
+              from: d.id,
+              fromName: t?.name ?? '',
+              toName: 'Você',
+              text: [askPhrase(prev.attention), prev.attention.detail].filter(Boolean).join(': '),
+              outcome: 'answered' as const,
+              elapsedMs: Number.isFinite(since) ? Date.now() - since : undefined,
+            },
+            ...st.activity,
+          ].slice(0, 200);
+        }
+        set(patch);
         return;
+      }
       case 'terminal.title':
         set({ runtime: { ...st.runtime, [d.id]: { ...st.runtime[d.id], title: d.title } } });
         return;
@@ -657,4 +686,13 @@ export function useNodes(): WNode[] {
 /** Name of a node by id. */
 export function useNodeName(id?: string): string {
   return useSquad((s) => nameOf(s.workspace, id));
+}
+
+/** The ids of the flights asking the user, oldest first; prev when unchanged (a stable list for selectors). */
+function askingOf(runtime: Record<string, TerminalRuntime>, prev: string[]): string[] {
+  const ids = Object.values(runtime)
+    .filter((r) => r.activity === 'ask')
+    .sort((a, b) => Date.parse(a.attention?.since ?? a.activitySince) - Date.parse(b.attention?.since ?? b.activitySince))
+    .map((r) => r.id);
+  return ids.length === prev.length && ids.every((id, i) => id === prev[i]) ? prev : ids;
 }

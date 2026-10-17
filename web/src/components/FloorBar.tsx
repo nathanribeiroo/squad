@@ -117,6 +117,8 @@ export function FloorBar() {
   const setDialog = useSquad((s) => s.setFloorDialog);
   const status = useSquad((s) => s.floorStatus);
   const busy = useBusyFloors();
+  // Levels where a flight asks you (PRIORIDADE): an amber dot on the tab.
+  const askFloors = useSquad((s) => s.askingIds.map((id) => '|' + (s.workspace?.nodes.find((n) => n.id === id)?.floor ?? '') + '|').join(''));
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   useFloorStatus();
@@ -162,6 +164,7 @@ export function FloorBar() {
             ▲
           </span>
         )}
+        {askFloors.includes(`|${id}|`) && <span className="tb-floor-ask" title="Um voo deste nível pede você" aria-label="pede você" />}
         {on && (id || copy) && <Icon name="expand_more" size={15} className="tb-caret" />}
       </button>
     );

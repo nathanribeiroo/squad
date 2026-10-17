@@ -18,6 +18,7 @@ import type {
   WNode,
   StateExtra,
   WorkspaceSummary,
+  AttentionChoice,
 } from './types';
 import { errorMessage } from './errors';
 
@@ -79,6 +80,8 @@ export const api = {
   updateNode: (id: string, patch: Partial<WNode>) => req<WNode>('PATCH', wsPath(`/api/nodes/${id}`), patch),
   removeNode: (id: string) => req<void>('DELETE', wsPath(`/api/nodes/${id}`)),
   nodeAction: (id: string, action: 'start' | 'stop' | 'restart' | 'new-conversation') => req<unknown>('POST', wsPath(`/api/nodes/${id}/${action}`)),
+  /** Answers the prompt on a flight's screen (only the interface can). */
+  respond: (id: string, choice: AttentionChoice) => req<void>('POST', wsPath(`/api/nodes/${id}/attention/respond`), { choice }),
   /** Agents interrupted mid-turn: send them "continue", or forget it (all, or ids). */
   interrupted: (action: 'continue' | 'dismiss', ids?: string[]) => req<{ ids: string[] }>('POST', wsPath(`/api/interrupted/${action}`), { ids }),
   addEdge: (a: string, b: string) => req<WEdge>('POST', wsPath('/api/edges'), { a, b }),

@@ -11,7 +11,7 @@
   box-shadow: var(--shadow-pop);
   position: relative;
 }
-.tnode > :not(.react-flow__handle):not(.node-menu):not(.xfloor):not(.tc):not(.tn-band),
+.tnode > :not(.react-flow__handle):not(.node-menu):not(.xfloor):not(.tc):not(.tn-band):not(.tn-respond),
 .pnode > :not(.react-flow__handle):not(.xfloor) { overflow: hidden; }
 
 /* The state band: 6px on the left of a live flight (8 on the portrait, 9 on
@@ -25,6 +25,41 @@
 .st-done { --band: var(--st-done); --stc: var(--stt-done); }
 .st-err { --band: var(--st-err); --stc: var(--stt-err); }
 .st-off { --band: var(--st-off); --stc: var(--stt-off); }
+.st-ask { --band: var(--st-ask); --stc: var(--stt-ask); }
+
+/* PRIORIDADE (quadro 05): the flight asks you. A 2px amber outline with a
+   halo, the header tinted, the band solid and blinking at 1 Hz (only this
+   state blinks), the request in a 26px strip and RESPONDER under it. */
+.tnode.st-ask { border-color: var(--st-ask); outline: 2px solid var(--st-ask); box-shadow: 0 0 0 6px var(--st-ask-halo), var(--shadow-pop); }
+.tnode.st-ask .tn-head { background: var(--stb-ask); }
+.st-ask .tn-band { animation: ask-blink var(--dur-ask-blink) steps(1, end) infinite; }
+@keyframes ask-blink { 50% { opacity: 0.2; } }
+@media (prefers-reduced-motion: reduce) { .st-ask .tn-band { animation: none; } }
+.tn-ask {
+  height: var(--h-sender-ask); flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  background: var(--st-ask); color: var(--stb-ask); font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; white-space: nowrap;
+}
+.tn-ask-what { flex: none; text-transform: uppercase; letter-spacing: 0.04em; }
+.tn-ask-detail { font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tn-ask-detail::before { content: '· '; }
+.tn-respond {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); height: 44px; z-index: 6;
+  display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px;
+  background: var(--stb-ask); border: 1.5px solid var(--st-ask); box-shadow: var(--shadow-pop);
+}
+.tn-respond-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--stt-ask); margin-right: 4px; }
+.tn-respond-btn {
+  height: 30px; display: inline-flex; align-items: center; gap: 8px; padding: 0 8px 0 12px;
+  border: 1px solid var(--stl-wait); background: transparent; color: var(--stt-ask);
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+}
+.tn-respond-btn .kbd { color: inherit; border-color: currentColor; }
+.tn-respond-btn:hover { background: color-mix(in srgb, var(--st-ask) 18%, transparent); }
+.tn-respond-btn.allow { background: var(--stt-ask); border-color: var(--stt-ask); color: var(--stb-ask); }
+.tn-respond-btn.allow:hover { filter: brightness(1.08); background: var(--stt-ask); }
+.tn-respond-note { font-size: 12px; color: var(--stt-ask); }
+.tn-respond-open { height: 30px; border: 0; background: transparent; color: var(--stt-ask); display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.tn-respond-open:hover { text-decoration: underline; }
 
 /* The last turn's bulletin (TurnCard), hanging under its flight; the level
    tags move below it. */

@@ -20,6 +20,7 @@ function plural(n: number, one: string, many: string): string {
 /** "2 no ar · 1 pendente", or how many flights when idle. */
 export function wsActivity(w: WorkspaceSummary): string {
   const parts = [];
+  if (w.attention) parts.push(`${w.attention} pede${w.attention > 1 ? 'm' : ''} você`);
   if (w.active) parts.push(`${w.active} no ar`);
   if (w.pending) parts.push(plural(w.pending, 'pendente', 'pendentes'));
   if (!parts.length) parts.push(w.terminals ? plural(w.terminals, 'voo', 'voos') : 'sem voos');
@@ -94,7 +95,7 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
                       <span className="ws-row-path" title={w.cwd}>
                         <bdi>{shortPath(w.cwd)}</bdi>
                       </span>
-                      <span className={w.pending ? 'ws-wait' : w.active ? 'ws-busy' : ''}>{wsActivity(w)}</span>
+                      <span className={w.attention ? 'ws-ask' : w.pending ? 'ws-wait' : w.active ? 'ws-busy' : ''}>{wsActivity(w)}</span>
                     </span>
                   </span>
                 </button>

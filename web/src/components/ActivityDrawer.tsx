@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CHOICES, askPhrase, respond } from '../lib/attention';
 import type { IconName } from '../lib/icons';
 import { callsign, clock, elapsed } from '../lib/model';
 import { useNodeRoleColor } from '../lib/roles';
@@ -16,9 +17,10 @@ const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: n
   held: { label: (a) => (a.text.startsWith('Retido: limite') ? 'Retido · limite por minuto' : 'Retido · espera geral'), icon: 'all_inclusive', style: 'wait dashed' },
   note: { label: () => 'NOTAM editado', icon: 'description', style: 'idle' },
   turn: { label: () => 'Em solo', icon: 'flight_land', style: 'done' },
+  answered: { label: (a) => `Pediu você · respondido em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`, icon: 'front_hand', style: 'done' },
 };
 
-type Filter = { kind: 'all' } | { kind: 'pending' } | { kind: 'node'; id: string };
+type Filter = { kind: 'all' } | { kind: 'pending' } | { kind: 'ask' } | { kind: 'node'; id: string };
 
 /** The Rádio (Atividade): who asked what of whom, and how it ended. */
 export function ActivityDrawer() {
@@ -31,6 +33,8 @@ export function ActivityDrawer() {
   const session = useSquad((s) => s.sessionLists[s.activeWs ?? '']?.sessions.find((x) => x.id === s.activeSession)?.name);
   const roleOf = useNodeRoleColor();
   const [filter, setFilter] = useState<Filter>({ kind: 'all' });
+  const askingIds = useSquad((s) => s.askingIds);
+  const runtime = useSquad((s) => s.runtime);
   const canSummarize = useSquad((s) => !!s.summarySettings && s.summarySettings.engine !== 'off' && s.summarySettings.engines.some((e) => e.available));
 
   // Flights by id: callsign and floor (the drawer speaks in callsigns).
@@ -43,11 +47,14 @@ export function ActivityDrawer() {
   const isPending = (a: ActivityItem) => a.outcome === 'pending' && !!a.id && pendingIds.has(a.id);
   let shown = items;
   if (filter.kind === 'pending') shown = items.filter(isPending);
+  if (filter.kind === 'ask') shown = items.filter((a) => a.outcome === 'answered');
   if (filter.kind === 'node') shown = items.filter((a) => a.from === filter.id || a.to === filter.id);
   // What is still open goes first.
   shown = [...shown.filter(isPending), ...shown.filter((a) => !isPending(a))];
   const pending = extra.pending.length;
   const now = useNow(1000, open);
+  // Flights asking the user are pinned above everything (PRIORIDADE).
+  const asks = filter.kind === 'pending' ? [] : askingIds.filter((id) => filter.kind !== 'node' || filter.id === id);
   const rate = sendTimes.filter((t) => now - t < 60_000).length;
 
   if (!open) {
@@ -55,7 +62,7 @@ export function ActivityDrawer() {
       <button className="ad-tab" onClick={() => setDrawer(true)} aria-label="Abrir o Rádio">
         <Icon name="chevron_left" size={16} />
         <span className="ad-tab-label">Rádio</span>
-        {pending > 0 && <span className="tb-count mono">{pending}</span>}
+        {askingIds.length > 0 ? <span className="tb-count ask mono">{askingIds.length}</span> : pending > 0 && <span className="tb-count mono">{pending}</span>}
       </button>
     );
   }
@@ -91,6 +98,9 @@ export function ActivityDrawer() {
         <button className={`ad-chip${filter.kind === 'all' ? ' on' : ''}`} onClick={() => setFilter({ kind: 'all' })}>
           Todos
         </button>
+        <button className={`ad-chip ask${filter.kind === 'ask' ? ' on' : ''}`} onClick={() => setFilter(filter.kind === 'ask' ? { kind: 'all' } : { kind: 'ask' })}>
+          Pedem você {askingIds.length}
+        </button>
         <button className={`ad-chip wait${filter.kind === 'pending' ? ' on' : ''}`} onClick={() => setFilter(filter.kind === 'pending' ? { kind: 'all' } : { kind: 'pending' })}>
           Pendentes {pending}
         </button>
@@ -105,7 +115,40 @@ export function ActivityDrawer() {
         })}
       </div>
       <div className="ad-list">
-        {shown.length === 0 && <div className="ad-empty">Rádio em silêncio. Ponha dois voos na mesma frequência e use torre ask.</div>}
+        {asks.map((id) => {
+          const rt = runtime[id];
+          const a = rt?.attention;
+          return (
+            <div key={`ask-${id}`} className="ad-item pinned ask">
+              <div className="ad-line mono">
+                <span className="ad-time">{clock(a?.since ?? rt?.activitySince ?? Date.now())}</span>
+                <b style={{ color: color(id) }}>{who(id, '')}</b>
+                <span className="ad-arrow">→</span>
+                <b>VOCÊ</b>
+                <span style={{ flex: 1 }} />
+                <span className="ad-pill ask">
+                  <Icon name="front_hand" size={13} />
+                  Pede você · {elapsed(a?.since ?? rt?.activitySince, now)}
+                </span>
+              </div>
+              <div className="ad-msg">
+                {askPhrase(a)}
+                {a?.detail && <code className="ad-detail mono">{a.detail}</code>}
+              </div>
+              <div className="ad-actions">
+                {CHOICES.filter((c) => a?.choices?.includes(c.choice)).map((c) => (
+                  <button key={c.choice} className={`btn${c.choice === 'allow' ? ' filled ask' : ''}`} onClick={() => respond(id, c.choice)}>
+                    {c.label}
+                  </button>
+                ))}
+                <button className="btn" onClick={() => goTo(id)}>
+                  Ver no espaço
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        {shown.length === 0 && asks.length === 0 && <div className="ad-empty">Rádio em silêncio. Ponha dois voos na mesma frequência e use torre ask.</div>}
         {shown.map((a) => {
           const o = OUTCOME[a.outcome];
           const open = isPending(a);

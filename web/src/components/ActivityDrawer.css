@@ -75,3 +75,11 @@
 }
 .ad-tab-label { writing-mode: vertical-rl; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); }
 .ad-overview { height: 28px; padding: 0 9px; font-size: 10.5px; }
+
+/* PRIORIDADE: a flight asking the user, pinned on top (amber, solid). */
+.ad-chip.ask { border-color: var(--st-ask); color: var(--stt-ask); }
+.ad-chip.ask.on { background: var(--st-ask); color: var(--stb-ask); }
+.ad-item.ask { background: var(--stb-ask); box-shadow: inset 3px 0 0 var(--st-ask); }
+.ad-pill.ask { background: var(--st-ask); border-color: var(--st-ask); color: var(--stb-ask); }
+.ad-detail { display: block; margin-top: 4px; font-size: 11px; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.btn.filled.ask { background: var(--stt-ask); border-color: var(--stt-ask); color: var(--stb-ask); }
