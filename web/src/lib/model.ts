@@ -1,19 +1,19 @@
-// Labels, icons and tokens for states (docs/design_handoff_squad §2); roles: lib/roles.ts.
+// Labels, icons and tokens for states (docs/torre/RENOMEACAO.md §2, "Estados"); roles: lib/roles.ts.
 import type { UIState } from '../api/types';
 import type { IconName } from './icons';
 
 export const STATE_META: Record<UIState, { label: string; icon: IconName }> = {
-  boot: { label: 'Iniciando', icon: 'progress_activity' },
-  idle: { label: 'Ocioso', icon: 'radio_button_unchecked' },
-  work: { label: 'Trabalhando', icon: 'autorenew' },
-  wait: { label: 'Esperando resposta', icon: 'hourglass_top' },
-  done: { label: 'Terminou', icon: 'check_circle' },
-  err: { label: 'Parado · erro', icon: 'error' },
-  off: { label: 'Descarregado', icon: 'bedtime' },
+  boot: { label: 'Taxiando', icon: 'progress_activity' },
+  idle: { label: 'Pátio', icon: 'radio_button_unchecked' },
+  work: { label: 'No ar', icon: 'flight' },
+  wait: { label: 'Aguarda', icon: 'hourglass_top' },
+  done: { label: 'Em solo', icon: 'flight_land' },
+  err: { label: 'Pane', icon: 'error' },
+  off: { label: 'Hangar', icon: 'bedtime' },
 };
 
 export function stateLabel(state: UIState, exitCode?: number): string {
-  if (state === 'err' && exitCode && exitCode > 0) return `Parado · saída ${exitCode}`;
+  if (state === 'err' && exitCode && exitCode > 0) return `Pane · saída ${exitCode}`;
   return STATE_META[state].label;
 }
 

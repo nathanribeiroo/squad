@@ -67,7 +67,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
   const save = (text: string) => {
     shown.current = text;
     setContent(text);
-    api.saveNote(id, text).catch((e: Error) => toast(e.message.includes('locked') ? 'Nota travada: destrave para editar.' : e.message));
+    api.saveNote(id, text).catch((e: Error) => toast(e.message.includes('locked') ? 'NOTAM travada: destrave para editar.' : e.message));
   };
 
   const startEdit = () => {
@@ -91,7 +91,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
   const setLocked = (locked: boolean) => api.updateNode(id, { note: { ...note, locked } }).catch((e: Error) => toast(e.message));
   const remove = () => {
     const kept = note.file ? ` O arquivo ${note.file} continua no disco.` : '';
-    if (window.confirm(`Remover a nota "${note.title}" do canvas?${kept}`)) api.removeNode(id).catch((e: Error) => toast(e.message));
+    if (window.confirm(`Remover a NOTAM "${note.title}" do canvas?${kept}`)) api.removeNode(id).catch((e: Error) => toast(e.message));
   };
 
   const authorRole = (name: string) => roleColor(roleOf(nodes?.find((n) => n.terminal?.name === name)?.terminal?.role));
@@ -112,7 +112,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
           </span>
         )}
         {creator && (
-          <span className="pn-creator" title={`${creator.name} criou esta nota (torre note create); o nome é o que ela deu`}>
+          <span className="pn-creator" title={`${creator.name} criou esta NOTAM (torre note create); o nome é o que o voo deu`}>
             <i style={{ background: `var(--r-${creator.color})` }} />
             por {creator.name}
           </span>
@@ -122,7 +122,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
         <button
           className="icon-btn nodrag nn-lock"
           onClick={() => setLocked(!note.locked)}
-          title={note.locked ? 'Travada: ninguém escreve. Clique para destravar.' : 'Clique para travar a nota'}
+          title={note.locked ? 'Travada: ninguém escreve. Clique para destravar.' : 'Clique para travar a NOTAM'}
         >
           <Icon name={note.locked ? 'lock' : 'lock_open'} size={16} />
         </button>
@@ -146,7 +146,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
           {stale && (
             <div className="nn-stale">
               <Icon name="sync_problem" size={15} />
-              {edit?.author ?? 'Alguém'} alterou a nota.
+              {edit?.author ?? 'Alguém'} alterou a NOTAM.
               <button
                 onClick={() => {
                   setStale(false);
@@ -184,7 +184,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
       ) : (
         <div className="nn-body nodrag nowheel" onDoubleClick={() => !note.locked && startEdit()}>
           {content === null ? null : content.trim() === '' ? (
-            <span className="nn-empty">Nota vazia. Clique em Editar, ou ligue um agente a ela para ele escrever com torre note.</span>
+            <span className="nn-empty">NOTAM vazia. Clique em Editar, ou ponha um voo na frequência dela para ele escrever.</span>
           ) : (
             <Markdown text={content} highlight={highlight} onToggleTask={note.locked ? undefined : toggleTask} />
           )}
@@ -198,7 +198,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
 function titleHint(note: NoteData, creator: string | undefined, canRename: boolean): string {
   const use = `Os agentes usam este nome: torre note read "${note.title}"`;
   const former = note.aliases?.length ? `\nNomes antigos, que continuam valendo: ${note.aliases.map((a) => `"${a}"`).join(', ')}` : '';
-  if (!canRename) return `${use}\nNome dado por ${creator ?? 'um agente'}; não muda.${former}`;
+  if (!canRename) return `${use}\nNome dado por ${creator ?? 'um voo'}; não muda.${former}`;
   return `${use}${former}\nDuplo clique para renomear (o nome antigo continua valendo para os agentes).`;
 }
 
@@ -215,7 +215,7 @@ function NoteNameInput({ id, note, onDone }: { id: string; note: NoteData; onDon
       onDone();
       return;
     }
-    const problem = !name ? 'Dê um nome à nota.' : name.startsWith('-') ? 'O nome não pode começar com "-".' : '';
+    const problem = !name ? 'Dê um nome à NOTAM.' : name.startsWith('-') ? 'O nome não pode começar com "-".' : '';
     if (problem) {
       toast(problem);
       input.current?.focus();
@@ -227,7 +227,7 @@ function NoteNameInput({ id, note, onDone }: { id: string; note: NoteData; onDon
       .then(onDone)
       .catch((e: Error) => {
         done.current = false;
-        toast(e instanceof ApiError && e.status === 409 ? `Já existe uma nota chamada "${name}" (ou que já teve esse nome).` : e.message);
+        toast(e instanceof ApiError && e.status === 409 ? `Já existe uma NOTAM chamada "${name}" (ou que já teve esse nome).` : e.message);
         input.current?.focus();
         input.current?.select();
       });
@@ -240,8 +240,8 @@ function NoteNameInput({ id, note, onDone }: { id: string; note: NoteData; onDon
       autoFocus
       spellCheck={false}
       maxLength={60}
-      aria-label="Nome da nota"
-      placeholder="Nome da nota"
+      aria-label="Nome da NOTAM"
+      placeholder="Nome da NOTAM"
       onFocus={(e) => e.target.select()}
       onBlur={(e) => commit(e.target.value, false)}
       onKeyDown={(e) => {

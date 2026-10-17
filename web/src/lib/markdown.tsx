@@ -110,7 +110,7 @@ export function Markdown({ text, highlight, onToggleTask }: { text: string; high
         return (
           <div key={key} className="md-task" style={{ paddingLeft: b.indent * 8 }}>
             <button className="md-box" onClick={() => onToggleTask?.(b.line)} disabled={!onToggleTask} aria-label={b.done ? 'Desmarcar' : 'Marcar'}>
-              <Icon name={b.done ? 'check_box' : 'check_box_outline_blank'} size={18} fill={b.done} style={{ color: b.done ? 'var(--st-done)' : 'var(--text-3)' }} />
+              <Icon name={b.done ? 'check_box' : 'check_box_outline_blank'} size={18} fill={b.done} style={{ color: b.done ? 'var(--stt-done)' : 'var(--text-3)' }} />
             </button>
             <span className={b.done ? 'md-done' : ''}>{inline(b.text)}</span>
           </div>

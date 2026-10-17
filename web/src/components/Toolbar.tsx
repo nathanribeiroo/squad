@@ -19,8 +19,8 @@ export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => 
     { icon: 'pan_tool', label: 'Mover', key: 'H', action: () => setTool('pan'), active: tool === 'pan' },
   ];
   const create: Tool[] = [
-    { icon: 'terminal', label: 'Novo terminal', key: 'T', action: () => setNewTerm(!newTerm), active: newTerm },
-    { icon: 'sticky_note_2', label: 'Nota', key: 'N', action: onCreateNote },
+    { icon: 'flight_takeoff', label: 'Novo voo', key: 'T', action: () => setNewTerm(!newTerm), active: newTerm },
+    { icon: 'sticky_note_2', label: 'NOTAM', key: 'N', action: onCreateNote },
     { icon: 'public', label: 'Portal', key: 'P', action: onCreatePortal },
     { icon: 'gesture', label: 'Desenho (em breve)', key: 'D', action: () => {}, disabled: true },
     { icon: 'select', label: 'Grupo (em breve)', key: 'G', action: () => {}, disabled: true },

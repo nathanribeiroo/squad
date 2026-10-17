@@ -27,22 +27,22 @@
   padding: 0 6px 0 10px;
   background: var(--surface);
   border: 1px solid var(--line-2);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: var(--shadow);
   font-size: 12px;
   color: var(--text-2);
   z-index: 2;
 }
 .tnode.has-card .xfloor { top: calc(100% + 44px); }
-.tc-icon { color: var(--st-done); flex: none; }
+.tc-icon { color: var(--stt-done); flex: none; }
 .tc-head { font-weight: 600; color: var(--text); white-space: nowrap; flex: none; }
 .tc-gist { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text-2); font: inherit; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; padding: 0; }
 .tc-gist:hover { color: var(--text); }
-.tc-count { color: var(--st-work); font-weight: 600; }
-.tc-btn { height: 22px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); font: inherit; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex: none; }
+.tc-count { color: var(--stt-work); font-weight: 600; }
+.tc-btn { height: 22px; padding: 0 8px; border-radius: 0; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); font: inherit; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex: none; }
 .tc-btn:hover { background: var(--surface-3); }
-.tc-busy { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--st-work); flex: none; }
-.tc-x { width: 22px; height: 22px; border: 0; background: transparent; color: var(--text-3); border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
+.tc-busy { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--stt-work); flex: none; }
+.tc-x { width: 22px; height: 22px; border: 0; background: transparent; color: var(--text-3); border-radius: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
 .tc-x:hover { background: var(--surface-2); color: var(--text); }
 .tc-panel {
   position: absolute;
@@ -57,7 +57,7 @@
   padding: 12px 14px;
   background: var(--surface);
   border: 1px solid var(--line-2);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: var(--shadow);
   cursor: auto;
   user-select: text;
@@ -73,8 +73,8 @@
 .tc-md { font-size: 12.5px; line-height: 1.5; color: var(--text-2); overflow-wrap: anywhere; }
 .tc-md > :first-child { margin-top: 0; }
 .tc-steps { display: flex; flex-direction: column; gap: 4px; }
-.tc-step { display: flex; align-items: flex-start; gap: 6px; text-align: left; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; line-height: 1.4; cursor: pointer; }
-.tc-step .msi { color: var(--st-work); margin-top: 1px; }
+.tc-step { display: flex; align-items: flex-start; gap: 6px; text-align: left; padding: 6px 8px; border-radius: 0; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; line-height: 1.4; cursor: pointer; }
+.tc-step .msi { color: var(--stt-work); margin-top: 1px; }
 .tc-step:hover { border-color: var(--line-2); background: var(--surface-3); }
 
 /* Wires to other floors (CrossFloorLinks): tags hanging under the node. */
@@ -95,7 +95,7 @@
   align-items: center;
   gap: 4px;
   padding: 0 8px;
-  border-radius: 11px;
+  border-radius: 0;
   border: 1px dashed var(--wire);
   background: var(--surface);
   color: var(--text-2);
@@ -109,7 +109,18 @@
 .xfloor-floor { color: var(--text-3); }
 .xfloor-tag.busy { border-color: var(--st-wait); border-style: solid; animation: xfloor-pulse 1.2s ease-in-out infinite; }
 @keyframes xfloor-pulse { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--st-wait) 30%, transparent); } }
-.nnode { background: var(--note-bg); }
+/* A NOTAM is paper in both themes: its contents use the ink colors. */
+.nnode {
+  background: var(--paper);
+  color: var(--ink);
+  --text: var(--ink);
+  --text-2: var(--ink-2);
+  --text-3: var(--ink-2);
+  --line: var(--paper-line);
+  --line-2: var(--paper-line-2);
+  --surface: var(--paper);
+  --surface-2: var(--paper-2);
+}
 .tnode.focused { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }
 .tnode.selected, .nnode.selected, .pnode.selected { border-color: var(--text-3); }
 .connect-valid { outline: 2px solid var(--text); outline-offset: 2px; }
@@ -137,11 +148,11 @@
 /* Manager mode (torre new) and who created a node. */
 .tn-manager { height: 20px; padding: 0 7px 0 5px; border-radius: var(--radius-chip); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; color: var(--text-2); border: 1px solid var(--line-2); }
 .tn-creator { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.tn-creator i { width: 7px; height: 7px; border-radius: 2px; display: block; }
+.tn-creator i { width: 7px; height: 7px; border-radius: 0; display: block; }
 .pn-creator { font-size: 11px; color: var(--text-3); white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 5px; }
-.pn-creator i { width: 7px; height: 7px; border-radius: 2px; display: block; }
+.pn-creator i { width: 7px; height: 7px; border-radius: 0; display: block; }
 .tn-kbd-here { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; }
-.state-pill { height: 22px; padding: 0 8px 0 6px; border-radius: 11px; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; white-space: nowrap; flex: none; }
+.state-pill { height: 22px; padding: 0 8px 0 6px; border-radius: 0; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; white-space: nowrap; flex: none; }
 .state-pill.compact { height: 20px; font-size: 11px; padding: 0 7px 0 5px; }
 .state-time { font-size: 10.5px; font-weight: 500; }
 .tn-strip { height: var(--strip-h); flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -150,10 +161,10 @@
 .xterm-host, .xterm-host .xterm { width: 100%; height: 100%; }
 .xterm-host .xterm-viewport { background-color: transparent !important; }
 .tn-stopped {
-  position: absolute; left: 10px; right: 10px; bottom: 10px; min-height: 30px; border-radius: 6px; padding: 6px 10px;
+  position: absolute; left: 10px; right: 10px; bottom: 10px; min-height: 30px; border-radius: 0; padding: 6px 10px;
   display: flex; align-items: center; gap: 8px; font-size: 12px; background: var(--stb-off); color: var(--text-2); border: 1px solid var(--line-2);
 }
-.tn-stopped.err { background: var(--stb-err); color: var(--st-err); }
+.tn-stopped.err { background: var(--stb-err); color: var(--stt-err); }
 .tn-foot { height: var(--node-footer-h); flex: none; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-top: 1px solid var(--line); font-weight: 500; font-size: 10px; color: var(--text-3); white-space: nowrap; }
 /* rtl puts the ellipsis on the left, so the end of the path stays visible;
    the <bdi> inside keeps the path itself left-to-right. */
@@ -164,12 +175,12 @@
 .node-menu-btn { width: 24px; height: 24px; color: var(--text-3); }
 .node-menu-pop { right: 0; top: 28px; min-width: 190px; padding: 4px; display: flex; flex-direction: column; }
 .node-menu-item {
-  height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 0; border-radius: 5px;
+  height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 0; border-radius: 0;
   background: transparent; font-size: 12.5px; text-align: left; cursor: pointer; color: var(--text); white-space: nowrap;
 }
 .node-menu-item .msi { color: var(--text-2); }
 .node-menu-item:hover:not(:disabled) { background: var(--surface-2); }
-.node-menu-item.danger, .node-menu-item.danger .msi { color: var(--st-err); }
+.node-menu-item.danger, .node-menu-item.danger .msi { color: var(--stt-err); }
 .node-menu-item:disabled { opacity: 0.45; cursor: default; }
 .node-menu-div { height: 1px; background: var(--line); margin: 4px 2px; }
 
@@ -181,19 +192,19 @@
 .nn-title, .pn-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .nn-title { flex: 0 0 auto; max-width: 70%; } /* the file name gives way first */
 .nn-name {
-  flex: 0 1 220px; min-width: 80px; height: 24px; border-radius: 5px; border: 1px solid var(--focus); outline: none;
+  flex: 0 1 220px; min-width: 80px; height: 24px; border-radius: 0; border: 1px solid var(--focus); outline: none;
   background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; padding: 0 6px;
 }
 .nn-file { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .nn-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; cursor: text; user-select: text; }
 .nn-empty { color: var(--text-3); }
 .nn-lock { width: 24px; height: 24px; color: var(--text-3); }
-.nn-seg { display: flex; height: 24px; padding: 2px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); flex: none; }
-.nn-seg button { border: 0; background: transparent; border-radius: 4px; padding: 0 7px; font-size: 11px; font-weight: 600; color: var(--text-3); cursor: pointer; }
+.nn-seg { display: flex; height: 24px; padding: 2px; border-radius: 0; background: var(--surface-2); border: 1px solid var(--line); flex: none; }
+.nn-seg button { border: 0; background: transparent; border-radius: 0; padding: 0 7px; font-size: 11px; font-weight: 600; color: var(--text-3); cursor: pointer; }
 .nn-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--line-2); }
 .nn-seg button:disabled { opacity: 0.4; cursor: default; }
 .nn-editor { flex: 1; min-height: 0; resize: none; border: 0; outline: none; background: transparent; padding: 12px 16px; font-size: 12.5px; line-height: 1.55; color: var(--text); }
-.nn-stale { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; background: var(--stb-wait); color: var(--st-wait); flex: none; }
+.nn-stale { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; background: var(--stb-wait); color: var(--stt-wait); flex: none; }
 .nn-stale button { margin-left: auto; border: 0; background: transparent; color: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; }
 
 /* Markdown in notes */
@@ -209,14 +220,14 @@
 .md-done { color: var(--text-2); }
 .md-li { display: flex; gap: 8px; margin: 2px 0; }
 .md-bullet { color: var(--text-3); min-width: 12px; }
-.md code { font-family: var(--font-mono); font-size: 12px; background: var(--surface-3); border-radius: 3px; padding: 0 4px; }
-.md-code { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 4px 0 8px; overflow-x: auto; white-space: pre; }
-.md a { color: var(--st-work); }
-.md-edited { border-radius: 6px; padding: 6px 10px 4px; margin: 4px -6px 8px; }
+.md code { font-family: var(--font-mono); font-size: 12px; background: var(--surface-3); border-radius: 0; padding: 0 4px; }
+.md-code { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; background: var(--surface-2); border: 1px solid var(--line); border-radius: 0; padding: 8px 10px; margin: 4px 0 8px; overflow-x: auto; white-space: pre; }
+.md a { color: var(--stt-work); }
+.md-edited { border-radius: 0; padding: 6px 10px 4px; margin: 4px -6px 8px; }
 .md-edited-label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; margin-bottom: 4px; }
 
 /* Portal */
-.pn-url { flex: 1; min-width: 0; text-align: left; cursor: text; outline: none; height: 24px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--line); font-size: 11.5px; line-height: 22px; padding: 0 8px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pn-url { flex: 1; min-width: 0; text-align: left; cursor: text; outline: none; height: 24px; border-radius: 0; background: var(--surface-2); border: 1px solid var(--line); font-size: 11.5px; line-height: 22px; padding: 0 8px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pn-live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--text-3); white-space: nowrap; }
 .pn-live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: block; }
 .pnode.focused { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }
@@ -232,13 +243,13 @@
 }
 .pn-hint { font-size: 11.5px; color: var(--text-2); max-width: 360px; }
 .pn-error {
-  position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 8px; border-radius: 6px;
-  background: var(--stb-err); color: var(--st-err); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 8px; border-radius: 0;
+  background: var(--stb-err); color: var(--stt-err); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* Name: agents pick a portal by it (torre portal "Docs" …). */
 .pn-title { flex: 0 1 auto; max-width: 28%; cursor: text; }
 .pn-name {
-  flex: 0 1 140px; min-width: 60px; height: 24px; border-radius: 5px; border: 1px solid var(--focus); outline: none;
+  flex: 0 1 140px; min-width: 60px; height: 24px; border-radius: 0; border: 1px solid var(--focus); outline: none;
   background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; padding: 0 6px;
 }
 /* An agent acting on the page (torre portal click…): its cursor, or a chip for keys and navigation. */
@@ -249,17 +260,17 @@
 .pn-cursor-body { position: absolute; left: 0; top: 0; animation: pn-agent 2500ms ease-in forwards; }
 .pn-cursor .msi { position: absolute; left: -5px; top: -3px; filter: drop-shadow(0 0 1px var(--surface)) drop-shadow(0 1px 2px rgb(0 0 0 / 0.35)); }
 .pn-cursor-name {
-  position: absolute; left: 14px; top: 16px; height: 20px; padding: 0 7px; border-radius: 5px; color: var(--on-signal);
+  position: absolute; left: 14px; top: 16px; height: 20px; padding: 0 7px; border-radius: 0; color: var(--on-signal);
   font-size: 11px; font-weight: 700; line-height: 20px; white-space: nowrap; box-shadow: var(--shadow);
 }
 .pn-ripple { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 50%; border: 2px solid currentColor; animation: pn-ripple 0.6s ease-out forwards; }
 @keyframes pn-ripple { from { transform: scale(0.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
 .pn-agent-chip {
   position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); height: 26px; display: flex; align-items: center; gap: 6px;
-  padding: 0 9px; border-radius: 13px; background: var(--surface); border: 2px solid; box-shadow: var(--shadow);
+  padding: 0 9px; border-radius: 0; background: var(--surface); border: 2px solid; box-shadow: var(--shadow);
   font-size: 11.5px; white-space: nowrap; overflow: hidden; pointer-events: none; z-index: 2; animation: pn-agent 2500ms ease-in forwards;
 }
-.pn-agent-chip i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.pn-agent-chip i { width: 8px; height: 8px; border-radius: 0; flex: none; }
 .pn-agent-chip span { overflow: hidden; text-overflow: ellipsis; color: var(--text-2); }
 @keyframes pn-agent { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
 
@@ -299,7 +310,7 @@
 .tc-time { font-size: 12px; font-weight: 600; }
 
 /* Resizer */
-.react-flow__resize-control.handle { width: 9px; height: 9px; border-radius: 2px; background: var(--surface); border: 1.5px solid var(--text-2); }
+.react-flow__resize-control.handle { width: 9px; height: 9px; border-radius: 0; background: var(--surface); border: 1.5px solid var(--text-2); }
 .react-flow__resize-control.line { border-color: transparent; }
 .spin { animation: pn-spin 1s linear infinite; }
 @keyframes pn-spin { to { transform: rotate(360deg); } }

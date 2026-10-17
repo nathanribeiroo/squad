@@ -18,12 +18,12 @@ export function SummaryDialogs() {
 }
 
 const ENGINES: { id: SummaryEngine; label: string; hint?: string }[] = [
-  { id: 'auto', label: 'Automático', hint: 'O agente do próprio terminal resume (um Devin pelo devin, um Claude pelo claude); sem a CLI dele, a primeira instalada.' },
+  { id: 'auto', label: 'Automático', hint: 'O agente do próprio voo resume (um Devin pelo devin, um Claude pelo claude); sem a CLI dele, a primeira instalada.' },
   { id: 'claude', label: 'Claude Code', hint: 'claude -p, com um modelo pequeno (Haiku)' },
   { id: 'devin', label: 'Devin', hint: 'devin -p' },
   { id: 'codex', label: 'Codex', hint: 'codex exec' },
   { id: 'gemini', label: 'Gemini', hint: 'gemini -p' },
-  { id: 'off', label: 'Desligado', hint: 'Só os cartões, sem resumos' },
+  { id: 'off', label: 'Desligado', hint: 'Só os boletins, sem resumos' },
 ];
 
 function Settings({ onClose }: { onClose: () => void }) {
@@ -46,7 +46,7 @@ function Settings({ onClose }: { onClose: () => void }) {
   const found = (id: string) => s?.engines.find((e) => e.name === id);
   const none = !!s && !s.engines.some((e) => e.available);
   return (
-    <Dialog icon="psychology" title="Resumos" sub="Neste workspace" onClose={onClose}>
+    <Dialog icon="psychology" title="Resumos e briefing" sub="Neste workspace" onClose={onClose}>
       {!s ? (
         <p className="field-hint">Lendo…</p>
       ) : (
@@ -54,12 +54,12 @@ function Settings({ onClose }: { onClose: () => void }) {
           <label className="sm-check">
             <input type="checkbox" checked={s.cards} onChange={(e) => save({ cards: e.target.checked })} />
             <span>
-              <b>Cartão ao fim de cada turno</b>
-              <span>A mensagem final do agente, embaixo do terminal. Não custa nada: vem dos hooks dos agentes.</span>
+              <b>Boletim ao fim de cada turno</b>
+              <span>A mensagem final do agente, embaixo do voo. Não custa nada: vem dos hooks dos agentes.</span>
             </span>
           </label>
           <div className="sm-group">
-            <div className="sm-title">Quem escreve os resumos (botão Resumir e resumo do workspace)</div>
+            <div className="sm-title">Quem escreve os resumos (botão Resumir e briefing)</div>
             {ENGINES.map((e) => {
               const info = found(e.id);
               const missing = !!info && !info.available;
@@ -75,7 +75,7 @@ function Settings({ onClose }: { onClose: () => void }) {
               );
             })}
           </div>
-          {none && <p className="fl-warn">Nenhuma CLI de agente foi encontrada no PATH da Torre. Os cartões funcionam; o botão Resumir não aparece.</p>}
+          {none && <p className="fl-warn">Nenhuma CLI de agente foi encontrada no PATH da Torre. Os boletins funcionam; o botão Resumir não aparece.</p>}
           <p className="field-hint">
             Cada resumo gasta um pouco do plano da ferramenta que o escreve, e só roda quando você clica. Ele roda numa pasta vazia, sem ferramentas, e não mexe no
             projeto.
@@ -115,8 +115,8 @@ function Overview({ onClose }: { onClose: () => void }) {
   return (
     <Dialog
       icon="psychology"
-      title="Resumo do workspace"
-      sub={o ? `por ${o.by} · ${clock(o.at)}` : 'O que a equipe está fazendo'}
+      title="Briefing"
+      sub={o ? `por ${o.by} · ${clock(o.at)}` : 'O que os voos estão fazendo'}
       onClose={onClose}
       wide
       foot={
@@ -153,7 +153,7 @@ function Overview({ onClose }: { onClose: () => void }) {
             <ul className="sm-terms">
               {o.terminals.map((t) => (
                 <li key={t.name}>
-                  <button className="link-btn" onClick={() => go(t.name)} title="Ir até o terminal">
+                  <button className="link-btn" onClick={() => go(t.name)} title="Ir até o voo">
                     {t.name}
                   </button>
                   <span>{t.status}</span>

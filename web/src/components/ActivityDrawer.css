@@ -17,7 +17,7 @@
 .ad-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); flex: none; }
 .ad-chip {
   height: 24px;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid var(--line-2);
   background: transparent;
   padding: 0 9px;
@@ -27,7 +27,7 @@
   font-size: 12px;
   cursor: pointer;
 }
-.ad-chip i { width: 7px; height: 7px; border-radius: 2px; display: block; }
+.ad-chip i { width: 7px; height: 7px; border-radius: 0; display: block; }
 .ad-chip.on { background: var(--text); color: var(--surface); border-color: var(--text); }
 .ad-list { flex: 1; overflow-y: auto; }
 .ad-empty { padding: 24px 14px; color: var(--text-3); font-size: 12.5px; }
@@ -36,7 +36,7 @@
 .ad-line { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; flex-wrap: wrap; }
 .ad-id { font-size: 11px; color: var(--text-3); font-weight: 500; }
 .ad-msg { font-size: 12.5px; line-height: 1.45; color: var(--text-2); margin: 4px 0 6px; overflow-wrap: anywhere; }
-.ad-pill { height: 20px; border-radius: 10px; padding: 0 8px 0 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
+.ad-pill { height: 20px; border-radius: 0; padding: 0 8px 0 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
 .ad-foot { height: 38px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--text-2); }
 .ad-limits { font-size: 12px; font-weight: 600; color: var(--text); }
 .ad-tab {
@@ -45,7 +45,7 @@
   top: 76px;
   width: 28px;
   padding: 8px 0;
-  border-radius: 8px 0 0 8px;
+  border-radius: 0 0 0 8px;
   background: var(--surface);
   border: 1px solid var(--line-2);
   border-right: 0;

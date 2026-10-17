@@ -9,7 +9,7 @@ function label(n: WNode): string {
 
 /**
  * Wires to nodes on other floors can't be drawn on this floor's canvas: they
- * show as tags under the node ("⇄ Plano · térreo"). A tag pulses while a
+ * show as tags under the node ("⇄ Plano · pista"). A tag pulses while a
  * request travels on its wire; clicking it shows the other floor, centered on
  * that node.
  */
@@ -44,7 +44,7 @@ export function CrossFloorLinks({ id }: { id: string }) {
         <button
           key={l.id}
           className={`xfloor-tag${busy(l.id) ? ' busy' : ''}`}
-          title={`Ligado a ${l.name}, ${l.floor ? `no andar ${l.floorName}` : 'no térreo'}. Clique para ir até lá.`}
+          title={`Na frequência de ${l.name}, ${l.floor ? `no nível ${l.floorName}` : 'na pista'}. Clique para ir até lá.`}
           onClick={(e) => {
             e.stopPropagation();
             useSquad.getState().setFloor(l.floor, l.id);

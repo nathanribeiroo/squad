@@ -15,7 +15,7 @@
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--line-2);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -48,7 +48,7 @@
   height: 34px;
   padding: 0 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text);
   font-size: 12.5px;
@@ -59,7 +59,7 @@
 }
 .roles-item:hover { background: var(--surface-2); }
 .roles-item.on { background: var(--surface-3); }
-.roles-glyph { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex: none; }
+.roles-glyph { width: 24px; height: 24px; border-radius: 0; display: flex; align-items: center; justify-content: center; flex: none; }
 .roles-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roles-tag { font-size: 10.5px; font-weight: 600; color: var(--text-3); }
 .roles-new { color: var(--text-2); margin-top: 4px; }
@@ -79,7 +79,7 @@
 .roles-icon {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text-2);
@@ -103,7 +103,7 @@
   padding: 10px 12px;
   border-top: 1px solid var(--line);
 }
-.roles-danger { color: var(--st-err); }
+.roles-danger { color: var(--stt-err); }
 .roles-usage { font-size: 11.5px; color: var(--text-2); display: inline-flex; gap: 6px; align-items: center; min-width: 0; }
 .btn:disabled { opacity: 0.45; cursor: default; }
 

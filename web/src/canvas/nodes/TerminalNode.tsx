@@ -182,7 +182,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
   const running = rt?.status === 'running' || rt?.status === 'starting';
   const act = (a: 'start' | 'stop' | 'restart' | 'new-conversation') => api.nodeAction(id, a).catch((e: Error) => toast(e.message));
   const newConversation = () => {
-    if (window.confirm(`Começar uma conversa nova em ${t.name}? O agente reinicia sem o contexto da conversa atual (ela continua guardada no agente).`))
+    if (window.confirm(`Começar uma conversa nova em ${t.name}? O voo reinicia sem o contexto da conversa atual (ela continua guardada no agente).`))
       act('new-conversation');
   };
   const copyResume = () => {
@@ -194,7 +194,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
     );
   };
   const remove = () => {
-    if (window.confirm(`Remover "${t.name}"? O processo do terminal é encerrado.`)) api.removeNode(id).catch((e: Error) => toast(e.message));
+    if (window.confirm(`Remover o voo "${t.name}"? O processo dele é encerrado.`)) api.removeNode(id).catch((e: Error) => toast(e.message));
   };
   const items: (MenuItem | 'divider')[] = [
     running
@@ -212,7 +212,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
       ? [
           {
             icon: 'groups' as const,
-            label: 'Modo gerente',
+            label: 'Modo líder',
             checked: manager,
             action: () => api.updateNode(id, { terminal: { ...t, manager: !manager } }).catch((e: Error) => toast(e.message)),
           },
@@ -249,16 +249,16 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
         </span>
       )}
       {manager && (
-        <span className="tn-manager" title="Modo gerente: cria e liga terminais (torre new). Desligue no menu ⋯">
+        <span className="tn-manager" title="Modo líder: cria voos e os põe na frequência dele (torre new). Desligue no menu ⋯">
           <Icon name="groups" size={15} />
-          gerente
+          líder
         </span>
       )}
       <span className="tn-spacer" />
       {focused && (
         <span className="tn-kbd-here" title="⌥Esc devolve o teclado ao canvas">
           <Icon name="keyboard" size={15} />
-          teclado aqui
+          teclado
         </span>
       )}
       <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} />
@@ -275,13 +275,13 @@ function LiveFooter({ id, t, createdBy, floor }: { id: string; t: TerminalData; 
   const creator = useCreator(createdBy);
   return (
     <footer className="tn-foot mono">
-      {branch && <span title="Branch do andar">⎇ {branch}</span>}
+      {branch && <span title="Branch do nível">⎇ {branch}</span>}
       <span>
         {t.cols || 80}×{t.rows || 24}
       </span>
-      {inbox > 0 && <span style={{ color: 'var(--st-wait)' }}>caixa {inbox}</span>}
+      {inbox > 0 && <span style={{ color: 'var(--stt-wait)' }}>caixa {inbox}</span>}
       {creator && (
-        <span className="tn-creator" title={`${creator.name} criou este terminal (torre new)`}>
+        <span className="tn-creator" title={`${creator.name} criou este voo (torre new)`}>
           <i style={{ background: `var(--r-${creator.color})` }} />
           criado por {creator.name}
         </span>
@@ -321,15 +321,15 @@ function SenderStrip({ id }: { id: string }) {
   }
   if (outgoing) {
     return (
-      <div className="tn-strip" style={{ background: 'var(--stb-wait)', color: 'var(--st-wait)' }}>
+      <div className="tn-strip" style={{ background: 'var(--stb-wait)', color: 'var(--stt-wait)' }}>
         <Icon name="hourglass_top" size={15} />
-        Aguardando {outgoing.toName} · pedido {outgoing.id} · enviado há {secondsAgo(outgoing.sentAt, now)}
+        Aguarda {outgoing.toName} · pedido {outgoing.id} · transmitido há {secondsAgo(outgoing.sentAt, now)}
       </div>
     );
   }
   if (reply && now - reply.at < REPLY_STRIP_MS) {
     return (
-      <div className="tn-strip" style={{ background: 'var(--stb-done)', color: 'var(--st-done)' }}>
+      <div className="tn-strip" style={{ background: 'var(--stb-done)', color: 'var(--stt-done)' }}>
         <Icon name="reply" size={15} />
         Resposta de {reply.fromName} · {reply.id} · {duration(reply.elapsedMs)}
       </div>
@@ -354,7 +354,7 @@ function StoppedOverlay({ rt }: { rt: TerminalRuntime }) {
   return (
     <div className={`tn-stopped${failed ? ' err' : ''}`}>
       <Icon name={failed ? 'error' : 'bedtime'} size={16} />
-      {failed ? rt.error || 'O processo terminou com erro.' : `Processo encerrado${rt.exitCode ? ` (saída ${rt.exitCode})` : ''}.`} Use o menu ⋯ para iniciar.
+      {failed ? `Pane: ${rt.error || 'o processo terminou com erro.'}` : `Hangar: o processo foi encerrado${rt.exitCode ? ` (saída ${rt.exitCode})` : ''}.`} Use o menu ⋯ para iniciar.
     </div>
   );
 }
@@ -379,9 +379,9 @@ function MiniSnapshot({ id, zoom }: { id: string; zoom: number }) {
       />
       <footer className="tm-foot">
         <Icon name="photo_camera" size={13} />
-        <span className="mono">miniatura · há {Math.max(0, Math.round((now - snap.at) / 1000))} s</span>
+        <span className="mono">retrato · há {Math.max(0, Math.round((now - snap.at) / 1000))} s</span>
         <span className="tn-spacer" />
-        {inbox > 0 && <span className="mono" style={{ color: 'var(--st-wait)' }}>caixa {inbox}</span>}
+        {inbox > 0 && <span className="mono" style={{ color: 'var(--stt-wait)' }}>caixa {inbox}</span>}
       </footer>
     </>
   );
@@ -410,7 +410,7 @@ function TerminalCard({ id, t, rt, state }: { id: string; t: TerminalData; rt?: 
           )}
         </div>
       </div>
-      <div className="tc-band" style={{ background: `var(--stb-${state})`, color: `var(--st-${state})` }}>
+      <div className="tc-band" style={{ background: `var(--stb-${state})`, color: `var(--stt-${state})` }}>
         <Icon name={STATE_META[state].icon} size={20} />
         <span className="tc-state">{stateLabel(state, rt?.exitCode)}</span>
         <span className="tn-spacer" />

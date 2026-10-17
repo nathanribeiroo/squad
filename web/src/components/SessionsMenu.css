@@ -3,19 +3,19 @@
    .ws-form with WorkspaceMenu.css. */
 .ses-menu { left: 0; top: 36px; width: 400px; padding: 6px; }
 .ses-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
-.ses-row { display: flex; align-items: center; gap: 6px; padding: 7px 6px 7px 8px; border-radius: 6px; }
+.ses-row { display: flex; align-items: center; gap: 6px; padding: 7px 6px 7px 8px; border-radius: 0; }
 .ses-row:hover, .ses-row.on { background: var(--surface-2); }
 .ses-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .ses-row-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .ses-row-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ses-row-name.provisional { color: var(--text-2); font-weight: 500; }
 .ses-rename {
-  flex: 1; min-width: 0; height: 24px; padding: 0 6px; border-radius: 5px;
+  flex: 1; min-width: 0; height: 24px; padding: 0 6px; border-radius: 0;
   border: 1px solid var(--line-2); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text);
 }
 .ses-badge {
   flex: none; font-size: 10.5px; font-weight: 600; line-height: 16px; padding: 0 6px;
-  border-radius: var(--radius-chip); background: var(--stb-done); color: var(--st-done);
+  border-radius: var(--radius-chip); background: var(--stb-done); color: var(--stt-done);
 }
 .ses-row-sub { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-2); }
 .ses-agent {
@@ -25,7 +25,7 @@
 .ses-row-actions { display: flex; align-items: center; gap: 2px; flex: none; }
 .ses-hover { opacity: 0; }
 .ses-row:hover .ses-hover, .ses-hover:focus-visible { opacity: 1; }
-.ses-danger:not(:disabled):hover { color: var(--st-err); background: var(--stb-err); }
+.ses-danger:not(:disabled):hover { color: var(--stt-err); background: var(--stb-err); }
 .icon-btn:disabled { opacity: 0.35; cursor: default; }
 .ses-row:hover .icon-btn.ses-hover:disabled { opacity: 0.35; }
 .ses-open { height: 26px; padding: 0 10px; margin-left: 2px; }
@@ -43,7 +43,7 @@
 /* New session: where it works. */
 .ses-where { display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
 .ses-where-opt {
-  display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; border-radius: 6px;
+  display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; border-radius: 0;
   border: 1px solid var(--line); cursor: pointer; color: var(--text-2); font-size: 12px; line-height: 1.4;
 }
 .ses-where-opt.on { border-color: var(--line-2); background: var(--surface-2); }
@@ -55,10 +55,10 @@
 .ses-copy-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .ses-copy-fields select { min-width: 0; }
 .ses-pending {
-  display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 6px;
+  display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 0;
   background: var(--stb-wait); color: var(--text); font-size: 12px; line-height: 1.45;
 }
-.ses-pending > .msi { color: var(--st-wait); margin-top: 1px; }
+.ses-pending > .msi { color: var(--stt-wait); margin-top: 1px; }
 
 .ses-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text-2); line-height: 1.45; cursor: pointer; }
 .ses-check input { margin-top: 2px; accent-color: var(--text); }
@@ -67,9 +67,9 @@
 /* Leaving a session whose agents are working. */
 .ses-busy {
   display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 6px; padding: 9px 10px;
-  border-radius: 6px; background: var(--stb-wait); color: var(--text); font-size: 12px; line-height: 1.45;
+  border-radius: 0; background: var(--stb-wait); color: var(--text); font-size: 12px; line-height: 1.45;
 }
-.ses-busy > .msi { color: var(--st-wait); }
+.ses-busy > .msi { color: var(--stt-wait); }
 .ses-busy-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ses-busy-sub { color: var(--text-2); font-size: 11.5px; }
 .ses-busy-actions { display: flex; justify-content: flex-end; gap: 6px; padding-top: 4px; }
@@ -79,7 +79,7 @@
 .ses-peek { position: absolute; left: calc(100% + 4px); width: 300px; padding: 6px; }
 .ses-peek-row {
   width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 6px 8px;
-  border: 0; border-radius: 6px; background: transparent; cursor: pointer; text-align: left;
+  border: 0; border-radius: 0; background: transparent; cursor: pointer; text-align: left;
 }
 .ses-peek-row:hover:not(:disabled), .ses-peek-row.on { background: var(--surface-2); }
 .ses-peek-row:disabled { cursor: default; opacity: 0.6; }
@@ -87,7 +87,7 @@
 /* The session in the top bar. */
 .tb-session {
   height: 30px; max-width: 260px; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 8px;
-  border-radius: 6px; border: 1px solid var(--line); background: transparent; cursor: pointer; white-space: nowrap;
+  border-radius: 0; border: 1px solid var(--line); background: transparent; cursor: pointer; white-space: nowrap;
 }
 .tb-session:hover, .tb-workspace:hover { background: var(--surface-2); }
 .tb-session > .msi:first-child { color: var(--text-2); }

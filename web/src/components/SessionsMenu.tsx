@@ -47,8 +47,8 @@ export function BusyConfirm({ why, onConfirm, onCancel }: { why: Busy; onConfirm
           {why.working.length === 0
             ? 'Trocando agora, os pedidos são cancelados.'
             : why.working.length === 1
-              ? 'Trocando agora, o trabalho para no meio. Quando você voltar para esta sessão, o agente aparece como interrompido, com "Continuar".'
-              : 'Trocando agora, o trabalho para no meio. Quando você voltar para esta sessão, os agentes aparecem como interrompidos, com "Continuar".'}
+              ? 'Trocando agora, o trabalho para no meio. Quando você voltar para esta sessão, o voo aparece em arremetida, com "Continuar".'
+              : 'Trocando agora, o trabalho para no meio. Quando você voltar para esta sessão, os voos aparecem em arremetida, com "Continuar".'}
         </span>
         <span className="ses-busy-actions">
           <button type="button" className="btn" onClick={onCancel}>
@@ -184,7 +184,7 @@ function SessionRow({
     const copy = s.copy
       ? ` A cópia ${shortPath(s.copy)} é apagada; o branch ${s.branch} continua no repositório, com o que foi commitado.`
       : '';
-    const msg = `Remover a sessão "${s.name}"?\n\nO canvas e as notas dela vão para a lixeira da Torre (~/.torre/trash).${copy} As conversas continuam guardadas nos agentes.`;
+    const msg = `Remover a sessão "${s.name}"?\n\nO canvas e as NOTAMs dela vão para a lixeira da Torre (~/.torre/trash).${copy} As conversas continuam guardadas nos agentes.`;
     if (window.confirm(msg)) remove();
   };
 
@@ -213,7 +213,7 @@ function SessionRow({
                 }}
               />
             ) : (
-              <span className={`ses-row-name${s.named ? '' : ' provisional'}`} title={s.named ? s.name : `${s.name} (o agente dá o nome no fim do primeiro turno)`}>
+              <span className={`ses-row-name${s.named ? '' : ' provisional'}`} title={s.named ? s.name : `${s.name} (o voo líder dá o nome no fim do primeiro turno)`}>
                 {s.name}
               </span>
             )}
@@ -243,9 +243,9 @@ function SessionRow({
             </button>
           )}
           {s.current && s.branch && (
-            <button className="btn ses-open" onClick={onMerge} title={`Mesclar o branch ${s.branch}; a sessão continua na cópia`}>
+            <button className="btn ses-open" onClick={onMerge} title={`Pousar o branch ${s.branch}; a sessão continua na cópia`}>
               <Icon name="call_merge" size={16} />
-              Mesclar…
+              Pedir pouso…
             </button>
           )}
           {!s.current && (
@@ -254,7 +254,7 @@ function SessionRow({
               onClick={askRemove}
               disabled={s.floors > 0}
               aria-label={`Remover ${s.name}`}
-              title={s.floors > 0 ? 'Tem andares: abra a sessão e aterrisse ou descarte os andares antes' : 'Remover'}
+              title={s.floors > 0 ? 'Tem níveis de voo: abra a sessão e pouse ou descarte os níveis antes' : 'Remover'}
             >
               <Icon name="delete" size={16} />
             </button>
@@ -274,7 +274,7 @@ function SessionRow({
               A cópia tem {losing.length === 1 ? '1 alteração sem commit, que se perde' : `${losing.length} alterações sem commit, que se perdem`}:{' '}
               <span className="mono">{losing.slice(0, 5).join(', ')}{losing.length > 5 ? ` e mais ${losing.length - 5}` : ''}</span>.
             </span>
-            <span className="ses-busy-sub">Para {losing.length === 1 ? 'guardá-la' : 'guardá-las'}, abra a sessão e peça a um agente para commitar.</span>
+            <span className="ses-busy-sub">Para {losing.length === 1 ? 'guardá-la' : 'guardá-las'}, abra a sessão e peça a um voo para commitar.</span>
             <span className="ses-busy-actions">
               <button type="button" className="btn" onClick={() => setLosing(null)}>
                 Cancelar
@@ -352,14 +352,14 @@ function NewSessionForm({ ws, onBack, onDone }: { ws: string; onBack: () => void
       </div>
       <label className="field">
         Nome (opcional)
-        <input autoFocus value={name} maxLength={60} placeholder="sem nome, o agente sugere um" onChange={(e) => setName(e.target.value)} />
+        <input autoFocus value={name} maxLength={60} placeholder="sem nome, o voo líder sugere um" onChange={(e) => setName(e.target.value)} />
       </label>
       {terminals > 0 && (
         <label className="ses-check">
           <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
           <span>
-            <b>Começar com os mesmos terminais, sem as conversas</b>: {terminals === 1 ? 'o terminal' : `os ${terminals} terminais`} do térreo, com papéis e fios.
-            Cada agente começa uma conversa nova.
+            <b>Começar com os mesmos voos, sem as conversas</b>: {terminals === 1 ? 'o voo' : `os ${terminals} voos`} da pista, com papéis e frequências.
+            Cada voo começa uma conversa nova.
           </span>
         </label>
       )}

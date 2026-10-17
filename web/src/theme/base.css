@@ -48,7 +48,7 @@ input, select, textarea { font: inherit; color: inherit; }
   font-size: 10px;
   line-height: 14px;
   border: 1px solid var(--line-2);
-  border-radius: 3px;
+  border-radius: 0;
   padding: 0 4px;
   color: var(--text-2);
   white-space: nowrap;
@@ -93,7 +93,7 @@ input, select, textarea { font: inherit; color: inherit; }
   transform: translateX(-50%);
   background: var(--text);
   color: var(--surface);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
@@ -105,7 +105,7 @@ input, select, textarea { font: inherit; color: inherit; }
   position: absolute;
   background: var(--surface);
   border: 1px solid var(--line-2);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: var(--shadow);
   z-index: 40;
 }
@@ -113,7 +113,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--text-2); }
 .field input, .field select {
   height: 30px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--line-2);
   background: var(--surface-2);
   padding: 0 8px;
@@ -121,7 +121,7 @@ input, select, textarea { font: inherit; color: inherit; }
   color: var(--text);
 }
 .field textarea {
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--line-2);
   background: var(--surface-2);
   padding: 8px;
@@ -133,7 +133,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .field-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .field-hint { font-size: 11px; color: var(--text-3); line-height: 1.4; }
-.link-btn { border: 0; background: transparent; padding: 0; font: inherit; font-size: 11px; font-weight: 600; color: var(--st-work); cursor: pointer; }
+.link-btn { border: 0; background: transparent; padding: 0; font: inherit; font-size: 11px; font-weight: 600; color: var(--stt-work); cursor: pointer; }
 .link-btn:hover { text-decoration: underline; }
 
 @media (prefers-reduced-motion: reduce) {

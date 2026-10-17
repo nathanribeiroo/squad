@@ -10,7 +10,7 @@ import { useNodes, useSquad } from '../state/store';
 import { DirInput } from './DirInput';
 import { Icon } from './Icon';
 
-const DEFAULT_NAMES: Record<string, string> = { claude: 'Claude', codex: 'Codex', devin: 'Devin', gemini: 'Gemini', shell: 'Shell', custom: 'Terminal' };
+const DEFAULT_NAMES: Record<string, string> = { claude: 'Claude', codex: 'Codex', devin: 'Devin', gemini: 'Gemini', shell: 'Shell', custom: 'Comando' };
 
 /** Terminal names are unique per workspace: Claude, Claude 2, Claude 3… */
 function uniqueName(base: string, taken: Set<string>): string {
@@ -122,7 +122,7 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <Icon name={t ? 'tune' : 'terminal'} size={18} />
         <strong style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {t ? `Configurar ${t.name}` : 'Novo terminal'}
+          {t ? `Configurar ${t.name}` : 'Novo voo'}
         </strong>
         <span style={{ flex: 1 }} />
         <button type="button" className="icon-btn" onClick={onClose} aria-label="Fechar">
@@ -190,8 +190,8 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
             )}
           </label>
         )}
-        {error && <div style={{ color: 'var(--st-err)', fontSize: 12 }}>{error}</div>}
-        {relaunch && <div style={{ color: 'var(--text-2)', fontSize: 11.5 }}>O terminal reinicia e a sessão atual é encerrada.</div>}
+        {error && <div style={{ color: 'var(--stt-err)', fontSize: 12 }}>{error}</div>}
+        {relaunch && <div style={{ color: 'var(--text-2)', fontSize: 11.5 }}>O voo reinicia, e a conversa atual é encerrada.</div>}
         <button className="btn filled" type="submit" disabled={busy} style={{ justifyContent: 'center' }}>
           {t ? (relaunch ? 'Salvar e reiniciar' : 'Salvar') : 'Criar'}
         </button>

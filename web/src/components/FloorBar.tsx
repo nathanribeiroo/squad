@@ -83,7 +83,7 @@ function useGoneNotice(floors: Floor[]) {
       for (const f of prev.current) {
         if (floors.some((x) => x.id === f.id)) continue;
         if (expectedGone.delete(f.id)) continue;
-        toast(`O andar ${f.name} foi aterrissado (branch ${f.branch})`);
+        toast(`${f.name} pousou (branch ${f.branch})`);
       }
     }
     prev.current = floors;
@@ -150,7 +150,7 @@ export function FloorBar() {
       >
         {on && <Icon name="layers" size={15} />}
         <span className="tb-floor-name">{label}</span>
-        {busy[id] > 0 && <span className="tb-floor-busy" title={`${busy[id]} trabalhando`} />}
+        {busy[id] > 0 && <span className="tb-floor-busy" title={`${busy[id]} no ar`} />}
         {sub && (
           <span className={`tb-floor-sub mono${sub.dirty ? ' dirty' : ''}${sub.err ? ' err' : ''}`}>
             {sub.spin && <Icon name="progress_activity" size={13} className="spin" />}
@@ -165,23 +165,23 @@ export function FloorBar() {
   return (
     <>
       <div className="tb-floors">
-        <div className="tb-floor-tabs" role="tablist" aria-label="Andares" ref={tabsRef}>
+        <div className="tb-floor-tabs" role="tablist" aria-label="Níveis de voo" ref={tabsRef}>
           {tab(
             '',
             status?.repo ? status.ground.branch || 'HEAD' : GROUND,
             ground,
-            copy ? `Térreo da sessão: a cópia em ${copy.cwd}, branch ${copy.branch}` : 'Térreo: a pasta do workspace',
+            copy ? `Pista da sessão: a cópia em ${copy.cwd}, branch ${copy.branch}` : 'Pista: a pasta do workspace',
           )}
           {floors.map((f) => {
             const g = status?.floors[f.id];
             const sub = prepSummary(f) ?? gitSummary(g);
-            return tab(f.id, f.name, sub, `Andar ${f.name}: branch ${g?.branch || f.branch}, em ${f.cwd}`);
+            return tab(f.id, f.name, sub, `Nível ${f.name}: branch ${g?.branch || f.branch}, em ${f.cwd}`);
           })}
         </div>
         <button
           className="tb-floor-add"
-          title={notRepo ? 'Andares são cópias de um repositório git, e a pasta deste workspace não é um' : 'Novo andar'}
-          aria-label="Novo andar"
+          title={notRepo ? 'Níveis de voo são cópias de um repositório git, e a pasta deste workspace não é um' : 'Novo nível de voo'}
+          aria-label="Novo nível de voo"
           disabled={notRepo}
           onClick={() => setDialog({ kind: 'create' })}
         >
@@ -242,7 +242,7 @@ function CopyMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void
       </div>
       <button className="tb-menu-item" onClick={() => open('merge-copy')}>
         <Icon name="call_merge" size={18} />
-        Mesclar…
+        Pedir pouso…
       </button>
       <button className="tb-menu-item" onClick={() => open('copy-log')}>
         <Icon name="description" size={18} />
@@ -274,11 +274,11 @@ function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; on
   return (
     <div className="popover tb-menu fl-menu" ref={ref} style={{ position: 'fixed', left: x, top: y }} role="menu">
       <div className="tb-menu-title">
-        Andar {floor.name} · <span className="mono">⎇ {floor.branch}</span>
+        Nível {floor.name} · <span className="mono">⎇ {floor.branch}</span>
       </div>
       <button className="tb-menu-item" onClick={() => open('land')}>
         <Icon name="flight_land" size={18} />
-        Aterrissar…
+        Pedir pouso…
       </button>
       <button className="tb-menu-item" onClick={() => open('log')}>
         <Icon name="description" size={18} />

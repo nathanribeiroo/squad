@@ -117,7 +117,7 @@ export function Canvas() {
       if (!c.source || !c.target || c.source === c.target) return;
       api
         .addEdge(c.source, c.target)
-        .then(() => toast(`${name(c.source)} ↔ ${name(c.target)} ligados`))
+        .then(() => toast(`${name(c.source)} ↔ ${name(c.target)} na mesma frequência`))
         .catch((e: Error) => toast(e.message));
     },
     [],

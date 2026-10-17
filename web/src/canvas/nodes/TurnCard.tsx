@@ -67,7 +67,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
   return (
     <div className="tc nodrag nopan">
       {open && (
-        <div className="tc-panel nowheel" role="dialog" aria-label="Turno">
+        <div className="tc-panel nowheel" role="dialog" aria-label="Boletim">
           {card.summary && (
             <section>
               <div className="tc-label">
@@ -80,7 +80,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
               {steps.length > 0 && (
                 <div className="tc-steps">
                   {steps.map((s) => (
-                    <button key={s} className="tc-step" onClick={() => send(s)} title="Abrir no Composer para este agente">
+                    <button key={s} className="tc-step" onClick={() => send(s)} title="Abrir no Transmitir, para este voo">
                       <Icon name="arrow_forward" size={14} />
                       {plain(s)}
                     </button>
@@ -109,7 +109,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
       )}
       <Icon name={card.summary ? 'psychology' : 'check_circle'} size={15} className="tc-icon" />
       <span className="tc-head">Turno{dur && ` · ${dur}`}</span>
-      <button className="tc-gist" onClick={() => setOpen(!open)} title={open ? 'Fechar' : 'Ver o turno inteiro'}>
+      <button className="tc-gist" onClick={() => setOpen(!open)} title={open ? 'Fechar' : 'Ver o boletim inteiro'}>
         {gist(card)}
         {steps.length > 0 && <span className="tc-count"> · {steps.length === 1 ? '1 passo' : `${steps.length} passos`}</span>}
       </button>
@@ -122,7 +122,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
         canSummarize &&
         !card.summary && (
           <button className="tc-btn" onClick={summarize} title={card.error ? `O último resumo falhou: ${card.error}` : 'Resumir com um agente (gasta do plano dele)'}>
-            {card.error && <Icon name="error" size={14} style={{ color: 'var(--st-err)' }} />}
+            {card.error && <Icon name="error" size={14} style={{ color: 'var(--stt-err)' }} />}
             Resumir
           </button>
         )
@@ -133,7 +133,7 @@ export function TurnCard({ id, working }: { id: string; working: boolean }) {
           setOpen(false);
           useSquad.getState().hideCard(id, card.at);
         }}
-        aria-label="Fechar o cartão"
+        aria-label="Fechar o boletim"
       >
         <Icon name="close" size={14} />
       </button>

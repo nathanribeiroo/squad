@@ -69,7 +69,7 @@ export async function changeRole(nodeId: string, t: TerminalData, roleId: string
   if (restart) {
     const name = useSquad.getState().roles.find((r) => r.id === roleId)?.name;
     const what = roleId ? `Dar o papel "${name}" a ${t.name}?` : `Tirar o papel de ${t.name}?`;
-    if (!window.confirm(`${what} O agente reinicia para receber as instruções, e a sessão atual é encerrada.`)) return;
+    if (!window.confirm(`${what} O voo reinicia para receber as instruções, e a conversa atual é encerrada.`)) return;
   }
   try {
     await api.updateNode(nodeId, { terminal: { ...t, role: roleId || undefined } });

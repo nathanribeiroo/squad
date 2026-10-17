@@ -3,8 +3,8 @@
 import type { Floor, FloorGit, Workspace } from '../api/types';
 import { useSquad } from '../state/store';
 
-/** Name of the ground floor when its branch isn't known. */
-export const GROUND = 'térreo';
+/** Name of the ground floor (the runway) when its branch isn't known. */
+export const GROUND = 'pista';
 
 const NO_FLOORS: Floor[] = [];
 
@@ -25,7 +25,7 @@ export function workdir(ws: Workspace | null, floor?: string): string | undefine
   return ws?.copy?.cwd ?? ws?.cwd;
 }
 
-/** A floor's name, "térreo" for the ground floor ("" or unknown). */
+/** A floor's name, "pista" for the ground floor ("" or unknown). */
 export function floorName(floors: Floor[] | undefined, id?: string): string {
   return (id && floors?.find((f) => f.id === id)?.name) || GROUND;
 }

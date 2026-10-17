@@ -15,7 +15,7 @@ export function ComposerPill() {
   return (
     <button className="composer-pill" onClick={() => open(true, target)}>
       <Icon name="edit_square" size={18} />
-      <span className="cp-placeholder">{name ? `Escrever para ${name}…` : 'Escrever para um agente…'}</span>
+      <span className="cp-placeholder">{name ? `Transmitir a ${name}…` : 'Transmitir a um voo…'}</span>
       <span className="kbd">⌥K</span>
       <span className="cp-send">
         <Icon name="arrow_upward" size={18} />

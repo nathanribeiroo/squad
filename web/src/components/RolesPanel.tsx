@@ -196,8 +196,8 @@ function Editor({ draft, setDraft, current }: { draft: Draft; setDraft: (d: Draf
       <label className="roles-check">
         <input type="checkbox" checked={!!draft.manager} onChange={(e) => set({ manager: e.target.checked })} />
         <span>
-          <b>Gerente</b>: o agente pode criar terminais ligados a ele e ligar nós (<span className="mono">torre new</span>,{' '}
-          <span className="mono">torre connect</span>). Cada terminal pode desligar isso no menu ⋯.
+          <b>Líder</b>: o voo pode criar voos na frequência dele e pôr nós na mesma frequência (<span className="mono">torre new</span>,{' '}
+          <span className="mono">torre connect</span>). Cada voo pode desligar isso no menu ⋯.
         </span>
       </label>
       <label className="field roles-prompt">
@@ -232,7 +232,7 @@ function Usage({ role, saved }: { role?: RoleDef; saved: boolean }) {
   const running = users.filter((n) => ROLE_AGENTS.has(n.terminal!.agent) && runtime[n.id]?.status === 'running');
   if (saved && running.length > 0) {
     const restart = () => {
-      if (!window.confirm(`Reiniciar ${running.map((n) => n.terminal!.name).join(', ')}? A sessão atual de cada um é encerrada.`)) return;
+      if (!window.confirm(`Reiniciar ${running.map((n) => n.terminal!.name).join(', ')}? A conversa atual de cada um é encerrada.`)) return;
       for (const n of running) api.nodeAction(n.id, 'restart').catch((e: Error) => toast(e.message));
     };
     return (

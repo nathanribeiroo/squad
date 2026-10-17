@@ -13,9 +13,9 @@ const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: n
   replied: { label: (a) => `Respondido em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`, icon: 'reply', state: 'done' },
   delivered: { label: () => 'Entregue', icon: 'check', state: 'done' },
   cancelled: { label: () => 'Cancelado', icon: 'block', state: 'err' },
-  held: { label: () => 'Retido', icon: 'pause', state: 'wait' },
-  note: { label: () => 'Nota editada', icon: 'description', state: 'idle' },
-  turn: { label: () => 'Fim do turno', icon: 'check_circle', state: 'done' },
+  held: { label: (a) => (a.text.startsWith('Retido: limite') ? 'Retido · limite por minuto' : 'Retido · espera geral'), icon: 'all_inclusive', state: 'wait' },
+  note: { label: () => 'NOTAM editado', icon: 'description', state: 'idle' },
+  turn: { label: () => 'Em solo', icon: 'flight_land', state: 'done' },
 };
 
 export function ActivityDrawer() {
@@ -40,27 +40,27 @@ export function ActivityDrawer() {
 
   if (!open) {
     return (
-      <button className="ad-tab" onClick={() => setDrawer(true)} aria-label="Abrir atividade">
+      <button className="ad-tab" onClick={() => setDrawer(true)} aria-label="Abrir o Rádio">
         <Icon name="chevron_left" size={18} />
-        <span className="ad-tab-label">Atividade</span>
+        <span className="ad-tab-label">Rádio</span>
         {pending > 0 && <span className="tb-count mono">{pending}</span>}
       </button>
     );
   }
 
   return (
-    <aside className="activity-drawer" aria-label="Atividade">
+    <aside className="activity-drawer" aria-label="Rádio">
       <header className="ad-head">
-        <span className="ad-title">Atividade</span>
+        <span className="ad-title">Rádio</span>
         <span className="ad-sub">
           {ws?.name ?? ''}
           {branch && ` · ${branch}`}
         </span>
         <span style={{ flex: 1 }} />
         {canSummarize && (
-          <button className="btn ad-overview" onClick={() => useSquad.getState().setSummaryDialog('overview')} title="Uma visão geral do que a equipe está fazendo">
+          <button className="btn ad-overview" onClick={() => useSquad.getState().setSummaryDialog('overview')} title="Briefing: uma visão geral do que os voos estão fazendo">
             <Icon name="psychology" size={16} />
-            Resumo
+            Briefing
           </button>
         )}
         <button className="icon-btn" onClick={() => setDrawer(false)} aria-label="Fechar">
@@ -79,7 +79,7 @@ export function ActivityDrawer() {
         ))}
       </div>
       <div className="ad-list">
-        {shown.length === 0 && <div className="ad-empty">Nenhuma conversa ainda. Ligue dois terminais e use torre ask.</div>}
+        {shown.length === 0 && <div className="ad-empty">Rádio em silêncio. Ponha dois voos na mesma frequência e use torre ask.</div>}
         {shown.map((a) => {
           const o = OUTCOME[a.outcome];
           return (
@@ -89,7 +89,7 @@ export function ActivityDrawer() {
                 <div className="ad-line">
                   <span style={{ color: a.from ? `var(--r-${roleOf(a.from)})` : 'var(--text)' }}>{a.fromName || 'Você'}</span>
                   {a.outcome === 'turn' ? (
-                    <span className="ad-turn">terminou o turno</span>
+                    <span className="ad-turn">pousou</span>
                   ) : (
                     <>
                       <Icon name={a.outcome === 'note' ? 'edit' : 'arrow_forward'} size={15} style={{ color: 'var(--text-2)' }} />
@@ -99,7 +99,7 @@ export function ActivityDrawer() {
                   {a.id && <span className="mono ad-id">{a.id}</span>}
                 </div>
                 {a.text && <div className="ad-msg">{a.text}</div>}
-                <span className="ad-pill" style={{ background: `var(--stb-${o.state})`, color: `var(--st-${o.state})` }}>
+                <span className="ad-pill" style={{ background: `var(--stb-${o.state})`, color: `var(--stt-${o.state})` }}>
                   <Icon name={o.icon} size={14} />
                   {o.label(a, now)}
                 </span>

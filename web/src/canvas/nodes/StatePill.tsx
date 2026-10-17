@@ -10,7 +10,7 @@ export function StatePill({ state, since, exitCode, compact = false }: { state: 
   const timed = TIMED.includes(state);
   const now = useNow(1000, timed);
   return (
-    <span className={`state-pill${compact ? ' compact' : ''}`} style={{ background: `var(--stb-${state})`, color: `var(--st-${state})` }}>
+    <span className={`state-pill${compact ? ' compact' : ''}`} style={{ background: `var(--stb-${state})`, color: `var(--stt-${state})` }}>
       <Icon name={STATE_META[state].icon} size={compact ? 13 : 15} />
       {stateLabel(state, exitCode)}
       {timed && since && <span className="mono state-time">{elapsed(since, now)}</span>}

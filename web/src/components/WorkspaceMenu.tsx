@@ -16,12 +16,12 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** "2 ativos · 1 pendente", or how many terminals when idle. */
+/** "2 no ar · 1 pendente", or how many flights when idle. */
 export function wsActivity(w: WorkspaceSummary): string {
   const parts = [];
-  if (w.active) parts.push(plural(w.active, 'ativo', 'ativos'));
+  if (w.active) parts.push(`${w.active} no ar`);
   if (w.pending) parts.push(plural(w.pending, 'pendente', 'pendentes'));
-  if (!parts.length) parts.push(w.terminals ? plural(w.terminals, 'terminal', 'terminais') : 'sem terminais');
+  if (!parts.length) parts.push(w.terminals ? plural(w.terminals, 'voo', 'voos') : 'sem voos');
   return parts.join(' · ');
 }
 
@@ -217,7 +217,7 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
 
   const remove = () => {
     if (!ws) return;
-    const msg = `Remover o workspace "${ws.name}"?\n\nOs terminais dele são encerrados, e o canvas e as notas vão para a lixeira da Torre (~/.torre/trash).`;
+    const msg = `Remover o workspace "${ws.name}"?\n\nOs voos dele são encerrados, e o canvas e as NOTAMs vão para a lixeira da Torre (~/.torre/trash).`;
     if (!window.confirm(msg)) return;
     void run(async () => {
       await hub.remove(ws.id);
@@ -249,7 +249,7 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
       {!ws && (
         <label className="field">
           Nome da sessão (opcional)
-          <input value={session} maxLength={60} placeholder="sem nome, o agente sugere um" onChange={(e) => setSession(e.target.value)} />
+          <input value={session} maxLength={60} placeholder="sem nome, o voo líder sugere um" onChange={(e) => setSession(e.target.value)} />
         </label>
       )}
       <div className="field">
@@ -269,7 +269,7 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
           ))}
         </div>
       </div>
-      {moved && <div className="ws-note">Os terminais abertos continuam na pasta antiga até serem reiniciados.</div>}
+      {moved && <div className="ws-note">Os voos abertos continuam na pasta antiga até serem reiniciados.</div>}
       {error && <div className="ws-error">{error}</div>}
       <button className="btn filled" type="submit" disabled={busy || !cwd.trim()} style={{ justifyContent: 'center' }}>
         {ws ? 'Salvar' : 'Criar e abrir'}
