@@ -27,6 +27,7 @@ export function FloorDialogs() {
   if (!floor) return null; // landed meanwhile
   if (d.kind === 'land') return <LandFloor key={floor.id} floor={floor} onClose={close} />;
   if (d.kind === 'discard') return <DiscardFloor key={floor.id} floor={floor} onClose={close} />;
+  if (d.kind === 'rename') return <RenameFloor key={floor.id} floor={floor} onClose={close} />;
   return <SetupLog key={floor.id} floor={floor} title={`Preparo · ${flightLevel(floor)} · ${floor.name}`} load={() => api.floorLog(floor.id)} onClose={close} />;
 }
 
@@ -153,6 +154,50 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** Another name for a level; the agents use the new one from then on. */
+function RenameFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
+  const [name, setName] = useState(floor.name);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name.trim() === floor.name) return onClose();
+    setBusy(true);
+    setError('');
+    try {
+      const f = await api.renameFloor(floor.id, name.trim());
+      toast(`${flightLevel(f)} agora se chama ${f.name}`);
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog icon="edit" title={`Renomear ${flightLevel(floor)}`} sub={floor.name} onClose={onClose}>
+      <form className="fl-form" onSubmit={submit}>
+        <label className="field">
+          Nome
+          <input value={name} maxLength={40} autoFocus onFocus={(e) => e.currentTarget.select()} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <p className="field-hint">
+          O branch <b className="mono">{floor.branch}</b> e a pasta continuam os mesmos. Os agentes passam a chamar o nível pelo nome novo.
+        </p>
+        {error && <p className="fl-error">{error}</p>}
+        <div className="fl-actions">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn filled" disabled={busy || !name.trim()}>
+            {busy ? 'Renomeando…' : 'Renomear'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
 /** What landing or discarding closes: terminals and portals; notes go down to the ground floor. */
 function useFloorNodes(id: string): { closes: WNode[]; notes: WNode[] } {
   const nodes = useSquad((s) => s.workspace?.nodes);
@@ -235,16 +280,33 @@ function Commits({ changes, base, what }: { changes: FloorChanges; base?: string
 /**
  * The checks before landing (docs/torre/TELAS.md, quadro 14): everything
  * committed, flights still in the air (a warning, not a block) and how far
- * the base moved. Conflicts show when landing is tried.
+ * the base moved, and the conflicts a merge into the base would have (git
+ * merge-tree, before trying; checked again when landing).
  */
 function LandChecks({ changes, base, flying }: { changes: FloorChanges; base?: string; flying: string[] }) {
   const clean = changes.files.length === 0;
+  const conflicts = changes.conflicts;
   return (
     <div className="fl-checks">
-      <div className="fl-check idle">
-        <b>conflitos</b>
-        <span>checados ao pousar</span>
-      </div>
+      {!conflicts ? (
+        <div className="fl-check idle">
+          <b>conflitos</b>
+          <span>checados ao pousar</span>
+        </div>
+      ) : conflicts.length === 0 ? (
+        <div className="fl-check ok">
+          <b>✓ sem conflitos</b>
+          <span>com {base || 'a origem'}</span>
+        </div>
+      ) : (
+        <div className="fl-check err" title={conflicts.join('\n')}>
+          <b>✕ {plural(conflicts.length, 'conflito', 'conflitos')}</b>
+          <span className="mono">
+            {conflicts.slice(0, 2).join(', ')}
+            {conflicts.length > 2 ? ` +${conflicts.length - 2}` : ''}
+          </span>
+        </div>
+      )}
       <div className={`fl-check ${clean ? 'ok' : 'err'}`}>
         <b>{clean ? '✓ tudo commitado' : `✕ ${plural(changes.files.length, 'alteração', 'alterações')}`}</b>
         <span>{clean ? '0 alterações' : 'commite antes de pousar'}</span>

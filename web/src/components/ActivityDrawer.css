@@ -52,6 +52,9 @@
 .ad-pill.done { border-color: var(--st-done); color: var(--stt-done); }
 .ad-pill.err { border-color: var(--st-err); color: var(--stt-err); }
 .ad-pill.idle { border-color: var(--line-3); color: var(--text-2); }
+.ad-msg.full { display: block; -webkit-line-clamp: none; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
+.ad-more { margin-top: 4px; padding: 0; border: 0; background: none; color: var(--focus); font: inherit; font-size: 11px; cursor: pointer; }
+.ad-more:hover { text-decoration: underline; }
 .ad-actions { display: flex; gap: 6px; margin-top: 8px; }
 .ad-actions .btn { height: 26px; font-size: 10.5px; padding: 0 8px; }
 .ad-foot { height: 44px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px; border-top: 1px solid var(--line); font-size: 11px; color: var(--text-2); }

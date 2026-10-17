@@ -134,6 +134,8 @@ export interface FloorChanges {
   behind: number;
   commits: { hash: string; subject: string }[];
   missing?: boolean;
+  /** Files a merge into the base would conflict in; null when git can't tell. */
+  conflicts?: string[] | null;
 }
 
 /** An agent's last turn (internal/summary): its final message, and a summary on demand. */

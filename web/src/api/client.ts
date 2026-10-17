@@ -95,6 +95,10 @@ export const api = {
   removeEdge: (id: string) => req<void>('DELETE', wsPath(`/api/edges/${id}`)),
   send: (id: string, body: { text: string; mentions: string[]; images: { name: string; data: string }[] }) =>
     req<{ ok: boolean }>('POST', wsPath(`/api/nodes/${id}/send`), body),
+  /** A recent request's full message (the Rádio shows a preview). */
+  requestText: (id: string) => req<{ id: string; text: string }>('GET', wsPath(`/api/requests/${id}`)),
+  /** Ends a request for the user: the agent that asked gets its answer now. */
+  cancelRequest: (id: string) => req<void>('POST', wsPath(`/api/requests/${id}/cancel`)),
   pause: () => req<StateExtra>('POST', wsPath('/api/conversations/pause')),
   resume: () => req<StateExtra>('POST', wsPath('/api/conversations/resume')),
   note: (id: string) => req<{ id: string; file: string; title: string; locked: boolean; content: string }>('GET', wsPath(`/api/notes/${id}`)),
@@ -113,6 +117,8 @@ export const api = {
   floorChanges: (id: string) => req<FloorChanges>('GET', wsPath(`/api/floors/${encodeURIComponent(id)}/changes`)),
   landFloor: (id: string, b: { merge?: boolean; into?: string }) => req<LandResult>('POST', wsPath(`/api/floors/${encodeURIComponent(id)}/land`), b),
   discardFloor: (id: string) => req<void>('DELETE', wsPath(`/api/floors/${encodeURIComponent(id)}`)),
+  /** Another name for a level; its branch and folder stay. */
+  renameFloor: (id: string, name: string) => req<Floor>('PATCH', wsPath(`/api/floors/${encodeURIComponent(id)}`), { name }),
   cards: () => req<{ cards: TurnCard[] }>('GET', wsPath('/api/summary')),
   summarize: (id: string) => req<TurnCard>('POST', wsPath(`/api/nodes/${id}/summarize`)),
   overview: () => req<WorkspaceOverview>('POST', wsPath('/api/summary/workspace')),

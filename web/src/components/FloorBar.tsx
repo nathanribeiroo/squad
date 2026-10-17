@@ -276,7 +276,7 @@ function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; on
   const setDialog = useSquad((s) => s.setFloorDialog);
   const ref = useMenuClose(onClose);
   if (!floor) return null;
-  const open = (kind: 'land' | 'discard' | 'log') => {
+  const open = (kind: 'land' | 'discard' | 'log' | 'rename') => {
     onClose();
     setDialog({ kind, id });
   };
@@ -286,6 +286,10 @@ function FloorMenu({ id, x, y, onClose }: { id: string; x: number; y: number; on
       <button className="tb-menu-item" onClick={() => open('land')}>
         <Icon name="flight_land" size={18} />
         Pedir pouso…
+      </button>
+      <button className="tb-menu-item" onClick={() => open('rename')}>
+        <Icon name="edit" size={18} />
+        Renomear…
       </button>
       <button className="tb-menu-item" onClick={() => open('log')}>
         <Icon name="description" size={18} />

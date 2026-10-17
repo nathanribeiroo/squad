@@ -88,7 +88,7 @@ export type ZoomLevel = 'live' | 'mini' | 'card';
 
 /** A floor dialog: create one, land or discard a floor, read its setup log;
  * merge the session's copy, read its setup log. */
-export type FloorDialog = { kind: 'create' } | { kind: 'land' | 'discard' | 'log'; id: string } | { kind: 'merge-copy' | 'copy-log' };
+export type FloorDialog = { kind: 'create' } | { kind: 'land' | 'discard' | 'log' | 'rename'; id: string } | { kind: 'merge-copy' | 'copy-log' };
 
 /** Zoom level with ±0.03 hysteresis around 0.6 and 0.35 (handoff §2). */
 export function levelFor(z: number, prev: ZoomLevel): ZoomLevel {
@@ -426,7 +426,13 @@ export const useSquad = create<SquadState>((set, get) => ({
     // The server only reports a count; spread it as "now" so it decays.
     const sendTimes = Array.from({ length: s.extra?.rate ?? 0 }, () => Date.now());
     const runtime = s.runtime ?? {};
-    set({ workspace: s.workspace, runtime, askingIds: askingOf(runtime, []), extra: s.extra ?? emptyExtra, flights: pending, sendTimes });
+    // Requests sent before this page opened still show in the Rádio.
+    const known = new Set(get().activity.map((a) => a.key));
+    const seeded: ActivityItem[] = (s.extra?.pending ?? [])
+      .filter((p) => !known.has(`req-${p.id}`))
+      .map((p) => ({ key: `req-${p.id}`, time: p.sentAt, id: p.id, from: p.from, to: p.to, fromName: p.fromName, toName: p.toName, text: p.preview ?? '', outcome: 'pending' as const }));
+    const activity = seeded.length ? [...seeded, ...get().activity] : get().activity;
+    set({ workspace: s.workspace, runtime, askingIds: askingOf(runtime, []), extra: s.extra ?? emptyExtra, flights: pending, sendTimes, activity });
     // A floor landed while we were away (or a stale link): the ground floor.
     const st = get();
     const floor = validFloor(st.activeFloor, s.workspace.floors);
