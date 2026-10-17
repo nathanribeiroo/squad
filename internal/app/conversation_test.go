@@ -28,6 +28,25 @@ func (e *env) starts(name string) []string {
 	return out
 }
 
+// terminal is a terminal's saved settings.
+func (e *env) terminal(id string) store.TerminalData {
+	n, _ := e.app.Server.Store().Node(id)
+	return *n.Terminal
+}
+
+// talk gives an agent a turn and waits for its end: its conversation is
+// then one to continue.
+func (e *env) talk(n store.Node, text string) {
+	e.t.Helper()
+	if err := e.app.Send(n.ID, ComposeRequest{Text: text}); err != nil {
+		e.t.Fatal(err)
+	}
+	waitUntil(e.t, "the turn", func() bool {
+		t := e.terminal(n.ID)
+		return !t.Empty && !t.Busy && strings.Contains(e.log(n.Terminal.Name), "TURN-END")
+	})
+}
+
 // restart starts a terminal again as Squad does when it reopens.
 func (e *env) restart(n store.Node) {
 	e.t.Helper()
@@ -49,19 +68,27 @@ func waitUntil(t *testing.T, what string, cond func() bool) {
 }
 
 // A Claude terminal starts in a conversation whose id Squad picks, continues
-// it when it starts again, and starts a new one on request.
+// it when it starts again (once something was said in it), and starts a new
+// one on request.
 func TestConversationContinues(t *testing.T) {
 	e := newEnv(t, fastLimits)
 	c := e.agentOfType("Claude", "claude", "FAKEAGENT_HOOK=claude")
-	conv := e.conversation(c.ID)
-	if len(conv) != 36 || !strings.Contains(e.starts("Claude")[0], `"--session-id" "`+conv+`"`) {
-		t.Fatalf("new conversation %q: %v", conv, e.starts("Claude"))
+	first := e.conversation(c.ID)
+	if len(first) != 36 || !strings.Contains(e.starts("Claude")[0], `"--session-id" "`+first+`"`) || !e.terminal(c.ID).Empty {
+		t.Fatalf("new conversation %q: %v %+v", first, e.starts("Claude"), e.terminal(c.ID))
 	}
 
 	evs, cancel := e.app.Server.Bus().Subscribe()
 	defer cancel()
+	// Nothing said yet: nothing to continue (the agent wouldn't find it).
 	e.restart(c)
-	if s := e.starts("Claude"); len(s) != 2 || !strings.Contains(s[1], `"--resume" "`+conv+`"`) || e.conversation(c.ID) != conv {
+	conv := e.conversation(c.ID)
+	if s := e.starts("Claude"); len(s) != 2 || conv == first || !strings.Contains(s[1], `"--session-id" "`+conv+`"`) || strings.Contains(s[1], "--resume") {
+		t.Fatalf("empty conversation started again: %v %q", s, conv)
+	}
+	e.talk(c, "oi")
+	e.restart(c)
+	if s := e.starts("Claude"); len(s) != 3 || !strings.Contains(s[2], `"--resume" "`+conv+`"`) || e.conversation(c.ID) != conv {
 		t.Fatalf("continued: %v %q", s, e.conversation(c.ID))
 	}
 	// It did continue: nothing to tell the user.
@@ -88,7 +115,7 @@ func TestConversationContinues(t *testing.T) {
 	}
 	e.waitScreen(c.ID, "fakeagent ready", 10*time.Second)
 	fresh := e.conversation(c.ID)
-	if s := e.starts("Claude"); fresh == conv || len(s) != 3 || !strings.Contains(s[2], `"--session-id" "`+fresh+`"`) {
+	if s := e.starts("Claude"); fresh == conv || len(s) != 4 || !strings.Contains(s[3], `"--session-id" "`+fresh+`"`) {
 		t.Fatalf("fresh %q: %v", fresh, s)
 	}
 
@@ -106,6 +133,7 @@ func TestConversationNotFound(t *testing.T) {
 	defer cancel()
 	c := e.agentOfType("Claude", "claude", "FAKEAGENT_HOOK=claude", "FAKEAGENT_RESUME_FAIL=1")
 	conv := e.conversation(c.ID)
+	e.talk(c, "oi")
 	e.restart(c)
 	s := e.starts("Claude")
 	if len(s) != 3 || !strings.Contains(s[1], `"--resume" "`+conv+`"`) || !strings.Contains(s[2], `"--session-id" "`+conv+`"`) ||
@@ -113,15 +141,21 @@ func TestConversationNotFound(t *testing.T) {
 		t.Fatalf("fallback: %v %q", s, e.conversation(c.ID))
 	}
 	deadline := time.After(5 * time.Second)
-	for {
+	for told := false; !told; {
 		select {
 		case ev := <-notices:
-			if d, ok := ev.Data.(map[string]string); ev.Type == events.TerminalNotice && ok && d["kind"] == "not-resumed" && d["name"] == "Claude" {
-				return
-			}
+			d, ok := ev.Data.(map[string]string)
+			told = ev.Type == events.TerminalNotice && ok && d["kind"] == "not-resumed" && d["name"] == "Claude"
 		case <-deadline:
 			t.Fatal("no notice")
 		}
+	}
+	// The conversation it fell back to is a new one: the next start doesn't
+	// try to continue it.
+	waitUntil(t, "the new conversation", func() bool { return e.terminal(c.ID).Empty })
+	e.restart(c)
+	if s := e.starts("Claude"); len(s) != 4 || strings.Contains(s[3], "--resume") {
+		t.Fatalf("after the fallback: %v", s)
 	}
 }
 
@@ -132,7 +166,8 @@ func TestDevinConversationFromHooks(t *testing.T) {
 	if s := e.starts("Devin")[0]; strings.Contains(s, "--session-id") {
 		t.Fatalf("devin can't take an id: %s", s)
 	}
-	waitUntil(t, "the id from the session start hook", func() bool { return e.conversation(d.ID) == "dv-1" })
+	waitUntil(t, "the id from the session start hook", func() bool { return e.conversation(d.ID) == "dv-1" && e.terminal(d.ID).Empty })
+	e.talk(d, "oi")
 	e.restart(d)
 	if s := e.starts("Devin"); len(s) != 2 || !strings.Contains(s[1], `"--resume" "dv-1"`) {
 		t.Fatalf("devin continued: %v", s)

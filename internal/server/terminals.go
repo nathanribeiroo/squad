@@ -41,7 +41,7 @@ func (s *Server) startTerminal(id string, fresh bool) error {
 	}
 	before := *n.Terminal
 	if fresh {
-		n.Terminal.Conversation, n.Terminal.Busy = "", false
+		n.Terminal.Conversation, n.Terminal.Busy, n.Terminal.Empty = "", false, false
 	}
 	cwd := s.cwdResolver(n.Floor)(n.Terminal.Cwd)
 	tok := newToken()
