@@ -387,7 +387,8 @@ func (s *Service) byName(name string) (store.Node, error) {
 	var found []store.Node
 	for _, n := range s.o.Canvas.Store().Snapshot().Nodes {
 		// A note the user renamed still answers to its former names.
-		if strings.EqualFold(n.Label(), name) || n.Note != nil && slices.ContainsFunc(n.Note.Aliases, func(a string) bool { return strings.EqualFold(a, name) }) {
+		if strings.EqualFold(n.Label(), name) || n.Note != nil && slices.ContainsFunc(n.Note.Aliases, func(a string) bool { return strings.EqualFold(a, name) }) ||
+			n.Terminal != nil && n.Terminal.Callsign != "" && strings.EqualFold(n.Terminal.Callsign, name) {
 			found = append(found, n)
 		}
 	}

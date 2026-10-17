@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -588,6 +589,12 @@ func (s *Store) TerminalByName(name string) (Node, bool) {
 	defer s.mu.RUnlock()
 	for _, n := range s.ws.Nodes {
 		if n.Terminal != nil && n.Terminal.Name == name {
+			return cloneNode(n), true
+		}
+	}
+	// Its callsign also names it (torre ask IMP "…"); a name wins.
+	for _, n := range s.ws.Nodes {
+		if n.Terminal != nil && n.Terminal.Callsign != "" && strings.EqualFold(n.Terminal.Callsign, name) {
 			return cloneNode(n), true
 		}
 	}

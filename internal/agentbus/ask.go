@@ -119,6 +119,7 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 	p.ID = b.newID()
 	p.SentAt = time.Now()
 	b.pending[p.ID] = p
+	b.rememberLocked(p.ID, msg)
 	b.mu.Unlock()
 	b.events.Publish(events.RequestSent, map[string]any{"id": p.ID, "from": caller, "to": tn.ID,
 		"fromName": fromName, "toName": toName, "preview": p.Preview, "hop": hop})

@@ -71,3 +71,27 @@ func TestCallsignsFromRoles(t *testing.T) {
 		t.Fatalf("a taken callsign: %d %s", w.Code, w.Body)
 	}
 }
+
+// Agents can name a connected flight by its callsign: torre list shows it and
+// torre ask resolves it.
+func TestAskByCallsign(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	a := e.agent("A")
+	b := e.agent("Implementador")
+	e.connect(a, b)
+	b, _ = e.app.Server.Store().Node(b.ID)
+	cs := b.Terminal.Callsign
+	if cs == "" {
+		t.Fatal("no callsign")
+	}
+	if r := e.run(a, "list"); !strings.Contains(r.Body, `name: "Implementador", agent: custom`) || !strings.Contains(r.Body, "callsign: "+cs) {
+		t.Fatalf("list:\n%s", r.Body)
+	}
+	r := e.run(a, "ask", strings.ToLower(cs), "oi")
+	if r.Code != 200 {
+		t.Fatalf("ask by callsign: %d %s", r.Code, r.Body)
+	}
+	if !strings.Contains(e.log("Implementador"), `SUBMIT "[de: A · pedido `) {
+		t.Fatalf("not delivered:\n%s", e.log("Implementador"))
+	}
+}

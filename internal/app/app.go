@@ -277,6 +277,22 @@ func New(o Options) (*App, error) {
 		bus.SetPaused(false, "user")
 		writeJSON(w, bus.StateExtra())
 	}))
+	// Requests in the Rádio: the full message, and cancelling one.
+	srv.HandleSession("GET /api/requests/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		text, ok := bus.RequestText(r.PathValue("id"))
+		if !ok {
+			writeErrorCode(w, http.StatusNotFound, "request.gone", "the request is no longer kept")
+			return
+		}
+		writeJSON(w, map[string]string{"id": r.PathValue("id"), "text": text})
+	}))
+	srv.HandleSession("POST /api/requests/{id}/cancel", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !bus.Cancel(r.PathValue("id")) {
+			writeErrorCode(w, http.StatusNotFound, "request.gone", "the request already ended")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	// Limits (Configurações → Limites): the workspace's, else the server's.
 	srv.HandleSession("GET /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	srv.HandleSession("PUT /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
@@ -324,6 +340,13 @@ func writeErrorJSON(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+// writeErrorCode writes an error with a code the web translates.
+func writeErrorCode(w http.ResponseWriter, status int, code, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": code})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

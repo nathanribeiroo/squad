@@ -99,6 +99,7 @@ const Usage = `Usage (inside a Torre terminal):
   torre connect / close              managers: connect nodes, remove what you created
   torre floor …                      floors, isolated copies of the repository (torre floor help)
 
+"Name" is a terminal's name or its callsign (IMP, PLN…), as torre list shows.
 Messages you receive start with [de: <Name> · pedido <id>]. Reply with
 torre reply <id> "…", or just finish your turn: your final answer is returned
 to the sender. If an ask times out while the other agent is still working,
@@ -175,6 +176,9 @@ func (b *Bus) List(caller string) Result {
 	if f, ok := b.store.Floor(me.Floor); ok && me.Floor != "" {
 		fmt.Fprintf(&sb, ", floor: %s (branch %s; commit your work there)", quote(f.Name), f.Branch)
 	}
+	if me.Terminal.Callsign != "" {
+		fmt.Fprintf(&sb, ", callsign: %s", me.Terminal.Callsign)
+	}
 	sb.WriteString("\n")
 	if b.selfNote != nil {
 		if note := b.selfNote(caller); note != "" {
@@ -216,6 +220,9 @@ func (b *Bus) List(caller string) Result {
 			if b.mon != nil {
 				st, _ := b.mon.State(n.ID)
 				fmt.Fprintf(&sb, ", state: %s", st)
+			}
+			if n.Terminal.Callsign != "" {
+				fmt.Fprintf(&sb, ", callsign: %s", n.Terminal.Callsign)
 			}
 			sb.WriteString("\n")
 		}
