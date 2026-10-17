@@ -6,6 +6,7 @@ package agentbus
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sort"
 	"sync"
@@ -97,7 +98,14 @@ type Bus struct {
 	paused  bool
 	resume  chan struct{}
 	sends   []time.Time
+	// texts keeps the full messages of the last requests (the Rádio shows a
+	// preview and asks for the rest); order is oldest first.
+	texts     map[string]string
+	textOrder []string
 }
+
+// keptTexts is how many request messages the bus remembers in full.
+const keptTexts = 200
 
 // New creates a bus. Call SetMonitor before serving.
 func New(st *store.Store, terms *terminal.Manager, ev *events.Bus, log *slog.Logger, limits Limits) *Bus {
@@ -108,7 +116,7 @@ func New(st *store.Store, terms *terminal.Manager, ev *events.Bus, log *slog.Log
 	return &Bus{limits: limits, store: st, terms: terms, events: ev, log: log,
 		hasHooks: func(string) bool { return false },
 		pending:  map[string]*Pending{}, waiters: map[*waiter]bool{}, last: map[string]activity.TurnEnd{},
-		resume: make(chan struct{})}
+		resume: make(chan struct{}), texts: map[string]string{}}
 }
 
 // SetMonitor attaches the activity monitor (before it starts).
@@ -172,6 +180,40 @@ func (b *Bus) Pending() []Pending {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].SentAt.Before(out[j].SentAt) })
 	return out
+}
+
+// rememberLocked keeps a request's full message for RequestText.
+func (b *Bus) rememberLocked(id, msg string) {
+	if _, ok := b.texts[id]; !ok {
+		b.textOrder = append(b.textOrder, id)
+	}
+	b.texts[id] = msg
+	for len(b.textOrder) > keptTexts {
+		delete(b.texts, b.textOrder[0])
+		b.textOrder = b.textOrder[1:]
+	}
+}
+
+// RequestText returns the full message of a recent request.
+func (b *Bus) RequestText(id string) (string, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	t, ok := b.texts[id]
+	return t, ok
+}
+
+// Cancel ends an outstanding request for the user: the agent that asked gets
+// a 409 now. The other agent isn't interrupted.
+func (b *Bus) Cancel(id string) bool {
+	b.mu.Lock()
+	p, ok := b.pending[id]
+	b.mu.Unlock()
+	if !ok {
+		return false
+	}
+	return b.resolve(p, Result{Code: 409, Source: "cancelled", Body: fmt.Sprintf(
+		"torre: the user cancelled this request to %s. Don't send it again unless the user asks; %s may still be working on it (torre wait %s gets its answer).",
+		quote(p.ToName), quote(p.ToName), quote(p.ToName))})
 }
 
 // Paused reports whether conversations are paused.

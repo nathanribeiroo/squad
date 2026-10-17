@@ -109,3 +109,5 @@
   cursor: pointer;
 }
 .cmp-send:disabled { opacity: 0.4; cursor: default; }
+.cmp-level { border-bottom: 1px solid var(--line); }
+.cmp-level-n { font-size: 11px; color: var(--text-3); }

@@ -20,6 +20,7 @@ import (
 //	GET    /api/floors/{id}/changes  uncommitted files and commits (Changes)
 //	GET    /api/floors/{id}/log      the setup command's output (text)
 //	POST   /api/floors/{id}/land     {merge?, into?} → LandResult
+//	PATCH  /api/floors/{id}          rename {name}
 //	DELETE /api/floors/{id}          discard
 //	GET    /api/copy/changes         the session's copy: uncommitted files and commits
 //	GET    /api/copy/log             the copy's setup output (text)
@@ -99,6 +100,20 @@ func (s *Service) Register(handle func(pattern string, h http.Handler)) {
 			return
 		}
 		writeJSON(w, http.StatusOK, res)
+	}))
+	handle("PATCH /api/floors/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Name string `json:"name"`
+		}
+		if !readJSON(w, r, &req) {
+			return
+		}
+		f, err := s.Rename(r.PathValue("id"), req.Name)
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, f)
 	}))
 	handle("DELETE /api/floors/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := s.Discard(context.WithoutCancel(r.Context()), r.PathValue("id")); err != nil {

@@ -183,7 +183,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 
 **Indicativos e níveis:**
 - cada voo tem um **indicativo** de até 4 letras, único no canvas da sessão. Vem da **sigla** do papel (PLN, IMP; o segundo Implementador é IM2) ou, sem papel, das consoantes do nome (Claude → CLD). Dá para escolher outro em Novo voo ou em Configurar…;
-- o indicativo aparece no cabeçalho do voo, no Rádio, no Transmitir, no briefing, no "criado por" e na barra de quem aguarda resposta. Os agentes continuam se chamando pelo nome (`torre ask "Bia"`);
+- o indicativo aparece no cabeçalho do voo, no Rádio, no Transmitir, no briefing, no "criado por" e na barra de quem aguarda resposta. Os agentes podem chamar um voo pelo nome ou pelo indicativo (`torre ask "Bia"` ou `torre ask IMP`), e o `torre list` mostra os dois;
 - trocar o papel de um voo troca o indicativo junto, se ele veio da sigla; um indicativo escolhido por você fica;
 - cada papel tem uma **sigla** de até 3 letras (Papéis → SIGLA). Os prontos são PLN, ARQ, IMP, REV e TST; um papel novo sem sigla ganha as consoantes do nome;
 - os **níveis de voo** são numerados por sessão: FL1, FL2… O número não volta a ser usado depois que o nível pousa ou é descartado. A pista é o branch da sessão.
@@ -217,12 +217,13 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 
 **Transmitir (`⌥K`):**
 - fechado, é a barra embaixo do canvas: "TRANSMITIR →" com o indicativo do voo selecionado;
-- aberto: os destinos em chips (indicativo e agente; "+ voo" acrescenta outro), o texto e "⏎ transmitir";
+- aberto: os destinos em chips (indicativo e agente; "+ destino" acrescenta outro, ou **Todos os voos de FL1**, de cada nível com dois voos ou mais), o texto e "⏎ transmitir";
 - `@` menciona nós na frequência do destino;
 - cole imagens com ⌘V.
 
 **Rádio (`⌥A`):** os pedidos entre os voos, em indicativos ("14:32 PLN → IMP · c8d0").
-- Filtros: Todos, Pendentes e um chip por voo. Os pedidos ainda abertos ficam no topo, com **Ver no espaço**, que leva ao voo.
+- Filtros: Todos, Pendentes e um chip por voo. Os pedidos ainda abertos ficam no topo, com **Ver no espaço**, que leva ao voo, e **Cancelar pedido**: quem pediu recebe "cancelado" na hora, e o outro voo não é interrompido (se continuar trabalhando, `torre wait` pega a resposta).
+- Um pedido longo aparece cortado; **Ver o pedido inteiro** mostra o texto todo (a Torre guarda os 200 últimos). Os pedidos que já estavam abertos quando a página abriu também aparecem.
 - Cada linha termina no desfecho: Pendente, Respondido em…, Entregue, Cancelado, Retido (espera geral ou limite por minuto), NOTAM editado ou Em solo (fim de turno).
 - O rodapé mostra quantas mensagens passaram no último minuto, o limite e o máximo de saltos.
 
@@ -264,14 +265,14 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 
 **Níveis de voo:** cópias isoladas do repositório do workspace, para frentes de trabalho em paralelo que mexem nos mesmos arquivos.
 - Cada nível é um `git worktree` num branch próprio, com um canvas próprio. A pasta fica **fora do projeto**, como no Maestri: `<pasta-pai do repositório>/.torre/floors/<projeto>--<nível>`.
-- **Na interface:** a barra do topo tem a PISTA (o branch atual) e uma aba por nível (FL1, FL2…), cada uma com o nome, o branch e "limpo", "3 alt.", "2 commits", "preparando" ou "preparo falhou". Um ▲ marca voos no ar ali. O `+` cria um nível. Clicar no nível aberto abre o menu: pedir pouso, log do preparo, copiar o caminho e descartar. O nível aberto fica na URL (`&floor=`), e cada nível guarda o próprio zoom.
+- **Na interface:** a barra do topo tem a PISTA (o branch atual) e uma aba por nível (FL1, FL2…), cada uma com o nome, o branch e "limpo", "3 alt.", "2 commits", "preparando" ou "preparo falhou". Um ▲ marca voos no ar ali. O `+` cria um nível. Clicar no nível aberto abre o menu: pedir pouso, renomear, log do preparo, copiar o caminho e descartar. **Renomear** troca só o nome (o número, o branch e a pasta ficam), e os agentes passam a chamar o nível pelo nome novo. O nível aberto fica na URL (`&floor=`), e cada nível guarda o próprio zoom.
 - **Novo nível:** o número (FL3) aparece ao lado do nome e do branch. Um nível sem voos mostra o cartão "Nível vazio", com o comando `torre new … --floor` e o botão "Novo voo neste nível".
 - Voo, NOTAM e portal criados na tela vão para o nível aberto. O rodapé de cada voo mostra o nível, o branch e a pasta de verdade.
 - Um fio para um nó de outro nível aparece como etiqueta embaixo do nó (`⇄ PLN · pista`). Ela pulsa enquanto um pedido passa por ele, e um clique leva ao outro nível, centrado no nó.
 - O nível parte do último commit (alterações não commitadas ficam na pista). Recebe os arquivos versionados, mais os não versionados da lista de cópia do workspace (padrão `.env*`), e roda o comando de preparo, se houver (ex.: `npm install`). A lista e o comando ficam em Novo nível → Preparação (ou `PUT /w/<id>/api/floors/config`). O preparo roda no shell padrão (Git Bash no Windows), e a saída fica no "Log do preparo".
 - Os voos do nível abrem na cópia; pastas relativas, e mesmo uma pasta da pista dada por inteiro, apontam para a cópia. Um voo pode estar na frequência de voos de outros níveis: o líder na pista conversa com quem está no nível.
 - **Pousar** fecha os voos e portais do nível e apaga a pasta; as NOTAMs descem para a pista. O branch fica. Com `--merge`, antes mescla o branch no branch de origem (`--into outro` para outro), com commit de merge. Se o branch de destino não estiver aberto em nenhuma pasta, a mescla acontece sem tocar em pasta nenhuma. É recusado se o nível tiver alteração não commitada, se a pasta de destino tiver alteração em arquivo versionado, ou se o branch do nível tiver commitado um arquivo copiado da pista (como o `.env`, que pode ter segredos). Com conflito, nada muda, e a resposta lista os arquivos.
-- **Autorizar pouso · FL2:** o diálogo mostra os commits do nível, as checagens (tudo commitado, voos no ar, conflitos checados ao pousar), onde mesclar e o que fecha. Num conflito, ele lista os arquivos.
+- **Autorizar pouso · FL2:** o diálogo mostra os commits do nível, as checagens (conflitos, tudo commitado, voos no ar, commits novos na origem), onde mesclar e o que fecha. Os conflitos com o branch de origem são checados antes de tentar (`git merge-tree`, sem tocar em pasta): "✓ sem conflitos" ou "✕ 1 conflito · README.md". Com um git anterior ao 2.38, ou mesclando em outro branch, eles são checados ao pousar, e o diálogo lista os arquivos.
 - **Descartar** (só pelo usuário, no menu do nível) apaga tudo: voos, pasta (mesmo com trabalho não commitado) e o branch, se foi o nível que o criou.
 - **O Planejador decide sozinho:** quando divide a implementação em duas ou mais frentes em paralelo no mesmo repositório, cria um nível por frente. O Revisor e o Testador de cada frente vão para o nível dela. Com uma frente só, ele trabalha na pista. No fim, pousa uma frente por vez com merge, e você aprova cada uma. Quem editou o papel Planejador antes continua com a própria versão; "Restaurar padrão" traz a regra.
 - Líderes criam e pousam níveis (só os que eles criaram); qualquer agente lista. Pelo MCP, `floors` (listar, criar) vem liberada, e `floor_land` pede aprovação.
@@ -293,7 +294,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
   - um resumo que estava sendo escrito quando a Torre fechou não continua: clique em "Resumir" de novo;
   - o × esconde o boletim só nesta janela: ao recarregar a página, ele volta.
 
-**NOTAMs:** as notas do canvas, em papel. Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a NOTAM para todos. Quando um agente edita a NOTAM, o trecho alterado fica destacado. No modo Editar, ela grava sozinha 0,8 s depois que você para de digitar, e Esc volta à prévia.
+**NOTAMs:** as notas do canvas, em papel. Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a NOTAM para todos. Quando um agente edita a NOTAM, o trecho alterado fica destacado. Selecionada, ela pode ser redimensionada pelas bordas (mínimo 280×200). No modo Editar, ela grava sozinha 0,8 s depois que você para de digitar, e Esc volta à prévia.
 
 **Nome das NOTAMs:**
 - **NOTAM nova** (tecla N ou barra de ferramentas): já abre com o campo de nome selecionado. Enter confirma; Esc fica com o nome provisório ("Nota", "Nota 2"…). O arquivo nasce com o nome que você der ("Plano de testes" → `plano-de-testes.md`) e não muda mais.

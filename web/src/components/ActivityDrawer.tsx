@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { api } from '../api/client';
 import { CHOICES, askPhrase, respond } from '../lib/attention';
 import type { IconName } from '../lib/icons';
 import { callsign, clock, elapsed } from '../lib/model';
 import { useNodeRoleColor } from '../lib/roles';
+import { toast } from '../lib/toast';
 import { useNow } from '../lib/useNow';
 import { useSquad, type ActivityItem } from '../state/store';
 import { Icon } from './Icon';
@@ -172,11 +174,18 @@ export function ActivityDrawer() {
                   {o.label(a, now)}
                 </span>
               </div>
-              {a.text && a.outcome !== 'turn' && <div className="ad-msg">{a.text}</div>}
+              {a.text && a.outcome !== 'turn' && <Message item={a} />}
               {open && (
                 <div className="ad-actions">
                   <button className="btn" onClick={() => goTo(a.to)}>
                     Ver no espaço
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={() => api.cancelRequest(a.id!).catch((e: Error) => toast(e.message, 'err'))}
+                    title={`${who(a.from, a.fromName)} recebe "cancelado" agora; ${who(a.to, a.toName)} não é interrompido`}
+                  >
+                    Cancelar pedido
                   </button>
                 </div>
               )}
@@ -195,5 +204,34 @@ export function ActivityDrawer() {
         </button>
       </footer>
     </aside>
+  );
+}
+
+/** A message in the Rádio: four lines, and the whole request on demand. */
+function Message({ item }: { item: ActivityItem }) {
+  const [full, setFull] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  // Requests arrive as a preview cut at 140 characters ("…").
+  const cut = !!item.id && item.key.startsWith('req-') && item.text.endsWith('…');
+  const toggle = () => {
+    if (open) return setOpen(false);
+    if (full !== null) return setOpen(true);
+    api
+      .requestText(item.id!)
+      .then((r) => {
+        setFull(r.text);
+        setOpen(true);
+      })
+      .catch((e: Error) => toast(e.message, 'err'));
+  };
+  return (
+    <>
+      <div className={`ad-msg${open ? ' full' : ''}`}>{open && full !== null ? full : item.text}</div>
+      {cut && (
+        <button className="ad-more" onClick={toggle}>
+          {open ? 'Mostrar menos' : 'Ver o pedido inteiro'}
+        </button>
+      )}
+    </>
   );
 }

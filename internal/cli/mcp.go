@@ -140,10 +140,10 @@ func optional(args []string, flag, field, v string) ([]string, error) {
 type (
 	noInput   struct{}
 	nameInput struct {
-		Name string `json:"name" jsonschema:"terminal name, exactly as list prints it"`
+		Name string `json:"name" jsonschema:"terminal name or callsign, exactly as list prints it"`
 	}
 	askInput struct {
-		Name    string `json:"name" jsonschema:"agent name, exactly as list prints it"`
+		Name    string `json:"name" jsonschema:"agent name or callsign, exactly as list prints it"`
 		Message string `json:"message" jsonschema:"what to ask or tell it"`
 	}
 	batchInput struct {

@@ -2,6 +2,19 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F5a: extras
+
+- **Indicativo na CLI e no MCP:** `torre ask IMP "…"`, `check`, `wait`, `connect` e `close` acham o voo pelo indicativo, em qualquer caixa; o nome vale primeiro. O `torre list` mostra `callsign: IMP` no fim de cada linha (no fim para não mudar o começo das linhas, que os agentes já conhecem). O texto da skill e do MCP diz isso.
+- **Renomear nível:** `PATCH /w/<id>/api/floors/{id} {name}` e "Renomear…" no menu do nível. Só o nome muda: o id, o número, o branch e a pasta ficam. As regras são as do nível novo (não pode ser "pista", nem um nome de outro nível).
+- **Cancelar pedido:** `POST /w/<id>/api/requests/{id}/cancel` e o botão no pedido aberto do Rádio. Quem pediu recebe um 409 dizendo que você cancelou e que `torre wait` pega a resposta se o outro voo continuar. **Decisão sem consulta:** o outro voo não é interrompido (interromper um agente no meio do trabalho é outra decisão, que o usuário toma na tela dele).
+- **Pedido inteiro no Rádio:** o barramento guarda o texto dos 200 últimos pedidos (`GET /w/<id>/api/requests/{id}`), e "Ver o pedido inteiro" aparece quando a prévia veio cortada. Os pedidos que já estavam abertos quando a página abriu agora também entram no Rádio (antes só apareciam no contador).
+- **NOTAM redimensionável:** pelas bordas, com mínimo de 280×200, como o portal. O servidor já guardava `w` e `h`.
+- **Transmitir a um nível:** no "+ destino", "Todos os voos de FL1 · Login" (e da PISTA) para cada nível com dois voos ou mais. Acrescenta os voos do nível aos destinos.
+- **Conflito antes do pouso:** `GET /api/floors/{id}/changes` (e o da cópia da sessão) traz `conflicts`, de `git merge-tree --write-tree` contra o branch de origem, só quando os dois lados andaram. As checagens do diálogo mostram "✓ sem conflitos" ou "✕ 1 conflito" com os arquivos. Com o git anterior ao 2.38, `conflicts` vem `null`, e o diálogo volta a dizer "checados ao pousar".
+- **Rotas só da interface:** as três rotas novas ficam nas rotas de sessão do workspace, longe do `/cli` e do MCP.
+- **Testado aqui:** `TestAskByCallsign`, `TestRequestTextAndCancel` (texto inteiro, cancelar, cancelar de novo dá `request.gone`), `TestRenameAndCleanPrecheck` e o conflito previsto em `TestConflictsChangeNothing`, `make check` com o navegador; na interface, com agentes falsos e um repositório de teste: o Rádio com o pedido inteiro e o cancelamento (o `torre ask` recebeu a mensagem de cancelado), o Composer com "Todos os voos de PISTA", renomear o FL1 pela tela, o pouso com "1 conflito · README.md" e a NOTAM redimensionada e salva.
+- **Não testado:** o indicativo com o Claude e o Devin reais (o caminho é o mesmo do nome, no servidor).
+
 ## 2026-10-17, Torre F4c: primeira abertura
 
 - **Passo 1, Enlace:** a página de login do Go foi redesenhada sobre o radar, com os passos no topo, o campo da URL e "só 127.0.0.1 · o token fica num cookie". O botão continua "Entrar" (o teste do login procura o texto).

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { UIState, WNode } from '../api/types';
+import { flightLevel } from '../lib/floors';
 import { STATE_META, callsign } from '../lib/model';
 import { roleColor, useRole, useRoleLookup } from '../lib/roles';
 import { toast } from '../lib/toast';
@@ -137,6 +138,16 @@ function ComposerPanel() {
 
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const terminals = nodes.filter((n) => n.terminal);
+  // "Todos os voos do FL1": every level with two flights or more.
+  const floors = useSquad((s) => s.workspace?.floors);
+  const levels = useMemo(() => {
+    const out: { key: string; label: string; ids: string[] }[] = [];
+    for (const f of [null, ...(floors ?? [])]) {
+      const ids = terminals.filter((n) => (n.floor ?? '') === (f?.id ?? '')).map((n) => n.id);
+      if (ids.length >= 2) out.push({ key: f?.id ?? '', label: f ? `${flightLevel(f)} · ${f.name}` : 'PISTA', ids });
+    }
+    return out;
+  }, [floors, terminals]);
 
   // Mentionable: nodes linked to every target (handoff §7).
   const { linked, unlinked } = useMemo(() => {
@@ -360,6 +371,24 @@ function ComposerPanel() {
           {picker && (
             <div className="popover cmp-picker" onMouseLeave={() => setPicker(false)}>
               {terminals.filter((n) => !targets.includes(n.id)).length === 0 && <div className="mm-empty">Todos os voos já são destino.</div>}
+              {levels
+                .filter((l) => l.ids.some((id) => !targets.includes(id)))
+                .map((l) => (
+                  <button
+                    key={`level-${l.key}`}
+                    className="mm-item cmp-level"
+                    onClick={() => {
+                      setTargets([...targets, ...l.ids.filter((id) => !targets.includes(id))]);
+                      setPicker(false);
+                      editor.current?.focus();
+                    }}
+                  >
+                    <Icon name="layers" size={16} />
+                    Todos os voos de <b className="mono">{l.label}</b>
+                    <span className="tn-spacer" />
+                    <span className="mono cmp-level-n">{l.ids.length}</span>
+                  </button>
+                ))}
               {terminals
                 .filter((n) => !targets.includes(n.id))
                 .map((n) => (

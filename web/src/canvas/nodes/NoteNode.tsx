@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Node, NodeProps } from '@xyflow/react';
+import { NodeResizer, type Node, type NodeProps, type ResizeParams } from '@xyflow/react';
 import { ApiError, api } from '../../api/client';
 import type { NoteData, WNode } from '../../api/types';
 import { confirmDialog } from '../../components/ConfirmDialog';
@@ -113,8 +113,16 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
     ? { from: mark.from, to: mark.to, role: authorRole(mark.author), label: `${mark.author} escreveu ${ago(now - mark.at)}` }
     : null;
 
+  const onResizeEnd = (_: unknown, p: ResizeParams) => {
+    useSquad.getState().moveNodeLocal(id, Math.round(p.x), Math.round(p.y));
+    api
+      .updateNode(id, { x: Math.round(p.x), y: Math.round(p.y), w: Math.round(p.width), h: Math.round(p.height) })
+      .catch((e: Error) => toast(e.message, 'err'));
+  };
+
   return (
     <div className={`nnode${selected ? ' selected' : ''}${note.locked ? ' locked' : ''}${connectClass(target)}`}>
+      <NodeResizer isVisible={selected} minWidth={280} minHeight={200} onResizeEnd={onResizeEnd} />
       <NodeHandles id={id} />
       <header className="nn-head node-drag">
         <span className="nn-tag">NOTAM</span>

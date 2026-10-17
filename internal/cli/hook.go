@@ -88,7 +88,7 @@ works everywhere.
 
 ## Commands
 
-- ` + "`torre list`" + `: who you are and what is connected to you, with each agent's role (Planejador, Implementador, Revisor, Testador…). Run it first, use names exactly as printed, and give work to the agent whose role fits it. Your own role's instructions came with your session.
+- ` + "`torre list`" + `: who you are and what is connected to you, with each agent's role (Planejador, Implementador, Revisor, Testador…). Run it first, use names (or the short callsigns, like IMP) exactly as printed, and give work to the agent whose role fits it. Your own role's instructions came with your session.
 - ` + "`torre ask \"Name\" \"message\"`" + `: send a message and wait for the reply. The reply is the other agent's final answer for that turn (or its screen when it has no hook). Set your shell tool timeout generously (minutes for real tasks).
 - ` + "`torre ask \"Name\" --raw \"keys\"`" + `: type keys into a terminal (escapes: \n Enter, \t Tab, \e ESC, \xNN byte, e.g. \x03 Ctrl-C) and get its screen back. Use for menus or shells.
 - ` + "`torre ask --batch '{\"A\": \"m1\", \"B\": \"m2\"}'`" + `: ask several at once; returns a JSON array of {name, output|error}.
