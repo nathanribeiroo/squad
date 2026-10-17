@@ -7,12 +7,12 @@
 .sm-check b, .sm-engine b { color: var(--text); font-weight: 600; font-size: 12.5px; }
 .sm-group { display: flex; flex-direction: column; gap: 6px; }
 .sm-title { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
-.sm-engine { padding: 6px 8px; border-radius: 6px; border: 1px solid transparent; }
+.sm-engine { padding: 6px 8px; border-radius: 0; border: 1px solid transparent; }
 .sm-engine.on { border-color: var(--line-2); background: var(--surface-2); }
 .sm-engine > span { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
 .sm-engine.missing b { color: var(--text-2); }
 .sm-tag { font-size: 10.5px; font-family: var(--font-mono); color: var(--text-3); }
-.sm-tag.ok { color: var(--st-done); }
+.sm-tag.ok { color: var(--stt-done); }
 .sm-hint { flex-basis: 100%; font-size: 11.5px; color: var(--text-3); }
 .sm-busy { display: flex; align-items: center; gap: 8px; color: var(--text-2); margin: 4px 0; }
 .sm-text { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--text); }

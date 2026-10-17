@@ -3,7 +3,7 @@
   height: 132px;
   background: var(--surface);
   border: 1px solid var(--line-2);
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
   box-shadow: var(--shadow);
 }
@@ -12,7 +12,7 @@
   position: absolute;
   bottom: 18px;
   height: 30px;
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--surface);
   border: 1px solid var(--line-2);
   box-shadow: var(--shadow);
@@ -27,7 +27,7 @@
   border: 0;
   background: transparent;
   color: var(--text-2);
-  border-radius: 5px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;

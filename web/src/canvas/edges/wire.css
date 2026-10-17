@@ -35,7 +35,7 @@
   offset-distance: 0%;
   animation: wire-envelope 600ms ease-out forwards;
   height: 24px;
-  border-radius: 5px;
+  border-radius: 0;
   padding: 0 7px 0 6px;
   display: inline-flex;
   align-items: center;
@@ -55,7 +55,7 @@
 .wire-pill {
   position: absolute;
   height: 30px;
-  border-radius: 15px;
+  border-radius: 0;
   padding: 0 12px 0 9px;
   display: inline-flex;
   align-items: center;
@@ -68,9 +68,9 @@
   white-space: nowrap;
   pointer-events: all;
 }
-.wire-pill.wait { color: var(--st-wait); }
-.wire-pill.done { border-color: var(--st-done); color: var(--st-done); }
-.wire-pill.err { border-color: var(--st-err); color: var(--st-err); }
+.wire-pill.wait { color: var(--stt-wait); }
+.wire-pill.done { border-color: var(--st-done); color: var(--stt-done); }
+.wire-pill.err { border-color: var(--st-err); color: var(--stt-err); }
 .wire-pill.fade { animation: wire-fade 4000ms ease-in forwards; }
 @keyframes wire-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 .wire-time { font-size: 13px; font-weight: 600; }
@@ -94,7 +94,7 @@
   position: absolute;
   pointer-events: all;
   height: 26px;
-  border-radius: 13px;
+  border-radius: 0;
   border: 1px solid var(--line-2);
   background: var(--surface);
   box-shadow: var(--shadow);
@@ -106,7 +106,7 @@
   font-weight: 600;
   cursor: pointer;
 }
-.wire-unlink:hover { border-color: var(--st-err); color: var(--st-err); }
+.wire-unlink:hover { border-color: var(--st-err); color: var(--stt-err); }
 
 /* An agent acting on the portal at the other end (torre portal click…). */
 .wire-pill.act { animation: wire-fade 2500ms ease-in forwards; }

@@ -30,9 +30,9 @@ export function InterruptedBar() {
   };
   return (
     <div className="ib" role="status">
-      <Icon name="sync_problem" size={16} />
+      <Icon name="u_turn_left" size={16} />
       <span className="ib-text">
-        <strong>{who}</strong> no meio do trabalho. A conversa voltou; falta só continuar.
+        <strong>Arremetida</strong> · {who} no meio do turno. A conversa voltou; falta só continuar.
       </span>
       <button className="btn filled ib-btn" disabled={busy} onClick={() => run('continue')} title='Manda "Continue de onde parou" a cada um'>
         <Icon name="play_arrow" size={16} />

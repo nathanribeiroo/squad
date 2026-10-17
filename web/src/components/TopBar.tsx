@@ -78,9 +78,9 @@ export function TopBar() {
           <span className="tb-ws-color" style={{ background: wsColor(ws?.color) }} />
           <span className="tb-ws-name">{ws?.name ?? '…'}</span>
           <span className="tb-ws-sub">
-            {active} {active === 1 ? 'agente ativo' : 'agentes ativos'}
+            {active} {active === 1 ? 'voo no ar' : 'voos no ar'}
           </span>
-          {elsewhere && <span className="tb-ws-elsewhere" title="Atividade em outro workspace" />}
+          {elsewhere && <span className="tb-ws-elsewhere" title="Voos no ar em outro workspace" />}
           {index >= 0 && index < 9 && <span className="kbd">⌥{index + 1}</span>}
           <Icon name="expand_more" size={18} />
         </button>
@@ -112,21 +112,21 @@ export function TopBar() {
         <span className="mono">
           {rate}/{extra.limits.perMinute}
         </span>
-        <span className="tb-rate-label">pedidos por min</span>
+        <span className="tb-rate-label">por min</span>
       </span>
-      <button className="btn" onClick={togglePause} title={extra.paused ? 'Retomar conversas (⌥P)' : 'Pausar conversas (⌥P)'}>
+      <button className="btn" onClick={togglePause} title={extra.paused ? 'Liberar todos (⌥P)' : 'Espera geral: segura os pedidos entre os voos (⌥P)'}>
         <Icon name={extra.paused ? 'play_arrow' : 'pause'} />
-        {extra.paused ? 'Retomar conversas' : 'Pausar conversas'}
+        {extra.paused ? 'Liberar todos' : 'Espera geral'}
         <span className="kbd">⌥P</span>
       </button>
-      <button className={`btn${drawerOpen ? ' filled' : ''}`} onClick={() => setDrawer(!drawerOpen)} title="Atividade (⌥A)">
-        <Icon name="view_timeline" />
-        Atividade
+      <button className={`btn${drawerOpen ? ' filled' : ''}`} onClick={() => setDrawer(!drawerOpen)} title="Rádio (⌥A)">
+        <Icon name="cell_tower" />
+        Rádio
         {pending > 0 && <span className="tb-count mono">{pending}</span>}
       </button>
       <span className={`tb-server ${connection === 'connected' ? 'ok' : 'wait'}`}>
         <Icon name="lan" size={18} />
-        {connection === 'connected' ? 'servidor' : 'reconectando…'}
+        {connection === 'connected' ? 'Enlace' : 'Reconectando…'}
       </span>
       <div style={{ position: 'relative' }}>
         <button className="icon-btn" onClick={() => setMenu(!menu)} title="Configurações">
@@ -171,7 +171,7 @@ function SettingsMenu({ onClose }: { onClose: () => void }) {
         }}
       >
         <Icon name="psychology" size={18} />
-        Resumos…
+        Resumos e briefing…
       </button>
       <div className="tb-menu-title">Terminal</div>
       {(['noite', 'papel'] as const).map((t) => (

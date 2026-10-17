@@ -25,10 +25,10 @@ function list(names: string[]): string {
   }
 }
 
-/** "Planejador e Revisor estão trabalhando, e 1 pedido entre agentes está em andamento." */
+/** "Planejador e Revisor estão no ar, e 1 pedido entre agentes está em andamento." */
 export function busyText(b: Busy): string {
   const parts: string[] = [];
-  if (b.working.length) parts.push(`${list(b.working)} ${b.working.length === 1 ? 'está trabalhando' : 'estão trabalhando'}`);
+  if (b.working.length) parts.push(`${list(b.working)} ${b.working.length === 1 ? 'está no ar' : 'estão no ar'}`);
   if (b.pending) parts.push(b.pending === 1 ? '1 pedido entre agentes está em andamento' : `${b.pending} pedidos entre agentes estão em andamento`);
   return parts.join(', e ') + '.';
 }
@@ -67,10 +67,10 @@ function count(n: number, one: string, many: string): string {
 /** "3 terminais · 2 notas · 1 portal · 1 andar", or "vazia". */
 export function contents(s: SessionSummary): string {
   const parts = [];
-  if (s.terminals) parts.push(count(s.terminals, 'terminal', 'terminais'));
-  if (s.notes) parts.push(count(s.notes, 'nota', 'notas'));
+  if (s.terminals) parts.push(count(s.terminals, 'voo', 'voos'));
+  if (s.notes) parts.push(count(s.notes, 'NOTAM', 'NOTAMs'));
   if (s.portals) parts.push(count(s.portals, 'portal', 'portais'));
-  if (s.floors) parts.push(count(s.floors, 'andar', 'andares'));
+  if (s.floors) parts.push(count(s.floors, 'nível', 'níveis'));
   return parts.length ? parts.join(' · ') : 'vazia';
 }
 

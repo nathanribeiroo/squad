@@ -16,6 +16,6 @@
   box-shadow: var(--shadow);
   font-size: 12px;
 }
-.ib > .msi { color: var(--st-wait); flex: none; }
+.ib > .msi { color: var(--stt-wait); flex: none; }
 .ib-text { min-width: 0; }
 .ib-btn { height: 26px; flex: none; }

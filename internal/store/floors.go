@@ -208,7 +208,7 @@ func (s *Store) MoveNode(id, floor string, x, y float64) (Node, error) {
 // IsGround reports whether a floor name means the ground floor.
 func IsGround(name string) bool {
 	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "ground", "térreo", "terreo":
+	case "ground", "pista", "térreo", "terreo":
 		return true
 	}
 	return false

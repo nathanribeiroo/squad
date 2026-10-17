@@ -58,6 +58,22 @@ O nome mudou, e o que você já tinha continua funcionando:
 - **Andares e cópias de sessão** novos ficam em `<pasta-pai>/.torre/…`; os que já existem continuam em `.squad/`.
 - **Login:** a janela e as abas continuam logadas (o cookie antigo vale e é trocado pelo novo).
 
+### Vocabulário da interface
+
+A interface usa a metáfora da torre de controle (a lista completa está em [`docs/torre/RENOMEACAO.md`](docs/torre/RENOMEACAO.md)). Os comandos dos agentes continuam em inglês (`torre floor land`, por exemplo).
+
+| Antes | Agora |
+|---|---|
+| terminal (de agente ou shell) | voo |
+| fio, ligar | frequência, pôr na mesma frequência |
+| andar · térreo | nível de voo (FL1, FL2…) · pista |
+| aterrissar, mesclar a sessão | pousar, pedir pouso |
+| pausar conversas · retomar | espera geral · liberar todos |
+| Atividade · Composer | Rádio · Transmitir |
+| nota · cartão de turno · resumo do workspace | NOTAM · boletim · briefing |
+| gerente · interrompido · servidor | líder · arremetida · enlace |
+| Iniciando, Ocioso, Trabalhando, Esperando resposta, Terminou, Parado, Descarregado | Taxiando, Pátio, No ar, Aguarda, Em solo, Pane, Hangar |
+
 ### Janela de app
 
 A Torre abre numa janela própria, sem abas e sem barra de endereço, com o ícone dela na barra de tarefas e o nome do workspace no título.
@@ -93,8 +109,8 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 **Ícones:** a fonte Material Symbols é cortada para os ícones listados em `web/src/lib/icons.ts` (cerca de 9 KB em vez de 4 MB). Para usar um ícone novo, acrescente o nome nessa lista e rode `make icons`. O `npm run build` recusa uma fonte desatualizada.
 
 **Atalhos:**
-- canvas: `V` selecionar, `H` mover, `T` novo terminal, `N` nota, `P` portal;
-- globais: `⌥A` gaveta de atividade, `⌥P` pausar conversas, `⌥K` composer.
+- canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal;
+- globais: `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir.
 
 **Conexões:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó. Um clique no fio o seleciona; para desligar, use Delete ou o botão "Desligar". Duplo clique no fio cria um ponto de curva, que pode ser arrastado; duplo clique no ponto o remove.
 

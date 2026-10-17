@@ -471,7 +471,7 @@ export const useSquad = create<SquadState>((set, get) => ({
       case 'request.held':
         set({
           activity: [
-            { key: `held-${ev.time}`, time: ev.time, from: d.from, to: d.to, fromName: d.fromName, toName: d.toName, text: d.paused ? 'Retido: conversas pausadas' : 'Retido: limite de pedidos por minuto', outcome: 'held' as const },
+            { key: `held-${ev.time}`, time: ev.time, from: d.from, to: d.to, fromName: d.fromName, toName: d.toName, text: d.paused ? 'Retido: espera geral' : 'Retido: limite de pedidos por minuto', outcome: 'held' as const },
             ...st.activity,
           ].slice(0, 200),
         });
@@ -483,7 +483,7 @@ export const useSquad = create<SquadState>((set, get) => ({
           extra: { ...st.extra, paused: !!d.paused },
           activity: loop
             ? [
-                { key: `loop-${ev.time}`, time: ev.time, fromName: 'Torre', toName: 'todos', text: `Laço: limite de ${st.extra.limits.maxHops} saltos atingido ${reason.replace(/^hop limit \d+ reached /, '')}. Conversas pausadas até você retomar.`, outcome: 'held' as const },
+                { key: `loop-${ev.time}`, time: ev.time, fromName: 'Torre', toName: 'todos', text: `Laço: limite de ${st.extra.limits.maxHops} saltos atingido ${reason.replace(/^hop limit \d+ reached /, '')}. Espera geral até você liberar.`, outcome: 'held' as const },
                 ...st.activity,
               ].slice(0, 200)
             : st.activity,

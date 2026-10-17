@@ -68,7 +68,7 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
       if (configChanged) await api.floorConfig({ copy: patterns(copy), setup: setup.trim() });
       const f = await api.createFloor({ name: name.trim(), branch: branchEdited ? target : undefined, existing });
       useSquad.getState().setFloor(f.id);
-      toast(`Andar ${f.name} criado: branch ${f.branch}`);
+      toast(`Nível ${f.name} criado: branch ${f.branch}`);
       onClose();
     } catch (err) {
       setError((err as Error).message);
@@ -78,7 +78,7 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Dialog icon="layers" title="Novo andar" sub="Uma cópia isolada do repositório, num branch próprio, com um canvas próprio." onClose={onClose}>
+    <Dialog icon="layers" title="Novo nível de voo" sub="Uma cópia isolada do repositório, num branch próprio, com um canvas próprio." onClose={onClose}>
       <form className="fl-form" onSubmit={submit}>
         <label className="field">
           Nome
@@ -99,11 +99,11 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
         <p className="field-hint">
           {existing ? (
             <>
-              O branch <b className="mono">{target}</b> já existe: o andar abre esse branch como está.
+              O branch <b className="mono">{target}</b> já existe: o nível abre esse branch como está.
             </>
           ) : (
             <>
-              Parte do último commit de <b className="mono">{ground || GROUND}</b>. O que ainda não foi commitado fica no térreo.
+              Parte do último commit de <b className="mono">{ground || GROUND}</b>. O que ainda não foi commitado fica na pista.
             </>
           )}
         </p>
@@ -118,7 +118,7 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
         {prep && (
           <div className="fl-prep">
             <label className="field">
-              Copiar do térreo (arquivos fora do git)
+              Copiar da pista (arquivos fora do git)
               <input className="mono" value={copy} placeholder=".env*, config/local.json" onChange={(e) => setCopy(e.target.value)} />
             </label>
             <label className="field">
@@ -126,7 +126,7 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
               <input className="mono" value={setup} placeholder="ex.: npm install" onChange={(e) => setSetup(e.target.value)} />
             </label>
             <p className="field-hint">
-              Valem para os próximos andares deste workspace. Os caminhos partem da pasta do workspace; o comando roda na cópia, no shell padrão, depois da cópia dos
+              Valem para os próximos níveis deste workspace. Os caminhos partem da pasta do workspace; o comando roda na cópia, no shell padrão, depois da cópia dos
               arquivos.
             </p>
           </div>
@@ -137,7 +137,7 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
             Cancelar
           </button>
           <button className="btn filled" disabled={busy || !name.trim() || !target}>
-            {busy ? 'Criando…' : 'Criar andar'}
+            {busy ? 'Criando…' : 'Criar nível'}
           </button>
         </div>
       </form>
@@ -251,14 +251,14 @@ function refusalOf(e: unknown): Refusal {
   };
 }
 
-/** Why a land or a merge was refused; nothing changed. who is "do andar" or
+/** Why a land or a merge was refused; nothing changed. who is "do nível" or
  * "da sessão", again what to do after fixing it. */
 function RefusalView({ r, into, branch, who, again }: { r: Refusal; into: string; branch: string; who: string; again: string }) {
   return (
     <div className="fl-error">
       {r.conflicts ? (
         <>
-          <b>Conflito ao mesclar em {into}. Nada mudou.</b> Peça a um agente {who} para mesclar {into} no branch {branch}, resolver e commitar; depois {again}.
+          <b>Conflito ao mesclar em {into}. Nada mudou.</b> Peça a um voo {who} para mesclar {into} no branch {branch}, resolver e commitar; depois {again}.
           <Files files={r.conflicts.map((path) => ({ path }))} />
         </>
       ) : r.folder ? (
@@ -303,10 +303,10 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
       const r = await api.landFloor(floor.id, mode === 'merge' ? { into } : {});
       toast(
         r.merged
-          ? `${floor.name} aterrissado: ${r.branch} mesclado em ${r.into} (${(r.commit ?? '').slice(0, 7)})`
+          ? `${floor.name} pousou: ${r.branch} em ${r.into} (${(r.commit ?? '').slice(0, 7)})`
           : r.upToDate
-            ? `${floor.name} aterrissado: ${r.into} já tinha tudo de ${r.branch}`
-            : `${floor.name} aterrissado; o trabalho continua no branch ${r.branch}`,
+            ? `${floor.name} pousou: ${r.into} já tinha tudo de ${r.branch}`
+            : `${floor.name} pousou; o trabalho continua no branch ${r.branch}`,
       );
       onClose();
     } catch (e) {
@@ -321,7 +321,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
   return (
     <Dialog
       icon="flight_land"
-      title={`Aterrissar ${floor.name}`}
+      title={`Autorizar pouso · ${floor.name}`}
       sub={
         <span className="mono">
           ⎇ {floor.branch}
@@ -338,21 +338,21 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
           </button>
           <button className="btn filled" disabled={busy || !changes || dirty || (mode === 'merge' && !canMerge)} onClick={land}>
             <Icon name={mode === 'merge' ? 'call_merge' : 'flight_land'} />
-            {busy ? 'Aterrissando…' : mode === 'merge' ? `Mesclar e aterrissar` : 'Aterrissar'}
+            {busy ? 'Pousando…' : mode === 'merge' ? 'Mesclar e pousar' : 'Pousar'}
           </button>
         </>
       }
     >
       {loadError && <p className="fl-error">{loadError}</p>}
-      {!changes && !loadError && <p className="field-hint">Lendo o andar…</p>}
+      {!changes && !loadError && <p className="field-hint">Lendo o nível…</p>}
       {changes && (
         <>
-          {changes.missing && <p className="fl-warn">A pasta do andar sumiu. Aterrissar só limpa o registro; os commits do branch continuam.</p>}
-          <Commits changes={changes} base={floor.base} what={['commit do andar', 'commits do andar', 'Nenhum commit novo no andar']} />
+          {changes.missing && <p className="fl-warn">A pasta do nível sumiu. Pousar só limpa o registro; os commits do branch continuam.</p>}
+          <Commits changes={changes} base={floor.base} what={['commit do nível', 'commits do nível', 'Nenhum commit novo no nível']} />
           {dirty && (
             <div className="fl-warn">
-              <b>{plural(changes.files.length, 'alteração não commitada', 'alterações não commitadas')}.</b> Commite antes de aterrissar (peça a um agente do andar), ou
-              descarte o andar.
+              <b>{plural(changes.files.length, 'alteração não commitada', 'alterações não commitadas')}.</b> Commite antes de pousar (peça a um voo do nível), ou
+              descarte o nível.
               <Files files={changes.files} />
             </div>
           )}
@@ -373,11 +373,11 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
             </label>
           </section>
           <p className="field-hint">
-            Ao aterrissar: {closes.length ? `fecha ${list(closes.map(label))}; ` : ''}
-            {notes.length ? `${list(notes.map(label))} ${notes.length > 1 ? 'descem' : 'desce'} para o térreo; ` : ''}a pasta {shortPath(floor.cwd)} é apagada e o
+            Ao pousar: {closes.length ? `fecha ${list(closes.map(label))}; ` : ''}
+            {notes.length ? `${list(notes.map(label))} ${notes.length > 1 ? 'descem' : 'desce'} para a pista; ` : ''}a pasta {shortPath(floor.cwd)} é apagada e o
             branch {floor.branch} continua.
           </p>
-          {refusal && <RefusalView r={refusal} into={target} branch={floor.branch} who="do andar" again="aterrisse de novo" />}
+          {refusal && <RefusalView r={refusal} into={target} branch={floor.branch} who="do nível" again="peça o pouso de novo" />}
         </>
       )}
     </Dialog>
@@ -399,7 +399,7 @@ function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
     setRefusal(null);
     try {
       const r = await api.mergeCopy(into);
-      toast(r.upToDate ? `${r.into} já tinha tudo de ${r.branch}` : `${r.branch} mesclado em ${r.into} (${(r.commit ?? '').slice(0, 7)}); a sessão continua na cópia`);
+      toast(r.upToDate ? `${r.into} já tinha tudo de ${r.branch}` : `A sessão pousou: ${r.branch} em ${r.into} (${(r.commit ?? '').slice(0, 7)}); ela continua na cópia`);
       onClose();
     } catch (e) {
       setRefusal(refusalOf(e));
@@ -411,7 +411,7 @@ function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
   return (
     <Dialog
       icon="call_merge"
-      title="Mesclar a sessão"
+      title="Autorizar pouso · sessão"
       sub={
         <span className="mono">
           ⎇ {copy.branch}
@@ -427,8 +427,8 @@ function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
             Cancelar
           </button>
           <button className="btn filled" disabled={busy || !changes || dirty || !into || changes.missing} onClick={merge}>
-            <Icon name="call_merge" />
-            {busy ? 'Mesclando…' : 'Mesclar'}
+            <Icon name="flight_land" />
+            {busy ? 'Pousando…' : 'Mesclar e pousar'}
           </button>
         </>
       }
@@ -441,7 +441,7 @@ function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
           <Commits changes={changes} base={copy.base} what={['commit da sessão', 'commits da sessão', 'Nenhum commit novo na sessão']} />
           {dirty && (
             <div className="fl-warn">
-              <b>{plural(changes.files.length, 'alteração não commitada', 'alterações não commitadas')}.</b> Commite antes de mesclar (peça a um agente da sessão).
+              <b>{plural(changes.files.length, 'alteração não commitada', 'alterações não commitadas')}.</b> Commite antes de pousar (peça a um voo da sessão).
               <Files files={changes.files} />
             </div>
           )}
@@ -456,7 +456,7 @@ function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
           <p className="field-hint">
             A cópia <span className="mono">{shortPath(copy.cwd)}</span> continua: a sessão segue trabalhando no branch {copy.branch} e pode mesclar de novo.
           </p>
-          {refusal && <RefusalView r={refusal} into={into} branch={copy.branch} who="da sessão" again="mescle de novo" />}
+          {refusal && <RefusalView r={refusal} into={into} branch={copy.branch} who="da sessão" again="peça o pouso de novo" />}
         </>
       )}
     </Dialog>
@@ -477,7 +477,7 @@ function DiscardFloor({ floor, onClose }: { floor: Floor; onClose: () => void })
     const undo = expectGone(floor.id);
     try {
       await api.discardFloor(floor.id);
-      toast(`Andar ${floor.name} descartado`);
+      toast(`Nível ${floor.name} descartado`);
       onClose();
     } catch (e) {
       undo();
@@ -501,7 +501,7 @@ function DiscardFloor({ floor, onClose }: { floor: Floor; onClose: () => void })
           </button>
           <button className="btn fl-btn-danger" disabled={busy || !changes || (loses && !sure)} onClick={discard}>
             <Icon name="delete" />
-            {busy ? 'Descartando…' : 'Descartar andar'}
+            {busy ? 'Descartando…' : 'Descartar nível'}
           </button>
         </>
       }
@@ -516,7 +516,7 @@ function DiscardFloor({ floor, onClose }: { floor: Floor; onClose: () => void })
           {closes.length > 0 && <li>Fecha {list(closes.map(label))}.</li>}
           {notes.length > 0 && (
             <li>
-              {list(notes.map(label))} {notes.length > 1 ? 'descem' : 'desce'} para o térreo.
+              {list(notes.map(label))} {notes.length > 1 ? 'descem' : 'desce'} para a pista.
             </li>
           )}
           <li>
@@ -574,7 +574,7 @@ function SetupLog({ floor, title, load, onClose }: { floor: Floor; title: string
       ) : log ? (
         <pre className="fl-log mono">{log}</pre>
       ) : (
-        <p className="field-hint">Não rodou comando de preparo. Ele se configura em Novo andar → Preparação.</p>
+        <p className="field-hint">Não rodou comando de preparo. Ele se configura em Novo nível de voo → Preparação.</p>
       )}
     </Dialog>
   );

@@ -50,7 +50,7 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
         ) : (
           <span
             className="pn-title"
-            title={`${stream.state?.title ? `${stream.state.title}\n` : ''}Os agentes usam este nome: torre portal "${portal.name || 'Portal'}" … (duplo clique para renomear)`}
+            title={`${stream.state?.title ? `${stream.state.title}\n` : ''}Os voos usam este nome: torre portal "${portal.name || 'Portal'}" … (duplo clique para renomear)`}
             onDoubleClick={() => setRenaming(true)}
           >
             {portal.name || 'Portal'}
@@ -186,14 +186,14 @@ function LiveBadge({ stream, hasUrl, paused }: { stream: PortalStream; hasUrl: b
     text = 'pausado'; // zoomed out: the last frame, not streaming
   } else if (stream.noBrowser) {
     text = 'sem navegador';
-    color = 'var(--st-err)';
+    color = 'var(--stt-err)';
   } else if (stream.state?.loading) {
     text = 'carregando…';
-    color = 'var(--st-work)';
+    color = 'var(--stt-work)';
   } else if (stream.connected && stream.frame) {
     const slow = (stream.latency ?? 0) > 400;
     text = `ao vivo${stream.latency != null ? ` · ${stream.latency} ms` : ''}`;
-    color = slow ? 'var(--st-wait)' : 'var(--st-done)';
+    color = slow ? 'var(--stt-wait)' : 'var(--stt-done)';
   } else if (hasUrl && stream.connected) {
     text = 'abrindo…';
   }
