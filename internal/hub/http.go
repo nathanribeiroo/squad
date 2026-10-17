@@ -43,6 +43,8 @@ func (h *Hub) Handler() http.Handler {
 	mux.Handle("PATCH /api/workspaces/{id}/sessions/{sid}", sess(h.handleRenameSession))
 	mux.Handle("DELETE /api/workspaces/{id}/sessions/{sid}", sess(h.handleRemoveSession))
 	mux.Handle("GET /api/dirs", sess(h.handleDirs))
+	mux.Handle("GET /api/dirs/info", sess(h.handleDirInfo))
+	mux.Handle("GET /api/welcome", sess(h.handleWelcome))
 	mux.Handle("GET /api/roles", sess(h.handleRolesList))
 	mux.Handle("POST /api/roles", sess(h.handleRoleCreate))
 	mux.Handle("PUT /api/roles/{id}", sess(h.handleRoleUpdate))
