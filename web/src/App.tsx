@@ -17,6 +17,7 @@ import { NoLink } from './components/NoLink';
 import { PriorityBanner } from './components/PriorityBanner';
 import { RolesPanel } from './components/RolesPanel';
 import { SettingsPanel } from './components/SettingsPanel';
+import { Synoptic } from './components/synoptic/Synoptic';
 import { SummaryDialogs } from './components/SummaryDialogs';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
@@ -81,6 +82,7 @@ function typing(t: EventTarget | null): boolean {
 }
 
 function Stage() {
+  const view = useSquad((s) => s.view);
   const rf = useReactFlow();
 
   const create = useCallback(
@@ -109,7 +111,11 @@ function Stage() {
             st.workspaces.slice(0, 9).map((w, i) => [`Digit${i + 1}`, () => st.switchWorkspace(w.id)]),
           ),
           // The next flight asking you: its level, centered, with the keyboard.
-          Enter: () => void goToNextAsk(),
+          Enter: () => {
+            if (st.view !== 'space') st.setView('space');
+            void goToNextAsk();
+          },
+          KeyS: () => st.setView(st.view === 'space' ? 'synoptic' : 'space'),
           KeyK: () => {
             const isTerm = (id: string | null) => !!id && !!st.workspace?.nodes.find((n) => n.id === id && n.terminal);
             st.setComposer(!st.composerOpen, [st.focusedTerminal, st.selectedNode, st.composerTarget].find(isTerm) ?? null);
@@ -130,11 +136,21 @@ function Stage() {
       }
       // Plain letters only act on the canvas, never while typing (or in a dialog).
       if (e.metaKey || e.ctrlKey || typing(e.target) || st.rolesPanel !== false || document.querySelector('[aria-modal="true"]')) return;
-      // 1, 2, 3 answer the selected flight that asks you (RESPONDER).
-      const ask = st.selectedNode && st.askingIds.includes(st.selectedNode) ? st.runtime[st.selectedNode]?.attention : undefined;
+      // 1, 2, 3 answer the selected flight that asks you (RESPONDER); in the
+      // Sinóptico, the one on the PRIORIDADE card.
+      const askId = st.view === 'synoptic' ? st.askingIds[0] : st.selectedNode && st.askingIds.includes(st.selectedNode) ? st.selectedNode : null;
+      const ask = askId ? st.runtime[askId]?.attention : undefined;
       const answer = (choice: 'allow' | 'always' | 'deny') => () => {
-        if (ask?.choices?.includes(choice)) respond(st.selectedNode!, choice);
+        if (askId && ask?.choices?.includes(choice)) respond(askId, choice);
       };
+      if (st.view !== 'space') {
+        const key = { Digit1: 'allow', Digit2: 'always', Digit3: 'deny' }[e.code] as 'allow' | 'always' | 'deny' | undefined;
+        if (key && ask && !e.shiftKey) {
+          e.preventDefault();
+          answer(key)();
+        }
+        return; // the canvas' keys need the canvas
+      }
       const plain: Record<string, () => void> = {
         ...(ask ? { Digit1: answer('allow'), Digit2: answer('always'), Digit3: answer('deny') } : {}),
         KeyV: () => st.setTool('select'),
@@ -155,13 +171,19 @@ function Stage() {
 
   return (
     <main className="stage">
-      <Canvas />
-      <FloorEmpty />
-      <AirspaceEmpty onNote={() => create('note')} />
-      <InterruptedBar />
-      <PriorityBanner />
-      <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
-      <ComposerPill />
+      {view === 'synoptic' ? (
+        <Synoptic />
+      ) : (
+        <>
+          <Canvas />
+          <FloorEmpty />
+          <AirspaceEmpty onNote={() => create('note')} />
+          <InterruptedBar />
+          <PriorityBanner />
+          <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
+          <ComposerPill />
+        </>
+      )}
       <Composer />
       <ActivityDrawer />
       <RolesPanel />

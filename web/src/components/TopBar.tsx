@@ -38,6 +38,7 @@ export function TopBar() {
   const [wsMenu, setWsMenu] = useState(false);
   const [sesMenu, setSesMenu] = useState(false);
   const workspaces = useSquad((s) => s.workspaces);
+  const view = useSquad((s) => s.view);
   const activeWs = useSquad((s) => s.activeWs);
   const ws = workspaces.find((w) => w.id === activeWs);
   const index = workspaces.findIndex((w) => w.id === activeWs);
@@ -94,6 +95,13 @@ export function TopBar() {
       <span className="tb-sep">›</span>
       <FloorBar />
       <span className="tb-spacer" />
+      <div className="tb-views" role="tablist" aria-label="Vista">
+        {(['space', 'synoptic'] as const).map((v) => (
+          <button key={v} role="tab" aria-selected={view === v} className={`tb-view${view === v ? ' on' : ''}`} onClick={() => useSquad.getState().setView(v)} title="⌥S troca">
+            {v === 'space' ? 'Espaço' : 'Sinóptico'}
+          </button>
+        ))}
+      </div>
       <button
         className={`tb-btn${extra.paused ? ' hold' : ''}`}
         onClick={togglePause}

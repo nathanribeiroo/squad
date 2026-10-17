@@ -161,3 +161,9 @@
 .tb-menu-item.on { box-shadow: inset 2px 0 0 var(--text); }
 .tb-menu-item.fl-danger, .tb-menu-item.fl-danger .msi { color: var(--stt-err); }
 .tb-count.ask { background: var(--st-ask); color: var(--stb-ask); }
+
+/* Espaço · Sinóptico (⌥S). */
+.tb-views { display: flex; height: 30px; flex: none; }
+.tb-view { border: 1px solid var(--line-3); margin-left: -1px; background: transparent; color: var(--text-2); padding: 0 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.tb-view:hover { color: var(--text); }
+.tb-view.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); position: relative; }
