@@ -51,7 +51,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | S3 Sessões: interface | `feat/sessions-ui` | concluído |
 | S4 Sessão numa cópia isolada | `feat/session-copy` | concluído |
 | Torre F0a Renomeação | `feat/torre-f0a-renomeacao` → `feat/torre` | concluído |
-| Torre F0b Base visual e vocabulário | `feat/torre-f0b-visual` → `feat/torre` | pendente |
+| Torre F0b Base visual e vocabulário | `feat/torre-f0b-visual` → `feat/torre` | concluído |
 | Torre F1 Redesenho do que existe | `feat/torre-f1-redesenho` → `feat/torre` | pendente |
 | Torre F2 Confirmações, vazios e erros | `feat/torre-f2-confirmacoes` → `feat/torre` | pendente |
 | Torre F3 PRIORIDADE | `feat/torre-f3-prioridade` → `feat/torre` | pendente |

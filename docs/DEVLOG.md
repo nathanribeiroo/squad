@@ -2,6 +2,37 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F0b: base visual e vocabulário
+
+- **Tokens:** os da Torre (`docs/torre/tokens/torre-tokens.css`) em `web/src/theme/tokens.css`:
+  - fundo `#030705`, canvas `#050b08` com pontos `#15301f`, superfícies verdes, texto `#cfeedd`, estados com faixa (`--st-*`), texto (`--stt-*`) e fundo (`--stb-*`), papel e tinta para as NOTAMs, cores de workspace (`--ws-*`) e tema claro em papel creme;
+  - cantos retos em tudo; só os pontos de estado continuam redondos.
+- **O que o arquivo do handoff não tinha** (completado aqui, marcado "added" no CSS):
+  - o fundo tingido de TAXIANDO, PÁTIO e HANGAR;
+  - as cores de papel no tema claro para Arquiteto, Testador e os papéis novos (o handoff só dá Planejador, Implementador e Revisor; os outros foram escurecidos na mesma medida);
+  - "sem papel";
+  - os nomes antigos que o código usava (`--grid`, `--note-bg`, `--shadow`, as alturas), que viraram apelidos dos novos.
+- **Texto dos estados:** onde a cor do estado era a do texto, agora é a de texto (`--stt-*`), mais clara no escuro. A faixa sólida (`--st-*`) fica para fundos e bordas, como pede o handoff.
+- **NOTAM em papel nos dois temas:** dentro dela, as cores de texto e de linha viram tinta e papel. Antes, o título sumia no escuro.
+- **Fontes:** B612 e B612 Mono (400 e 700), embutidas como o Geist era.
+- **Decisão sem consulta: os terminais continuam com Geist Mono.**
+  - A 11 px, o B612 Mono tem 7,15 px por coluna: 80 colunas dão 572 px, mais que o voo padrão de 560 px.
+  - O subconjunto latino dele não tem os símbolos dos agentes (⏺, ●, ✓, braille).
+  - É a alternativa que o próprio arquivo de tokens sugere. O resto da interface usa B612 Mono nos dados.
+- **Temas do terminal:** Noite e Papel recalibrados (handoff), ainda independentes do tema da interface.
+- **Ícones:** 25 novos (os 22 da lista do handoff mais `link`, `stop` e `sync`, que os mockups usam e a lista esquecia). A fonte foi regerada com `make icons`; são 108 ícones.
+- **Vocabulário em toda a interface:**
+  - voo, frequência, nível, pista, pousar e pedir pouso, espera geral e liberar todos;
+  - Rádio, Transmitir, NOTAM, boletim, briefing, líder, arremetida, Enlace;
+  - estados: Taxiando, Pátio, No ar, Aguarda, Em solo, Pane (com a saída), Hangar, com os ícones `flight` e `flight_land`;
+  - retido mostra o motivo ("espera geral" ou "limite por minuto"), e o fim de turno no Rádio aparece como "Em solo".
+- **Para os agentes:**
+  - as instruções prontas dos papéis falam em nível de voo, pista e pousar (os comandos continuam `torre floor create/land`), e o material do briefing também;
+  - `--floor pista` vale como `--floor ground`.
+- **README:** ganhou a tabela de vocabulário. O texto de uso inteiro é revisto na F1, quando as telas mudam.
+- **Testado aqui:** `tsc`, build da web, `go test` do `summary`, `roles` e `store`, e capturas no tema escuro e no claro (canvas, voos, frequência, NOTAM, barra e Transmitir).
+- **Não testado:** como o B612 fica no Windows e no Mac (a renderização de fonte muda); a F1 refaz cada tela com as medidas dos mockups.
+
 ## 2026-10-17, Torre F0a: Squad agora é Torre
 
 - **Pedido do usuário:** trocar o nome para Torre e redesenhar a interface a partir do handoff (agora em `docs/torre/`). O plano por fases foi aprovado com as recomendações, e as fases entram na branch `feat/torre` sem esperar a aprovação de cada uma (veja o PLAN).
