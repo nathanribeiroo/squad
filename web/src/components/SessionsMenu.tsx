@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { hub } from '../api/client';
-import type { SessionList, SessionSummary } from '../api/types';
-import { ago, busyOf, busyText, contents, when, type Busy } from '../lib/sessions';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ApiError, api, hub } from '../api/client';
+import type { SessionList, SessionSummary, WNode } from '../api/types';
+import { slugify } from '../lib/floors';
+import { shortPath } from '../lib/paths';
+import { ago, busyOf, busyText, contents, newBranchName, pendingWork, when, type Busy } from '../lib/sessions';
 import { useNow } from '../lib/useNow';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -106,7 +108,18 @@ export function SessionsMenu({ onClose }: { onClose: () => void }) {
           <div className="ses-list">
             {list?.sessions.map((s) => (
               <div key={s.id}>
-                <SessionRow ws={ws} s={s} now={now} disabled={leave.running} onOpen={() => open(s)} onError={setError} />
+                <SessionRow
+                  ws={ws}
+                  s={s}
+                  now={now}
+                  disabled={leave.running}
+                  onOpen={() => open(s)}
+                  onMerge={() => {
+                    onClose();
+                    useSquad.getState().setFloorDialog({ kind: 'merge-copy' });
+                  }}
+                  onError={setError}
+                />
                 {leave.busy?.target === s.id && <BusyConfirm why={leave.busy.why} onConfirm={leave.busy.confirm} onCancel={leave.cancel} />}
               </div>
             ))}
@@ -130,6 +143,7 @@ function SessionRow({
   now,
   disabled,
   onOpen,
+  onMerge,
   onError,
 }: {
   ws: string;
@@ -137,10 +151,13 @@ function SessionRow({
   now: number;
   disabled: boolean;
   onOpen: () => void;
+  onMerge: () => void;
   onError: (msg: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(s.name);
+  // Uncommitted changes in its copy that removing it would lose.
+  const [losing, setLosing] = useState<string[] | null>(null);
   const cancelled = useRef(false);
   useEffect(() => {
     if (!editing) setName(s.name); // named meanwhile (by the agent, or elsewhere)
@@ -155,91 +172,172 @@ function SessionRow({
       onError(err.message);
     });
   };
-  const remove = () => {
-    const msg = `Remover a sessão "${s.name}"?\n\nO canvas e as notas dela vão para a lixeira do Squad (~/.squad/trash). As conversas continuam guardadas nos agentes.`;
-    if (window.confirm(msg)) hub.removeSession(ws, s.id).then(setSessions, (err: Error) => onError(err.message));
+  const remove = (confirm = false) => {
+    setLosing(null);
+    hub.removeSession(ws, s.id, confirm).then(setSessions, (err: Error) => {
+      const files = err instanceof ApiError && err.status === 409 ? (err.body.files as string[] | undefined) : undefined;
+      if (files) setLosing(files);
+      else onError(err.message);
+    });
+  };
+  const askRemove = () => {
+    const copy = s.copy
+      ? ` A cópia ${shortPath(s.copy)} é apagada; o branch ${s.branch} continua no repositório, com o que foi commitado.`
+      : '';
+    const msg = `Remover a sessão "${s.name}"?\n\nO canvas e as notas dela vão para a lixeira do Squad (~/.squad/trash).${copy} As conversas continuam guardadas nos agentes.`;
+    if (window.confirm(msg)) remove();
   };
 
   return (
-    <div className={`ses-row${s.current ? ' on' : ''}`}>
-      <div className="ses-row-text">
-        <span className="ses-row-head">
-          {editing ? (
-            <input
-              className="ses-rename"
-              autoFocus
-              value={name}
-              maxLength={60}
-              aria-label="Nome da sessão"
-              onChange={(e) => setName(e.target.value)}
-              onFocus={(e) => {
-                cancelled.current = false;
-                e.target.select();
-              }}
-              onBlur={save}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === 'Escape') cancelled.current = true;
-                if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
-              }}
-            />
-          ) : (
-            <span className={`ses-row-name${s.named ? '' : ' provisional'}`} title={s.named ? s.name : `${s.name} (o agente dá o nome no fim do primeiro turno)`}>
-              {s.name}
-            </span>
+    <>
+      <div className={`ses-row${s.current ? ' on' : ''}`}>
+        <div className="ses-row-text">
+          <span className="ses-row-head">
+            {editing ? (
+              <input
+                className="ses-rename"
+                autoFocus
+                value={name}
+                maxLength={60}
+                aria-label="Nome da sessão"
+                onChange={(e) => setName(e.target.value)}
+                onFocus={(e) => {
+                  cancelled.current = false;
+                  e.target.select();
+                }}
+                onBlur={save}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === 'Escape') cancelled.current = true;
+                  if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
+                }}
+              />
+            ) : (
+              <span className={`ses-row-name${s.named ? '' : ' provisional'}`} title={s.named ? s.name : `${s.name} (o agente dá o nome no fim do primeiro turno)`}>
+                {s.name}
+              </span>
+            )}
+            {s.current && <span className="ses-badge">atual</span>}
+          </span>
+          <span className="ses-row-sub">
+            criada {when(s.createdAt)} · {s.current ? 'aberta agora' : `última abertura ${ago(s.openedAt, now)}`}
+          </span>
+          <span className="ses-row-sub">
+            {s.branch && (
+              <span className="ses-branch mono" title={`Trabalha numa cópia do repositório: ${s.copy}`}>
+                ⎇ {s.branch}
+              </span>
+            )}
+            <span>{contents(s)}</span>
+            {s.agents.map((a) => (
+              <span key={a} className="ses-agent mono">
+                {a}
+              </span>
+            ))}
+          </span>
+        </div>
+        <span className="ses-row-actions">
+          {!editing && (
+            <button className="icon-btn ses-hover" onClick={() => setEditing(true)} aria-label={`Renomear ${s.name}`} title="Renomear">
+              <Icon name="edit" size={16} />
+            </button>
           )}
-          {s.current && <span className="ses-badge">atual</span>}
-        </span>
-        <span className="ses-row-sub">
-          criada {when(s.createdAt)} · {s.current ? 'aberta agora' : `última abertura ${ago(s.openedAt, now)}`}
-        </span>
-        <span className="ses-row-sub">
-          <span>{contents(s)}</span>
-          {s.agents.map((a) => (
-            <span key={a} className="ses-agent mono">
-              {a}
-            </span>
-          ))}
+          {s.current && s.branch && (
+            <button className="btn ses-open" onClick={onMerge} title={`Mesclar o branch ${s.branch}; a sessão continua na cópia`}>
+              <Icon name="call_merge" size={16} />
+              Mesclar…
+            </button>
+          )}
+          {!s.current && (
+            <button
+              className="icon-btn ses-hover ses-danger"
+              onClick={askRemove}
+              disabled={s.floors > 0}
+              aria-label={`Remover ${s.name}`}
+              title={s.floors > 0 ? 'Tem andares: abra a sessão e aterrisse ou descarte os andares antes' : 'Remover'}
+            >
+              <Icon name="delete" size={16} />
+            </button>
+          )}
+          {!s.current && (
+            <button className="btn ses-open" onClick={onOpen} disabled={disabled}>
+              Abrir
+            </button>
+          )}
         </span>
       </div>
-      <span className="ses-row-actions">
-        {!editing && (
-          <button className="icon-btn ses-hover" onClick={() => setEditing(true)} aria-label={`Renomear ${s.name}`} title="Renomear">
-            <Icon name="edit" size={16} />
-          </button>
-        )}
-        {!s.current && (
-          <button
-            className="icon-btn ses-hover ses-danger"
-            onClick={remove}
-            disabled={s.floors > 0}
-            aria-label={`Remover ${s.name}`}
-            title={s.floors > 0 ? 'Tem andares: abra a sessão e aterrisse ou descarte os andares antes' : 'Remover'}
-          >
-            <Icon name="delete" size={16} />
-          </button>
-        )}
-        {!s.current && (
-          <button className="btn ses-open" onClick={onOpen} disabled={disabled}>
-            Abrir
-          </button>
-        )}
-      </span>
-    </div>
+      {losing && (
+        <div className="ses-busy" role="alert">
+          <Icon name="warning" size={18} />
+          <div className="ses-busy-text">
+            <span>
+              A cópia tem {losing.length === 1 ? '1 alteração sem commit, que se perde' : `${losing.length} alterações sem commit, que se perdem`}:{' '}
+              <span className="mono">{losing.slice(0, 5).join(', ')}{losing.length > 5 ? ` e mais ${losing.length - 5}` : ''}</span>.
+            </span>
+            <span className="ses-busy-sub">Para {losing.length === 1 ? 'guardá-la' : 'guardá-las'}, abra a sessão e peça a um agente para commitar.</span>
+            <span className="ses-busy-actions">
+              <button type="button" className="btn" onClick={() => setLosing(null)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn filled" onClick={() => remove(true)}>
+                Remover mesmo assim
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
+const NO_NODES: WNode[] = [];
+
 function NewSessionForm({ ws, onBack, onDone }: { ws: string; onBack: () => void; onDone: () => void }) {
+  const nodes = useSquad((s) => s.workspace?.nodes ?? NO_NODES);
+  const runtime = useSquad((s) => s.runtime);
+  const status = useSquad((s) => s.floorStatus);
+  const project = useSquad((s) => s.workspace?.cwd ?? '');
+  const inCopy = useSquad((s) => !!s.workspace?.copy);
+  const current = useSquad((s) => s.sessionLists[ws]?.sessions.find((x) => x.current)?.name ?? 'A sessão atual');
   // The terminals a new session can start with: the ground floor's.
-  const terminals = useSquad((s) => s.workspace?.nodes.filter((n) => n.terminal && !n.floor).length ?? 0);
+  const terminals = nodes.filter((n) => n.terminal && !n.floor).length;
+  // Work in progress in the project folder: a copy keeps the new session out of it.
+  const working = useMemo(
+    () =>
+      nodes
+        .filter((n) => n.terminal && !['shell', 'custom'].includes(n.terminal.agent) && ['work', 'wait'].includes(runtime[n.id]?.activity ?? ''))
+        .map((n) => n.terminal!.name),
+    [nodes, runtime],
+  );
+  const changes = !inCopy && status?.repo ? status.ground.changes : 0;
+  const pending = !inCopy && (working.length > 0 || changes > 0);
+  const repo = !!status?.repo;
+
   const [name, setName] = useState('');
   const [keep, setKeep] = useState(false);
+  const [where, setWhere] = useState<'folder' | 'copy'>(() => (pending ? 'copy' : 'folder'));
+  const [branches, setBranches] = useState<string[]>([]);
+  const [from, setFrom] = useState(status?.ground.branch ?? '');
+  const [branch, setBranch] = useState('');
+  const [branchEdited, setBranchEdited] = useState(false);
   const leave = useLeave();
+  useEffect(() => {
+    if (!repo) return;
+    api.branches().then(
+      (r) => setBranches(r.branches),
+      () => setBranches([]),
+    );
+  }, [repo]);
+
+  const auto = useMemo(() => newBranchName(slugify(name), branches), [name, branches]);
+  const target = branchEdited ? branch.trim() : auto;
+  const taken = where === 'copy' && branches.includes(target);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const copy = where === 'copy' ? { branch: target, from } : undefined;
     leave.run('new', async (confirm) => {
-      setSessions(await hub.newSession(ws, { name: name.trim() || undefined, keepTerminals: keep, confirm }));
+      setSessions(await hub.newSession(ws, { name: name.trim() || undefined, keepTerminals: keep, confirm, copy }));
       onDone();
     });
   };
@@ -265,12 +363,71 @@ function NewSessionForm({ ws, onBack, onDone }: { ws: string; onBack: () => void
           </span>
         </label>
       )}
+      {repo && (
+        <div className="field">
+          Onde a sessão trabalha
+          <div className="ses-where" role="radiogroup" aria-label="Onde a sessão trabalha">
+            <label className={`ses-where-opt${where === 'folder' ? ' on' : ''}`}>
+              <input type="radio" name="where" checked={where === 'folder'} onChange={() => setWhere('folder')} />
+              <span>
+                <b>Na pasta do projeto</b>
+                <span className="ses-where-sub">
+                  <span className="mono">{shortPath(project)}</span>, a mesma das outras sessões.
+                </span>
+              </span>
+            </label>
+            <label className={`ses-where-opt${where === 'copy' ? ' on' : ''}`}>
+              <input type="radio" name="where" checked={where === 'copy'} onChange={() => setWhere('copy')} />
+              <span>
+                <b>Numa cópia isolada</b>
+                <span className="ses-where-sub">Um branch novo, numa cópia do repositório. O que está sem commit fica de fora.</span>
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
+      {repo && where === 'copy' && (
+        <div className="ses-copy-fields">
+          <label className="field">
+            A partir de
+            <select className="mono" value={from} onChange={(e) => setFrom(e.target.value)}>
+              {!branches.includes(from) && <option value={from}>{from || 'o commit atual'}</option>}
+              {branches.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Branch novo
+            <input
+              className="mono"
+              value={target}
+              onChange={(e) => {
+                setBranchEdited(true);
+                setBranch(e.target.value);
+              }}
+            />
+          </label>
+        </div>
+      )}
+      {taken && <div className="ws-error">O branch {target} já existe: escolha outro nome.</div>}
+      {pending && (
+        <div className="ses-pending">
+          <Icon name="warning" size={16} />
+          <span>
+            {pendingWork(current, working.length, changes)}{' '}
+            {where === 'copy' ? 'Numa cópia, a nova sessão não mexe nisso.' : 'Na pasta do projeto, a nova sessão trabalha em cima disso.'}
+          </span>
+        </div>
+      )}
       <div className="ws-note">A sessão atual fica guardada e volta como está quando você abri-la de novo.</div>
       {leave.busy ? (
         <BusyConfirm why={leave.busy.why} onConfirm={leave.busy.confirm} onCancel={leave.cancel} />
       ) : (
-        <button className="btn filled" type="submit" disabled={leave.running} style={{ justifyContent: 'center' }}>
-          Criar e abrir
+        <button className="btn filled" type="submit" disabled={leave.running || taken || (where === 'copy' && !target)} style={{ justifyContent: 'center' }}>
+          {leave.running && where === 'copy' ? 'Criando a cópia…' : 'Criar e abrir'}
         </button>
       )}
       {leave.error && <div className="ws-error">{leave.error}</div>}

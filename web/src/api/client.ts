@@ -66,6 +66,12 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   return (await res.json()) as T;
 }
 
+async function text(path: string): Promise<string> {
+  const res = await fetch(path, { credentials: 'same-origin' });
+  if (!res.ok) throw new ApiError(res.statusText, res.status, {});
+  return res.text();
+}
+
 export const api = {
   state: () => req<StateResponse>('GET', wsPath('/api/state')),
   addNode: (n: Partial<WNode>) => req<WNode>('POST', wsPath('/api/nodes'), n),
@@ -102,11 +108,11 @@ export const api = {
   overview: () => req<WorkspaceOverview>('POST', wsPath('/api/summary/workspace')),
   summarySettings: () => req<SummarySettings>('GET', wsPath('/api/summary/settings')),
   setSummarySettings: (s: Pick<SummarySettings, 'cards' | 'engine'>) => req<SummarySettings>('PUT', wsPath('/api/summary/settings'), s),
-  floorLog: async (id: string) => {
-    const res = await fetch(wsPath(`/api/floors/${encodeURIComponent(id)}/log`), { credentials: 'same-origin' });
-    if (!res.ok) throw new ApiError(res.statusText, res.status, {});
-    return res.text();
-  },
+  floorLog: (id: string) => text(wsPath(`/api/floors/${encodeURIComponent(id)}/log`)),
+  /** The session's copy: what merging would take, merge (the copy stays), the setup log. */
+  copyChanges: () => req<FloorChanges>('GET', wsPath('/api/copy/changes')),
+  mergeCopy: (into: string) => req<LandResult>('POST', wsPath('/api/copy/merge'), { into }),
+  copyLog: () => text(wsPath('/api/copy/log')),
 };
 
 /** The workspace list (not tied to the workspace on screen). */
@@ -118,17 +124,19 @@ export const hub = {
     req<WorkspaceSummary>('PATCH', `/api/workspaces/${encodeURIComponent(id)}`, p),
   remove: (id: string) => req<void>('DELETE', `/api/workspaces/${encodeURIComponent(id)}`),
   sessions: (ws: string) => req<SessionList>('GET', `/api/workspaces/${encodeURIComponent(ws)}/sessions`),
-  /** Leaves the open session for a new one. Refused with 409 ("working",
+  /** Leaves the open session for a new one, in the workspace folder or in a
+   * copy (a new branch from a branch). Refused with 409 ("working",
    * "pending") while agents work, unless confirm. */
-  newSession: (ws: string, b: { name?: string; keepTerminals?: boolean; confirm?: boolean }) =>
+  newSession: (ws: string, b: { name?: string; keepTerminals?: boolean; confirm?: boolean; copy?: { branch?: string; from?: string } }) =>
     req<SessionList>('POST', `/api/workspaces/${encodeURIComponent(ws)}/sessions`, b),
   /** Leaves the open session for session id (409 like newSession). */
   openSession: (ws: string, id: string, confirm?: boolean) =>
     req<SessionList>('POST', `/api/workspaces/${encodeURIComponent(ws)}/sessions/${encodeURIComponent(id)}/open`, { confirm: !!confirm }),
   renameSession: (ws: string, id: string, name: string) =>
     req<SessionList>('PATCH', `/api/workspaces/${encodeURIComponent(ws)}/sessions/${encodeURIComponent(id)}`, { name }),
-  removeSession: (ws: string, id: string) =>
-    req<SessionList>('DELETE', `/api/workspaces/${encodeURIComponent(ws)}/sessions/${encodeURIComponent(id)}`),
+  /** Refused with 409 ("files") when its copy has uncommitted changes, unless confirm. */
+  removeSession: (ws: string, id: string, confirm?: boolean) =>
+    req<SessionList>('DELETE', `/api/workspaces/${encodeURIComponent(ws)}/sessions/${encodeURIComponent(id)}${confirm ? '?confirm=true' : ''}`),
   /** Folder suggestions from the home folder (for a new workspace). */
   dirs: (path: string) => req<{ suggestions: string[] }>('GET', `/api/dirs?path=${encodeURIComponent(path)}`),
   createRole: (r: Omit<RoleDef, 'id'>) => req<RoleDef>('POST', '/api/roles', r),

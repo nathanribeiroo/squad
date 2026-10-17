@@ -30,9 +30,9 @@
 // (conversation.go): Squad remembers the conversation id, from the launch line
 // or the hooks.
 //
-// On a floor (a git worktree), Devin skips its workspace trust prompt: the
-// floor is a copy of the repository the user opened in Squad. Claude Code
-// doesn't ask there.
+// On a floor or in a session's copy (git worktrees), Devin skips its
+// workspace trust prompt: they are copies of the repository the user opened
+// in Squad. Claude Code doesn't ask there.
 package agents
 
 import (
@@ -102,6 +102,8 @@ type Launcher struct {
 	// HasFlag reports whether a program's --help mentions a flag (nil: ask
 	// the program; tests replace it).
 	HasFlag func(program, flag string) bool
+	// InCopy reports whether the session works in a copy of the repository.
+	InCopy func() bool
 
 	devinMu sync.Mutex
 }
@@ -233,7 +235,7 @@ func (l *Launcher) Prepare(n *store.Node, spec *terminal.Spec) (resumed bool, er
 			return false, err
 		}
 		spec.Command += " --config " + terminal.Quote(fam, l.DevinConfig)
-		if n.Floor != "" {
+		if n.Floor != "" || (l.InCopy != nil && l.InCopy()) {
 			spec.Command += " --respect-workspace-trust false"
 		}
 	case "gemini":

@@ -18,6 +18,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 	"github.com/nathanribeiroo/squad/internal/app"
 	"github.com/nathanribeiroo/squad/internal/config"
+	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
 	"github.com/nathanribeiroo/squad/internal/summary"
@@ -36,6 +37,11 @@ import (
 // What the sessions share (the workspace's name, folder, color and settings,
 // store.Shared) lives in the open session's canvas, and a session takes it
 // when it opens.
+//
+// A session may work in a copy of the repository instead of the workspace
+// folder (floors.NewCopy): a git worktree on a new branch, made with the
+// session, kept when its branch is merged, removed with the session (the
+// branch stays).
 
 const sessionsFile = "sessions.json"
 
@@ -63,7 +69,9 @@ type SessionSummary struct {
 	Notes     int      `json:"notes"`
 	Portals   int      `json:"portals"`
 	Floors    int      `json:"floors"`
-	Agents    []string `json:"agents"` // the agent types of its terminals, each once
+	Agents    []string `json:"agents"`           // the agent types of its terminals, each once
+	Branch    string   `json:"branch,omitempty"` // a session working in a copy: its branch
+	Copy      string   `json:"copy,omitempty"`   // and the copy's folder
 }
 
 // SessionList is a workspace's sessions, newest first.
@@ -81,6 +89,31 @@ type NewSession struct {
 	KeepTerminals bool `json:"keepTerminals"`
 	// Confirm leaves the open session even with agents working.
 	Confirm bool `json:"confirm"`
+	// Copy makes the session work in a copy of the repository on a new
+	// branch (nil: in the workspace folder).
+	Copy *NewCopy `json:"copy,omitempty"`
+}
+
+// NewCopy is where a session's copy starts.
+type NewCopy struct {
+	Branch string `json:"branch"` // the new branch ("": from the session's name)
+	From   string `json:"from"`   // the branch it starts from ("": the workspace folder's)
+}
+
+// DirtyCopyError refuses to remove a session whose copy has uncommitted
+// changes, unless confirmed: they are lost (the committed work stays on the
+// session's branch).
+type DirtyCopyError struct {
+	Files []string `json:"files"`
+}
+
+func (e *DirtyCopyError) Error() string {
+	list := e.Files
+	more := ""
+	if len(list) > 10 {
+		list, more = list[:10], fmt.Sprintf(" and %d more", len(e.Files)-10)
+	}
+	return fmt.Sprintf("the session's copy has uncommitted changes (%s%s): confirm to remove it anyway, or open the session and commit them", strings.Join(list, ", "), more)
 }
 
 // BusyError refuses to leave a session whose agents are working, unless
@@ -275,6 +308,9 @@ func (h *Hub) sessionList(id string, w *workspace) SessionList {
 			}
 		}
 		sum.Floors = len(ws.Floors)
+		if ws.Copy != nil {
+			sum.Branch, sum.Copy = ws.Copy.Branch, ws.Copy.Path
+		}
 		out.Sessions = append(out.Sessions, sum)
 	}
 	slices.SortFunc(out.Sessions, func(a, b SessionSummary) int { return b.CreatedAt.Compare(a.CreatedAt) })
@@ -317,10 +353,31 @@ func (h *Hub) NewSession(id string, o NewSession) (SessionList, error) {
 	return h.switchSession(id, o.Confirm, func(w *workspace) (string, *store.Store, error) {
 		cur := w.app.Server.Store()
 		sid := ids.Short(8)
+		ws := store.Workspace{Nodes: []store.Node{}, Edges: []store.Edge{}}
+		if o.Copy != nil {
+			branch := strings.TrimSpace(o.Copy.Branch)
+			if branch == "" {
+				branch = copyBranch(name, sid)
+			}
+			f, err := floors.NewCopy(context.Background(), floors.CopyRequest{
+				Cwd: cur.Meta().Cwd, Branch: branch, From: o.Copy.From, Config: cur.FloorConfig(),
+			})
+			if err != nil {
+				return "", nil, err
+			}
+			ws.Copy = &f
+		}
+		dropCopy := func() {
+			if ws.Copy != nil {
+				if err := floors.RemoveCopy(context.Background(), cur.Meta().Cwd, *ws.Copy, true); err != nil {
+					h.log.Warn("new session: remove its copy", "workspace", id, "err", err)
+				}
+			}
+		}
 		if err := os.MkdirAll(filepath.Dir(w.s.path(sid)), 0o700); err != nil {
+			dropCopy()
 			return "", nil, err
 		}
-		ws := store.Workspace{Nodes: []store.Node{}, Edges: []store.Edge{}}
 		if o.KeepTerminals {
 			ws.Nodes, ws.Edges = sameTerminals(cur.Snapshot())
 		}
@@ -329,6 +386,7 @@ func (h *Hub) NewSession(id string, o NewSession) (SessionList, error) {
 			err = st.SetShared(cur.Shared())
 		}
 		if err != nil {
+			dropCopy()
 			return "", nil, err
 		}
 		now := time.Now().UTC()
@@ -342,6 +400,15 @@ func (h *Hub) NewSession(id string, o NewSession) (SessionList, error) {
 		w.s.mu.Unlock()
 		return sid, st, err
 	})
+}
+
+// copyBranch names the branch of a session's copy: after the session's name,
+// or its id when it has none yet.
+func copyBranch(name, sid string) string {
+	if slug := ids.Slug(name); slug != "" {
+		return slug
+	}
+	return "sessao-" + sid
 }
 
 // sameTerminals copies a canvas's ground-floor terminals, with their
@@ -483,8 +550,10 @@ func (h *Hub) RenameSession(id, sid, name string) (SessionList, error) {
 
 // RemoveSession moves a session's folder (canvas, notes, attachments) to
 // the trash. The agents keep its conversations. The open session and one
-// with floors (copies of the repository) can't be removed.
-func (h *Hub) RemoveSession(id, sid string) (SessionList, error) {
+// with floors (copies of the repository) can't be removed. A session working
+// in a copy loses it (the branch stays); one with uncommitted changes there
+// needs confirm.
+func (h *Hub) RemoveSession(id, sid string, confirm bool) (SessionList, error) {
 	w := h.get(id)
 	if w == nil {
 		return SessionList{}, ErrNotFound
@@ -500,8 +569,21 @@ func (h *Hub) RemoveSession(id, sid string) (SessionList, error) {
 	case sid == cur:
 		return SessionList{}, invalidf("the open session can't be removed: open another one first")
 	}
-	if ws, err := store.Read(w.s.path(sid)); err == nil && len(ws.Floors) > 0 {
+	ws, rerr := store.Read(w.s.path(sid))
+	if rerr == nil && len(ws.Floors) > 0 {
 		return SessionList{}, invalidf("the session has floors (copies of its repository): open it and land or discard them first")
+	}
+	if rerr == nil && ws.Copy != nil {
+		files, err := floors.Uncommitted(context.Background(), *ws.Copy)
+		if err != nil {
+			return SessionList{}, err
+		}
+		if len(files) > 0 && !confirm {
+			return SessionList{}, &DirtyCopyError{Files: files}
+		}
+		if err := floors.RemoveCopy(context.Background(), w.app.Server.Store().Meta().Cwd, *ws.Copy, false); err != nil {
+			return SessionList{}, err
+		}
 	}
 	if err := os.MkdirAll(h.opts.Trash, 0o700); err != nil {
 		return SessionList{}, err
@@ -518,9 +600,11 @@ func (h *Hub) RemoveSession(id, sid string) (SessionList, error) {
 	return h.sessionList(id, h.get(id)), err
 }
 
-// anySessionHasFloors reports whether any session of a workspace has floors.
-func anySessionHasFloors(w *workspace) bool {
-	if len(w.app.Server.Store().Floors()) > 0 {
+// hasRepoCopies reports whether any session of a workspace has copies of
+// its repository: floors, or a copy it works in.
+func hasRepoCopies(w *workspace) bool {
+	open := w.app.Server.Store()
+	if _, ok := open.Copy(); ok || len(open.Floors()) > 0 {
 		return true
 	}
 	w.s.mu.Lock()
@@ -531,7 +615,7 @@ func anySessionHasFloors(w *workspace) bool {
 		if s.ID == cur {
 			continue
 		}
-		if ws, err := store.Read(w.s.path(s.ID)); err == nil && len(ws.Floors) > 0 {
+		if ws, err := store.Read(w.s.path(s.ID)); err == nil && (len(ws.Floors) > 0 || ws.Copy != nil) {
 			return true
 		}
 	}

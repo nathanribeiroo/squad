@@ -401,7 +401,7 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 	if w == nil {
 		return Summary{}, ErrNotFound
 	}
-	hasFloors := anySessionHasFloors(w)
+	hasCopies := hasRepoCopies(w)
 	m, err := w.app.Server.Store().UpdateMeta(func(m *store.Meta) error {
 		if p.Name != nil {
 			if strings.TrimSpace(*p.Name) == "" {
@@ -414,8 +414,8 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 			if err != nil {
 				return err
 			}
-			if hasFloors && !samePath(cwd, m.Cwd) {
-				return invalidf("the workspace has floors (copies of its repository): land or discard them before changing its folder")
+			if hasCopies && !samePath(cwd, m.Cwd) {
+				return invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions before changing its folder")
 			}
 			m.Cwd = cwd
 		}
@@ -448,9 +448,9 @@ func (h *Hub) Remove(id string) error {
 	case len(h.ws) == 1:
 		h.mu.Unlock()
 		return invalidf("the last workspace can't be removed")
-	case anySessionHasFloors(w):
+	case hasRepoCopies(w):
 		h.mu.Unlock()
-		return invalidf("the workspace has floors (copies of its repository): land or discard them first")
+		return invalidf("the workspace has copies of its repository (floors, or sessions working in a copy): land or discard the floors and remove those sessions first")
 	}
 	delete(h.ws, id)
 	h.mu.Unlock()

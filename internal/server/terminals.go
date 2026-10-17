@@ -94,22 +94,29 @@ func ResolveCwd(cwd, wsCwd string) string {
 }
 
 // cwdResolver returns how terminal folders resolve on a floor ("" is the
-// ground floor): from the workspace folder, or from the floor's copy of it,
-// where a folder of the ground floor maps to its copy. It reads the store
+// ground floor): from the folder the session works in (the workspace folder,
+// or the session's copy of it), or from the floor's copy, where a folder of
+// the project (or of the session's copy) maps to its copy. It reads the store
 // now, so the function can run under the store's lock.
 func (s *Server) cwdResolver(floor string) func(cwd string) string {
-	ws := s.store.Meta().Cwd
-	f, ok := s.store.Floor(floor)
-	if floor == "" || !ok {
+	ws, work := s.store.Meta().Cwd, s.store.Workdir()
+	base := work
+	if f, ok := s.store.Floor(floor); floor != "" && ok {
+		base = f.Cwd
+	}
+	if base == ws {
 		return func(cwd string) string { return ResolveCwd(cwd, ws) }
 	}
 	return func(cwd string) string {
 		if filepath.IsAbs(cwd) {
-			if rel, err := filepath.Rel(ws, cwd); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-				cwd = rel
+			for _, from := range []string{work, ws} {
+				if rel, err := filepath.Rel(from, cwd); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					cwd = rel
+					break
+				}
 			}
 		}
-		return ResolveCwd(cwd, f.Cwd)
+		return ResolveCwd(cwd, base)
 	}
 }
 

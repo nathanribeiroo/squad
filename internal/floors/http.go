@@ -20,8 +20,13 @@ import (
 //	GET    /api/floors/{id}/log      the setup command's output (text)
 //	POST   /api/floors/{id}/land     {merge?, into?} → LandResult
 //	DELETE /api/floors/{id}          discard
+//	GET    /api/copy/changes         the session's copy: uncommitted files and commits
+//	GET    /api/copy/log             the copy's setup output (text)
+//	POST   /api/copy/merge           {into?} → LandResult; the copy stays
 //
-// A refused land is a 409 with "files" (uncommitted) or "conflicts".
+// A refused land or merge is a 409 with "files" (uncommitted: on the floor,
+// in the copy, or with "folder" and "branch" where the target branch is
+// checked out) or "conflicts".
 func (s *Service) Register(handle func(pattern string, h http.Handler)) {
 	handle("GET /api/floors", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, s.State())
@@ -101,6 +106,35 @@ func (s *Service) Register(handle func(pattern string, h http.Handler)) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	handle("GET /api/copy/changes", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := s.CopyChanges(r.Context())
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, c)
+	}))
+	handle("GET /api/copy/log", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		log, err := s.CopyLog()
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte(log))
+	}))
+	handle("POST /api/copy/merge", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req LandRequest
+		if !readJSON(w, r, &req) {
+			return
+		}
+		res, err := s.MergeCopy(context.WithoutCancel(r.Context()), req)
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	}))
 }
 
 func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
@@ -127,7 +161,11 @@ func writeErr(w http.ResponseWriter, err error) {
 	var conflict *ConflictError
 	switch {
 	case errors.As(err, &dirtyErr):
-		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "files": dirtyErr.Files})
+		body := map[string]any{"error": err.Error(), "files": dirtyErr.Files}
+		if dirtyErr.Folder != "" {
+			body["folder"], body["branch"] = dirtyErr.Folder, dirtyErr.Branch
+		}
+		writeJSON(w, http.StatusConflict, body)
 	case errors.As(err, &conflict):
 		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "conflicts": conflict.Files})
 	case errors.Is(err, ErrNotFound):

@@ -82,8 +82,9 @@ export interface NoteEdit {
 
 export type ZoomLevel = 'live' | 'mini' | 'card';
 
-/** A floor dialog: create one, land or discard a floor, read its setup log. */
-export type FloorDialog = { kind: 'create' } | { kind: 'land' | 'discard' | 'log'; id: string };
+/** A floor dialog: create one, land or discard a floor, read its setup log;
+ * merge the session's copy, read its setup log. */
+export type FloorDialog = { kind: 'create' } | { kind: 'land' | 'discard' | 'log'; id: string } | { kind: 'merge-copy' | 'copy-log' };
 
 /** Zoom level with ±0.03 hysteresis around 0.6 and 0.35 (handoff §2). */
 export function levelFor(z: number, prev: ZoomLevel): ZoomLevel {
@@ -526,7 +527,7 @@ export const useSquad = create<SquadState>((set, get) => ({
         const floors = d.floors as Floor[];
         const activeFloor = validFloor(st.activeFloor, floors);
         if (activeFloor !== st.activeFloor) st.setFloor(activeFloor);
-        set({ workspace: { ...ws, floors, floorConfig: d.config as FloorConfig } });
+        set({ workspace: { ...ws, floors, floorConfig: d.config as FloorConfig, copy: (d.copy as Floor | undefined) ?? undefined } });
         return;
       }
       case 'note.edited': {

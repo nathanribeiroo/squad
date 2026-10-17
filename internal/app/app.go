@@ -197,6 +197,7 @@ func New(o Options) (*App, error) {
 			return nil, err
 		}
 		launcher.Role = roleOf
+		launcher.InCopy = func() bool { _, ok := srv.Store().Copy(); return ok }
 		srv.SetLaunchHook(launcher.Prepare)
 	}
 	srv.SetHookHandler(agents.HookHandler(agents.HookOptions{

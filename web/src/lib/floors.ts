@@ -1,6 +1,6 @@
 // Floors: isolated copies of the workspace's repository (git worktrees on
 // their own branch), each with its own canvas (internal/floors).
-import type { Floor, FloorGit } from '../api/types';
+import type { Floor, FloorGit, Workspace } from '../api/types';
 import { useSquad } from '../state/store';
 
 /** Name of the ground floor when its branch isn't known. */
@@ -16,6 +16,13 @@ export function useFloors(): Floor[] {
 /** The floor on screen (undefined on the ground floor). */
 export function useActiveFloor(): Floor | undefined {
   return useSquad((s) => (s.activeFloor ? s.workspace?.floors?.find((f) => f.id === s.activeFloor) : undefined));
+}
+
+/** The folder a floor's terminals start from ("" the ground floor): the
+ * floor's copy, else the session's copy, else the workspace folder. */
+export function workdir(ws: Workspace | null, floor?: string): string | undefined {
+  if (floor) return ws?.floors?.find((f) => f.id === floor)?.cwd;
+  return ws?.copy?.cwd ?? ws?.cwd;
 }
 
 /** A floor's name, "térreo" for the ground floor ("" or unknown). */

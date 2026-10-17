@@ -5,7 +5,7 @@ import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/ty
 import { Icon } from '../../components/Icon';
 import { STATE_META, elapsed, stateLabel } from '../../lib/model';
 import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, useRole, useRoleLookup } from '../../lib/roles';
-import { useBranch } from '../../lib/floors';
+import { useBranch, workdir } from '../../lib/floors';
 import { TurnCard, useCardShown } from './TurnCard';
 import { shortPath, terminalCwd } from '../../lib/paths';
 import { toast } from '../../lib/toast';
@@ -269,7 +269,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
 
 function LiveFooter({ id, t, createdBy, floor }: { id: string; t: TerminalData; createdBy?: string; floor: string }) {
   // Relative folders start from the workspace folder, or its floor's copy.
-  const cwd = useSquad((s) => terminalCwd(t.cwd, floor ? s.workspace?.floors?.find((f) => f.id === floor)?.cwd : s.workspace?.cwd));
+  const cwd = useSquad((s) => terminalCwd(t.cwd, workdir(s.workspace, floor)));
   const branch = useBranch(floor);
   const inbox = useInbox(id);
   const creator = useCreator(createdBy);

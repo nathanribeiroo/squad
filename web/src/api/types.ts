@@ -172,6 +172,9 @@ export interface Workspace {
   edges: WEdge[];
   floors?: Floor[];
   floorConfig?: FloorConfig;
+  /** The session works in a copy of the repository, on a branch of its own
+   * (internal/floors copy.go); its terminals and floors start there. */
+  copy?: Floor;
 }
 
 export interface TerminalRuntime {
@@ -269,6 +272,9 @@ export interface SessionSummary extends Session {
   floors: number;
   /** Agent types of its terminals (claude, devin…). */
   agents: string[];
+  /** A session working in a copy: its branch and the copy's folder. */
+  branch?: string;
+  copy?: string;
 }
 
 /** GET /api/workspaces/{id}/sessions, newest first; also the "sessions" event. */
