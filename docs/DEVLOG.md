@@ -2,6 +2,24 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F4a: Configurações
+
+- **Painel de 1200×780** no lugar do menu ⚙, com abas: Aparência, Agentes, Limites, Resumos, Papéis…, Atalhos e Avisos. Fecha com Esc e clique fora.
+- **Aparência:** o tema "Sistema" é novo e segue o computador enquanto a página está aberta. Quem já tinha escolhido Escuro ou Claro continua com a escolha.
+- **Agentes** (`GET /api/agents`, `PUT /api/agents/{agent}`):
+  - a busca acha o primeiro termo do comando padrão no PATH e roda `--version` (até 4 s, em paralelo); o resultado vale 5 min, e "Procurar de novo" refaz;
+  - o comando padrão editável fica em `~/.torre/agents.json` e vale para os voos que decolarem depois, em todos os workspaces. É uma rota só da interface (decide o que roda em cada voo de agente), uma linha de até 300 caracteres;
+  - o Novo voo usa a mesma busca para o "✓ instalado". Antes vinha da busca dos resumos.
+- **Limites** (`GET/PUT /w/<id>/api/limits`):
+  - guardados no workspace e compartilhados pelas sessões, como a configuração dos níveis e a dos resumos;
+  - valem na hora: o barramento, o líder (`torre new`) e os portais (`torre portal create`) leem o valor novo;
+  - 0 volta ao padrão do servidor (6 saltos, 30 por minuto, `-max-team` do `serve` e 3 portais);
+  - o Rádio recebe o evento `limits.changed`.
+- **Avisos**, guardados por navegador: o número no título (já existia na F3, agora pode ser desligado), uma notificação do sistema quando a janela não está na frente e dois toques curtos (WebAudio, sem arquivo de som).
+- **Decisão sem consulta: os atalhos só são listados**, como na revisão do handoff (trocar fica no PLAN).
+- **Testado aqui:** o comando padrão, a busca e a linha de lançamento com um "claude" falso no PATH (`TestDefaultCommandAndDetect`), a API de limites (`TestLimitsAPI`: em vigor no barramento, no líder e nos portais, faixa recusada, volta ao padrão), a suíte inteira, `tsc`, build e capturas das abas.
+- **Não testado:** a notificação do sistema e o som num navegador de verdade (o Chromium sem tela daqui não mostra notificações); a busca no Windows (as versões vêm de `.cmd` do npm, que o Go roda).
+
 ## 2026-10-17, Torre F3: PRIORIDADE, o voo pede você
 
 - **Spike com o Claude Code 2.1.302 real** (no modo de permissão padrão, num PTY):
