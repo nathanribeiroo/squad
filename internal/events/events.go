@@ -45,9 +45,10 @@ type Event struct {
 
 // Bus fans events out to subscribers.
 type Bus struct {
-	mu   sync.Mutex
-	subs map[int]chan Event
-	next int
+	mu     sync.Mutex
+	subs   map[int]chan Event
+	next   int
+	closed bool
 }
 
 // NewBus returns an empty bus.
@@ -69,10 +70,27 @@ func (b *Bus) Publish(typ string, data any) {
 	}
 }
 
+// Close ends every subscription (their channels close) and the ones to
+// come: the workspace behind the bus is gone. Publishing does nothing then.
+func (b *Bus) Close() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.closed = true
+	for id, ch := range b.subs {
+		close(ch)
+		delete(b.subs, id)
+	}
+}
+
 // Subscribe returns a channel of events and a cancel function.
 func (b *Bus) Subscribe() (<-chan Event, func()) {
 	ch := make(chan Event, 512)
 	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		close(ch)
+		return ch, func() {}
+	}
 	id := b.next
 	b.next++
 	b.subs[id] = ch

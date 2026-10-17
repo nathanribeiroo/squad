@@ -27,6 +27,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
+	"github.com/nathanribeiroo/squad/internal/summary"
 )
 
 // Colors are the workspace color keys the UI knows; a new workspace takes
@@ -75,16 +76,21 @@ type Options struct {
 // Summary is a workspace as the selector shows it.
 type Summary struct {
 	store.Meta
-	Terminals int `json:"terminals"`
-	Active    int `json:"active"`  // agents working or waiting for a reply
-	Pending   int `json:"pending"` // requests waiting for a reply
+	Terminals int     `json:"terminals"`
+	Active    int     `json:"active"`   // agents working or waiting for a reply
+	Pending   int     `json:"pending"`  // requests waiting for a reply
+	Session   Session `json:"session"`  // the open session
+	Sessions  int     `json:"sessions"` // how many it has
 }
 
+// workspace is a workspace with its open session's app; opening another
+// session replaces it (sessions.go).
 type workspace struct {
 	app   *app.App
 	api   http.Handler // /api/…, /ws/… of this workspace
 	term  http.Handler // /cli, /hooks/… of this workspace
 	unsub func()
+	s     *sessions
 }
 
 // Hub owns the workspaces.
@@ -131,19 +137,19 @@ func New(opts Options) (*Hub, error) {
 		return nil, err
 	}
 	for _, e := range entries {
-		path := filepath.Join(opts.Root, e.Name(), "workspace.json")
 		if !e.IsDir() {
 			continue
 		}
-		if _, err := os.Stat(path); err != nil {
+		dir := filepath.Join(opts.Root, e.Name())
+		st, ss, err := openWorkspace(dir)
+		if errors.Is(err, errNotWorkspace) {
 			continue
 		}
-		st, err := store.Open(path, store.Workspace{})
 		if err != nil {
-			h.log.Warn("skip workspace", "path", path, "err", err)
+			h.log.Warn("skip workspace", "dir", dir, "err", err)
 			continue
 		}
-		if err := h.add(st); err != nil {
+		if err := h.add(st, ss); err != nil {
 			h.Close()
 			return nil, err
 		}
@@ -158,8 +164,20 @@ func New(opts Options) (*Hub, error) {
 	return h, nil
 }
 
-// add builds the app of a loaded workspace and registers it.
-func (h *Hub) add(st *store.Store) error {
+// add builds the app of a loaded workspace's open session and registers it.
+func (h *Hub) add(st *store.Store, ss *sessions) error {
+	w, err := h.build(st, ss)
+	if err != nil {
+		return err
+	}
+	h.mu.Lock()
+	h.ws[st.Meta().ID] = w
+	h.mu.Unlock()
+	return nil
+}
+
+// build makes the app of a session's canvas.
+func (h *Hub) build(st *store.Store, ss *sessions) (*workspace, error) {
 	a, err := app.New(app.Options{
 		Server:     server.Options{Port: h.opts.Port, Token: h.opts.Token, Store: st, CLIPath: h.opts.CLIPath, Logger: h.log},
 		Activity:   h.opts.Activity,
@@ -169,26 +187,27 @@ func (h *Hub) add(st *store.Store) error {
 		Roles:      h.roles,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if h.opts.Setup != nil {
 		if err := h.opts.Setup(a); err != nil {
 			a.Close()
-			return err
+			return nil, err
 		}
 	}
-	// Any event of the workspace may change its summary.
+	// Any event of the workspace may change its summary; the first turn of
+	// a session nobody named names it.
+	id := st.Meta().ID
 	ch, unsub := a.Server.Bus().Subscribe()
 	go func() {
-		for range ch {
+		for ev := range ch {
 			h.markDirty()
+			if c, ok := ev.Data.(summary.Card); ok && ev.Type == events.TurnCard {
+				h.nameSession(id, ss, a, c)
+			}
 		}
 	}()
-	w := &workspace{app: a, api: a.Server.APIHandler(), term: a.Server.TerminalHandler(), unsub: unsub}
-	h.mu.Lock()
-	h.ws[st.Meta().ID] = w
-	h.mu.Unlock()
-	return nil
+	return &workspace{app: a, api: a.Server.APIHandler(), term: a.Server.TerminalHandler(), unsub: unsub, s: ss}, nil
 }
 
 // Start starts every workspace (activity, notes watcher, terminals) and the
@@ -265,7 +284,7 @@ func (h *Hub) List() []Summary {
 	h.mu.RUnlock()
 	out := make([]Summary, 0, len(all))
 	for _, w := range all {
-		out = append(out, summarize(w.app))
+		out = append(out, summarize(w))
 	}
 	slices.SortFunc(out, func(a, b Summary) int {
 		if c := a.CreatedAt.Compare(b.CreatedAt); c != 0 {
@@ -276,9 +295,13 @@ func (h *Hub) List() []Summary {
 	return out
 }
 
-func summarize(a *app.App) Summary {
+func summarize(w *workspace) Summary {
+	a := w.app
 	st := a.Server.Store()
-	s := Summary{Meta: st.Meta(), Pending: len(a.Bus.Pending())}
+	s := Summary{Meta: st.Meta(), Pending: len(a.Bus.Pending()), Session: w.s.current()}
+	w.s.mu.Lock()
+	s.Sessions = len(w.s.index.Sessions)
+	w.s.mu.Unlock()
 	for _, id := range st.TerminalIDs() {
 		s.Terminals++
 		if state, _ := a.Monitor.State(id); state == activity.Work || state == activity.Wait {
@@ -294,12 +317,13 @@ func (h *Hub) Get(id string) (Summary, error) {
 	if w == nil {
 		return Summary{}, ErrNotFound
 	}
-	return summarize(w.app), nil
+	return summarize(w), nil
 }
 
 // Create adds a workspace for folder dir ("~/…" allowed). An empty name
-// becomes the folder's name, an empty color the first unused one.
-func (h *Hub) Create(name, dir, color string) (Summary, error) {
+// becomes the folder's name, an empty color the first unused one; session
+// names its first session ("": a provisional name, which an agent replaces).
+func (h *Hub) Create(name, dir, color, session string) (Summary, error) {
 	cwd, err := checkFolder(dir)
 	if err != nil {
 		return Summary{}, err
@@ -312,18 +336,30 @@ func (h *Hub) Create(name, dir, color string) (Summary, error) {
 	if name = strings.TrimSpace(name); name == "" {
 		name = filepath.Base(cwd)
 	}
+	if strings.TrimSpace(session) != "" {
+		if session, err = checkSessionName(session); err != nil {
+			return Summary{}, err
+		}
+	}
 	id := ids.Short(8)
-	folder := filepath.Join(h.opts.Root, id)
-	if err := os.MkdirAll(folder, 0o700); err != nil {
+	ss := &sessions{dir: filepath.Join(h.opts.Root, id)}
+	sid, now := ids.Short(8), time.Now().UTC()
+	if err := os.MkdirAll(filepath.Dir(ss.path(sid)), 0o700); err != nil {
 		return Summary{}, err
 	}
-	st, err := store.Open(filepath.Join(folder, "workspace.json"), store.Workspace{
-		ID: id, Name: name, Cwd: cwd, Color: color, CreatedAt: time.Now().UTC(),
-	})
+	st, err := store.Open(ss.path(sid), store.Workspace{ID: id, Name: name, Cwd: cwd, Color: color, CreatedAt: now})
 	if err != nil {
 		return Summary{}, err
 	}
-	if err := h.add(st); err != nil {
+	first := Session{ID: sid, Name: session, Named: session != "", CreatedAt: now, OpenedAt: now}
+	if !first.Named {
+		first.Name = provisionalName(now)
+	}
+	ss.index = sessionIndex{Current: sid, Sessions: []Session{first}}
+	if err := ss.saveLocked(); err != nil {
+		return Summary{}, err
+	}
+	if err := h.add(st, ss); err != nil {
 		return Summary{}, err
 	}
 	h.mu.RLock()
@@ -348,7 +384,7 @@ func (h *Hub) Open(dir string) (Summary, error) {
 			return s, nil
 		}
 	}
-	return h.Create("", cwd, "")
+	return h.Create("", cwd, "", "")
 }
 
 // Patch is a change to a workspace; nil fields are kept.
@@ -365,7 +401,7 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 	if w == nil {
 		return Summary{}, ErrNotFound
 	}
-	hasFloors := len(w.app.Server.Store().Floors()) > 0
+	hasFloors := anySessionHasFloors(w)
 	m, err := w.app.Server.Store().UpdateMeta(func(m *store.Meta) error {
 		if p.Name != nil {
 			if strings.TrimSpace(*p.Name) == "" {
@@ -396,11 +432,12 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 	}
 	w.app.Server.Bus().Publish(events.WorkspaceUpdated, m)
 	h.markDirty()
-	return summarize(w.app), nil
+	return summarize(w), nil
 }
 
-// Remove stops a workspace's terminals and moves its files (canvas, notes,
-// attachments) to the trash folder. The last workspace can't be removed.
+// Remove stops a workspace's terminals and moves its folder (every session:
+// canvas, notes, attachments) to the trash folder. The last workspace can't
+// be removed.
 func (h *Hub) Remove(id string) error {
 	h.mu.Lock()
 	w := h.ws[id]
@@ -411,7 +448,7 @@ func (h *Hub) Remove(id string) error {
 	case len(h.ws) == 1:
 		h.mu.Unlock()
 		return invalidf("the last workspace can't be removed")
-	case len(w.app.Server.Store().Floors()) > 0:
+	case anySessionHasFloors(w):
 		h.mu.Unlock()
 		return invalidf("the workspace has floors (copies of its repository): land or discard them first")
 	}
@@ -421,7 +458,7 @@ func (h *Hub) Remove(id string) error {
 	w.app.Close()
 	h.markDirty()
 
-	folder := filepath.Dir(w.app.Server.Store().Path())
+	folder := w.s.dir
 	if err := os.MkdirAll(h.opts.Trash, 0o700); err != nil {
 		return err
 	}

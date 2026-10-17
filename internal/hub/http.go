@@ -21,6 +21,7 @@ import (
 //
 //	/w/<id>/api/…, /w/<id>/ws/…   a workspace's API (see server.APIHandler)
 //	/api/workspaces…, /api/dirs     the workspace list (and folder suggestions)
+//	/api/workspaces/{id}/sessions…  a workspace's sessions: list, new, open, rename, remove
 //	/api/roles…                     the role library, shared by every workspace
 //	/ws/workspaces                  the list and the roles, live
 //	POST /cli, POST /hooks/{agent}  calls from terminals, routed by terminal id
@@ -33,6 +34,11 @@ func (h *Hub) Handler() http.Handler {
 	mux.Handle("POST /api/workspaces/open", sess(h.handleOpen))
 	mux.Handle("PATCH /api/workspaces/{id}", sess(h.handleUpdate))
 	mux.Handle("DELETE /api/workspaces/{id}", sess(h.handleRemove))
+	mux.Handle("GET /api/workspaces/{id}/sessions", sess(h.handleSessions))
+	mux.Handle("POST /api/workspaces/{id}/sessions", sess(h.handleNewSession))
+	mux.Handle("POST /api/workspaces/{id}/sessions/{sid}/open", sess(h.handleOpenSession))
+	mux.Handle("PATCH /api/workspaces/{id}/sessions/{sid}", sess(h.handleRenameSession))
+	mux.Handle("DELETE /api/workspaces/{id}/sessions/{sid}", sess(h.handleRemoveSession))
 	mux.Handle("GET /api/dirs", sess(h.handleDirs))
 	mux.Handle("GET /api/roles", sess(h.handleRolesList))
 	mux.Handle("POST /api/roles", sess(h.handleRoleCreate))
@@ -81,9 +87,10 @@ func (h *Hub) handleList(w http.ResponseWriter, _ *http.Request) {
 }
 
 type createBody struct {
-	Name  string `json:"name"`
-	Cwd   string `json:"cwd"`
-	Color string `json:"color"`
+	Name    string `json:"name"`
+	Cwd     string `json:"cwd"`
+	Color   string `json:"color"`
+	Session string `json:"session"` // the first session's name
 }
 
 func (h *Hub) handleCreate(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +99,7 @@ func (h *Hub) handleCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	s, err := h.Create(b.Name, b.Cwd, b.Color)
+	s, err := h.Create(b.Name, b.Cwd, b.Color, b.Session)
 	if err != nil {
 		writeHubError(w, err)
 		return
@@ -134,6 +141,67 @@ func (h *Hub) handleRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Hub) handleSessions(w http.ResponseWriter, r *http.Request) {
+	l, err := h.Sessions(r.PathValue("id"))
+	if err != nil {
+		writeHubError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, l)
+}
+
+func (h *Hub) handleNewSession(w http.ResponseWriter, r *http.Request) {
+	var b NewSession
+	if err := readJSON(r, &b); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	l, err := h.NewSession(r.PathValue("id"), b)
+	if err != nil {
+		writeHubError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, l)
+}
+
+func (h *Hub) handleOpenSession(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Confirm bool `json:"confirm"`
+	}
+	_ = readJSON(r, &b) // an empty body doesn't confirm
+	l, err := h.OpenSession(r.PathValue("id"), r.PathValue("sid"), b.Confirm)
+	if err != nil {
+		writeHubError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, l)
+}
+
+func (h *Hub) handleRenameSession(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Name string `json:"name"`
+	}
+	if err := readJSON(r, &b); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	l, err := h.RenameSession(r.PathValue("id"), r.PathValue("sid"), b.Name)
+	if err != nil {
+		writeHubError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, l)
+}
+
+func (h *Hub) handleRemoveSession(w http.ResponseWriter, r *http.Request) {
+	l, err := h.RemoveSession(r.PathValue("id"), r.PathValue("sid"))
+	if err != nil {
+		writeHubError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, l)
 }
 
 // handleDirs suggests folders for a new workspace (relative to the home
@@ -214,7 +282,10 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 }
 
 func writeHubError(w http.ResponseWriter, err error) {
+	var busy *BusyError
 	switch {
+	case errors.As(err, &busy):
+		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "working": busy.Working, "pending": busy.Pending})
 	case errors.Is(err, ErrNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrInvalid):

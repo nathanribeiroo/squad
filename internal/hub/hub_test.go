@@ -125,14 +125,14 @@ func TestCreateOpenUpdateRemove(t *testing.T) {
 	if again, _ := h.hub.Open(dirA + "/"); again.ID != a.ID {
 		t.Fatalf("open A twice made a new workspace: %s vs %s", again.ID, a.ID)
 	}
-	b, _ := h.hub.Create("Projeto B", dirB, "")
+	b, _ := h.hub.Create("Projeto B", dirB, "", "")
 	if b.Color != Colors[1] || b.Name != "Projeto B" {
 		t.Fatalf("B: %+v", b)
 	}
 	if l := h.hub.List(); len(l) != 2 || l[0].ID != a.ID || l[1].ID != b.ID {
 		t.Fatalf("list order: %+v", l)
 	}
-	if _, err := h.hub.Create("", filepath.Join(dirA, "missing"), ""); !errors.Is(err, ErrInvalid) || !strings.HasPrefix(err.Error(), "folder not found") {
+	if _, err := h.hub.Create("", filepath.Join(dirA, "missing"), "", ""); !errors.Is(err, ErrInvalid) || !strings.HasPrefix(err.Error(), "folder not found") {
 		t.Fatalf("missing folder: %v", err)
 	}
 
@@ -199,7 +199,7 @@ func TestLegacyWorkspaceGetsAColor(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := newHarness(t, root)
-	b, _ := h.hub.Create("new", t.TempDir(), "")
+	b, _ := h.hub.Create("new", t.TempDir(), "", "")
 	l := h.hub.List()
 	if len(l) != 2 || l[0].ID != "default" || l[0].Color != Colors[0] || b.Color != Colors[1] {
 		t.Fatalf("colors: %+v", l)
