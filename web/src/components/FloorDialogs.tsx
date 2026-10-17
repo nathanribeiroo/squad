@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import type { Floor, FloorChanges, WNode } from '../api/types';
-import { GROUND, plural, slugify, useBranch } from '../lib/floors';
+import { GROUND, flightLevel, plural, slugify, useBranch } from '../lib/floors';
+import { callsign } from '../lib/model';
 import { shortPath } from '../lib/paths';
 import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
@@ -26,7 +27,7 @@ export function FloorDialogs() {
   if (!floor) return null; // landed meanwhile
   if (d.kind === 'land') return <LandFloor key={floor.id} floor={floor} onClose={close} />;
   if (d.kind === 'discard') return <DiscardFloor key={floor.id} floor={floor} onClose={close} />;
-  return <SetupLog key={floor.id} floor={floor} title={`Preparo de ${floor.name}`} load={() => api.floorLog(floor.id)} onClose={close} />;
+  return <SetupLog key={floor.id} floor={floor} title={`Preparo · ${flightLevel(floor)} · ${floor.name}`} load={() => api.floorLog(floor.id)} onClose={close} />;
 }
 
 /** Patterns typed as "a, b" or one per line. */
@@ -40,6 +41,7 @@ function patterns(s: string): string[] {
 function CreateFloor({ onClose }: { onClose: () => void }) {
   const ground = useBranch('');
   const config = useSquad((s) => s.workspace?.floorConfig) ?? { copy: ['.env*'], setup: '' };
+  const level = useSquad((s) => `FL${(s.workspace?.floorSeq ?? Math.max(0, ...(s.workspace?.floors ?? []).map((f) => f.number ?? 0))) + 1}`);
   const [name, setName] = useState('');
   const [branch, setBranch] = useState('');
   const [branchEdited, setBranchEdited] = useState(false);
@@ -80,6 +82,11 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
   return (
     <Dialog icon="layers" title="Novo nível de voo" sub="Uma cópia isolada do repositório, num branch próprio, com um canvas próprio." onClose={onClose}>
       <form className="fl-form" onSubmit={submit}>
+        <div className="fl-row">
+        <div className="field fl-level">
+          Nível
+          <span className="fl-level-box mono">{level}</span>
+        </div>
         <label className="field">
           Nome
           <input value={name} maxLength={40} autoFocus placeholder="Ex.: Página de login" onChange={(e) => setName(e.target.value)} />
@@ -96,6 +103,7 @@ function CreateFloor({ onClose }: { onClose: () => void }) {
             }}
           />
         </label>
+        </div>
         <p className="field-hint">
           {existing ? (
             <>
@@ -224,6 +232,37 @@ function Commits({ changes, base, what }: { changes: FloorChanges; base?: string
   );
 }
 
+/**
+ * The checks before landing (docs/torre/TELAS.md, quadro 14): everything
+ * committed, flights still in the air (a warning, not a block) and how far
+ * the base moved. Conflicts show when landing is tried.
+ */
+function LandChecks({ changes, base, flying }: { changes: FloorChanges; base?: string; flying: string[] }) {
+  const clean = changes.files.length === 0;
+  return (
+    <div className="fl-checks">
+      <div className="fl-check idle">
+        <b>conflitos</b>
+        <span>checados ao pousar</span>
+      </div>
+      <div className={`fl-check ${clean ? 'ok' : 'err'}`}>
+        <b>{clean ? '✓ tudo commitado' : `✕ ${plural(changes.files.length, 'alteração', 'alterações')}`}</b>
+        <span>{clean ? '0 alterações' : 'commite antes de pousar'}</span>
+      </div>
+      <div className={`fl-check ${flying.length ? 'wait' : 'ok'}`}>
+        <b>{flying.length ? `⧗ ${plural(flying.length, 'voo no ar', 'voos no ar')}` : '✓ nenhum voo no ar'}</b>
+        <span>{flying.length ? `${flying.join(', ')} ${flying.length > 1 ? 'fecham' : 'fecha'}` : 'nada é interrompido'}</span>
+      </div>
+      <div className="fl-check idle">
+        <b>
+          {base || 'origem'} +{changes.behind}
+        </b>
+        <span>{changes.behind === 1 ? 'commit novo' : 'commits novos'}</span>
+      </div>
+    </div>
+  );
+}
+
 /** "Mesclar em [branch]": the target, among the branches it can merge into. */
 function IntoSelect({ into, branches, onChange, onClick }: { into: string; branches: string[]; onChange: (b: string) => void; onClick?: () => void }) {
   return (
@@ -287,6 +326,8 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [busy, setBusy] = useState(false);
   const { closes, notes } = useFloorNodes(floor.id);
+  const runtime = useSquad((s) => s.runtime);
+  const flying = closes.filter((n) => n.terminal && ['work', 'wait'].includes(runtime[n.id]?.activity ?? '')).map((n) => callsign(n.terminal!));
   // Nothing to merge: keeping the branch is the obvious choice.
   useEffect(() => {
     if (changes && changes.ahead === 0) setMode('keep');
@@ -321,10 +362,10 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
   return (
     <Dialog
       icon="flight_land"
-      title={`Autorizar pouso · ${floor.name}`}
+      title={`Autorizar pouso · ${flightLevel(floor)}`}
       sub={
         <span className="mono">
-          ⎇ {floor.branch}
+          {floor.name} · {floor.branch}
           {target && ` → ${target}`}
         </span>
       }
@@ -332,6 +373,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
       wide
       foot={
         <>
+          <span className="fl-who mono">quem pode: você, ou o líder que criou o nível</span>
           <span className="tn-spacer" />
           <button className="btn" onClick={onClose}>
             Cancelar
@@ -348,6 +390,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
       {changes && (
         <>
           {changes.missing && <p className="fl-warn">A pasta do nível sumiu. Pousar só limpa o registro; os commits do branch continuam.</p>}
+          <LandChecks changes={changes} base={floor.base} flying={flying} />
           <Commits changes={changes} base={floor.base} what={['commit do nível', 'commits do nível', 'Nenhum commit novo no nível']} />
           {dirty && (
             <div className="fl-warn">
@@ -490,7 +533,7 @@ function DiscardFloor({ floor, onClose }: { floor: Floor; onClose: () => void })
   return (
     <Dialog
       icon="delete"
-      title={`Descartar ${floor.name}`}
+      title={`Descartar ${flightLevel(floor)}?`}
       sub="Apaga a cópia e o que há nela. Não dá para desfazer."
       onClose={onClose}
       foot={

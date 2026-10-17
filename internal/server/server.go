@@ -73,11 +73,26 @@ type Server struct {
 	activityOf   func(id string) (string, time.Time)
 	extraRoutes  []route
 	prepareNode  func(*store.Node) error
+	roleAbbr     func(role string) string
 }
 
 // SetNodePreparer installs a function that completes new nodes before they
 // are stored (e.g. the notes service assigns a file to a new note).
 func (s *Server) SetNodePreparer(fn func(*store.Node) error) { s.prepareNode = fn }
+
+// SetRoleAbbr tells the server each role's abbreviation, which gives the
+// terminals with that role their callsigns. It also gives one to each
+// terminal saved without it.
+func (s *Server) SetRoleAbbr(fn func(role string) string) {
+	s.roleAbbr = fn
+	for _, n := range s.store.Snapshot().Nodes {
+		if n.Terminal != nil && n.Terminal.Callsign == "" {
+			if _, err := s.store.AssignCallsign(n.ID, fn(n.Terminal.Role)); err != nil {
+				s.log.Warn("callsign", "terminal", n.Terminal.Name, "err", err)
+			}
+		}
+	}
+}
 
 type route struct {
 	pattern string

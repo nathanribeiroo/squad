@@ -1,86 +1,87 @@
+/* Papéis (docs/torre/TELAS.md, quadro 17): 1200×780, the list at 280. */
 .roles-backdrop {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgb(0 0 0 / 0.35);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
 }
 .roles-panel {
-  width: min(760px, 100%);
-  height: min(560px, 100%);
+  width: min(1200px, 100%);
+  height: min(780px, 100%);
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--line-2);
-  border-radius: 0;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--line-3);
+  box-shadow: var(--shadow-dialog);
   overflow: hidden;
 }
 .roles-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px 12px 16px;
+  height: 52px;
+  flex: none;
+  padding: 0 12px 0 18px;
   border-bottom: 1px solid var(--line);
 }
-.roles-head div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.roles-head strong { font-size: 14px; }
-.roles-head span { font-size: 12px; color: var(--text-2); }
+.roles-head strong { font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; }
+.roles-head-sub { font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 
 .roles-body { flex: 1; min-height: 0; display: flex; }
 .roles-list {
-  width: 210px;
+  width: 280px;
   flex: none;
   border-right: 1px solid var(--line);
-  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
   overflow-y: auto;
 }
 .roles-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 34px;
-  padding: 0 8px;
+  gap: 10px;
+  height: 48px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 0;
+  border-bottom: 1px solid var(--line);
   background: transparent;
   color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   text-align: left;
   cursor: pointer;
   flex: none;
 }
 .roles-item:hover { background: var(--surface-2); }
-.roles-item.on { background: var(--surface-3); }
-.roles-glyph { width: 24px; height: 24px; border-radius: 0; display: flex; align-items: center; justify-content: center; flex: none; }
+.roles-item.on { background: var(--surface-3); box-shadow: inset 2px 0 0 var(--text); }
+.roles-glyph { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; flex: none; }
 .roles-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.roles-tag { font-size: 10.5px; font-weight: 600; color: var(--text-3); }
-.roles-new { color: var(--text-2); margin-top: 4px; }
+.roles-abbr { font-size: 11px; color: var(--text-3); letter-spacing: 0.06em; }
+.roles-tag { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--stt-wait); text-transform: uppercase; letter-spacing: 0.06em; }
+.roles-new { color: var(--text-2); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 0; }
 
-.roles-editor { flex: 1; min-width: 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
-.roles-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.roles-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.roles-editor { flex: 1; min-height: 0; padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+.roles-name-row { display: grid; grid-template-columns: 1fr 120px; gap: 12px; }
+.roles-abbr-input { letter-spacing: 0.12em; font-weight: 700; }
+.roles-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
 .roles-swatch {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+  width: 26px;
+  height: 26px;
   border: 0;
   cursor: pointer;
-  box-shadow: 0 0 0 2px var(--surface);
+  padding: 0;
 }
-.roles-swatch.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text); }
+.roles-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
 .roles-icons { display: flex; gap: 4px; flex-wrap: wrap; }
 .roles-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 0;
-  border: 1px solid var(--line);
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-3);
   background: transparent;
   color: var(--text-2);
   display: flex;
@@ -89,26 +90,43 @@
   cursor: pointer;
 }
 .roles-icon:hover { background: var(--surface-2); }
-.roles-icon.on { border-color: transparent; }
-.roles-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text-2); line-height: 1.45; cursor: pointer; }
+.roles-icon.on { border-color: var(--text); }
+.roles-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text-2); line-height: 1.5; cursor: pointer; }
 .roles-check input { margin-top: 2px; accent-color: var(--text); }
-.roles-check b { color: var(--text); font-weight: 600; }
-.roles-prompt { flex: 1; min-height: 160px; }
-.roles-prompt textarea { flex: 1; min-height: 140px; }
+.roles-check b { color: var(--text); font-weight: 700; }
+.roles-prompt { flex: 1; min-height: 200px; }
+.roles-prompt textarea { flex: 1; min-height: 180px; font-family: var(--font-mono); font-size: 12px; line-height: 18px; }
+
+/* Saved, and flights that read the old instructions until they restart. */
+.roles-saved {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 22px 14px;
+  padding: 8px 8px 8px 12px;
+  background: var(--stb-done);
+  border-left: 3px solid var(--st-done);
+  font-size: 12.5px;
+}
+.roles-saved > .msi { color: var(--stt-done); }
+.roles-saved .btn { height: 28px; }
 
 .roles-foot {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  height: 56px;
+  flex: none;
+  padding: 0 14px;
   border-top: 1px solid var(--line);
 }
-.roles-danger { color: var(--stt-err); }
-.roles-usage { font-size: 11.5px; color: var(--text-2); display: inline-flex; gap: 6px; align-items: center; min-width: 0; }
+.roles-danger { color: var(--stt-err); border-color: var(--st-err); }
+.roles-usage { font-size: 11px; color: var(--text-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn:disabled { opacity: 0.45; cursor: default; }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
   .roles-body { flex-direction: column; }
   .roles-list { width: auto; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
-  .roles-item { flex: none; }
+  .roles-item { flex: none; border-bottom: 0; }
+  .roles-head-sub { display: none; }
 }

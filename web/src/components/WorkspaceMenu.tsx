@@ -84,15 +84,17 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
                 >
                   <span className="ws-dot" style={{ background: wsColor(w.color) }} />
                   <span className="ws-row-text">
-                    <span className="ws-row-name">{w.name}</span>
+                    <span className="ws-row-name">
+                      <span className="ws-row-label">{w.name}</span>
+                      {i < 9 && <span className="kbd">⌥{i + 1}</span>}
+                    </span>
                     <span className="ws-row-sub">
-                      <span className="mono ws-row-path" title={w.cwd}>
+                      <span className="ws-row-path" title={w.cwd}>
                         <bdi>{shortPath(w.cwd)}</bdi>
                       </span>
-                      <span className={w.active || w.pending ? 'ws-busy' : ''}>{wsActivity(w)}</span>
+                      <span className={w.pending ? 'ws-wait' : w.active ? 'ws-busy' : ''}>{wsActivity(w)}</span>
                     </span>
                   </span>
-                  {i < 9 && <span className="kbd">⌥{i + 1}</span>}
                 </button>
                 <button className="icon-btn ws-row-edit" onClick={() => setMode({ kind: 'edit', ws: w })} aria-label={`Editar ${w.name}`} title="Editar">
                   <Icon name="edit" size={16} />

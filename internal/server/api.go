@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/nathanribeiroo/squad/internal/events"
+	"github.com/nathanribeiroo/squad/internal/ids"
 	"github.com/nathanribeiroo/squad/internal/store"
 	"github.com/nathanribeiroo/squad/internal/terminal"
 )
@@ -89,6 +90,9 @@ func (s *Server) AddNode(n store.Node) (store.Node, error) {
 	if n.Terminal != nil { // a new terminal starts a new conversation
 		t := *n.Terminal
 		t.Conversation, t.Busy, t.Empty = "", false, false
+		if t.Callsign == "" && s.roleAbbr != nil {
+			t.Callsign = s.roleAbbr(t.Role) // numbered by the store when taken
+		}
 		n.Terminal = &t
 	}
 	if n.W == 0 && n.H == 0 {
@@ -193,6 +197,14 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, storeErrorCode(err), err.Error())
 		return
+	}
+	// Another role brings its abbreviation, unless the callsign was chosen
+	// by hand.
+	if n.Terminal != nil && cur.Terminal != nil && s.roleAbbr != nil && n.Terminal.Role != cur.Terminal.Role &&
+		n.Terminal.Callsign == cur.Terminal.Callsign && derivedCallsign(cur.Terminal.Callsign, s.roleAbbr(cur.Terminal.Role), cur.Terminal.Name) {
+		if c, err := s.store.AssignCallsign(id, s.roleAbbr(n.Terminal.Role)); err == nil {
+			n.Terminal.Callsign = c
+		}
 	}
 	// The canvas resizes a terminal by patching its cols×rows (with the node
 	// size); a running process follows at once.
@@ -339,4 +351,19 @@ func (s *Server) handleRemoveEdge(w http.ResponseWriter, r *http.Request) {
 	}
 	s.bus.Publish(events.EdgeRemoved, e)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// derivedCallsign reports whether callsign c came from abbr (a role's
+// abbreviation; the name's letters without one), as given or numbered
+// (IMP, IM2, I10).
+func derivedCallsign(c, abbr, name string) bool {
+	base := abbr
+	if base == "" {
+		base = ids.Callsign(name)
+	}
+	if c == base {
+		return true
+	}
+	stem := strings.TrimRight(c, "0123456789")
+	return stem != c && strings.HasPrefix(base, stem)
 }

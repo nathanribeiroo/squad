@@ -29,20 +29,19 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
   const [focused, setFocused] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const creator = useCreator(data.node.createdBy);
-  const remove = () => api.removeNode(id).catch((e: Error) => toast(e.message));
+  const remove = () => api.removeNode(id).catch((e: Error) => toast(e.message, 'err'));
 
   const onResizeEnd = (_: unknown, p: ResizeParams) => {
     useSquad.getState().moveNodeLocal(id, Math.round(p.x), Math.round(p.y));
     api
       .updateNode(id, { x: Math.round(p.x), y: Math.round(p.y), w: Math.round(p.width), h: Math.round(p.height) })
-      .catch((e: Error) => toast(e.message));
+      .catch((e: Error) => toast(e.message, 'err'));
   };
 
   return (
     <div className={`pnode${selected ? ' selected' : ''}${focused ? ' focused' : ''}${connectClass(target)}`}>
       <NodeResizer isVisible={selected && !focused} minWidth={320} minHeight={240} onResizeEnd={onResizeEnd} />
       <NodeHandles id={id} />
-      <div className="node-stripe" style={{ background: 'var(--line-2)' }} />
       <header className="pn-head node-drag">
         <Icon name="public" size={18} style={{ color: 'var(--text-2)' }} />
         {renaming ? (
@@ -59,7 +58,7 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
         {creator && (
           <span className="pn-creator" title={`${creator.name} abriu este portal (torre portal create)`}>
             <i style={{ background: `var(--r-${creator.color})` }} />
-            por {creator.name}
+            por {creator.callsign}
           </span>
         )}
         <span className="pn-nav nodrag">
@@ -76,8 +75,8 @@ export function PortalNode({ id, data, selected }: NodeProps<PortalFlowNode>) {
         <AddressBar id={id} portal={portal} url={stream.state?.url || url} />
         {focused ? (
           <span className="tn-kbd-here" title="⌥Esc devolve o teclado ao canvas">
-            <Icon name="keyboard" size={15} />
-            teclado aqui
+            <Icon name="keyboard" size={14} />
+            teclado
           </span>
         ) : (
           <LiveBadge stream={stream} hasUrl={!!url} paused={level !== 'live'} />
@@ -113,7 +112,7 @@ function NameInput({ id, portal, onDone }: { id: string; portal: PortalData; onD
       toast(`Já existe um portal chamado "${name}"`);
       return;
     }
-    api.updateNode(id, { portal: { ...portal, name } }).catch((e: Error) => toast(e.message));
+    api.updateNode(id, { portal: { ...portal, name } }).catch((e: Error) => toast(e.message, 'err'));
   };
   return (
     <input
@@ -144,7 +143,7 @@ function AddressBar({ id, portal, url }: { id: string; portal: PortalData; url: 
     setEditing(false);
     let next = draft.trim();
     if (next && !/^[a-z]+:\/\//i.test(next)) next = `${/^(localhost|127\.|\[::1\])/.test(next) ? 'http' : 'https'}://${next}`;
-    if (next && next !== url) api.updateNode(id, { portal: { ...portal, url: next } }).catch((e: Error) => toast(e.message));
+    if (next && next !== url) api.updateNode(id, { portal: { ...portal, url: next } }).catch((e: Error) => toast(e.message, 'err'));
   };
   return editing ? (
     <input
@@ -183,7 +182,7 @@ function LiveBadge({ stream, hasUrl, paused }: { stream: PortalStream; hasUrl: b
   let text = 'sem transmissão';
   let color = 'var(--text-3)';
   if (paused && stream.frame) {
-    text = 'pausado'; // zoomed out: the last frame, not streaming
+    text = 'pausado · zoom'; // zoomed out: the last frame, not streaming
   } else if (stream.noBrowser) {
     text = 'sem navegador';
     color = 'var(--stt-err)';
@@ -288,10 +287,10 @@ function PortalScreen({ id, stream, url, onFocusChange }: { id: string; stream: 
   let overlay: React.ReactNode = null;
   if (stream.noBrowser) {
     overlay = (
-      <div className="pn-msg">
+      <div className="pn-msg err">
         <Icon name="public_off" size={28} />
-        <span>Nenhum navegador encontrado para mostrar a página.</span>
-        <span className="pn-hint">Instale o Chrome ou o Edge, ou defina TORRE_BROWSER com o caminho do executável, e reinicie a Torre.</span>
+        <span>Nenhum Chrome, Edge ou Chromium no servidor.</span>
+        <span className="pn-hint">Instale um deles ou defina TORRE_BROWSER com o caminho do executável, e reinicie a Torre.</span>
       </div>
     );
   } else if (stream.error) {

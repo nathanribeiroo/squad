@@ -118,7 +118,7 @@ export function Canvas() {
       api
         .addEdge(c.source, c.target)
         .then(() => toast(`${name(c.source)} ↔ ${name(c.target)} na mesma frequência`))
-        .catch((e: Error) => toast(e.message));
+        .catch((e: Error) => toast(e.message, 'err'));
     },
     [],
   );
@@ -131,7 +131,7 @@ export function Canvas() {
       api
         .removeEdge(e.id)
         .then(() => toast(`${name(e.source)} ↔ ${name(e.target)} desligados`))
-        .catch((err: Error) => toast(err.message));
+        .catch((err: Error) => toast(err.message, 'err'));
     }
   }, []);
 
@@ -141,7 +141,7 @@ export function Canvas() {
       const x = Math.round(n.position.x);
       const y = Math.round(n.position.y);
       st.moveNodeLocal(n.id, x, y);
-      api.updateNode(n.id, { x, y }).catch((e: Error) => toast(e.message));
+      api.updateNode(n.id, { x, y }).catch((e: Error) => toast(e.message, 'err'));
     }
   }, []);
 
@@ -192,7 +192,7 @@ export function Canvas() {
       if (!a || !b || !we) return;
       const rect = (n: typeof a) => ({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: n.measured.width ?? 0, h: n.measured.height ?? 0 });
       const p = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      api.updateEdge(edge.id, insertRopePoint(rect(a), rect(b), we.ropePoints ?? [], p)).catch((err: Error) => toast(err.message));
+      api.updateEdge(edge.id, insertRopePoint(rect(a), rect(b), we.ropePoints ?? [], p)).catch((err: Error) => toast(err.message, 'err'));
     },
     [rf],
   );

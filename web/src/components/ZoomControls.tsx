@@ -13,11 +13,11 @@ function MiniNode({ id, x, y, width, height }: MiniMapNodeProps) {
       y={y}
       width={width}
       height={height}
-      rx={6}
       style={{
-        fill: isTerm ? `var(--stb-${state})` : 'var(--surface-3)',
+        fill: isTerm ? `var(--stb-${state})` : node?.kind === 'note' ? 'var(--paper-off)' : 'var(--surface-3)',
         stroke: isTerm ? `var(--st-${state})` : 'none',
-        strokeWidth: 12,
+        strokeWidth: 14,
+        opacity: isTerm ? 1 : 0.7,
       }}
     />
   );
@@ -27,15 +27,16 @@ export function MiniMapAndZoom() {
   const rf = useReactFlow();
   const zoom = useStore((s) => s.transform[2]);
   const drawerOpen = useSquad((s) => s.drawerOpen);
-  const right = drawerOpen ? 398 : 18;
+  const right = drawerOpen ? 458 : 18; // beside the Rádio (--w-drawer 440)
   return (
     <>
+      <div className="torre-scope-sweep" style={{ right, bottom: 56 }} aria-hidden="true" />
       <MiniMap
         className="torre-minimap"
-        style={{ right: right - 15, bottom: 56 - 15, width: 220, height: 132 }}
+        style={{ right: right - 15, bottom: 56 - 15, width: 230, height: 118 }}
         nodeComponent={MiniNode}
         maskColor="transparent"
-        maskStrokeColor="var(--text)"
+        maskStrokeColor="var(--focus)"
         maskStrokeWidth={1.5}
         pannable
         zoomable

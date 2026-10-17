@@ -83,7 +83,11 @@ func (s *Service) cliList(me store.Node) agentbus.Result {
 		case f.Status == store.FloorPreparing:
 			state = "preparing (setup running)"
 		}
-		fmt.Fprintf(&b, "- %q: branch %s (from %s), %s, %d terminal(s)", f.Name, f.Branch, from, state, f.Terminals)
+		fmt.Fprintf(&b, "- %q", f.Name)
+		if f.Number > 0 {
+			fmt.Fprintf(&b, " (FL%d)", f.Number)
+		}
+		fmt.Fprintf(&b, ": branch %s (from %s), %s, %d terminal(s)", f.Branch, from, state, f.Terminals)
 		if f.CreatedBy == me.ID {
 			b.WriteString(", created by you")
 		}

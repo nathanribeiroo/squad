@@ -72,7 +72,7 @@ function Stage() {
       const body: Partial<WNode> = { kind, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), floor: floor || undefined };
       // A draft: it opens with its name selected; the name the user gives names the file.
       if (kind === 'note') body.note = { title: '', file: '', draft: true };
-      api.addNode(body).catch((e: Error) => toast(e.message));
+      api.addNode(body).catch((e: Error) => toast(e.message, 'err'));
     },
     [rf],
   );
@@ -84,7 +84,7 @@ function Stage() {
       if (e.altKey && !e.metaKey && !e.ctrlKey) {
         const map: Record<string, () => void> = {
           KeyA: () => st.setDrawer(!st.drawerOpen),
-          KeyP: () => void (st.extra.paused ? api.resume() : api.pause()).catch((err: Error) => toast(err.message)),
+          KeyP: () => void (st.extra.paused ? api.resume() : api.pause()).catch((err: Error) => toast(err.message, 'err')),
           ...Object.fromEntries(
             st.workspaces.slice(0, 9).map((w, i) => [`Digit${i + 1}`, () => st.switchWorkspace(w.id)]),
           ),

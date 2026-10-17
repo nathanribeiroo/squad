@@ -1,51 +1,54 @@
-.ws-menu { left: 0; top: 36px; width: 340px; padding: 6px; }
+/* The workspace selector (docs/torre/TELAS.md, quadro 11): 440 wide, the
+   sessions beside it. */
+.ws-menu { left: 0; top: 38px; width: 440px; padding: 0; }
 .ws-menu-title {
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--text-3); padding: 6px 8px 4px;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--text-3); padding: 14px 14px 10px; border-bottom: 1px solid var(--line);
 }
-.ws-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
-.ws-row { display: flex; align-items: center; border-radius: 0; }
-.ws-row:hover, .ws-row.on, .ws-row.peek { background: var(--surface-2); }
+.ws-list { display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; }
+.ws-row { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.ws-row:hover, .ws-row.peek { background: var(--surface-2); }
+.ws-row.on { background: var(--surface-3); box-shadow: inset 2px 0 0 var(--text); }
 .ws-row-main {
-  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
-  padding: 7px 8px; border: 0; background: transparent; cursor: pointer; text-align: left;
+  flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 8px 11px 14px; border: 0; background: transparent; cursor: pointer; text-align: left;
 }
-.ws-dot { width: 10px; height: 10px; border-radius: 0; flex: none; }
-.ws-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ws-row-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ws-row-sub { display: flex; gap: 8px; font-size: 11.5px; color: var(--text-2); min-width: 0; }
+.ws-dot { width: 9px; height: 9px; flex: none; margin-top: 5px; }
+.ws-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ws-row-name { font-size: 13.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ws-row-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ws-row-name .kbd { font-weight: 400; }
+.ws-row-sub { display: flex; flex-direction: column; gap: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); min-width: 0; }
 /* Cut the start of long paths, not the end (see .tn-cwd). */
 .ws-row-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; direction: rtl; text-align: left; }
-.ws-row-sub span:last-child { flex: none; }
 .ws-busy { color: var(--stt-work); }
-.ws-row-edit { opacity: 0; }
+.ws-wait { color: var(--stt-wait); }
+.ws-idle { color: var(--text-3); }
+.ws-row-edit { opacity: 0.6; }
 .ws-row:hover .ws-row-edit, .ws-row-edit:focus-visible { opacity: 1; }
 /* Shows the workspace's sessions beside the list (SessionsMenu.css). */
-.ws-row-sessions { width: auto; min-width: 28px; gap: 1px; padding: 0 2px 0 6px; margin-right: 4px; color: var(--text-3); }
+.ws-row-sessions { width: auto; min-width: 28px; gap: 1px; padding: 0 4px 0 6px; margin-right: 6px; color: var(--text-3); }
 .ws-row-sessions .mono { font-size: 11px; }
 .ws-row.peek .ws-row-sessions { color: var(--text); }
-.ws-menu-div { display: block; height: 1px; background: var(--line); margin: 6px 2px; }
+.ws-menu-div { display: none; }
 .ws-new {
-  width: 100%; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 8px;
-  border: 0; border-radius: 0; background: transparent; font-size: 12.5px; cursor: pointer;
+  width: 100%; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 14px;
+  border: 0; background: transparent; font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; color: var(--text);
 }
 .ws-new:hover { background: var(--surface-2); }
 
-.ws-form { display: grid; gap: 10px; padding: 6px; }
-.ws-form-head { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-.ws-colors { display: flex; gap: 8px; padding-top: 2px; }
-.ws-swatch {
-  width: 20px; height: 20px; border-radius: 0; border: 0; cursor: pointer; padding: 0;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
-}
+.ws-form { display: grid; gap: 14px; padding: 16px 18px; }
+.ws-form-head { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.ws-colors { display: flex; gap: 6px; padding-top: 2px; }
+.ws-swatch { width: 26px; height: 26px; border: 0; cursor: pointer; padding: 0; }
 .ws-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
-.ws-note { font-size: 11.5px; color: var(--text-2); }
+.ws-note { font-size: 11.5px; color: var(--stt-wait); }
 .ws-error { font-size: 12px; color: var(--stt-err); }
 .ws-remove {
-  display: flex; align-items: center; justify-content: center; gap: 6px; height: 30px;
-  border: 0; border-radius: 0; background: transparent; color: var(--stt-err); font-size: 12.5px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px; height: 32px;
+  border: 1px solid var(--st-err); background: transparent; color: var(--stt-err); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
 }
 .ws-remove:hover { background: var(--stb-err); }
 
 /* Activity in workspaces other than the one on screen. */
-.tb-ws-elsewhere { width: 6px; height: 6px; border-radius: 50%; background: var(--st-work); }
+.tb-ws-elsewhere { width: 6px; height: 6px; border-radius: 50%; background: var(--stt-work); }

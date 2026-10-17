@@ -44,3 +44,11 @@ export const AGENTS: { value: string; label: string }[] = [
   { value: 'shell', label: 'Shell' },
   { value: 'custom', label: 'Comando próprio' },
 ];
+
+/** A flight's callsign: its own, else three letters of its name. */
+export function callsign(t: { name: string; callsign?: string }): string {
+  if (t.callsign) return t.callsign;
+  const letters = t.name.normalize('NFD').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const cons = letters.replace(/[AEIOU0-9]/g, '');
+  return (cons + letters.replace(/[^AEIOU0-9]/g, '')).slice(0, 3) || 'VOO';
+}

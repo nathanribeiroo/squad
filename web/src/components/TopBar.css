@@ -1,56 +1,64 @@
+/* The top bar (docs/torre/TELAS.md, "Estrutura da tela"; TorreBar.dc.html):
+   a path workspace › session › runway and levels, then the view controls. */
 .topbar {
-  height: var(--topbar-h);
+  height: var(--h-topbar);
   background: var(--surface);
   border-bottom: 1px solid var(--line);
-  padding: 0 12px;
+  padding: 0 10px 0 14px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   position: relative;
   z-index: 20;
+  white-space: nowrap;
 }
-/* Nothing wraps: the floors scroll and the path shrinks (then hides) first. */
+/* Nothing wraps: the levels scroll and the session name shrinks first. */
 .topbar > * { flex: none; }
-.tb-logo { display: flex; align-items: center; gap: 8px; }
+.tb-anchor { position: relative; display: flex; }
+.tb-anchor.tb-shrink { flex: 0 1 auto; min-width: 0; }
+.tb-logo { display: flex; align-items: center; gap: 8px; padding-right: 6px; }
 .tb-logo .tower-logo { color: var(--text); flex: none; }
-.tb-wordmark { font-family: var(--font-ui); font-weight: 700; font-size: 15px; line-height: 1; letter-spacing: 0.1em; }
-.tb-divider { width: 1px; height: 20px; background: var(--line); }
-.tb-workspace {
-  height: 30px;
+.tb-wordmark { font-family: var(--font-ui); font-weight: 700; font-size: var(--fs-wordmark); line-height: 1; letter-spacing: 0.1em; }
+.tb-divider { width: 1px; height: 20px; background: var(--line-2); }
+.tb-sep { color: var(--text-4); font-size: 13px; padding: 0 1px; }
+.tb-caret { color: var(--text-3); }
+.tb-kbd { font-size: 10.5px; color: var(--text-4); letter-spacing: 0; }
+
+.tb-crumb {
+  height: 32px;
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 0 8px;
-  border-radius: 0;
-  border: 1px solid var(--line);
-  background: transparent;
-  cursor: pointer;
-}
-.tb-ws-color { width: 10px; height: 10px; border-radius: 0; background: var(--r-impl); }
-.tb-ws-name { font-size: 13px; font-weight: 600; }
-.tb-ws-sub { font-size: 11.5px; color: var(--text-2); }
-.tb-floors {
-  height: 30px;
-  padding: 2px;
-  border-radius: 0;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex: 0 1 auto;
-  min-width: 120px;
-  max-width: 55vw;
-}
-.tb-floor-tabs { display: flex; align-items: center; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.tb-floor-tabs::-webkit-scrollbar { display: none; }
-.tb-floor {
-  height: 24px;
-  border-radius: 0;
+  padding: 0 6px;
   border: 0;
   background: transparent;
-  color: var(--text-2);
-  padding: 0 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+.tb-crumb:hover, .tb-crumb[aria-expanded='true'] { background: var(--surface-2); }
+.tb-workspace { padding-left: 8px; }
+.tb-ws-color { width: 8px; height: 8px; background: var(--ws-teal); flex: none; }
+.tb-ws-name { font-size: 13px; font-weight: 700; }
+.tb-session-name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* The runway and the flight levels: tabs in one box. */
+.tb-floors {
+  height: 30px;
+  border: 1px solid var(--line-2);
+  display: flex;
+  align-items: stretch;
+  flex: 0 1 auto;
+  min-width: 120px;
+  max-width: 48vw;
+}
+.tb-floor-tabs { display: flex; align-items: stretch; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.tb-floor-tabs::-webkit-scrollbar { display: none; }
+.tb-floor {
+  border: 0;
+  border-right: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--text-3);
+  padding: 0 10px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -58,68 +66,96 @@
   flex: none;
   white-space: nowrap;
 }
-.tb-floor:not(.active):hover { background: var(--surface-3); }
-.tb-floor.active { background: var(--surface); box-shadow: 0 0 0 1px var(--line-2); color: var(--text); }
-.tb-floor-name { font-size: 12.5px; font-weight: 600; }
-.tb-floor-sub { font-size: 11px; color: var(--text-3); display: inline-flex; align-items: center; gap: 3px; }
+.tb-floor:not(.active):hover { background: var(--surface-2); color: var(--text-2); }
+.tb-floor.active { background: var(--surface-3); box-shadow: inset 0 -2px 0 var(--text); color: var(--text); }
+.tb-floor-level { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: var(--text-3); }
+.tb-floor-name { font-family: var(--font-mono); font-size: 12px; }
+.tb-floor.active .tb-floor-name { font-weight: 700; }
+.tb-floor-sub { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); display: inline-flex; align-items: center; gap: 3px; }
 .tb-floor-sub.dirty { color: var(--stt-wait); }
 .tb-floor-sub.err { color: var(--stt-err); }
-.tb-floor-busy { width: 6px; height: 6px; border-radius: 50%; background: var(--st-work); flex: none; }
-.fl-menu { right: auto; width: 230px; z-index: 70; }
-.fl-menu .tb-menu-title { text-transform: none; letter-spacing: 0; font-size: 11.5px; }
-.fl-danger { color: var(--stt-err); }
+.tb-floor-air { color: var(--stt-work); font-size: 9px; line-height: 1; }
 .tb-floor-add {
-  width: 24px;
-  height: 24px;
+  width: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 0;
   background: transparent;
-  color: var(--text-2);
-  border-radius: 0;
+  color: var(--text-3);
+  flex: none;
+  cursor: pointer;
 }
-.tb-floor-add { flex: none; cursor: pointer; }
-.tb-floor-add:not(:disabled):hover { background: var(--surface-3); color: var(--text); }
-.tb-floor-add:disabled { opacity: 0.5; cursor: default; }
-.tb-path { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; flex: 0 100 auto; min-width: 0; }
+.tb-floor-add:not(:disabled):hover { background: var(--surface-2); color: var(--text); }
+.tb-floor-add:disabled { opacity: 0.45; cursor: default; }
+.fl-menu { width: 280px; z-index: 70; padding: 4px 0; }
+.fl-menu-head { padding: 10px 14px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.fl-menu-head b { font-family: var(--font-mono); font-size: 13px; }
+.fl-menu-head span { display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); margin-top: 3px; white-space: normal; overflow-wrap: anywhere; }
+.fl-danger { color: var(--stt-err); }
+
 .tb-spacer { flex: 1 1 0; min-width: 0; }
-.tb-workspace { white-space: nowrap; }
-@media (max-width: 1500px) {
-  .tb-rate-label { display: none; }
-}
-.tb-rate { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
-.tb-rate .mono { color: var(--text); font-size: 11.5px; }
-.tb-count {
-  min-width: 18px;
-  height: 18px;
-  border-radius: 0;
-  background: var(--st-wait);
-  color: var(--on-signal);
-  font-weight: 700;
-  font-size: 11px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
-}
-.tb-server { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
-.tb-server.ok .msi { color: var(--stt-done); }
-.tb-server.wait { color: var(--stt-wait); }
-.tb-menu { right: 0; top: 34px; width: 180px; padding: 6px; }
-.tb-menu-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); padding: 6px 6px 4px; }
-.tb-menu-item {
-  width: 100%;
+
+/* ESPERA GERAL, RÁDIO: bordered buttons in capitals. */
+.tb-btn {
   height: 30px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line-3);
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tb-btn:hover { background: var(--surface-2); }
+.tb-btn.on { background: var(--surface-3); }
+.tb-btn.hold { background: var(--st-wait); border-color: var(--st-wait); color: var(--stb-wait); }
+.tb-btn.hold .tb-kbd { color: inherit; opacity: 0.7; }
+.tb-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--st-wait);
+  color: var(--stb-wait);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tb-link { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.tb-link.ok { color: var(--stt-done); }
+.tb-link.ok i { width: 7px; height: 7px; border-radius: 50%; background: var(--st-done-bright); }
+.tb-link.wait { border: 1px dashed var(--st-wait); color: var(--stt-wait); font-family: var(--font-mono); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.tb-gear { width: 30px; height: 30px; }
+.tb-clock { font-size: 13px; font-weight: 700; padding-left: 2px; color: var(--text); }
+@media (max-width: 1380px) {
+  .tb-clock { display: none; }
+}
+
+.tb-menu { right: 0; top: 36px; width: 220px; padding: 6px 0; }
+.tb-menu-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-3); padding: 8px 14px 4px; }
+.tb-menu-item {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 0;
   background: transparent;
   font-size: 12.5px;
   cursor: pointer;
   text-align: left;
+  color: var(--text);
 }
+.tb-menu-item .msi { color: var(--text-3); }
 .tb-menu-item:hover, .tb-menu-item.on { background: var(--surface-3); }
+.tb-menu-item.on { box-shadow: inset 2px 0 0 var(--text); }
+.tb-menu-item.fl-danger, .tb-menu-item.fl-danger .msi { color: var(--stt-err); }

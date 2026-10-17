@@ -1,22 +1,22 @@
+/* Tools on the left (docs/torre/TELAS.md, quadro 02): 40 wide, buttons of
+   32, the active one filled. */
 .toolbar {
   position: absolute;
   left: 12px;
   top: 16px;
-  padding: 4px;
+  width: 40px;
+  padding: 3px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 0;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--line-2);
   z-index: 10;
 }
 .tbx-btn {
   position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 0;
+  width: 32px;
+  height: 32px;
   border: 0;
   background: transparent;
   color: var(--text-2);
@@ -25,27 +25,28 @@
   justify-content: center;
   cursor: pointer;
 }
-.tbx-btn:hover { background: var(--surface-2); color: var(--text); }
-.tbx-btn.active { background: var(--text); color: var(--surface); }
-.tbx-btn:disabled { opacity: 0.4; cursor: default; }
-.tbx-divider { height: 1px; background: var(--line); margin: 2px 4px; }
+.tbx-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+.tbx-btn.active { background: var(--primary); color: var(--on-primary); }
+.tbx-btn:disabled { opacity: 0.35; cursor: default; }
+.tbx-divider { height: 1px; background: var(--line-2); margin: 3px 2px; }
 .tbx-tip {
   position: absolute;
-  left: calc(100% + 8px);
+  left: calc(100% + 10px);
   top: 50%;
   transform: translateY(-50%);
-  height: 24px;
-  border-radius: 0;
-  background: var(--text);
-  color: var(--surface);
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 0 8px;
+  height: 26px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0 9px;
   display: none;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   white-space: nowrap;
   pointer-events: none;
 }
-.tbx-tip .mono { opacity: 0.75; font-size: 11px; }
+.tbx-tip .mono { opacity: 0.7; font-size: 10.5px; letter-spacing: 0; }
 .tbx-btn:hover .tbx-tip { display: flex; }

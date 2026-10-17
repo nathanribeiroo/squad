@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import type { SummaryEngine, SummarySettings, WorkspaceOverview } from '../api/types';
-import { clock } from '../lib/model';
+import { callsign, clock } from '../lib/model';
+import { useNodeRoleColor } from '../lib/roles';
 import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
 import { Dialog } from './Dialog';
@@ -29,7 +30,7 @@ const ENGINES: { id: SummaryEngine; label: string; hint?: string }[] = [
 function Settings({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<SummarySettings | null>(useSquad.getState().summarySettings);
   useEffect(() => {
-    api.summarySettings().then(setS, (e: Error) => toast(e.message));
+    api.summarySettings().then(setS, (e: Error) => toast(e.message, 'err'));
   }, []);
   const save = (patch: Partial<Pick<SummarySettings, 'cards' | 'engine'>>) => {
     if (!s) return;
@@ -40,7 +41,7 @@ function Settings({ onClose }: { onClose: () => void }) {
         setS(r);
         useSquad.getState().setSummarySettings(r);
       },
-      (e: Error) => toast(e.message),
+      (e: Error) => toast(e.message, 'err'),
     );
   };
   const found = (id: string) => s?.engines.find((e) => e.name === id);
@@ -91,6 +92,8 @@ function Overview({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const nodes = useSquad((s) => s.workspace?.nodes);
+  const wsName = useSquad((s) => s.workspace?.name ?? '');
+  const roleOf = useNodeRoleColor();
   const load = () => {
     setBusy(true);
     setError('');
@@ -106,21 +109,23 @@ function Overview({ onClose }: { onClose: () => void }) {
     );
   };
   useEffect(load, []);
+  const flight = (name: string) => nodes?.find((x) => x.terminal?.name === name);
   const go = (name: string) => {
-    const n = nodes?.find((x) => x.terminal?.name === name);
+    const n = flight(name);
     if (!n) return;
     onClose();
     useSquad.getState().setFloor(n.floor ?? '', n.id);
   };
   return (
     <Dialog
-      icon="psychology"
+      icon="summarize"
       title="Briefing"
-      sub={o ? `por ${o.by} · ${clock(o.at)}` : 'O que os voos estão fazendo'}
+      sub={[wsName, o && `por ${o.by} · ${clock(o.at)}`].filter(Boolean).join(' · ')}
       onClose={onClose}
       wide
       foot={
         <>
+          <span className="sm-cost">Cada briefing gasta um pouco do plano de quem o escreve.</span>
           <span className="tn-spacer" />
           <button className="btn" onClick={load} disabled={busy}>
             <Icon name="refresh" />
@@ -140,26 +145,36 @@ function Overview({ onClose }: { onClose: () => void }) {
         <>
           <p className="sm-text">{o.text}</p>
           {o.attention.length > 0 && (
-            <div className="fl-warn">
-              <b>Pede atenção</b>
-              <ul className="sm-list">
-                {o.attention.map((a) => (
-                  <li key={a}>{a}</li>
+            <div className="sm-attention">
+              <div className="label-caps">Pede atenção</div>
+              <ul>
+                {o.attention.slice(0, 3).map((a) => (
+                  <li key={a}>
+                    <Icon name="front_hand" size={15} />
+                    <span>{a}</span>
+                  </li>
                 ))}
               </ul>
             </div>
           )}
           {o.terminals.length > 0 && (
-            <ul className="sm-terms">
-              {o.terminals.map((t) => (
-                <li key={t.name}>
-                  <button className="link-btn" onClick={() => go(t.name)} title="Ir até o voo">
-                    {t.name}
-                  </button>
-                  <span>{t.status}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="sm-flights">
+              <div className="label-caps">Por voo</div>
+              <ul className="sm-terms">
+                {o.terminals.map((t) => {
+                  const n = flight(t.name);
+                  return (
+                    <li key={t.name}>
+                      <i style={{ background: n ? `var(--r-${roleOf(n.id)})` : 'var(--text-3)' }} />
+                      <button className="sm-cs mono" onClick={() => go(t.name)} title={`Ir até ${t.name}`} disabled={!n}>
+                        {n?.terminal ? callsign(n.terminal) : t.name}
+                      </button>
+                      <span>{t.status}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
         </>
       )}

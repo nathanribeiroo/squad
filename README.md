@@ -4,7 +4,7 @@ A torre de controle dos seus agentes de código. Antes se chamava **Squad** (vej
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
-> Estado: backend e interface web da primeira rodada prontos (B0–B5, W1–W4): terminais vivos no canvas, conexões, conversa entre agentes animada nos fios, Composer com @menções, notas em Markdown, a gaveta de atividade, vários workspaces, o portal com a página ao vivo, que os agentes também usam (`torre portal`), papéis com instruções que chegam a cada agente, o agente gerente, MCP, os andares (git worktree), com seletor no topo, e os resumos de turno. Com eles, a segunda rodada está completa (veja o plano). Depois vieram as sessões (S1–S4): os agentes voltam para a conversa em que estavam quando a Torre reabre, cada workspace tem várias sessões (cada uma um canvas inteiro), e uma sessão pode trabalhar numa cópia isolada do repositório. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada em fases (F0–F5). Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -110,20 +110,29 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 
 **Atalhos:**
 - canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal;
-- globais: `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir.
+- globais: `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥1`–`⌥9` workspaces.
 
-**Conexões:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó. Um clique no fio o seleciona; para desligar, use Delete ou o botão "Desligar". Duplo clique no fio cria um ponto de curva, que pode ser arrastado; duplo clique no ponto o remove.
+**Frequências:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó: os dois ficam na mesma frequência. Um clique no fio o seleciona; para tirar da frequência, use Delete ou o botão "Desligar". Duplo clique no fio cria um ponto de curva, que pode ser arrastado; duplo clique no ponto o remove. Enquanto um pedido passa, o fio corre tracejado, e um "∞ retido" aparece quando a espera geral ou o limite por minuto o seguram.
 
-**Terminais:**
-- no formulário de criação (`T`), **Pasta** aceita um caminho absoluto, `~/…` ou relativo à pasta do workspace, com sugestões enquanto você digita (↑/↓, Enter, Tab completa). **Shell** lista os shells instalados; "Padrão" segue a ordem descrita em "Shell dos terminais";
-- **Configurar…**, no menu `⋯` do terminal, edita esses campos; mudar o que o inicia (agente, comando, pasta ou shell) salva e reinicia o terminal;
-- clique para digitar ("teclado aqui"); `⌥Esc` devolve o teclado ao canvas;
+**Indicativos e níveis:**
+- cada voo tem um **indicativo** de até 4 letras, único no canvas da sessão. Vem da **sigla** do papel (PLN, IMP; o segundo Implementador é IM2) ou, sem papel, das consoantes do nome (Claude → CLD). Dá para escolher outro em Novo voo ou em Configurar…;
+- o indicativo aparece no cabeçalho do voo, no Rádio, no Transmitir, no briefing, no "criado por" e na barra de quem aguarda resposta. Os agentes continuam se chamando pelo nome (`torre ask "Bia"`);
+- trocar o papel de um voo troca o indicativo junto, se ele veio da sigla; um indicativo escolhido por você fica;
+- cada papel tem uma **sigla** de até 3 letras (Papéis → SIGLA). Os prontos são PLN, ARQ, IMP, REV e TST; um papel novo sem sigla ganha as consoantes do nome;
+- os **níveis de voo** são numerados por sessão: FL1, FL2… O número não volta a ser usado depois que o nível pousa ou é descartado. A pista é o branch da sessão.
+
+**Voos:**
+- **Novo voo** (`T`): o agente em blocos (Claude Code, Codex, Devin, Gemini, Shell, Comando), com "✓ instalado" ou "✕ não achado" para cada CLI; **Nome** e **Indicativo**; **Papel** (com "editar papéis…"); **Pasta** (opcional). Em **Avançado**: o comando, o shell e "Líder". **Decolar** cria o voo no nível aberto;
+- **Pasta** aceita um caminho absoluto, `~/…` ou relativo à pasta do workspace, com sugestões enquanto você digita (↑/↓, Enter, Tab completa). **Shell** lista os shells instalados; "Padrão" segue a ordem descrita em "Shell dos terminais";
+- **Configurar…**, no menu `⋯` do voo, edita esses campos; mudar o que o inicia (agente, comando, pasta ou shell) mostra o aviso e o botão vira **Salvar e reiniciar**;
+- **o voo na tela:** a faixa à esquerda tem a cor do estado (No ar, Aguarda, Em solo…); o quadradinho antes do indicativo tem a cor do papel. O rodapé mostra o nível, o branch, a pasta e quem criou o voo. Parado, o voo mostra "Hangar" ou "Pane" com o botão **Iniciar**;
+- clique para digitar (chip "teclado"); `⌥Esc` devolve o teclado ao canvas;
 - arraste pelo cabeçalho e redimensione pelas alças (o PTY acompanha);
-- com zoom abaixo de 60% vira miniatura, e abaixo de 35%, cartão;
-- a pinça ou ⌘/ctrl + roda sobre o terminal dá zoom no canvas.
+- com zoom abaixo de 60%, o voo vira um retrato da tela, e abaixo de 35%, uma **faixa de progresso** em papel, com o indicativo grande e o estado;
+- a pinça ou ⌘/ctrl + roda sobre o voo dá zoom no canvas.
 
 **Conversas que continuam:**
-- cada terminal de agente lembra a conversa em que está. Ao reabrir o `torre serve`, ou em **Reiniciar**, o agente volta para a mesma conversa:
+- cada voo de agente lembra a conversa em que está. Ao reabrir o `torre serve`, ou em **Reiniciar**, o agente volta para a mesma conversa:
 
 | Agente | Como a Torre sabe a conversa | Como retoma |
 |---|---|---|
@@ -134,93 +143,100 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 
 - se o agente não acha a conversa (apagada, ou de outra pasta), a própria linha de comando começa uma nova (`retomar || começar`), e a tela avisa "Não deu para retomar a conversa";
 - uma conversa em que ninguém escreveu ainda não tem o que retomar: o agente que ainda não recebeu nenhuma mensagem começa uma conversa nova, sem aviso;
-- **Nova conversa**, no menu `⋯`, reinicia o agente sem o contexto (a conversa antiga continua guardada no agente). Trocar o papel também começa uma conversa nova, para o papel valer desde o início;
-- **Copiar comando de retomada**, no mesmo menu, copia `claude --resume <id>` (ou o do agente): rodado na pasta do terminal, abre a mesma conversa fora da Torre;
-- **trabalho interrompido:** se a Torre fechar com um agente no meio de um turno, ao reabrir aparece "Claude foi interrompido no meio do trabalho". **Continuar** manda "continue de onde parou" a cada um; **Dispensar** esquece. O que o agente estava escrevendo naquele instante se perde, e ele refaz esse passo. Funciona no Claude e no Devin, que avisam o início e o fim de cada turno;
-- trocar a pasta ou o agente de um terminal começa uma conversa nova, porque os agentes guardam as conversas por pasta.
+- **Nova conversa…**, no menu `⋯`, reinicia o agente sem o contexto (a conversa antiga continua guardada no agente). Trocar o papel também começa uma conversa nova, para o papel valer desde o início;
+- **Copiar comando de retomada**, no mesmo menu, copia `claude --resume <id>` (ou o do agente): rodado na pasta do voo, abre a mesma conversa fora da Torre;
+- **arremetida:** se a Torre fechar com um agente no meio de um turno, ao reabrir aparece a faixa âmbar "Arremetida · CLD foi interrompido no meio do turno". **Continuar** manda "continue de onde parou" a cada um; **Dispensar** esquece. O que o agente estava escrevendo naquele instante se perde, e ele refaz esse passo. Funciona no Claude e no Devin, que avisam o início e o fim de cada turno;
+- trocar a pasta ou o agente de um voo começa uma conversa nova, porque os agentes guardam as conversas por pasta.
 
-**Composer (`⌥K`):**
-- escreva para um ou mais terminais;
-- `@` menciona nós ligados ao destino;
-- cole imagens com ⌘V;
-- `⏎` envia.
+**Transmitir (`⌥K`):**
+- fechado, é a barra embaixo do canvas: "TRANSMITIR →" com o indicativo do voo selecionado;
+- aberto: os destinos em chips (indicativo e agente; "+ voo" acrescenta outro), o texto e "⏎ transmitir";
+- `@` menciona nós na frequência do destino;
+- cole imagens com ⌘V.
+
+**Rádio (`⌥A`):** os pedidos entre os voos, em indicativos ("14:32 PLN → IMP · c8d0").
+- Filtros: Todos, Pendentes e um chip por voo. Os pedidos ainda abertos ficam no topo, com **Ver no espaço**, que leva ao voo.
+- Cada linha termina no desfecho: Pendente, Respondido em…, Entregue, Cancelado, Retido (espera geral ou limite por minuto), NOTAM editado ou Em solo (fim de turno).
+- O rodapé mostra quantas mensagens passaram no último minuto, o limite e o máximo de saltos.
 
 **Workspaces:**
-- o botão no topo, à esquerda, abre o seletor: cor, nome, pasta, agentes ativos e pedidos pendentes de cada um. Um ponto azul no botão indica atividade em outro workspace;
+- o botão no topo, à esquerda, abre o seletor: a cor, o nome com o atalho (`⌥1`…), a pasta e o que está acontecendo ("2 no ar · 1 pendente"). Um ponto no botão indica atividade em outro workspace;
 - `⌥1`–`⌥9` trocam de workspace, e a URL guarda o workspace aberto (`?ws=<id>`), então dá para abrir dois em abas diferentes;
-- "Novo workspace" pede a pasta (com sugestões), um nome opcional e a cor. O lápis de cada linha edita esses campos; mudar a pasta vale para terminais novos ou reiniciados;
-- "Remover workspace" encerra os terminais dele e move o canvas e as notas para `~/.torre/trash/`. O último workspace não pode ser removido;
-- `torre ask`, `list` e `check` só enxergam terminais do mesmo workspace.
+- "Novo workspace" pede a pasta (com sugestões), um nome opcional e a cor. O lápis de cada linha edita esses campos; mudar a pasta vale para voos novos ou reiniciados;
+- "Remover workspace" encerra os voos dele e move o canvas e as NOTAMs para `~/.torre/trash/`. O último workspace não pode ser removido;
+- `torre ask`, `list` e `check` só enxergam voos do mesmo workspace.
 
 **Portal (`P`):** mostra um site ao vivo, como uma aba de navegador dentro do canvas.
 - A página é aberta por um Chrome, Edge ou Chromium sem janela, controlado pela Torre (`TORRE_BROWSER` aponta outro executável). Só abre quando um portal precisa. Os logins e cookies ficam em `~/.torre/browser`, compartilhados entre os workspaces.
-- Clique na página para usá-la: o teclado vai para o site ("teclado aqui") até `⌥Esc`, e a roda do mouse rola a página (pinça ou ⌘/ctrl + roda dão zoom no canvas). Colar digita o texto.
+- Clique na página para usá-la: o teclado vai para o site (chip "teclado") até `⌥Esc`, e a roda do mouse rola a página (pinça ou ⌘/ctrl + roda dão zoom no canvas). Colar digita o texto.
 - Barra de endereço, voltar, avançar e recarregar. Seguir links atualiza o endereço salvo no canvas.
-- O tamanho da página acompanha o nó (redimensione pelas alças). Com o zoom abaixo de 60%, o portal mostra o último quadro e para de transmitir.
+- O tamanho da página acompanha o nó (redimensione pelas alças). Com o zoom abaixo de 60%, o portal mostra o último quadro e para de transmitir ("pausado · zoom").
 - Cada portal tem um nome ("Portal", "Portal 2"…). Duplo clique no nome (ou ⋯ → Renomear) troca; os agentes usam esse nome para escolher o portal.
-- **Agentes no portal:** um terminal ligado ao portal usa a página com `torre portal` (tabela abaixo). Enquanto ele age, o cursor dele aparece na página com o nome e a cor do papel, e o fio mostra "clicando", "preenchendo", "digitando"…
+- **Agentes no portal:** um voo na frequência do portal usa a página com `torre portal` (tabela abaixo). Enquanto ele age, o cursor dele aparece na página com o nome e a cor do papel, e o fio mostra "clicando", "preenchendo", "digitando"…
 
-**Papéis:** instruções que o agente recebe ao abrir (⚙ → Papéis…, ou "Editar papéis…" no menu do terminal).
-- Vêm cinco prontos: Planejador, Arquiteto, Implementador, Revisor e Testador. As instruções podem ser editadas, e "Restaurar padrão" volta às da Torre. O Testador, por exemplo, testa interfaces web pelo portal.
+**Papéis:** instruções que o agente recebe ao decolar (⚙ → Papéis…, ou "Editar papéis…" no menu do voo).
+- O painel lista os papéis com o ícone, o nome, a sigla e "editado". O editor tem **Nome**, **Sigla**, **Cor**, **Ícone**, **Líder** e as **Instruções** (com o contador). O rodapé mostra quem usa o papel neste workspace.
+- Vêm cinco prontos: Planejador (PLN), Arquiteto (ARQ), Implementador (IMP), Revisor (REV) e Testador (TST). As instruções podem ser editadas, e "Restaurar padrão" volta às da Torre. O Testador, por exemplo, testa interfaces web pelo portal.
 - **Arquiteto** (`arch`): desenha a solução técnica e não escreve o código do produto.
-  - Lê o código e a documentação, e registra o desenho numa nota "Arquitetura: …": problema, solução com os módulos e arquivos que mudam, contratos (tipos, rotas, formato dos dados), alternativas descartadas, riscos e as partes que podem andar em paralelo.
+  - Lê o código e a documentação, e registra o desenho numa NOTAM "Arquitetura: …": problema, solução com os módulos e arquivos que mudam, contratos (tipos, rotas, formato dos dados), alternativas descartadas, riscos e as partes que podem andar em paralelo.
   - O Planejador o chama quando a mudança mexe na estrutura (módulo novo, API, formato de dados, dependência) ou vai ser dividida em frentes; numa tarefa pequena, dispensa.
-  - O Planejador liga a nota a quem implementa e revisa, e usa as partes para decidir os andares. O Implementador segue a nota, e o Revisor confere se a mudança segue o desenho. Antes de aterrissar, o Arquiteto pode fazer uma revisão de arquitetura.
-  - Também dá para usá-lo sem o Planejador: ligue-o a um Implementador e peça o desenho.
-- **`torre roles`** (ou a ferramenta MCP `roles`, liberada): qualquer agente vê os papéis disponíveis, com o id, se é gerente e o que faz, inclusive os que você criar. O `torre new --help` mostra a mesma lista.
+  - O Planejador põe a NOTAM na frequência de quem implementa e revisa, e usa as partes para decidir os níveis de voo. O Implementador segue a NOTAM, e o Revisor confere se a mudança segue o desenho. Antes de pousar, o Arquiteto pode fazer uma revisão de arquitetura.
+  - Também dá para usá-lo sem o Planejador: ponha-o na frequência de um Implementador e peça o desenho.
+- **`torre roles`** (ou a ferramenta MCP `roles`, liberada): qualquer agente vê os papéis disponíveis, com o id, se é líder e o que faz, inclusive os que você criar. O `torre new --help` mostra a mesma lista.
 - Se você já tinha criado um papel com o nome de um que passou a vir pronto (por exemplo, "Arquiteto"), o seu continua, com as mesmas instruções, como "Arquiteto (personalizado)".
-- Dá para criar papéis com nome, cor, ícone e instruções. Eles valem para todos os workspaces (`~/.torre/roles.json`). Um papel em uso não pode ser removido.
+- Dá para criar papéis com nome, sigla, cor, ícone e instruções. Eles valem para todos os workspaces (`~/.torre/roles.json`). Um papel em uso não pode ser removido. Duas siglas iguais são recusadas.
 - Como cada agente recebe o papel: Claude Code por `--append-system-prompt-file`; Codex por `developer_instructions`; Devin pelo hook `SessionStart`; Gemini como primeira mensagem (`-i`). Shells não têm papel, e comandos próprios mostram o papel só como etiqueta.
-- Trocar o papel de um agente aberto reinicia o terminal, com aviso. Depois de editar um papel, o painel oferece reiniciar os agentes que o usam.
+- Trocar o papel de um agente aberto reinicia o voo, com aviso. Depois de salvar um papel, a faixa verde "Salvo. PLN recebe as instruções novas ao reiniciar" oferece **Reiniciar agora**.
 
-**Agente gerente:** um agente em modo gerente monta a própria equipe.
-- O Planejador já vem em modo gerente. A opção fica no papel ("Gerente", em Papéis…), e cada terminal pode ligá-la ou desligá-la no menu ⋯ → "Modo gerente". O chip "gerente" aparece no cabeçalho.
-- `torre new "Bia" --role impl` cria um terminal ao lado do gerente, já ligado a ele e com o papel. O comando só volta quando o agente está pronto para receber a primeira mensagem.
-- O que um agente criou mostra "criado por Plano". Esses terminais não são gerentes, e cada gerente cria no máximo 6 (`torre serve -max-team N`).
-- Qualquer agente pode abrir um portal: `torre portal create localhost:5173 "App"` cria o portal ligado a quem pediu (até 3 por agente).
-- Pelo MCP (abaixo), o gerente trabalha sem pedir aprovação a cada passo, no Claude Code e no Devin. Pela CLI, cada comando `torre` pede aprovação como qualquer outro comando.
+**Líder:** um agente líder monta a própria equipe.
+- O Planejador já vem como líder. A opção fica no papel ("Líder", em Papéis…), e cada voo pode ligá-la ou desligá-la no menu ⋯ → "Líder" (ou em Novo voo → Avançado). O chip "líder" aparece no cabeçalho.
+- `torre new "Bia" --role impl` cria um voo ao lado do líder, já na frequência dele e com o papel. O comando só volta quando o agente está pronto para receber a primeira mensagem.
+- O que um agente criou mostra "criado por PLN". Esses voos não são líderes, e cada líder cria no máximo 6 (`torre serve -max-team N`).
+- Qualquer agente pode abrir um portal: `torre portal create localhost:5173 "App"` cria o portal na frequência de quem pediu (até 3 por agente).
+- Pelo MCP (abaixo), o líder trabalha sem pedir aprovação a cada passo, no Claude Code e no Devin. Pela CLI, cada comando `torre` pede aprovação como qualquer outro comando.
 
-**Andares:** cópias isoladas do repositório do workspace, para frentes de trabalho em paralelo que mexem nos mesmos arquivos.
-- Cada andar é um `git worktree` num branch próprio, com um canvas próprio. A pasta fica **fora do projeto**, como no Maestri: `<pasta-pai do repositório>/.torre/floors/<projeto>--<andar>`.
-- **Na interface:** o seletor no topo tem o térreo (o branch atual) e uma aba por andar, cada uma com "limpo", "● 3 alterações", "2 commits", "preparando" ou "preparo falhou". Um ponto azul marca agentes trabalhando ali. O `+` cria um andar. Clicar no andar aberto abre o menu: aterrissar, log do preparo, copiar o caminho e descartar. O andar aberto fica na URL (`&floor=`), e cada andar guarda o próprio zoom.
-- Terminal, nota e portal criados na tela vão para o andar aberto. O rodapé de cada terminal mostra o branch e a pasta de verdade.
-- Um fio para um nó de outro andar aparece como etiqueta embaixo do nó (`⇄ Plano · térreo`). Ela pulsa enquanto um pedido passa por ele, e um clique leva ao outro andar, centrado no nó.
-- O andar parte do último commit (alterações não commitadas ficam no térreo). Recebe os arquivos versionados, mais os não versionados da lista de cópia do workspace (padrão `.env*`), e roda o comando de preparo, se houver (ex.: `npm install`). A lista e o comando ficam em Novo andar → Preparação (ou `PUT /w/<id>/api/floors/config`). O preparo roda no shell padrão (Git Bash no Windows), e a saída fica no "Log do preparo".
-- Os terminais do andar abrem na cópia; pastas relativas, e mesmo uma pasta do térreo dada por inteiro, apontam para a cópia. Fios podem ligar terminais de andares diferentes: o gerente no térreo conversa com quem está no andar.
-- **Aterrissar** fecha os terminais e portais do andar e apaga a pasta; as notas descem para o térreo. O branch fica. Com `--merge`, antes mescla o branch no branch de origem (`--into outro` para outro), com commit de merge. Se o branch de destino não estiver aberto em nenhuma pasta, a mescla acontece sem tocar em pasta nenhuma. É recusado se o andar tiver alteração não commitada, se a pasta de destino tiver alteração em arquivo versionado, ou se o branch do andar tiver commitado um arquivo copiado do térreo (como o `.env`, que pode ter segredos). Com conflito, nada muda, e a resposta lista os arquivos.
-- O diálogo de aterrissar mostra os commits do andar, as alterações que ainda impedem e onde mesclar, e diz o que fecha. Num conflito, ele lista os arquivos.
-- **Descartar** (só pelo usuário, no menu do andar) apaga tudo: terminais, pasta (mesmo com trabalho não commitado) e o branch, se foi o andar que o criou.
-- **O Planejador decide sozinho:** quando divide a implementação em duas ou mais frentes em paralelo no mesmo repositório, cria um andar por frente. O Revisor e o Testador de cada frente vão para o andar dela. Com uma frente só, ele trabalha no térreo. No fim, aterrissa uma frente por vez com merge, e você aprova cada uma. Quem editou o papel Planejador antes continua com a própria versão; "Restaurar padrão" traz a regra.
-- Gerentes criam e aterrissam andares (só os que eles criaram); qualquer agente lista. Pelo MCP, `floors` (listar, criar) vem liberada, e `floor_land` pede aprovação.
-- Um workspace com andares não pode ser removido nem mudar de pasta antes de aterrissar ou descartar os andares.
+**Níveis de voo:** cópias isoladas do repositório do workspace, para frentes de trabalho em paralelo que mexem nos mesmos arquivos.
+- Cada nível é um `git worktree` num branch próprio, com um canvas próprio. A pasta fica **fora do projeto**, como no Maestri: `<pasta-pai do repositório>/.torre/floors/<projeto>--<nível>`.
+- **Na interface:** a barra do topo tem a PISTA (o branch atual) e uma aba por nível (FL1, FL2…), cada uma com o nome, o branch e "limpo", "3 alt.", "2 commits", "preparando" ou "preparo falhou". Um ▲ marca voos no ar ali. O `+` cria um nível. Clicar no nível aberto abre o menu: pedir pouso, log do preparo, copiar o caminho e descartar. O nível aberto fica na URL (`&floor=`), e cada nível guarda o próprio zoom.
+- **Novo nível:** o número (FL3) aparece ao lado do nome e do branch. Um nível sem voos mostra o cartão "Nível vazio", com o comando `torre new … --floor` e o botão "Novo voo neste nível".
+- Voo, NOTAM e portal criados na tela vão para o nível aberto. O rodapé de cada voo mostra o nível, o branch e a pasta de verdade.
+- Um fio para um nó de outro nível aparece como etiqueta embaixo do nó (`⇄ PLN · pista`). Ela pulsa enquanto um pedido passa por ele, e um clique leva ao outro nível, centrado no nó.
+- O nível parte do último commit (alterações não commitadas ficam na pista). Recebe os arquivos versionados, mais os não versionados da lista de cópia do workspace (padrão `.env*`), e roda o comando de preparo, se houver (ex.: `npm install`). A lista e o comando ficam em Novo nível → Preparação (ou `PUT /w/<id>/api/floors/config`). O preparo roda no shell padrão (Git Bash no Windows), e a saída fica no "Log do preparo".
+- Os voos do nível abrem na cópia; pastas relativas, e mesmo uma pasta da pista dada por inteiro, apontam para a cópia. Um voo pode estar na frequência de voos de outros níveis: o líder na pista conversa com quem está no nível.
+- **Pousar** fecha os voos e portais do nível e apaga a pasta; as NOTAMs descem para a pista. O branch fica. Com `--merge`, antes mescla o branch no branch de origem (`--into outro` para outro), com commit de merge. Se o branch de destino não estiver aberto em nenhuma pasta, a mescla acontece sem tocar em pasta nenhuma. É recusado se o nível tiver alteração não commitada, se a pasta de destino tiver alteração em arquivo versionado, ou se o branch do nível tiver commitado um arquivo copiado da pista (como o `.env`, que pode ter segredos). Com conflito, nada muda, e a resposta lista os arquivos.
+- **Autorizar pouso · FL2:** o diálogo mostra os commits do nível, as checagens (tudo commitado, voos no ar, conflitos checados ao pousar), onde mesclar e o que fecha. Num conflito, ele lista os arquivos.
+- **Descartar** (só pelo usuário, no menu do nível) apaga tudo: voos, pasta (mesmo com trabalho não commitado) e o branch, se foi o nível que o criou.
+- **O Planejador decide sozinho:** quando divide a implementação em duas ou mais frentes em paralelo no mesmo repositório, cria um nível por frente. O Revisor e o Testador de cada frente vão para o nível dela. Com uma frente só, ele trabalha na pista. No fim, pousa uma frente por vez com merge, e você aprova cada uma. Quem editou o papel Planejador antes continua com a própria versão; "Restaurar padrão" traz a regra.
+- Líderes criam e pousam níveis (só os que eles criaram); qualquer agente lista. Pelo MCP, `floors` (listar, criar) vem liberada, e `floor_land` pede aprovação.
+- Um workspace com níveis não pode ser removido nem mudar de pasta antes de pousar ou descartar os níveis.
 
-**Resumos de turno:** quando um agente (Claude, Codex, Devin, Gemini) termina um turno, aparece um cartão embaixo do terminal.
-- **O cartão:** mostra "Turno · 2m10s" e a mensagem final do agente, que o hook dele já entrega, então não custa nada. O Gemini não tem hook, e o cartão usa o fim da tela. Clicar no texto abre o turno inteiro: o pedido que o iniciou e a mensagem final. O cartão some quando o próximo turno começa, ou com o ×, e o turno também entra na Atividade.
-- **"Resumir"**, no cartão, pede a um agente um resumo de verdade, com até 3 próximos passos. Clicar num passo abre o Composer para aquele terminal, com o texto pronto.
-- **"Resumo"**, no topo da Atividade, dá uma visão geral do workspace: o que cada agente fez e o que pede a sua atenção.
+**Boletins e briefing:** quando um agente (Claude, Codex, Devin, Gemini) termina um turno, aparece um boletim embaixo do voo.
+- **O boletim:** mostra "BOLETIM · 2m10s" e a mensagem final do agente, que o hook dele já entrega, então não custa nada. O Gemini não tem hook, e o boletim usa o fim da tela. Clicar no texto abre o turno inteiro: o pedido que o iniciou e a mensagem final. O boletim some quando o próximo turno começa, ou com o ×, e o turno também entra no Rádio.
+- **"Resumir"**, no boletim, pede a um agente um resumo de verdade, com até 3 próximos passos ("→ IMP"). Clicar num passo abre o Transmitir para aquele voo, com o texto pronto.
+- **Briefing**, no topo do Rádio, dá uma visão geral do workspace: um parágrafo, o que **pede atenção** (em âmbar) e uma linha **por voo**, com o indicativo, que leva ao voo.
 - **Quem escreve os resumos** (⚙ → Resumos…, por workspace):
-  - **Automático:** cada terminal é resumido pela CLI do próprio agente: `claude -p` (com o modelo Haiku), `devin -p`, `codex exec` ou `gemini -p`. Sem ela, a Torre usa a primeira instalada. Assim o texto de um terminal Devin fica com o Devin.
+  - **Automático:** cada voo é resumido pela CLI do próprio agente: `claude -p` (com o modelo Haiku), `devin -p`, `codex exec` ou `gemini -p`. Sem ela, a Torre usa a primeira instalada. Assim o texto de um voo Devin fica com o Devin.
   - Dá para fixar uma das CLIs ou desligar.
-  - Sem nenhuma CLI no PATH, o botão "Resumir" não aparece, e os cartões continuam funcionando.
+  - Sem nenhuma CLI no PATH, o botão "Resumir" não aparece, e os boletins continuam funcionando.
 - **Custo:** cada resumo gasta um pouco do plano da ferramenta que o escreve, e só roda quando você clica.
 - **Isolamento:** o resumo roda numa pasta vazia, sem ferramentas e sem mexer no projeto. No Claude, também sem as suas configurações, os seus hooks e sem salvar sessão no histórico.
 - **Duração:**
-  - cada terminal guarda o cartão do último turno, com o resumo, se você pediu um;
-  - os cartões ficam no disco, com a sessão (`cards.json`, na pasta dela), e voltam quando o `torre serve` reinicia ou quando você reabre a sessão;
+  - cada voo guarda o boletim do último turno, com o resumo, se você pediu um;
+  - os boletins ficam no disco, com a sessão (`cards.json`, na pasta dela), e voltam quando o `torre serve` reinicia ou quando você reabre a sessão;
   - um resumo que estava sendo escrito quando a Torre fechou não continua: clique em "Resumir" de novo;
-  - o × esconde o cartão só nesta janela: ao recarregar a página, ele volta.
+  - o × esconde o boletim só nesta janela: ao recarregar a página, ele volta.
 
-**Notas:** Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a nota para todos. Quando um agente edita a nota, o trecho alterado fica destacado.
+**NOTAMs:** as notas do canvas, em papel. Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a NOTAM para todos. Quando um agente edita a NOTAM, o trecho alterado fica destacado. No modo Editar, ela grava sozinha 0,8 s depois que você para de digitar, e Esc volta à prévia.
 
-**Nome das notas:**
-- **Nota nova** (tecla N ou barra de ferramentas): já abre com o campo de nome selecionado. Enter confirma; Esc fica com o nome provisório ("Nota", "Nota 2"…). O arquivo nasce com o nome que você der ("Plano de testes" → `plano-de-testes.md`) e não muda mais.
-- **Renomear** as suas notas: duplo clique no título, ou "Renomear" no menu ⋯. O arquivo fica, e **o nome antigo continua valendo para os agentes**: um agente que pedir a nota pelo nome antigo a encontra, e a resposta diz o nome novo.
-- **Notas criadas por agentes** (`torre note create "Nome"`, ou a ferramenta `note` do MCP) ficam com o nome que o agente deu: aparecem com "por Bia" e sem "Renomear".
-- **Nomes únicos no workspace**, sem diferenciar maiúsculas, contando os nomes antigos. Os agentes acham a nota pelo nome em qualquer caixa.
+**Nome das NOTAMs:**
+- **NOTAM nova** (tecla N ou barra de ferramentas): já abre com o campo de nome selecionado. Enter confirma; Esc fica com o nome provisório ("Nota", "Nota 2"…). O arquivo nasce com o nome que você der ("Plano de testes" → `plano-de-testes.md`) e não muda mais.
+- **Renomear** as suas NOTAMs: duplo clique no título, ou "Renomear" no menu ⋯. O arquivo fica, e **o nome antigo continua valendo para os agentes**: um agente que pedir a NOTAM pelo nome antigo a encontra, e a resposta diz o nome novo.
+- **NOTAMs criadas por agentes** (`torre note create "Nome"`, ou a ferramenta `note` do MCP) ficam com o nome que o agente deu: aparecem com "por IMP" e sem "Renomear".
+- **Nomes únicos no workspace**, sem diferenciar maiúsculas, contando os nomes antigos. Os agentes acham a NOTAM pelo nome em qualquer caixa.
 
 ### Sessões
 
-Cada workspace tem sessões, e cada sessão é um canvas inteiro: terminais, notas, portais, fios, posições, andares e cartões de turno. Só a sessão aberta tem processos rodando.
+Cada workspace tem sessões, e cada sessão é um canvas inteiro: voos, NOTAMs, portais, frequências, posições, níveis de voo e boletins. Só a sessão aberta tem processos rodando.
 - **Nova sessão:** começa com o canvas vazio, ou com os mesmos terminais (com fios e papéis, mas sem as conversas).
 - **Abrir uma sessão:** para os processos da sessão atual e volta tudo da outra como estava. Cada agente retoma a sua conversa, e quem foi interrompido no meio de um turno ganha o "Continuar".
 - **Nome:**
@@ -231,25 +247,26 @@ Cada workspace tem sessões, e cada sessão é um canvas inteiro: terminais, not
 - **No disco:** cada sessão fica em `~/.torre/workspaces/<id>/sessions/<sessão>/`, com o canvas, as notas, os anexos e os cartões. Um workspace de antes das sessões vira a "Sessão 1" na primeira abertura.
 
 **Na tela:**
-- **No topo:** ao lado do workspace aparece a sessão aberta (ex.: "torre › Login novo ▾"). Clicando nela, abre o painel de sessões.
+- **No topo:** depois do workspace aparece a sessão aberta (ex.: "torre › Login novo ▾"). Clicando nela, abre o painel de sessões.
 - **Painel de sessões:**
-  - cada sessão mostra o nome, quando foi criada e aberta pela última vez, quantos terminais, notas, portais e andares tem, e os agentes dela; a aberta tem a marca "atual";
-  - **Abrir**, **Renomear** (o lápis; Enter salva, Esc desiste) e **Remover** (a lixeira; não aparece na sessão aberta e fica desligada numa sessão com andares);
-  - **Nova sessão:** nome opcional e a caixa "Começar com os mesmos terminais, sem as conversas". **Criar e abrir** guarda a sessão atual e abre a nova.
-- **Agentes trabalhando:** abrir outra sessão (ou criar uma) com agentes no meio de um turno mostra quem está trabalhando, com **Cancelar** ou **Trocar mesmo assim**. Trocando, o trabalho para no meio, e o agente volta como interrompido, com "Continuar", quando você reabrir a sessão.
+  - cada sessão mostra o nome, quando foi criada e aberta pela última vez, quantos voos, NOTAMs, portais e níveis tem, e os agentes dela; a aberta tem a marca "ATUAL";
+  - **Abrir**, **Renomear** (o lápis; Enter salva, Esc desiste) e **Remover** (a lixeira; não aparece na sessão aberta e fica desligada numa sessão com níveis);
+  - **Nova sessão:** nome opcional e a caixa "Começar com os mesmos voos, sem as conversas". **Criar e abrir** guarda a sessão atual e abre a nova.
+- **Voos no ar:** abrir outra sessão (ou criar uma) com agentes no meio de um turno mostra quem está no ar, com **Cancelar** ou **Trocar mesmo assim**. Trocando, o trabalho para no meio, e o voo volta em arremetida, com "Continuar", quando você reabrir a sessão.
 - **Seletor de workspaces:** passe o mouse num workspace (ou clique na seta com o número de sessões) para ver as sessões dele ao lado; clicar numa delas abre a sessão e mostra aquele workspace.
 - **Novo workspace:** o formulário tem o campo "Nome da sessão (opcional)", o nome da primeira sessão.
-- **Uma sessão sem nome** aparece em cinza ("Nova sessão · 17/10 14:32") até o agente dar o título.
+- **Uma sessão sem nome** aparece em itálico ("Nova sessão · 17/10 14:32") até o voo líder dar o título.
 - **O enquadramento do canvas** (posição e zoom) fica guardado por sessão.
+- **Indicativos e números de nível** são da sessão: outra sessão pode ter o seu próprio IMP e o seu próprio FL1.
 
 **Sessão numa cópia isolada:** para começar uma sessão sem mexer no que outra deixou pela metade na pasta do projeto.
 - **Onde a sessão trabalha**, em Nova sessão:
   - **Na pasta do projeto**, como as outras sessões;
   - **Numa cópia isolada**: um branch novo (o nome vem do nome da sessão, e dá para mudar), criado **a partir de** um branch que você escolhe (o padrão é o branch atual).
 - **A opção certa já vem marcada:** se a sessão atual tem agentes trabalhando ou arquivos alterados sem commit, aparece o aviso ("Carrinho tem 1 arquivo alterado sem commit") e a cópia vem marcada. Sem nada pendente, vem marcada a pasta do projeto.
-- **A cópia** é feita como um andar (`git worktree`), do último commit do branch escolhido: o que está sem commit fica na pasta do projeto. Ela recebe os arquivos da lista de cópia (`.env*`) e roda o comando de preparo, se houver. Fica ao lado do repositório, em `<pasta-pai>/.torre/sessions/<projeto>--<branch>`.
-- **Na sessão:** os terminais (Claude, Devin, Codex, Gemini, shells) abrem na cópia; o Devin não pergunta se confia na pasta, e o Claude também não. O térreo do seletor de andares mostra o branch da sessão; o rodapé dos terminais e o caminho no topo mostram a pasta da cópia. Os andares que a sessão criar nascem da cópia.
-- **Mesclar:** clicando no térreo (o branch da sessão), ou em **Mesclar…** no painel de sessões. O diálogo mostra os commits da sessão e mescla o branch dela no branch escolhido (o padrão é o de origem), com commit de merge. **A cópia continua**: a sessão segue trabalhando e pode mesclar de novo. É recusado se a cópia tiver alteração sem commit, ou se a pasta onde o branch de destino está aberto (a do projeto, por exemplo) tiver alteração sem commit; com conflito, nada muda, e o diálogo lista os arquivos para um agente da sessão resolver.
+- **A cópia** é feita como um nível de voo (`git worktree`), do último commit do branch escolhido: o que está sem commit fica na pasta do projeto. Ela recebe os arquivos da lista de cópia (`.env*`) e roda o comando de preparo, se houver. Fica ao lado do repositório, em `<pasta-pai>/.torre/sessions/<projeto>--<branch>`.
+- **Na sessão:** os voos (Claude, Devin, Codex, Gemini, shells) abrem na cópia; o Devin não pergunta se confia na pasta, e o Claude também não. A PISTA, na barra dos níveis, mostra o branch da sessão; o rodapé dos voos mostra a pasta da cópia. Os níveis que a sessão criar nascem da cópia.
+- **Pedir pouso da sessão:** clicando na PISTA (o branch da sessão), ou em **Pedir pouso…** no painel de sessões. O diálogo mostra os commits da sessão e mescla o branch dela no branch escolhido (o padrão é o de origem), com commit de merge. **A cópia continua**: a sessão segue trabalhando e pode mesclar de novo. É recusado se a cópia tiver alteração sem commit, ou se a pasta onde o branch de destino está aberto (a do projeto, por exemplo) tiver alteração sem commit; com conflito, nada muda, e o diálogo lista os arquivos para um agente da sessão resolver.
 - **Remover a sessão** apaga a cópia; o branch continua no repositório, com o que foi commitado. Se a cópia tiver alterações sem commit, o painel lista os arquivos e pede confirmação.
 - **Sem git:** numa pasta que não é um repositório git, a opção não aparece.
 - Um workspace com sessões em cópia não pode ser removido nem mudar de pasta antes de remover essas sessões.
@@ -258,11 +275,11 @@ Cada workspace tem sessões, e cada sessão é um canvas inteiro: terminais, not
 
 | Rota | O que faz |
 |---|---|
-| `GET /api/workspaces/<id>/sessions` | as sessões, da mais nova para a mais antiga, com a aberta marcada, quantos terminais, notas, portais e andares cada uma tem e, numa sessão em cópia, o `branch` e a pasta (`copy`) |
+| `GET /api/workspaces/<id>/sessions` | as sessões, da mais nova para a mais antiga, com a aberta marcada, quantos terminais, notas, portais e níveis (`floors`) cada uma tem e, numa sessão em cópia, o `branch` e a pasta (`copy`) |
 | `POST /api/workspaces/<id>/sessions` `{"name", "keepTerminals", "confirm", "copy": {"branch", "from"}}` | abre uma sessão nova; com `copy`, numa cópia isolada |
 | `POST /api/workspaces/<id>/sessions/<sessão>/open` `{"confirm"}` | abre outra sessão |
 | `PATCH /api/workspaces/<id>/sessions/<sessão>` `{"name"}` | renomeia |
-| `DELETE /api/workspaces/<id>/sessions/<sessão>` | manda a pasta da sessão para a lixeira (a aberta, ou uma com andares, não pode) e apaga a cópia dela; com alterações sem commit na cópia, 409 com `files`, e `?confirm=true` remove mesmo assim |
+| `DELETE /api/workspaces/<id>/sessions/<sessão>` | manda a pasta da sessão para a lixeira (a aberta, ou uma com níveis, não pode) e apaga a cópia dela; com alterações sem commit na cópia, 409 com `files`, e `?confirm=true` remove mesmo assim |
 | `GET /w/<id>/api/copy/changes`, `POST /w/<id>/api/copy/merge` `{"into"}`, `GET /w/<id>/api/copy/log` | a cópia da sessão aberta: o que ela tem para mesclar, mesclar (a cópia continua) e o log do preparo |
 
 Sem `confirm`, sair de uma sessão com agentes trabalhando ou pedidos esperando resposta é recusado (409, com a lista de quem trabalha). Com `confirm`, eles param no meio do turno e voltam como interrompidos quando a sessão abrir de novo. A tela se atualiza sozinha ao trocar de sessão, também quando a troca vem de outra janela ou da API.
@@ -307,12 +324,12 @@ Dentro de um terminal da Torre, o comando `torre` está no PATH:
 | `torre portal screenshot` · `console` · `eval "js"` | imagem PNG (salva no workspace), console do navegador, JavaScript |
 | `torre portal create URL "Nome"` · `close "Nome"` | abre um portal ligado a você / fecha um que você criou |
 | `torre roles` | os papéis disponíveis (id, nome, o que fazem) |
-| `torre new "Nome" --role impl` | gerentes: cria um terminal ao lado, ligado e já pronto (`--agent`, `--cwd`, `--command`) |
-| `torre connect "A" "B"` · `torre close "Nome"` | gerentes: liga dois nós / remove um terminal que criou |
-| `torre floor list` | os andares: branch, estado, pasta |
-| `torre floor create "Nome"` | gerentes: cria um andar a partir do último commit (`--branch B`, `--existing` para abrir um branch que já existe) |
-| `torre new "Bia" --role impl --floor "Nome"` | gerentes: cria o terminal no andar, trabalhando na cópia (`--floor ground` é o térreo) |
-| `torre floor land "Nome" [--merge \| --into BRANCH]` | gerentes: aterrissa um andar que criou, mesclando o branch antes se pedido |
+| `torre new "Nome" --role impl` | líderes: cria um voo ao lado, ligado e já pronto (`--agent`, `--cwd`, `--command`) |
+| `torre connect "A" "B"` · `torre close "Nome"` | líderes: põe dois nós na mesma frequência / remove um voo que criou |
+| `torre floor list` | os níveis de voo: número (FL1…), branch, estado, pasta |
+| `torre floor create "Nome"` | líderes: cria um nível a partir do último commit (`--branch B`, `--existing` para abrir um branch que já existe) |
+| `torre new "Bia" --role impl --floor "Nome"` | líderes: cria o voo no nível, trabalhando na cópia (`--floor ground` ou `--floor pista` é a pista) |
+| `torre floor land "Nome" [--merge \| --into BRANCH]` | líderes: pousa um nível que criou, mesclando o branch antes se pedido |
 
 Com mais de um portal ligado, diga qual: `torre portal "Docs" snapshot`. `torre portal help` mostra tudo.
 
@@ -336,7 +353,7 @@ Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do tu
 - esperar por quem está esperando por você é recusado, porque nenhum dos dois terminaria;
 - se o agente limita o tempo de uma ferramenta MCP (no Claude Code, a variável `MCP_TOOL_TIMEOUT`), as ferramentas `ask` e `wait` voltam um pouco antes do limite. Elas trazem a tela do agente esperado e dizem para chamar `wait` de novo ou, se a tela mostra uma pergunta ou um pedido de permissão, avisar o usuário.
 
-O Devin é lançado com `devin --config ~/.torre/run/devin-config.json`. Esse `--config` **substitui** o `config.json` do usuário, então o arquivo é uma cópia do seu `~/.config/devin/config.json` (relida a cada terminal Devin aberto) com os hooks da Torre (`Stop`, `UserPromptSubmit` e `SessionStart`) depois dos seus e as ferramentas MCP seguras liberadas. O seu modelo, as suas permissões e os seus hooks continuam valendo. Permissões que você salvar como globais de dentro da Torre ficam nessa cópia. Num andar, o Devin abre com `--respect-workspace-trust false`, sem a pergunta de confiança na pasta: o andar é uma cópia do repositório que você abriu. A leitura dessa configuração foi testada com o Devin real; os hooks numa sessão com conta ainda não (veja `docs/DEVLOG.md`).
+O Devin é lançado com `devin --config ~/.torre/run/devin-config.json`. Esse `--config` **substitui** o `config.json` do usuário, então o arquivo é uma cópia do seu `~/.config/devin/config.json` (relida a cada terminal Devin aberto) com os hooks da Torre (`Stop`, `UserPromptSubmit` e `SessionStart`) depois dos seus e as ferramentas MCP seguras liberadas. O seu modelo, as suas permissões e os seus hooks continuam valendo. Permissões que você salvar como globais de dentro da Torre ficam nessa cópia. Num nível de voo, o Devin abre com `--respect-workspace-trust false`, sem a pergunta de confiança na pasta: o nível é uma cópia do repositório que você abriu. A leitura dessa configuração foi testada com o Devin real; os hooks numa sessão com conta ainda não (veja `docs/DEVLOG.md`).
 
 ## Testes
 
@@ -350,7 +367,7 @@ go test -tags e2e -run TestRealClaude -v ./internal/app/     # usa o Claude Code
 | Pasta | Conteúdo |
 |---|---|
 | `cmd/torre`, `internal/cli` | o binário único: servidor (`serve`), a CLI usada pelos agentes, `hook`, `install-skill` (`cmd/squad` é o mesmo, com o nome antigo) |
-| `internal/` | `terminal`, `pty`, `screen` (emulador), `activity` (monitor), `agentbus` (conversa), `agents` (hooks), `notes`, `floors` (andares), `store`, `server`, `app` |
+| `internal/` | `terminal`, `pty`, `screen` (emulador), `activity` (monitor), `agentbus` (conversa), `agents` (hooks), `notes`, `floors` (níveis de voo), `store`, `server`, `app` |
 | `web/` | interface React (React Flow, xterm.js); o build vai para `internal/webui/dist` |
 | `tools/shot` | captura de tela via Chrome headless (módulo Go próprio), usada para comparar a UI com o design |
 | `third_party/vt` | emulador de terminal (charmbracelet/x/vt, MIT) com patches, como pacote do próprio módulo |

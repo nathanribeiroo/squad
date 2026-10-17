@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { UIState, WNode } from '../api/types';
-import { STATE_META } from '../lib/model';
-import { roleColor, roleIcon, useRole, useRoleLookup } from '../lib/roles';
+import { STATE_META, callsign } from '../lib/model';
+import { roleColor, useRole, useRoleLookup } from '../lib/roles';
 import { toast } from '../lib/toast';
 import { useNodes, useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -217,7 +217,7 @@ function ComposerPanel() {
     setBusy(false);
     const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [`${nodeName(byId.get(targets[i])!)}: ${(r.reason as Error).message}`] : []));
     if (failed.length) {
-      toast(`Não transmitido · ${failed.join(' · ')}`);
+      toast(`Não transmitido · ${failed.join(' · ')}`, 'err');
       return;
     }
     toast(targets.length === 1 ? `Transmitido a ${nodeName(byId.get(targets[0])!)}` : `Transmitido a ${targets.length} voos`);
@@ -342,9 +342,9 @@ function ComposerPanel() {
           const role = roleOf(n.terminal.role);
           const r = roleColor(role);
           return (
-            <span key={id} className="cmp-target" style={{ background: `var(--rb-${r})`, color: `var(--r-${r})` }}>
-              <Icon name={role ? roleIcon(role) : 'terminal'} size={14} />
-              <span className="cmp-target-name">{n.terminal.name}</span>
+            <span key={id} className="cmp-target" title={role ? `${n.terminal.name} · ${role.name}` : n.terminal.name}>
+              <i style={{ background: `var(--r-${r})` }} />
+              <span className="cmp-target-name mono">{callsign(n.terminal)}</span>
               <span className="mono cmp-target-agent">{n.terminal.agent}</span>
               <button className="cmp-x" onClick={() => setTargets(targets.filter((x) => x !== id))} aria-label={`Remover ${n.terminal.name}`}>
                 <Icon name="close" size={14} />
@@ -354,8 +354,8 @@ function ComposerPanel() {
         })}
         <div style={{ position: 'relative' }}>
           <button className="cmp-add" onClick={() => setPicker(!picker)}>
-            <Icon name="add" size={15} />
-            destino
+            <Icon name="add" size={14} />
+            Destino
           </button>
           {picker && (
             <div className="popover cmp-picker" onMouseLeave={() => setPicker(false)}>
@@ -373,6 +373,7 @@ function ComposerPanel() {
                     }}
                   >
                     <NodeGlyph n={n} />
+                    <b className="mono">{callsign(n.terminal!)}</b>
                     {n.terminal!.name}
                     <span className="tn-spacer" />
                     <MiniState state={runtime[n.id]?.activity ?? 'off'} />
@@ -445,7 +446,7 @@ function ComposerPanel() {
             e.target.value = '';
           }}
         />
-        <span className="cmp-hint mono">⏎ enviar · ⇧⏎ nova linha · Esc fecha</span>
+        <span className="cmp-hint mono">⏎ transmitir · ⇧⏎ nova linha · Esc fecha</span>
         <span className="tn-spacer" />
         <button className="cmp-send" onClick={() => void send()} disabled={!canSend}>
           {targets.length > 1 ? `Transmitir a ${targets.length}` : 'Transmitir'}

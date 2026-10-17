@@ -1,83 +1,94 @@
-/* Node frames (docs/design_handoff_squad §2–4). */
+/* Node frames (docs/torre/TELAS.md, quadros 02, 04, 09, 10). Square, on
+   the canvas; the state is a band on the left of a flight, never its whole
+   color. */
 .tnode, .nnode, .pnode {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line-2);
-  border-radius: var(--radius-node);
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-pop);
   position: relative;
 }
-.tnode > :not(.react-flow__handle):not(.node-menu):not(.xfloor):not(.tc),
+.tnode > :not(.react-flow__handle):not(.node-menu):not(.xfloor):not(.tc):not(.tn-band),
 .pnode > :not(.react-flow__handle):not(.xfloor) { overflow: hidden; }
 
-/* An agent's last turn (TurnCard), hanging under its terminal; the floor
+/* The state band: 6px on the left of a live flight (8 on the portrait, 9 on
+   the strip), striped while it waits for another flight. */
+.tnode { padding-left: var(--w-state-band); }
+.tn-band { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w-state-band); background: var(--band, var(--st-idle)); z-index: 1; }
+.st-boot { --band: var(--st-boot); --stc: var(--stt-boot); }
+.st-idle { --band: var(--st-idle); --stc: var(--stt-idle); }
+.st-work { --band: var(--st-work); --stc: var(--stt-work); }
+.st-wait { --band: var(--wait-stripe); --stc: var(--stt-wait); }
+.st-done { --band: var(--st-done); --stc: var(--stt-done); }
+.st-err { --band: var(--st-err); --stc: var(--stt-err); }
+.st-off { --band: var(--st-off); --stc: var(--stt-off); }
+
+/* The last turn's bulletin (TurnCard), hanging under its flight; the level
    tags move below it. */
 .tc {
   position: absolute;
   left: 0;
   right: 0;
   top: calc(100% + 6px);
-  height: 30px;
+  height: var(--h-turn-card);
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 6px 0 10px;
-  background: var(--surface);
-  border: 1px solid var(--line-2);
-  border-radius: 0;
-  box-shadow: var(--shadow);
+  padding: 0 4px 0 10px;
+  background: var(--stb-done);
+  border: 1px solid var(--stl-done);
   font-size: 12px;
   color: var(--text-2);
   z-index: 2;
 }
 .tnode.has-card .xfloor { top: calc(100% + 44px); }
 .tc-icon { color: var(--stt-done); flex: none; }
-.tc-head { font-weight: 600; color: var(--text); white-space: nowrap; flex: none; }
+.tc-head { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stt-done); white-space: nowrap; flex: none; }
+.tc-head .mono { letter-spacing: 0; }
 .tc-gist { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text-2); font: inherit; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; padding: 0; }
 .tc-gist:hover { color: var(--text); }
-.tc-count { color: var(--stt-work); font-weight: 600; }
-.tc-btn { height: 22px; padding: 0 8px; border-radius: 0; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); font: inherit; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex: none; }
-.tc-btn:hover { background: var(--surface-3); }
+.tc-count { color: var(--stt-work); font-weight: 700; }
+.tc-btn { height: 22px; padding: 0 8px; border: 1px solid var(--line-3); background: transparent; color: var(--text); font: inherit; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; flex: none; }
+.tc-btn:hover { background: var(--surface-2); }
 .tc-busy { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--stt-work); flex: none; }
-.tc-x { width: 22px; height: 22px; border: 0; background: transparent; color: var(--text-3); border-radius: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
+.tc-x { width: 22px; height: 22px; border: 0; background: transparent; color: var(--text-3); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none; }
 .tc-x:hover { background: var(--surface-2); color: var(--text); }
 .tc-panel {
   position: absolute;
   left: 0;
-  right: 0;
-  bottom: calc(100% + 6px); /* over the terminal's lower part, always on screen with it */
-  max-height: 360px;
+  width: max(100%, 520px);
+  bottom: calc(100% + 6px); /* opens upward from the bar, over the terminal's lower part */
+  max-height: 380px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 14px;
+  padding: 14px 16px;
   background: var(--surface);
-  border: 1px solid var(--line-2);
-  border-radius: 0;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--line-3);
+  box-shadow: var(--shadow-pop);
   cursor: auto;
   user-select: text;
 }
 .tc-panel section { display: flex; flex-direction: column; gap: 6px; }
-.tc-label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); }
-.tc-by { text-transform: none; letter-spacing: 0; font-weight: 400; }
-.tc-summary { font-size: 13px; line-height: 1.5; color: var(--text); }
+.tc-label { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-3); }
+.tc-by { text-transform: none; letter-spacing: 0; font-weight: 400; font-family: var(--font-mono); }
+.tc-summary { font-size: 13px; line-height: 1.55; color: var(--text); }
 .tc-summary > :first-child { margin-top: 0; }
 .tc-summary > :last-child { margin-bottom: 0; }
 .tc-text { margin: 0; font: inherit; font-size: 12px; line-height: 1.5; color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
-.tc-text.mono { font-family: var(--font-mono); font-size: 11px; }
+.tc-text.mono { font-family: var(--font-term); font-size: 11px; }
 .tc-md { font-size: 12.5px; line-height: 1.5; color: var(--text-2); overflow-wrap: anywhere; }
 .tc-md > :first-child { margin-top: 0; }
 .tc-steps { display: flex; flex-direction: column; gap: 4px; }
-.tc-step { display: flex; align-items: flex-start; gap: 6px; text-align: left; padding: 6px 8px; border-radius: 0; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; line-height: 1.4; cursor: pointer; }
-.tc-step .msi { color: var(--stt-work); margin-top: 1px; }
-.tc-step:hover { border-color: var(--line-2); background: var(--surface-3); }
+.tc-step { min-height: 30px; display: flex; align-items: flex-start; gap: 8px; text-align: left; padding: 6px 10px; border: 1px solid var(--line-3); background: transparent; color: var(--text); font: inherit; font-size: 12.5px; line-height: 1.4; cursor: pointer; }
+.tc-step-to { color: var(--stt-work); font-size: 11px; font-weight: 700; flex: none; margin-top: 1px; }
+.tc-step:hover { background: var(--surface-2); }
 
-/* Wires to other floors (CrossFloorLinks): tags hanging under the node. */
+/* Frequencies to other levels (CrossFloorLinks): tags hanging under the node. */
 .xfloor {
   position: absolute;
   left: 0;
@@ -93,79 +104,90 @@
   height: 22px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   padding: 0 8px;
-  border-radius: 0;
   border: 1px dashed var(--wire);
   background: var(--surface);
   color: var(--text-2);
+  font-family: var(--font-mono);
   font-size: 11px;
   white-space: nowrap;
   cursor: pointer;
 }
 .xfloor-tag:hover { color: var(--text); border-style: solid; }
 .xfloor-icon { color: var(--text-3); }
-.xfloor-name { font-weight: 600; color: var(--text); }
+.xfloor-name { font-weight: 700; color: var(--text); }
 .xfloor-floor { color: var(--text-3); }
-.xfloor-tag.busy { border-color: var(--st-wait); border-style: solid; animation: xfloor-pulse 1.2s ease-in-out infinite; }
+.xfloor-tag.busy { border-color: var(--st-wait); border-style: solid; color: var(--stt-wait); animation: xfloor-pulse var(--dur-pending-dash) ease-in-out infinite; }
 @keyframes xfloor-pulse { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--st-wait) 30%, transparent); } }
 /* A NOTAM is paper in both themes: its contents use the ink colors. */
 .nnode {
   background: var(--paper);
   color: var(--ink);
+  border-color: var(--paper-line-2);
   --text: var(--ink);
   --text-2: var(--ink-2);
   --text-3: var(--ink-2);
   --line: var(--paper-line);
   --line-2: var(--paper-line-2);
+  --line-3: var(--paper-line-2);
   --surface: var(--paper);
   --surface-2: var(--paper-2);
+  --bg: var(--paper);
 }
-.tnode.focused { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }
+.tnode.focused, .pnode.focused { box-shadow: 0 0 0 2px var(--focus), var(--shadow-pop); border-color: var(--focus); }
 .tnode.selected, .nnode.selected, .pnode.selected { border-color: var(--text-3); }
 .connect-valid { outline: 2px solid var(--text); outline-offset: 2px; }
 .connect-invalid { opacity: 0.4; }
 
-.node-stripe { height: var(--role-stripe-h); flex: none; border-radius: var(--radius-node) var(--radius-node) 0 0; }
 .node-drag { cursor: grab; }
 .react-flow__node.dragging .node-drag { cursor: grabbing; }
 .tn-spacer { flex: 1; }
 
-/* Terminal */
+/* Flight: header 34 · sender strip 24 · screen · footer 22. */
 .tn-head {
-  height: var(--header-h);
+  height: var(--h-node-header);
   flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 8px 0 10px;
+  padding: 0 6px 0 10px;
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
   overflow: visible !important;
+  white-space: nowrap;
 }
-.tn-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.tn-agent { font-weight: 500; font-size: 10.5px; line-height: 16px; color: var(--text-2); border: 1px solid var(--line-2); border-radius: var(--radius-chip); padding: 0 5px; flex: none; }
-.tn-role { height: 20px; padding: 0 7px 0 5px; border-radius: var(--radius-chip); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; }
-/* Manager mode (torre new) and who created a node. */
-.tn-manager { height: 20px; padding: 0 7px 0 5px; border-radius: var(--radius-chip); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; color: var(--text-2); border: 1px solid var(--line-2); }
+.tn-sq { width: var(--w-role-square); height: var(--w-role-square); flex: none; background: var(--r-none); }
+.tn-callsign { font-size: var(--fs-callsign); font-weight: 700; flex: none; letter-spacing: 0.02em; }
+.tn-name { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tn-agent { font-size: 10.5px; line-height: 16px; color: var(--text-3); border: 1px solid var(--line-3); padding: 0 5px; flex: none; }
+.tn-chip { height: 18px; padding: 0 6px 0 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); border: 1px solid var(--line-3); flex: none; }
+.tn-chip.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 .tn-creator { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.tn-creator i { width: 7px; height: 7px; border-radius: 0; display: block; }
+.tn-creator i { width: 7px; height: 7px; display: block; }
+.tn-inbox { color: var(--stt-wait); font-weight: 700; }
 .pn-creator { font-size: 11px; color: var(--text-3); white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 5px; }
-.pn-creator i { width: 7px; height: 7px; border-radius: 0; display: block; }
-.tn-kbd-here { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; flex: none; }
-.state-pill { height: 22px; padding: 0 8px 0 6px; border-radius: 0; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; white-space: nowrap; flex: none; }
-.state-pill.compact { height: 20px; font-size: 11px; padding: 0 7px 0 5px; }
-.state-time { font-size: 10.5px; font-weight: 500; }
-.tn-strip { height: var(--strip-h); flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pn-creator i { width: 7px; height: 7px; display: block; }
+.tn-kbd-here { height: 18px; padding: 0 6px 0 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: var(--primary); color: var(--on-primary); flex: none; }
+/* The state: icon + WORD + time, in the state's color (never color alone). */
+.state-pill { height: 22px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; flex: none; }
+.state-pill.compact { height: 20px; font-size: 10.5px; }
+.state-time { font-weight: 700; letter-spacing: 0; }
+.tn-strip { height: var(--h-sender); flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tn-body { flex: 1; min-height: 0; background: var(--term-bg); position: relative; cursor: text; }
 .xterm-slot { position: absolute; left: 10px; top: 8px; transform-origin: 0 0; overflow: hidden; }
 .xterm-host, .xterm-host .xterm { width: 100%; height: 100%; }
 .xterm-host .xterm-viewport { background-color: transparent !important; }
+/* PANE (striped red, opaque) or HANGAR over a stopped process, with INICIAR. */
 .tn-stopped {
-  position: absolute; left: 10px; right: 10px; bottom: 10px; min-height: 30px; border-radius: 0; padding: 6px 10px;
-  display: flex; align-items: center; gap: 8px; font-size: 12px; background: var(--stb-off); color: var(--text-2); border: 1px solid var(--line-2);
+  position: absolute; left: 0; right: 0; bottom: 0; min-height: 44px; padding: 8px 10px 8px 12px;
+  display: flex; align-items: center; gap: 10px; font-size: 12px; background: var(--surface-2); color: var(--text-2); border-top: 1px solid var(--line-3);
 }
-.tn-stopped.err { background: var(--stb-err); color: var(--stt-err); }
-.tn-foot { height: var(--node-footer-h); flex: none; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-top: 1px solid var(--line); font-weight: 500; font-size: 10px; color: var(--text-3); white-space: nowrap; }
+.tn-stopped-text { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tn-stopped-text b { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--stt-off); }
+.tn-stopped.err { background: repeating-linear-gradient(135deg, var(--stb-err) 0 10px, color-mix(in srgb, var(--stb-err) 70%, var(--st-err)) 10px 12px); color: var(--stt-err-2, var(--stt-err)); border-top-color: var(--st-err); }
+.tn-stopped.err b { color: var(--stt-err); }
+.tn-foot { height: var(--h-node-footer); flex: none; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--text-3); white-space: nowrap; background: var(--surface); }
 /* rtl puts the ellipsis on the left, so the end of the path stays visible;
    the <bdi> inside keeps the path itself left-to-right. */
 .tn-cwd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; direction: rtl; }
@@ -173,39 +195,44 @@
 /* Menu */
 .node-menu { position: relative; flex: none; overflow: visible; }
 .node-menu-btn { width: 24px; height: 24px; color: var(--text-3); }
-.node-menu-pop { right: 0; top: 28px; min-width: 190px; padding: 4px; display: flex; flex-direction: column; }
+.node-menu-pop { right: 0; top: 28px; min-width: 250px; padding: 4px 0; display: flex; flex-direction: column; }
 .node-menu-item {
-  height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 0; border-radius: 0;
+  height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 0;
   background: transparent; font-size: 12.5px; text-align: left; cursor: pointer; color: var(--text); white-space: nowrap;
 }
-.node-menu-item .msi { color: var(--text-2); }
-.node-menu-item:hover:not(:disabled) { background: var(--surface-2); }
+.node-menu-item .msi { color: var(--text-3); }
+.node-menu-item:hover:not(:disabled) { background: var(--surface-3); }
 .node-menu-item.danger, .node-menu-item.danger .msi { color: var(--stt-err); }
 .node-menu-item:disabled { opacity: 0.45; cursor: default; }
-.node-menu-div { height: 1px; background: var(--line); margin: 4px 2px; }
+.node-menu-div { height: 1px; background: var(--line); margin: 4px 0; }
+.node-menu-section { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); padding: 8px 14px 4px; }
+.node-menu-hint { margin-left: auto; padding-left: 12px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-4); }
 
-/* Note */
+/* NOTAM (docs/torre/TELAS.md, quadro 09): paper, a tag, PRÉVIA | EDITAR. */
 .nn-head, .pn-head {
-  height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px;
-  border-bottom: 1px solid var(--line); overflow: visible !important;
+  height: 34px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--line); overflow: visible !important; white-space: nowrap;
 }
-.nn-title, .pn-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.nn-title { flex: 0 0 auto; max-width: 70%; } /* the file name gives way first */
+.nn-tag { height: 18px; padding: 0 5px; background: var(--ink); color: var(--paper); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; display: inline-flex; align-items: center; flex: none; }
+.nn-title, .pn-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.nn-title { flex: 0 0 auto; max-width: 60%; } /* the file name gives way first */
 .nn-name {
-  flex: 0 1 220px; min-width: 80px; height: 24px; border-radius: 0; border: 1px solid var(--focus); outline: none;
-  background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; padding: 0 6px;
+  flex: 0 1 220px; min-width: 80px; height: 24px; border: 1px solid var(--ink); outline: none;
+  background: var(--surface); color: var(--text); font-size: 13px; font-weight: 700; padding: 0 6px;
 }
-.nn-file { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.nn-file { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .nn-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; cursor: text; user-select: text; }
-.nn-empty { color: var(--text-3); }
-.nn-lock { width: 24px; height: 24px; color: var(--text-3); }
-.nn-seg { display: flex; height: 24px; padding: 2px; border-radius: 0; background: var(--surface-2); border: 1px solid var(--line); flex: none; }
-.nn-seg button { border: 0; background: transparent; border-radius: 0; padding: 0 7px; font-size: 11px; font-weight: 600; color: var(--text-3); cursor: pointer; }
-.nn-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--line-2); }
+.nn-empty { color: var(--ink-2); }
+.nn-lock { width: 24px; height: 24px; color: var(--ink-2); }
+.nn-seg { display: flex; height: 22px; border: 1px solid var(--paper-line-2); flex: none; }
+.nn-seg button { border: 0; background: transparent; padding: 0 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); cursor: pointer; }
+.nn-seg button.on { background: var(--ink); color: var(--paper); }
 .nn-seg button:disabled { opacity: 0.4; cursor: default; }
-.nn-editor { flex: 1; min-height: 0; resize: none; border: 0; outline: none; background: transparent; padding: 12px 16px; font-size: 12.5px; line-height: 1.55; color: var(--text); }
-.nn-stale { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12px; background: var(--stb-wait); color: var(--stt-wait); flex: none; }
-.nn-stale button { margin-left: auto; border: 0; background: transparent; color: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; }
+.nn-editor { flex: 1; min-height: 0; resize: none; border: 0; outline: none; background: transparent; padding: 12px 16px; font-family: var(--font-mono); font-size: 12px; line-height: 18px; color: var(--text); }
+.nn-foot { height: 24px; flex: none; display: flex; align-items: center; padding: 0 12px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--ink-2); }
+.nn-stale { height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 12px; background: #f6e2b0; color: var(--ink-wait); flex: none; }
+.nn-stale button { margin-left: auto; border: 0; background: transparent; color: inherit; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; text-decoration: underline; }
+.nnode.locked { background: var(--paper-2); }
 
 /* Markdown in notes */
 .md-h { font-weight: 650; margin: 2px 0 8px; }
@@ -226,25 +253,27 @@
 .md-edited { border-radius: 0; padding: 6px 10px 4px; margin: 4px -6px 8px; }
 .md-edited-label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; margin-bottom: 4px; }
 
-/* Portal */
-.pn-url { flex: 1; min-width: 0; text-align: left; cursor: text; outline: none; height: 24px; border-radius: 0; background: var(--surface-2); border: 1px solid var(--line); font-size: 11.5px; line-height: 22px; padding: 0 8px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pn-live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--text-3); white-space: nowrap; }
+/* Portal (docs/torre/TELAS.md, quadro 10): header of 36, the page live. */
+.pnode .pn-head { height: 36px; }
+.pn-url { flex: 1; min-width: 0; text-align: left; cursor: text; outline: none; height: 24px; background: var(--bg); border: 1px solid var(--line-2); font-size: 11.5px; line-height: 22px; padding: 0 8px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pn-url:focus { border-color: var(--focus); }
+.pn-live { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; color: var(--text-3); white-space: nowrap; }
 .pn-live i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: block; }
-.pnode.focused { outline: var(--focus-ring-w) solid var(--focus); outline-offset: var(--focus-ring-offset); }
 .pn-nav { display: inline-flex; gap: 0; flex: none; }
 .pn-nav .icon-btn { width: 24px; height: 24px; }
 .pn-nav .icon-btn:disabled { opacity: 0.35; cursor: default; }
 /* The page: the image fills the body, which is the browser's viewport. */
-.pn-screen { flex: 1; position: relative; background: var(--surface-2); outline: none; cursor: default; min-height: 0; }
+.pn-screen { flex: 1; position: relative; background: var(--bg); outline: none; cursor: default; min-height: 0; }
 .pn-screen img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; pointer-events: none; }
 .pn-msg {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 10px; padding: 24px; text-align: center; color: var(--text-3); font-size: 12.5px; background: var(--surface-2);
+  gap: 10px; padding: 24px; text-align: center; color: var(--text-3); font-size: 12.5px; background: var(--bg);
 }
+.pn-msg.err { border: 1px solid var(--stl-err); inset: 12px; color: var(--stt-err); }
 .pn-hint { font-size: 11.5px; color: var(--text-2); max-width: 360px; }
 .pn-error {
-  position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 8px; border-radius: 0;
-  background: var(--stb-err); color: var(--stt-err); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 8px;
+  background: var(--stb-err); color: var(--stt-err); border: 1px solid var(--stl-err); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* Name: agents pick a portal by it (torre portal "Docs" …). */
 .pn-title { flex: 0 1 auto; max-width: 28%; cursor: text; }
@@ -277,40 +306,52 @@
 /* Handles */
 .react-flow__handle.body-handle {
   position: absolute; inset: 0; width: 100%; height: 100%; transform: none; top: 0; left: 0;
-  border: 0; border-radius: var(--radius-node); background: transparent; min-width: 0; min-height: 0; z-index: 4;
+  border: 0; background: transparent; min-width: 0; min-height: 0; z-index: 4;
 }
 .react-flow__handle.side-handle {
   width: 12px; height: 12px; min-width: 0; min-height: 0; border-radius: 50%;
-  background: var(--surface); border: 2px solid var(--line-2); opacity: 0; transition: opacity 0.12s;
+  background: var(--surface); border: 2px solid var(--wire); opacity: 0; transition: opacity 0.12s;
 }
 .react-flow__node:hover .side-handle, .react-flow__node.selected .side-handle { opacity: 1; }
 .react-flow__handle.side-handle:hover { border-color: var(--text); }
 
-/* Screen-space layers (miniature and card levels keep their type size on screen). */
-.screen-space { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-node); }
+/* Screen-space layers (portrait and strip levels keep their type size on screen). */
+.screen-space { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: flex; flex-direction: column; overflow: hidden; }
 
-/* Miniature (35–60%) */
-.tm-head { height: 28px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 8px; border-bottom: 1px solid var(--line); }
-.tm-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.tm-agent { font-size: 10px; color: var(--text-2); flex: none; }
-.tm-body { flex: 1; min-height: 0; overflow: hidden; background: var(--term-bg); padding: 4px 5px; color: var(--text-2); }
-.tm-body pre, .tm-body div, .tm-body span { font-family: var(--font-mono) !important; font-size: inherit !important; line-height: inherit !important; margin: 0; white-space: pre; }
-.tm-foot { height: 20px; flex: none; display: flex; align-items: center; gap: 5px; padding: 0 8px; border-top: 1px solid var(--line); font-size: 10px; color: var(--text-3); }
+/* Portrait (35–60%): a header of 38, the screen as text, read-only. */
+.tmini { background: var(--surface); padding-left: 8px; }
+.tmini .tn-band { width: 8px; }
+.tm-head { height: 38px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tm-callsign { font-size: 16px; font-weight: 700; flex: none; }
+.tm-name { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tm-body { flex: 1; min-height: 0; overflow: hidden; background: var(--term-bg); padding: 6px 8px; color: #6f8a7b; }
+[data-term='papel'] .tm-body { color: #6b6450; }
+.tm-body pre, .tm-body div, .tm-body span { font-family: var(--font-term) !important; font-size: inherit !important; line-height: inherit !important; margin: 0; white-space: pre; color: inherit !important; background: transparent !important; }
+.tm-foot { height: 26px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--text-3); }
 
-/* Card (< 35%) */
-.tcard { flex: 1; display: flex; flex-direction: column; background: var(--surface); min-height: 0; }
-.tc-stripe { height: 5px; flex: none; }
-.tc-main { flex: 1; padding: 10px 12px; min-height: 0; overflow: hidden; }
-.tc-title { display: flex; align-items: center; gap: 8px; }
-.tc-name { font-size: 18px; font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
-.tc-inbox { width: 22px; height: 22px; border-radius: 50%; background: var(--st-wait); color: var(--on-signal); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
-.tc-sub { font-size: 12.5px; color: var(--text-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tc-band { height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-top: 1px solid var(--line); }
-.tc-state { font-size: 14px; font-weight: 650; white-space: nowrap; }
-.tc-time { font-size: 12px; font-weight: 600; }
+/* Strip (< 35%): a paper flight strip, the callsign big, the state on the right. */
+.tcard {
+  flex: 1; display: flex; min-height: 0; background: var(--paper); color: var(--ink); padding-left: 9px; position: relative;
+  border: 1px solid var(--paper-line-2);
+  --ink-boot: #3f5b6b; --ink-idle: #5b5747; --ink-err: #a3231b; --ink-off: #6b6450;
+}
+.tcard .tn-band { width: 9px; }
+.tc-main { flex: 1; min-width: 0; padding: 8px 10px; display: flex; flex-direction: column; justify-content: center; gap: 2px; overflow: hidden; }
+.tc-callsign { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.tc-sub { font-size: 11px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc-extra { font-size: 11px; color: var(--ink-2); }
+.tc-extra.inbox { color: var(--ink-wait); font-weight: 700; }
+.tc-state { width: 92px; flex: none; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 10px; border-left: 1px dashed var(--paper-line-2); color: var(--ink-2); }
+.st-work .tc-state { color: var(--ink-work); }
+.st-wait .tc-state { color: var(--ink-wait); }
+.st-done .tc-state { color: var(--ink-done); }
+.st-err .tc-state { color: var(--ink-err); }
+.st-boot .tc-state { color: var(--ink-boot); }
+.tc-word { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.tc-time { font-size: 11px; font-weight: 700; }
 
 /* Resizer */
-.react-flow__resize-control.handle { width: 9px; height: 9px; border-radius: 0; background: var(--surface); border: 1.5px solid var(--text-2); }
+.react-flow__resize-control.handle { width: 10px; height: 10px; border-radius: 0; background: var(--text); border: 0; }
 .react-flow__resize-control.line { border-color: transparent; }
 .spin { animation: pn-spin 1s linear infinite; }
 @keyframes pn-spin { to { transform: rotate(360deg); } }

@@ -42,11 +42,11 @@ export function useBranch(floor: string): string {
   });
 }
 
-/** What a floor has that isn't landed: "limpo", "● 3 alterações", "2 commits". */
+/** What a floor has that isn't landed: "limpo", "3 alt.", "2 commits". */
 export function gitSummary(g: FloorGit | undefined): { text: string; dirty: boolean } | null {
   if (!g) return null;
   if (g.missing) return { text: 'pasta sumiu', dirty: true };
-  if (g.changes > 0) return { text: `● ${g.changes} ${g.changes === 1 ? 'alteração' : 'alterações'}`, dirty: true };
+  if (g.changes > 0) return { text: `${g.changes} alt.`, dirty: true };
   if (g.ahead) return { text: `${g.ahead} ${g.ahead === 1 ? 'commit' : 'commits'}`, dirty: false };
   return { text: 'limpo', dirty: false };
 }
@@ -65,4 +65,9 @@ export function slugify(name: string): string {
 /** "3 alterações", "1 commit"… */
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
+}
+
+/** "FL2" for a floor, "PISTA" for the ground floor. */
+export function flightLevel(f?: Floor): string {
+  return f ? `FL${f.number || '?'}` : 'PISTA';
 }

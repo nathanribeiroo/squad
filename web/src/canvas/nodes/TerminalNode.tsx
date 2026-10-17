@@ -3,9 +3,9 @@ import { NodeResizer, useReactFlow, type Node, type NodeProps, type ResizeParams
 import { api } from '../../api/client';
 import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { Icon } from '../../components/Icon';
-import { STATE_META, elapsed, stateLabel } from '../../lib/model';
+import { STATE_META, callsign, elapsed, stateLabel } from '../../lib/model';
 import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, useRole, useRoleLookup } from '../../lib/roles';
-import { useBranch, workdir } from '../../lib/floors';
+import { flightLevel, useBranch, workdir } from '../../lib/floors';
 import { TurnCard, useCardShown } from './TurnCard';
 import { shortPath, terminalCwd } from '../../lib/paths';
 import { toast } from '../../lib/toast';
@@ -14,15 +14,16 @@ import { useSquad } from '../../state/store';
 import { termSession } from '../../term/session';
 import { ScreenSpace, XTermView } from '../../term/XTermView';
 import { NodeHandles, connectClass, useConnectTarget } from './NodeHandles';
-import { NodeMenu, type MenuItem } from './NodeMenu';
+import { NodeMenu, type MenuEntry } from './NodeMenu';
 import { StatePill } from './StatePill';
 
 export type TerminalFlowNode = Node<{ node: WNode }, 'terminal'>;
 
-// Fixed chrome of the live node, in world px (handoff §2): borders, role
-// stripe, header, footer and the body padding around the terminal grid.
-const CHROME_W = 2 + 20;
-const CHROME_H = 2 + 3 + 32 + 22 + 16;
+// Fixed chrome of the live node, in world px (docs/torre/TELAS.md, quadro
+// 02): borders, the state band, header, footer and the body padding around
+// the terminal grid.
+const CHROME_W = 2 + 6 + 20;
+const CHROME_H = 2 + 34 + 22 + 16;
 
 /** Terminal grid that fits a node of w×h world px. */
 function gridFor(id: string, w: number, h: number): { cols: number; rows: number } | null {
@@ -72,7 +73,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
     };
   }, [id, sized, level]);
 
-  const cls = `tnode tnode-${level}${focused ? ' focused' : ''}${selected ? ' selected' : ''}${connectClass(target)}`;
+  const cls = `tnode tnode-${level} st-${state}${focused ? ' focused' : ''}${selected ? ' selected' : ''}${connectClass(target)}`;
 
   if (level === 'card') {
     // Design card is 240 px wide; shrink it when the node is smaller on screen.
@@ -92,14 +93,15 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
       <div className={`${cls} node-drag`}>
         <NodeHandles id={id} />
         <ScreenSpace zoom={zoom} className="tmini">
-          <div className="node-stripe" style={{ background: `var(--r-${roleColorKey})` }} />
+          <i className="tn-band" />
           <header className="tm-head">
+            <span className="tn-sq" style={{ background: `var(--r-${roleColorKey})` }} />
+            <span className="tm-callsign mono">{callsign(t)}</span>
             <span className="tm-name">{t.name}</span>
-            <span className="tm-agent mono">{t.agent}</span>
             <span className="tn-spacer" />
             <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} compact />
           </header>
-          <MiniSnapshot id={id} zoom={zoom} />
+          <MiniSnapshot id={id} />
         </ScreenSpace>
       </div>
     );
@@ -110,19 +112,19 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
     const w = Math.round(p.width);
     const h = Math.round(p.height);
     useSquad.getState().moveNodeLocal(id, Math.round(p.x), Math.round(p.y));
-    api.updateNode(id, { x: Math.round(p.x), y: Math.round(p.y), w, h, terminal: td }).catch((e: Error) => toast(e.message));
+    api.updateNode(id, { x: Math.round(p.x), y: Math.round(p.y), w, h, terminal: td }).catch((e: Error) => toast(e.message, 'err'));
   };
 
   return (
     <div className={`${cls}${cardShown ? ' has-card' : ''}`}>
       <NodeResizer isVisible={selected && !focused} minWidth={320} minHeight={200} onResizeEnd={onResizeEnd} />
       <NodeHandles id={id} />
-      <div className="node-stripe" style={{ background: `var(--r-${roleColorKey})` }} />
+      <i className="tn-band" />
       <LiveHeader id={id} t={t} rt={rt} state={state} focused={focused} />
       <SenderStrip id={id} />
       <TermBody id={id}>
         <XTermView id={id} zoom={zoom} />
-        {(rt?.status === 'failed' || rt?.status === 'exited' || rt?.status === 'stopped') && <StoppedOverlay rt={rt} />}
+        {(rt?.status === 'failed' || rt?.status === 'exited' || rt?.status === 'stopped') && <StoppedOverlay id={id} rt={rt} />}
       </TermBody>
       <LiveFooter id={id} t={t} createdBy={data.node.createdBy} floor={data.node.floor ?? ''} />
       <TurnCard id={id} working={state === 'work'} />
@@ -180,7 +182,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
   const roles = useSquad((s) => s.roles);
   const manager = isManager(t, role);
   const running = rt?.status === 'running' || rt?.status === 'starting';
-  const act = (a: 'start' | 'stop' | 'restart' | 'new-conversation') => api.nodeAction(id, a).catch((e: Error) => toast(e.message));
+  const act = (a: 'start' | 'stop' | 'restart' | 'new-conversation') => api.nodeAction(id, a).catch((e: Error) => toast(e.message, 'err'));
   const newConversation = () => {
     if (window.confirm(`Começar uma conversa nova em ${t.name}? O voo reinicia sem o contexto da conversa atual (ela continua guardada no agente).`))
       act('new-conversation');
@@ -194,16 +196,16 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
     );
   };
   const remove = () => {
-    if (window.confirm(`Remover o voo "${t.name}"? O processo dele é encerrado.`)) api.removeNode(id).catch((e: Error) => toast(e.message));
+    if (window.confirm(`Remover o voo "${t.name}"? O processo dele é encerrado.`)) api.removeNode(id).catch((e: Error) => toast(e.message, 'err'));
   };
-  const items: (MenuItem | 'divider')[] = [
+  const items: MenuEntry[] = [
     running
-      ? { icon: 'stop_circle', label: 'Parar', action: () => act('stop') }
+      ? { icon: 'stop_circle', label: 'Parar', hint: 'vai ao hangar', action: () => act('stop') }
       : { icon: 'play_circle', label: 'Iniciar', action: () => act('start') },
     { icon: 'restart_alt', label: 'Reiniciar', action: () => act('restart') },
     ...(ROLE_AGENTS.has(t.agent)
       ? [
-          { icon: 'edit_square' as const, label: 'Nova conversa', action: newConversation },
+          { icon: 'edit_square' as const, label: 'Nova conversa…', action: newConversation },
           ...(resumeLine(t) ? [{ icon: 'content_copy' as const, label: 'Copiar comando de retomada', action: copyResume }] : []),
         ]
       : []),
@@ -212,9 +214,9 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
       ? [
           {
             icon: 'groups' as const,
-            label: 'Modo líder',
+            label: 'Líder',
             checked: manager,
-            action: () => api.updateNode(id, { terminal: { ...t, manager: !manager } }).catch((e: Error) => toast(e.message)),
+            action: () => api.updateNode(id, { terminal: { ...t, manager: !manager } }).catch((e: Error) => toast(e.message, 'err')),
           },
         ]
       : []),
@@ -223,6 +225,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
     ...(t.agent === 'shell'
       ? []
       : [
+          { section: 'Papel' },
           ...roles.map((r) => ({
             icon: roleIcon(r),
             label: r.name,
@@ -232,35 +235,34 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
           { icon: 'badge' as const, label: 'Editar papéis…', action: () => useSquad.getState().openRoles(t.role || null) },
           'divider' as const,
         ]),
-    { icon: 'delete', label: 'Remover', action: remove, danger: true },
+    { icon: 'delete', label: 'Remover…', action: remove, danger: true },
   ];
+  const color = roleColor(role);
   return (
     <header className="tn-head node-drag">
+      <span
+        className="tn-sq"
+        style={{ background: `var(--r-${color})` }}
+        title={role ? (ROLE_AGENTS.has(t.agent) ? `Papel: ${role.name}` : `Papel: ${role.name} (só a etiqueta: ${t.agent} não recebe instruções)`) : 'Sem papel'}
+      />
+      <span className="tn-callsign mono" title={`Indicativo de ${t.name}`}>
+        {callsign(t)}
+      </span>
       <span className="tn-name">{t.name}</span>
       <span className="tn-agent mono">{t.agent}</span>
-      {role && (
-        <span
-          className="tn-role"
-          style={{ background: `var(--rb-${role.color})`, color: `var(--r-${role.color})` }}
-          title={ROLE_AGENTS.has(t.agent) ? `Papel: ${role.name}` : `Papel: ${role.name} (só a etiqueta: ${t.agent} não recebe instruções)`}
-        >
-          <Icon name={roleIcon(role)} size={14} />
-          {role.name}
-        </span>
-      )}
       {manager && (
-        <span className="tn-manager" title="Modo líder: cria voos e os põe na frequência dele (torre new). Desligue no menu ⋯">
-          <Icon name="groups" size={15} />
+        <span className="tn-chip" title="Modo líder: cria voos e os põe na frequência dele (torre new). Desligue no menu ⋯">
+          <Icon name="groups" size={14} />
           líder
         </span>
       )}
-      <span className="tn-spacer" />
       {focused && (
-        <span className="tn-kbd-here" title="⌥Esc devolve o teclado ao canvas">
-          <Icon name="keyboard" size={15} />
+        <span className="tn-chip on" title="⌥Esc devolve o teclado ao canvas">
+          <Icon name="keyboard" size={14} />
           teclado
         </span>
       )}
+      <span className="tn-spacer" />
       <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} />
       <NodeMenu items={items} />
     </header>
@@ -273,17 +275,21 @@ function LiveFooter({ id, t, createdBy, floor }: { id: string; t: TerminalData; 
   const branch = useBranch(floor);
   const inbox = useInbox(id);
   const creator = useCreator(createdBy);
+  const level = useSquad((s) => flightLevel(floor ? s.workspace?.floors?.find((f) => f.id === floor) : undefined));
   return (
     <footer className="tn-foot mono">
-      {branch && <span title="Branch do nível">⎇ {branch}</span>}
+      <span title={branch ? `${level}, branch ${branch}` : level}>
+        {level}
+        {branch && ` · ${branch}`}
+      </span>
       <span>
         {t.cols || 80}×{t.rows || 24}
       </span>
-      {inbox > 0 && <span style={{ color: 'var(--stt-wait)' }}>caixa {inbox}</span>}
+      {inbox > 0 && <span className="tn-inbox">caixa {inbox}</span>}
       {creator && (
         <span className="tn-creator" title={`${creator.name} criou este voo (torre new)`}>
           <i style={{ background: `var(--r-${creator.color})` }} />
-          criado por {creator.name}
+          criado por {creator.callsign}
         </span>
       )}
       <span className="tn-spacer" />
@@ -309,13 +315,18 @@ function SenderStrip({ id }: { id: string }) {
   const now = useNow(1000, !!outgoing || !!reply);
   const lookup = useRoleLookup();
   const roleOf = (nid: string) => roleColor(lookup(nodes?.find((n) => n.id === nid)?.terminal?.role));
+  // Flights by callsign (PLN); someone not on the canvas by name.
+  const cs = (nid: string | undefined, name: string) => {
+    const t = nodes?.find((n) => n.id === nid)?.terminal;
+    return t ? callsign(t) : name;
+  };
 
   if (incoming) {
     const r = roleOf(incoming.from);
     return (
-      <div className="tn-strip" style={{ background: `var(--rb-${r})`, color: `var(--r-${r})` }}>
+      <div className="tn-strip" style={{ background: `var(--rb-${r})`, color: `var(--rt-${r})` }}>
         <Icon name="call_received" size={15} />
-        Pedido {incoming.id} de {incoming.fromName} · a resposta volta para ele
+        Pedido {incoming.id} de {cs(incoming.from, incoming.fromName)} · a resposta volta para ele
       </div>
     );
   }
@@ -323,7 +334,7 @@ function SenderStrip({ id }: { id: string }) {
     return (
       <div className="tn-strip" style={{ background: 'var(--stb-wait)', color: 'var(--stt-wait)' }}>
         <Icon name="hourglass_top" size={15} />
-        Aguarda {outgoing.toName} · pedido {outgoing.id} · transmitido há {secondsAgo(outgoing.sentAt, now)}
+        Aguardando {cs(outgoing.to, outgoing.toName)} · pedido {outgoing.id} · enviado há {secondsAgo(outgoing.sentAt, now)}
       </div>
     );
   }
@@ -331,7 +342,7 @@ function SenderStrip({ id }: { id: string }) {
     return (
       <div className="tn-strip" style={{ background: 'var(--stb-done)', color: 'var(--stt-done)' }}>
         <Icon name="reply" size={15} />
-        Resposta de {reply.fromName} · {reply.id} · {duration(reply.elapsedMs)}
+        Resposta de {cs(reply.from, reply.fromName)} · {reply.id} · {duration(reply.elapsedMs)}
       </div>
     );
   }
@@ -349,17 +360,26 @@ function duration(ms: number): string {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`;
 }
 
-function StoppedOverlay({ rt }: { rt: TerminalRuntime }) {
-  const failed = rt.status === 'failed' || !!rt.error;
+/** PANE (striped red) or HANGAR over a terminal whose process stopped, with INICIAR. */
+function StoppedOverlay({ id, rt }: { id: string; rt: TerminalRuntime }) {
+  const failed = rt.status === 'failed' || !!rt.error || (rt.exitCode ?? 0) > 0;
+  const start = () => api.nodeAction(id, 'start').catch((e: Error) => toast(e.message, 'err'));
   return (
     <div className={`tn-stopped${failed ? ' err' : ''}`}>
       <Icon name={failed ? 'error' : 'bedtime'} size={16} />
-      {failed ? `Pane: ${rt.error || 'o processo terminou com erro.'}` : `Hangar: o processo foi encerrado${rt.exitCode ? ` (saída ${rt.exitCode})` : ''}.`} Use o menu ⋯ para iniciar.
+      <span className="tn-stopped-text">
+        <b>{failed ? `Pane${rt.exitCode ? ` · saída ${rt.exitCode}` : ''}` : 'Hangar'}</b>
+        {failed ? rt.error || 'O processo terminou com erro.' : 'O processo parou; a conversa está guardada.'}
+      </span>
+      <button className="btn" onClick={start}>
+        <Icon name="play_arrow" size={16} />
+        Iniciar
+      </button>
     </div>
   );
 }
 
-function MiniSnapshot({ id, zoom }: { id: string; zoom: number }) {
+function MiniSnapshot({ id }: { id: string }) {
   const [snap, setSnap] = useState({ html: '', at: Date.now() });
   const now = useNow(1000);
   const inbox = useInbox(id);
@@ -374,46 +394,40 @@ function MiniSnapshot({ id, zoom }: { id: string; zoom: number }) {
     <>
       <div
         className="tm-body"
-        style={{ fontSize: 11 * zoom, lineHeight: `${15 * zoom}px` }}
+        style={{ fontSize: 9, lineHeight: '12px' }}
         dangerouslySetInnerHTML={{ __html: snap.html }}
       />
-      <footer className="tm-foot">
-        <Icon name="photo_camera" size={13} />
-        <span className="mono">retrato · há {Math.max(0, Math.round((now - snap.at) / 1000))} s</span>
+      <footer className="tm-foot mono">
+        <span>retrato · há {Math.max(0, Math.round((now - snap.at) / 1000))} s</span>
         <span className="tn-spacer" />
-        {inbox > 0 && <span className="mono" style={{ color: 'var(--stt-wait)' }}>caixa {inbox}</span>}
+        {inbox > 0 && <span className="tn-inbox">caixa {inbox}</span>}
       </footer>
     </>
   );
 }
 
+/** The flight strip below 35% zoom: paper, the state band, the callsign big. */
 function TerminalCard({ id, t, rt, state }: { id: string; t: TerminalData; rt?: TerminalRuntime; state: UIState }) {
   const role = useRole(t.role);
   const inbox = useInbox(id);
+  const manager = isManager(t, role);
   const timed = state === 'work' || state === 'wait' || state === 'done';
   const now = useNow(1000, timed);
+  const extra = inbox > 0 ? `caixa ${inbox}` : manager ? 'líder' : '';
   return (
     <div className="tcard">
-      <div className="tc-stripe" style={{ background: `var(--r-${roleColor(role)})` }} />
+      <i className="tn-band" />
       <div className="tc-main">
-        <div className="tc-title">
-          <span className="tc-name">{t.name}</span>
-          {inbox > 0 && <span className="tc-inbox mono">{inbox}</span>}
-        </div>
-        <div className="tc-sub">
-          <span className="mono">{t.agent}</span>
-          {role && (
-            <>
-              {' · '}
-              <span style={{ color: `var(--r-${role.color})`, fontWeight: 600 }}>{role.name}</span>
-            </>
-          )}
-        </div>
+        <span className="tc-callsign mono">{callsign(t)}</span>
+        <span className="tc-sub mono">
+          {t.agent}
+          {role && ` · ${role.name}`}
+        </span>
+        {extra && <span className={`tc-extra mono${inbox > 0 ? ' inbox' : ''}`}>{extra}</span>}
       </div>
-      <div className="tc-band" style={{ background: `var(--stb-${state})`, color: `var(--stt-${state})` }}>
-        <Icon name={STATE_META[state].icon} size={20} />
-        <span className="tc-state">{stateLabel(state, rt?.exitCode)}</span>
-        <span className="tn-spacer" />
+      <div className="tc-state">
+        <Icon name={STATE_META[state].icon} size={18} />
+        <span className="tc-word">{stateLabel(state, rt?.exitCode)}</span>
         {timed && <span className="mono tc-time">{elapsed(rt?.activitySince, now)}</span>}
       </div>
     </div>
