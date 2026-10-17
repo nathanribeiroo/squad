@@ -67,7 +67,7 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |
 | `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot` |
 | `internal/agentbus` | `squad list/ask/check/wait/reply`, limites, pausa, modo `Safe` |
-| `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools`; a cópia da configuração do Devin e o registro do MCP nele (`devin.go`) |
+| `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools`; a conversa de cada terminal, nova ou retomada (`conversation.go`); a cópia da configuração do Devin e o registro do MCP nele (`devin.go`) |
 | `internal/roles`, `internal/team` | biblioteca de papéis; `squad new/connect/close` (gerente) |
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `squad portal` |
 | `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |
@@ -84,4 +84,4 @@ O Squad é um canvas (Go + React) onde agentes de código (Claude Code, Codex, D
 ## Pendências
 
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Próximo passo:** a segunda rodada terminou no R6 (o usuário cortou R7, R8 e R9). Combine com o usuário o que vem a seguir; os candidatos estão em "Fora da rodada", no PLAN.
+- **Próximo passo:** as sessões (S1–S4, no PLAN), aprovadas pelo usuário nessa ordem; depois do S1, siga com o S2.
