@@ -51,6 +51,9 @@ func TestAgentActions(t *testing.T) {
 	_ = p.Resize(800, 600)
 	_ = p.Navigate(srv.URL)
 	p.Settle(10 * time.Second)
+	if _, ok := p.Boxes(); ok {
+		t.Fatal("boxes before any snapshot")
+	}
 
 	snap, err := p.Snapshot()
 	if err != nil {
@@ -106,6 +109,18 @@ func TestAgentActions(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(300 * time.Millisecond)
+	// The @ELEMENTOS layer follows the scroll without a new snapshot.
+	boxes, ok := p.Boxes()
+	link := refOf(t, snap, "link", "Lá embaixo")
+	var seen bool
+	for _, b := range boxes {
+		if b.Ref == link {
+			seen = b.Y >= 0 && b.Y < 600 && b.Role == "link"
+		}
+	}
+	if !ok || len(boxes) == 0 || boxes[0].Ref != "@e1" || !seen {
+		t.Fatalf("boxes after scrolling: %v %+v", ok, boxes)
+	}
 	snap2, _ := p.Snapshot()
 	if regexp.MustCompile(`link "Lá embaixo" \[[^\]]+\] offscreen`).MatchString(snap2) {
 		t.Fatalf("after scrolling the link should be on screen:\n%s", snap2)

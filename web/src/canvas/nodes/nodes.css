@@ -407,3 +407,22 @@
   color: var(--text-3); font-size: 12px; cursor: default;
 }
 .tn-elsewhere b { color: var(--text); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* @ELEMENTOS (quadro 10): the toggle in the portal header and the layer. */
+.pn-elements {
+  height: 24px; flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border: 1px solid var(--line-3);
+  background: transparent; color: var(--text-2); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; white-space: nowrap;
+}
+.pn-elements:hover { color: var(--text); }
+.pn-elements.on { background: var(--surface-3); color: var(--text); border-color: var(--focus); }
+.pn-layer { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.pn-el { position: absolute; border: 1.5px dashed var(--el); box-sizing: border-box; }
+.pn-el-tag {
+  position: absolute; left: -1.5px; bottom: 100%; padding: 0 4px; background: var(--el); color: #fff;
+  font-size: 10px; line-height: 14px; white-space: nowrap;
+}
+.pn-elements-note {
+  position: absolute; left: 8px; bottom: 8px; padding: 4px 8px; background: var(--surface); border: 1px dashed var(--line-3);
+  color: var(--text-2); font-size: 11px; pointer-events: none; z-index: 2;
+}
+.pn-elements-note:empty { display: none; }

@@ -15,6 +15,17 @@ export interface PortalState {
   height: number;
 }
 
+/** A ref of the agents' last snapshot, where it is on the page now (page px). */
+export interface PortalElement {
+  ref: string;
+  role: string;
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface PortalStream {
   connected: boolean;
   state: PortalState | null;
@@ -25,6 +36,8 @@ export interface PortalStream {
   /** Server-side failure, e.g. no browser installed. */
   error: string | null;
   noBrowser: boolean;
+  /** The @ELEMENTOS layer while it is on: null until the first answer; snapshot false when no agent read this page yet. */
+  elements: { snapshot: boolean; items: PortalElement[] } | null;
   send(msg: object): void;
 }
 
@@ -32,15 +45,18 @@ export interface PortalStream {
 // or stops streaming still shows the page.
 const lastFrames = new Map<string, string>();
 
-/** Streams portal id while active; inactive keeps the last frame. */
-export function usePortalStream(id: string, active: boolean): PortalStream {
+/** Streams portal id while active; inactive keeps the last frame. With layer, the refs come too. */
+export function usePortalStream(id: string, active: boolean, layer = false): PortalStream {
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState<PortalState | null>(null);
   const [frame, setFrame] = useState<string | null>(() => lastFrames.get(id) ?? null);
   const [latency, setLatency] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [noBrowser, setNoBrowser] = useState(false);
+  const [elements, setElements] = useState<PortalStream['elements']>(null);
   const ws = useRef<WebSocket | null>(null);
+  const layerRef = useRef(layer);
+  layerRef.current = layer;
 
   useEffect(() => {
     if (!active) return;
@@ -57,12 +73,22 @@ export function usePortalStream(id: string, active: boolean): PortalStream {
       sock.onopen = () => {
         replay = true;
         setConnected(true);
+        if (layerRef.current) sock.send(JSON.stringify({ type: 'elements', on: true }));
       };
       sock.onmessage = (m) => {
         if (stopped) return;
         if (typeof m.data === 'string') {
-          const msg = JSON.parse(m.data) as { type: string; state?: PortalState; error?: string; noBrowser?: boolean };
-          if (msg.type === 'state' && msg.state) {
+          const msg = JSON.parse(m.data) as {
+            type: string;
+            state?: PortalState;
+            error?: string;
+            noBrowser?: boolean;
+            elements?: PortalElement[];
+            snapshot?: boolean;
+          };
+          if (msg.type === 'elements') {
+            if (layerRef.current) setElements({ snapshot: !!msg.snapshot, items: msg.elements ?? [] });
+          } else if (msg.type === 'state' && msg.state) {
             retry = 0;
             setError(null);
             setState(msg.state);
@@ -107,6 +133,11 @@ export function usePortalStream(id: string, active: boolean): PortalStream {
       setConnected(false);
     };
   }, [id, active]);
+  // Turning the layer on or off.
+  useEffect(() => {
+    setElements(null);
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'elements', on: layer }));
+  }, [layer]);
 
   return {
     connected,
@@ -115,6 +146,7 @@ export function usePortalStream(id: string, active: boolean): PortalStream {
     latency,
     error,
     noBrowser,
+    elements: layer ? elements : null,
     send: (msg) => {
       if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg));
     },

@@ -2,6 +2,14 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-17, Torre F5c: @ELEMENTOS no portal
+
+- **Servidor:** o WebSocket do portal aceita `{"type":"elements","on":true|false}`. Ligada, a camada recebe `{"type":"elements","elements":[{ref, role, name, x, y, w, h}],"snapshot":bool}` na hora e de novo a cada segundo quando algo muda (rolagem, snapshot novo, página nova). As caixas são as de agora (`Page.Boxes`, `DOM.getBoxModel` de cada ref), não as do momento do snapshot.
+- **Decisão sem consulta:** a camada mostra só as refs do último `torre portal snapshot`. Ligar a camada não tira um snapshot, porque um snapshot novo troca as refs, e o agente que está usando `@e7` passaria a clicar em outra coisa. Sem snapshot, aparece "Sem refs: eles aparecem quando um voo lê a página".
+- **Interface:** o botão "@ ELEMENTOS" no cabeçalho do portal (quadro 10) liga e desliga a camada. Os contornos são tracejados, com a etiqueta "@e7 botão" (o papel traduzido), na cor do papel do último voo que agiu na página (ou de um na frequência dele, ou de quem criou o portal), escurecida. A camada não pega cliques.
+- **Testado aqui:** `Page.Boxes` antes de qualquer snapshot (nada) e depois de rolar (o link que estava fora da tela aparece no lugar novo, sem snapshot novo), o WebSocket com a camada (antes e depois de um snapshot) e, na tela, um portal com uma página de teste lida pelo PLN (`torre portal snapshot` com o indicativo de um agente falso).
+- **Não testado:** páginas com centenas de elementos (cada segundo faz uma chamada ao Chrome por ref; o snapshot já limita a 300).
+
 ## 2026-10-17, Torre F5b: foco, encaixe, ocultar e Tab
 
 - **Uma tela por voo:** o terminal tem uma tela só (um xterm), então ela fica num lugar de cada vez: no foco, senão na borda, senão no nó (`web/src/lib/screens.ts`). O nó de um voo no foco ou na borda mostra "Em foco"/"Encaixado à esquerda" com "Trazer de volta"; o retrato e a ficha continuam iguais.
