@@ -70,7 +70,7 @@ func (o *Options) defaults() {
 // TurnEnd describes the end of a turn.
 type TurnEnd struct {
 	ID      string
-	Reason  string // "idle" (screen settled) or a hook name ("claude-stop", "codex-notify", "devin-stop")
+	Reason  string // "idle" (screen settled), "denied" (settled after the user denied a permission from the interface: final, as no hook ends it) or a hook name ("claude-stop", "codex-notify", "devin-stop")
 	Message string // final assistant message when a hook provides it
 	At      time.Time
 	Start   time.Time // when the turn started (zero if unknown)
@@ -120,6 +120,10 @@ type track struct {
 	attnSeen   bool // its prompt showed on screen
 	attnMissed int  // samples since the prompt left the screen
 	attnQuiet  bool // the screen went still after it was raised
+	// The user denied a permission from the interface: the agent stops
+	// without the hook that ends a turn (Claude Code, Devin), so the turn
+	// ends with the screen's quiet, as a turn without hooks does.
+	denied bool
 }
 
 // New creates a monitor. isWaiting reports whether a terminal has an
@@ -256,14 +260,18 @@ func (m *Monitor) Poll() {
 			attnChanged = true
 		}
 		idleLimit := m.opts.IdleAfter
-		if tr.hookTurn {
+		if tr.hookTurn && !tr.denied {
 			idleLimit = m.opts.HookTimeout
 		}
 		// A turn waiting for the user doesn't end for being quiet.
 		if tr.working && tr.attn == nil && now.Sub(tr.lastMeaningful) > idleLimit {
+			reason := "idle"
+			if tr.denied { // no hook will end it
+				reason, tr.open, tr.denied = "denied", false, false
+			}
 			tr.working, tr.hookTurn = false, false
 			tr.turnEndedAt = now
-			te := TurnEnd{ID: id, Reason: "idle", At: now, Start: tr.turnStart, Prompt: tr.prompt}
+			te := TurnEnd{ID: id, Reason: reason, At: now, Start: tr.turnStart, Prompt: tr.prompt}
 			fires = append(fires, fire{fns: append(m.takeWaiters(tr), m.listeners...), te: te})
 		}
 
@@ -374,7 +382,7 @@ func (m *Monitor) SignalStart(id, prompt string) {
 	m.mu.Lock()
 	tr := m.get(id)
 	tr.turnStart, tr.prompt = now, prompt
-	tr.working, tr.hookTurn, tr.open = true, true, true
+	tr.working, tr.hookTurn, tr.open, tr.denied = true, true, true, false
 	tr.attn, tr.attnSeen, tr.attnMissed, tr.attnQuiet = nil, false, 0, false
 	tr.streak = m.opts.ActiveStreak
 	tr.lastMeaningful = now
@@ -390,7 +398,7 @@ func (m *Monitor) Signal(te TurnEnd) {
 	}
 	m.mu.Lock()
 	tr := m.get(te.ID)
-	tr.working, tr.hookTurn, tr.open, tr.streak = false, false, false, 0
+	tr.working, tr.hookTurn, tr.open, tr.denied, tr.streak = false, false, false, false, 0
 	tr.attn, tr.attnSeen, tr.attnMissed, tr.attnQuiet = nil, false, 0, false
 	tr.turnEndedAt = te.At
 	if te.Start.IsZero() {
@@ -489,11 +497,11 @@ func (m *Monitor) watchPrompt(tr *track, agent, snap string, now time.Time) bool
 	switch {
 	case a != nil && found:
 		changed := a.Prompt == nil || !a.Prompt.Same(p)
-		a.Prompt, tr.attnSeen, tr.attnMissed = &p, true, 0
+		a.SetPrompt(agent, &p)
+		tr.attnSeen, tr.attnMissed = true, 0
 		if a.Text == "" || a.Source == "screen" {
 			a.Text = p.Question
 		}
-		a.Choices = attention.Answerable(agent, &p)
 		return changed
 	case a != nil && tr.attnSeen:
 		// Answered, here or in the terminal: gone for two samples.
@@ -515,11 +523,9 @@ func (m *Monitor) watchPrompt(tr *track, agent, snap string, now time.Time) bool
 		kind := attention.Question
 		if _, ok := p.Option(attention.Allow); ok {
 			kind = attention.Permission
-		} else if _, ok := p.Option(attention.Deny); ok {
-			kind = attention.Permission
 		}
-		tr.attn = &attention.Attention{Kind: kind, Text: p.Question, Source: "screen", Since: now, Prompt: &p,
-			Choices: attention.Answerable(agent, &p)}
+		tr.attn = &attention.Attention{Kind: kind, Text: p.Question, Source: "screen", Since: now}
+		tr.attn.SetPrompt(agent, &p)
 		tr.attnSeen, tr.attnMissed = true, 0
 		return true
 	}
@@ -536,6 +542,10 @@ func (m *Monitor) clearAttention(tr *track, now time.Time) {
 // request): kind, tool and detail come from the hook, the choices from the
 // prompt once it shows on screen.
 func (m *Monitor) Raise(id string, a attention.Attention) {
+	agent := ""
+	if m.agentOf != nil {
+		agent, _ = m.agentOf(id)
+	}
 	m.mu.Lock()
 	tr := m.get(id)
 	if old := tr.attn; old != nil {
@@ -544,7 +554,8 @@ func (m *Monitor) Raise(id string, a attention.Attention) {
 			return // the same request again
 		}
 		if old.Source == "screen" { // read on screen first: keep what it read
-			a.Since, a.Prompt, a.Choices = old.Since, old.Prompt, old.Choices
+			a.Since = old.Since
+			a.SetPrompt(agent, old.Prompt)
 		}
 	} else {
 		tr.attnSeen = false
@@ -558,6 +569,14 @@ func (m *Monitor) Raise(id string, a attention.Attention) {
 	m.Refresh()
 	st, since := m.State(id)
 	m.onState(id, st, since) // the details changed even when the state didn't
+}
+
+// Denied records that the user denied, from the interface, the permission a
+// terminal asked for: its turn ends when its screen goes quiet.
+func (m *Monitor) Denied(id string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.get(id).denied = true
 }
 
 // Attention returns what a terminal waits for from the user (nil: nothing).

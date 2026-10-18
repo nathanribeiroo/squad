@@ -74,6 +74,7 @@ type Server struct {
 	stateExtra   func() map[string]any
 	activityOf   func(id string) (string, time.Time)
 	attentionOf  func(id string) *attention.Attention
+	onAnswer     func(id string, c attention.Choice)
 	extraRoutes  []route
 	prepareNode  func(*store.Node) error
 	roleAbbr     func(role string) string
@@ -113,6 +114,10 @@ func (s *Server) SetActivity(fn func(id string) (string, time.Time)) { s.activit
 
 // SetAttention installs the function giving what a terminal asks the user.
 func (s *Server) SetAttention(fn func(id string) *attention.Attention) { s.attentionOf = fn }
+
+// SetOnAnswer installs the function called after the interface answered a
+// terminal's prompt with c.
+func (s *Server) SetOnAnswer(fn func(id string, c attention.Choice)) { s.onAnswer = fn }
 
 // PublishTerminalState emits terminal.state for id with its current runtime.
 func (s *Server) PublishTerminalState(id string) {
