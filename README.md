@@ -4,7 +4,7 @@ A torre de controle dos seus agentes de código. Antes se chamava **Squad** (vej
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
-> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você, com resposta pela Torre no Claude e no Devin, e som), o Sinóptico, foco e encaixe, planos de voo e a pilha de NOTAMs. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você, com resposta pela Torre no Claude e no Devin, também nas perguntas e nos planos, e som), a marca SUA VEZ, o Sinóptico, foco e encaixe, planos de voo e a pilha de NOTAMs. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -153,6 +153,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
   - uma notificação do sistema, quando a janela não está na frente (o navegador pede licença);
   - um som curto, ligado por padrão;
   - **Repetir enquanto esperar** (desligado por padrão): o som de novo a cada 2 minutos, até 3 vezes, enquanto o pedido continuar sem resposta.
+  - **Quando um voo termina e espera você** (padrão: depois de 1 min; também Não, Na hora, 3 min e 10 min): um turno seu terminou e o voo espera. Com a janela da Torre atrás, avisa uma vez por turno, com a notificação do sistema (se ligada) e um toque só, diferente do da PRIORIDADE. Veja **SUA VEZ**, abaixo.
   - As escolhas valem por navegador.
   - **Quando o som começa a valer:**
     - **na janela de app** que o `torre serve` abre, desde o começo;
@@ -168,27 +169,34 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 | `POST /w/<id>/api/plans` `{"name", "scope": "selection"\|"level"\|"session", "nodes", "floor", "notesContent"}` | salva um plano deste canvas |
 | `POST /w/<id>/api/plans/<plano>/apply` `{"floor", "commands"}` | decola o plano; `commands` são os comandos próprios que você revisou (sem eles, 409 `plan.review`) |
 
-**PRIORIDADE (o voo pede você):** um agente parado num pedido de permissão (rodar um comando, editar um arquivo, usar uma ferramenta MCP) ou numa pergunta com opções deixa de aparecer como "No ar":
+**PRIORIDADE (o voo pede você):** um agente parado num pedido de permissão (rodar um comando, editar um arquivo, usar uma ferramenta MCP), numa pergunta com opções ou pedindo para aprovar um plano deixa de aparecer como "No ar":
 - **no voo:** contorno âmbar com halo, a faixa de estado âmbar piscando, "PEDE VOCÊ 0:24" no lugar do estado e, em cima da tela, a frase do pedido com o que está em jogo ("QUER EXECUTAR UM COMANDO · npm run e2e");
 - **RESPONDER**, embaixo do voo: **Autorizar** (1), **Sempre** (2), **Negar** (3) e **Abrir tela**. Com o voo selecionado, as teclas 1, 2 e 3 respondem.
   - **Sempre** só aparece quando a opção do agente é "não perguntar de novo" para aquilo que ele pediu. Nunca é uma opção que troque o modo de permissão, que valha para todos os projetos ou para todas as ferramentas de um servidor MCP.
   - Passando o mouse em cada botão, aparece o texto do próprio agente; no Rádio e no Sinóptico, o do Sempre fica escrito ("Sempre = Yes, always allow `npm test` commands in `app`").
   - As ferramentas da Torre que pedem a sua aprovação a cada uso (`keys`, `new_shell`, `portal_eval`, `floor_land`) nunca ganham Sempre.
   - **Negar** encerra o turno do voo: quem pediu algo a ele recebe a tela logo, sem esperar um minuto;
+- **numa pergunta ou num plano**, RESPONDER mostra as opções do próprio agente, cada uma com o seu número (as teclas 1–9 com o voo selecionado) e a descrição ao passar o mouse:
+  - **Outra resposta…** (ou **O que mudar no plano…**): um campo para escrever a sua resposta, quando a pergunta aceita texto ("Type something." no Claude, "Other (type your own)" no Devin; "Tell Claude what to change" no plano do Claude). Enter envia; a quebra de linha vira espaço;
+  - **Ver o plano** mostra o plano inteiro antes de você escolher (o Claude e o Devin mandam o plano no hook);
+  - ficam só na tela: as perguntas de múltipla escolha (as caixinhas), as opções que desligam todas as permissões ("bypass") e a pergunta de confiança na pasta;
+  - uma pergunta depois da outra (o Claude faz várias numa chamada) aparece uma por vez, e depois "Submit answers";
 - **fora da tela:** a faixa "PRIORIDADE · TST em FL1 quer executar um comando · IR ATÉ ELE ⌥⏎" no topo do canvas, um ponto âmbar piscando na aba do nível, o número no título da janela ("(1) squad · Torre") e, em outro workspace, o ponto do botão de workspaces fica âmbar e o seletor diz "1 pede você";
 - **⌥⏎** vai para o voo que pede há mais tempo: abre o nível, centra o voo e dá a ele o teclado;
-- **no Rádio:** o pedido fica preso no topo ("TST → VOCÊ · Pede você · 0:24"), com os mesmos botões e "Ver no espaço", e o filtro **Pedem você**. Depois de respondido, fica a linha "Pediu você · respondido em 0:46";
+- **no Rádio:** o pedido fica preso no topo ("TST → VOCÊ · Pede você · 0:24"), com os mesmos botões e "Ver no espaço", e o filtro **Pedem você**. Depois de respondido, fica a linha "Pediu você · respondido em 0:46"; numa pergunta ou num plano, com o que você escolheu ("Fez uma pergunta: Qual formato? → ISO 8601");
 - responder direto na tela do voo funciona igual: o estado sai quando o pedido some da tela;
 - **um pedido de outro voo espera:** a Torre não cola uma mensagem num voo que está perguntando (o texto viraria a resposta do pedido); ela entra depois que você responde.
 
 | Agente | Como a Torre sabe | Responder pela Torre |
 |---|---|---|
-| Claude Code | hook `PermissionRequest` (a ferramenta e o comando) e a pergunta na tela | sim: a tecla da opção, conferida com o Claude Code 2.1.302 |
-| Devin | hook `PermissionRequest` (comando, edição, busca na web, MCP) e a tela; a pergunta com opções do Devin, só pela tela | sim: a tecla da opção, conferida com o Devin 3000.11.92. **Sempre** num comando vale para aquele comando neste projeto (o Devin grava em `.devin/config.local.json`, fora do git); numa busca na web, para aquele endereço (grava na configuração que a Torre passa ao Devin) |
+| Claude Code | hook `PermissionRequest` (a ferramenta e o comando; a pergunta, `AskUserQuestion`; o plano, `ExitPlanMode`) e a tela | sim: a tecla da opção, conferida com o Claude Code 2.1.302, nas permissões, nas perguntas e no plano |
+| Devin | hook `PermissionRequest` (comando, edição, busca na web, MCP; o plano, `exit_plan_mode`) e a tela; a pergunta com opções do Devin, só pela tela | sim: a tecla da opção, conferida com o Devin 3000.11.92, nas permissões, nas perguntas e no plano (o modo de plano liga com alt+P). **Sempre** num comando vale para aquele comando neste projeto (o Devin grava em `.devin/config.local.json`, fora do git); numa busca na web, para aquele endereço (grava na configuração que a Torre passa ao Devin) |
 | Codex, Gemini | a pergunta na tela (opções numeradas com o cursor) | ainda não: só **Abrir tela** |
 | Shell, comando próprio | não se aplica | — |
 
-O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pela interface é uma rota só da interface (`POST /w/<id>/api/nodes/<id>/attention/respond`, com `{"choice": "allow" | "always" | "deny"}`), que agentes não alcançam nem pela CLI nem pelo MCP; ela só digita num agente e só quando a pergunta na tela ainda é a mesma que a interface mostrou.
+O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pela interface é uma rota só da interface (`POST /w/<id>/api/nodes/<id>/attention/respond`, com `{"choice": "allow" | "always" | "deny"}` ou, numa pergunta ou num plano, `{"option": "2"}` e `{"option": "3", "text": "…"}` no campo de texto), que agentes não alcançam nem pela CLI nem pelo MCP; ela só digita num agente, só uma resposta que a interface ofereceu e só quando a pergunta na tela ainda é a mesma que a interface mostrou.
+
+**SUA VEZ:** quando termina um turno seu (você escreveu no terminal, usou Transmitir ou Continuar), o voo mostra "EM SOLO · SUA VEZ", e a ficha dele sobe no Sinóptico, logo depois de quem pede você. Não conta o turno que respondeu a outro voo (a resposta volta sozinha para quem pediu), o de um voo com pedido na fila e o que você mesmo encerrou com Negar. A marca some quando o voo volta a trabalhar; vale para o Claude, o Devin, o Codex e o Gemini (shells e comandos próprios não têm turno). O aviso, com a janela atrás, fica em Configurações → Avisos.
 
 **Confirmações:** remover um voo, uma NOTAM, uma sessão, um workspace ou um papel, começar uma conversa nova, trocar o papel de um voo, reiniciar quem usa um papel, descartar um nível e trocar de sessão com voos no ar abrem um diálogo da Torre:
 - o título é a pergunta ("Remover o voo PLN?"), a lista diz o que se perde (✕) e o que fica (✓), e o botão é o verbo ("Remover voo", "Trocar mesmo assim");
