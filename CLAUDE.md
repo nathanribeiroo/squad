@@ -65,11 +65,11 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 |---|---|
 | `cmd/torre`, `internal/cli` | CLI: `serve` (e a janela de app, `window.go`), comandos de terminal (`list`, `ask`, `note`, `portal`, `new`…), `hook`, `mcp`, `install-skill`. `cmd/squad` é o mesmo comando com o nome antigo |
 | `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/api/agents`, `/api/plans`, `/ws/workspaces`, roteamento de `/cli` e `/hooks`; as sessões de cada workspace, a migração e a troca (`sessions.go`); a primeira abertura (`welcome.go`) |
-| `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe; limites (`limits.go`), salvar e decolar planos de voo (`plans.go`) |
+| `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe; limites (`limits.go`), salvar e decolar planos de voo (`plans.go`), as rotas da pilha de NOTAMs (`stacks.go`) |
 | `internal/plans` | planos de voo em `~/.torre/plans`: validar, salvar, importar |
 | `internal/attention`, `internal/apierr` | PRIORIDADE: ler o prompt na tela e as teclas de cada resposta; erros da API com `code` (traduzidos em `web/src/api/errors.ts`) |
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |
-| `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot` |
+| `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot`; pilhas de NOTAMs (`stacks.go`: a base guarda os fios e a caixa) |
 | `internal/agentbus` | `torre list/ask/check/wait/reply`, limites, pausa, modo `Safe` |
 | `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools`; a conversa de cada terminal, nova ou retomada (`conversation.go`); a cópia da configuração do Devin e o registro do MCP nele (`devin.go`) |
 | `internal/roles`, `internal/team` | biblioteca de papéis; `torre new/connect/close` (gerente) |

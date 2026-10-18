@@ -2,6 +2,67 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Pilha de NOTAMs
+
+- **Pedido:** a pilha que estava em "Para depois" (quadro 09 de `docs/torre/TELAS.md`), com três decisões suas:
+  - empilhar dá acesso: um fio ligado à pilha vale para todas as NOTAMs dela, e a Torre confirma antes, dizendo quem ganha acesso;
+  - tirar da pilha mantém os fios;
+  - o cadeado continua por NOTAM.
+- **Como fica guardada:** cada NOTAM da pilha tem `stack` (o id da base, também na própria base) e `stackPos` (0 na base), no `workspace.json`.
+  - A base guarda os fios e a caixa da pilha; as outras NOTAMs não têm fios e ficam com a caixa da base.
+  - O canvas desenha um nó só, a base, e os fios continuam valendo como sempre.
+  - O código fica em `internal/store/stacks.go`.
+- **Empilhar** (`Store.Stack`):
+  - os fios das NOTAMs que entram passam para a base, sem repetir;
+  - um fio entre duas NOTAMs da pilha some;
+  - uma pilha solta sobre outra entra inteira, em cima, na ordem dela.
+  - Recusado com `code`: o que não é NOTAM (`notam.stack_kind`), outro nível (`notam.stack_level`) e a própria pilha (`notam.stack_self`).
+- **Um fio novo** para qualquer NOTAM da pilha termina na base; um fio entre duas NOTAMs da mesma pilha é recusado.
+- **Mover ou redimensionar a base** leva a pilha; mudar de nível também.
+- **Tirar da pilha** (`Store.Unstack`): as NOTAMs que saem ficam ao lado da pilha, em fila, com cópias dos fios da pilha.
+  - Se a base sai, a próxima NOTAM vira a base e recebe os fios.
+  - Uma pilha com uma NOTAM só deixa de ser pilha.
+  - "Desfazer a pilha" solta todas.
+  - Remover uma NOTAM empilhada tira só ela, pelo mesmo caminho.
+- **O acesso dos agentes:**
+  - **Notas:** `notes.accessible` segue a pilha como já seguia as notas encadeadas: quem está ligado à pilha lê e escreve cada NOTAM dela pelo nome, pela CLI e pelo MCP.
+  - **Listas:** o `torre list` e o `torre note list` mostram `stack: "Plano"` (o nome da base).
+  - **Menções:** as @menções aceitam as NOTAMs da pilha, no servidor (`compose.go`) e no Transmitir.
+  - **Skill e MCP:** os textos explicam a pilha (`make skill-zip`).
+- **Rotas, só da interface** (empilhar dá acesso, como ligar um fio na tela): `POST /w/<id>/api/notes/{id}/stack {onto}` e `POST /w/<id>/api/notes/{id}/unstack {all}`. Elas publicam os fios removidos e criados e as NOTAMs atualizadas, e a tela de todas as janelas se atualiza sozinha.
+- **Planos de voo:**
+  - um plano guarda `stack` e `stackPos` (pela chave da NOTAM no plano), e `Check` confere que a base é uma NOTAM do plano no mesmo nível;
+  - selecionar a pilha leva todas as NOTAMs dela;
+  - decolar empilha de novo.
+- **Pousar um nível** desce as pilhas inteiras para a pista.
+- **Interface:**
+  - **Empilhar:** arrastar uma NOTAM e soltar com o centro dela dentro de outra NOTAM do nível. A confirmação ("Empilhar Arquitetura sobre Plano?", com quem passa a ler) só aparece quando algum voo ganha acesso. Cancelar, ou um erro, devolve a NOTAM ao lugar.
+  - **A pilha na tela:** a faixa "PILHA · N NOTAMs", com as abas e "‹ i/N ›", a NOTAM da aba inteira e as folhas atrás.
+  - **Edição de um agente:** quando um agente edita uma NOTAM que não está à mostra, a aba dela ganha um ponto e a faixa avisa "REV escreveu em Arquitetura" por 30 s, com o indicativo. O clique abre a NOTAM; a pilha não troca sozinha.
+  - **Menu ⋯:** "Tirar da pilha" e "Desfazer a pilha".
+  - **Ícones novos:** `call_split` e `layers_clear` (`make icons`).
+- **Decisões sem consulta:**
+  - **A posição de quem sai:** à direita da pilha, uma ao lado da outra, para não cair por cima de nada da pilha.
+  - **"Desfazer" mantém os fios em todas,** como "Tirar da pilha".
+  - **Arrastar uma pilha sobre outra junta as duas,** em vez de recusar.
+- **Correção de passagem:** o código em linha (`` `assim` ``) nas NOTAMs saía como um retângulo preto ilegível, porque o papel da NOTAM não definia `--surface-3`. Agora usa o papel um tom mais escuro.
+- **Testado aqui:**
+  - **Store:** `TestStackWiresAndPlace`, `TestUnstack`, `TestStackFloors`.
+  - **Agentes falsos:** `TestStackReachesEveryNote`: ler antes e depois de empilhar, escrever numa NOTAM da pilha, um voo sem fio recusado, `list` e `note list`, menção, tirar da pilha e remover a base.
+  - **Planos e níveis:** `TestPlanKeepsStacks` e `TestLandKeepsStacks`.
+  - **Claude Code real:** `TestRealClaudeStack`: ligado só à base, ele leu a outra NOTAM e respondeu com o código dela.
+  - **Validação:** `make check` com o navegador, `tsc` e o build.
+  - **Na tela, com agentes falsos:**
+    - empilhar três NOTAMs, com a confirmação;
+    - passar pelas abas;
+    - o aviso de edição pelo REV e o clique nele;
+    - tirar da pilha e o menu;
+    - as menções do Transmitir com as NOTAMs da pilha.
+- **Não testado:**
+  - **Devin real:** sem conta não há sessão. O Devin passa pelas mesmas rotas do servidor (CLI e MCP) que o Claude, e nada mudou na configuração, nos hooks ou no lançamento dele. Codex e Gemini, pelo mesmo motivo.
+  - **Windows e Mac:** arrastar para empilhar no Windows e no Mac, com mouse e touchpad.
+  - **Limitação conhecida:** abrir a aba de uma NOTAM que um agente acabou de editar não destaca o trecho alterado. A NOTAM monta de novo, sem o texto anterior para comparar; o aviso na faixa e o ponto na aba mostram que ela mudou.
+
 ## 2026-10-17, Torre: fim da rodada (F0–F5d)
 
 - **Como andou:** cada fase numa branch a partir da `feat/torre` e mesclada nela quando ficou pronta (F0a, F0b, F1, F2, F3, F4a, F4b, F4c, F5a, F5b, F5c, F5d), sem esperar aprovação, como você pediu. Um PR leva a `feat/torre` para a `main`.
