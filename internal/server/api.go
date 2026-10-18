@@ -134,6 +134,10 @@ func defaultSize(kind string) (float64, float64) {
 		return 400, 350
 	case store.KindPortal:
 		return 560, 420
+	case store.KindGroup:
+		return 720, 480
+	case store.KindDrawing:
+		return 240, 160
 	}
 	return 560, 440
 }
@@ -147,6 +151,8 @@ type nodePatch struct {
 	Terminal *store.TerminalData `json:"terminal"`
 	Note     *store.NoteData     `json:"note"`
 	Portal   *store.PortalData   `json:"portal"`
+	Group    *store.GroupData    `json:"group"`
+	Drawing  *store.DrawingData  `json:"drawing"`
 }
 
 func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
@@ -203,6 +209,12 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 			*n.Portal = *p.Portal
 			n.Portal.Name = name
 		}
+		if p.Group != nil && n.Group != nil {
+			*n.Group = *p.Group
+		}
+		if p.Drawing != nil && n.Drawing != nil {
+			*n.Drawing = *p.Drawing
+		}
 		return nil
 	})
 	if err != nil {
@@ -228,6 +240,34 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 	}
 	s.bus.Publish(events.NodeUpdated, n)
 	writeJSON(w, http.StatusOK, n)
+}
+
+// maxMoves is how many nodes one POST /api/nodes/move may move.
+const maxMoves = 1000
+
+// handleMoveNodes moves several nodes at once (a group with what is inside
+// it): {moves: [{id, x, y}]}.
+func (s *Server) handleMoveNodes(w http.ResponseWriter, r *http.Request) {
+	var b struct {
+		Moves []store.Move `json:"moves"`
+	}
+	if err := readJSON(r, &b); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	if len(b.Moves) == 0 || len(b.Moves) > maxMoves {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("move 1 to %d nodes", maxMoves))
+		return
+	}
+	moved, err := s.store.MoveNodes(b.Moves)
+	if err != nil {
+		writeErr(w, storeErrorCode(err), err)
+		return
+	}
+	for _, n := range moved {
+		s.bus.Publish(events.NodeUpdated, n)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"nodes": moved})
 }
 
 func (s *Server) handleRemoveNode(w http.ResponseWriter, r *http.Request) {

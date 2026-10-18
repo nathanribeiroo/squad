@@ -386,6 +386,9 @@ func (s *Service) close(me store.Node, args []string) agentbus.Result {
 func (s *Service) byName(name string) (store.Node, error) {
 	var found []store.Node
 	for _, n := range s.o.Canvas.Store().Snapshot().Nodes {
+		if n.Visual() { // the user's own frames and drawings
+			continue
+		}
 		// A note the user renamed still answers to its former names.
 		if strings.EqualFold(n.Label(), name) || n.Note != nil && slices.ContainsFunc(n.Note.Aliases, func(a string) bool { return strings.EqualFold(a, name) }) ||
 			n.Terminal != nil && n.Terminal.Callsign != "" && strings.EqualFold(n.Terminal.Callsign, name) {
