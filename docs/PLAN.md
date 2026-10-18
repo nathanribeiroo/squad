@@ -63,7 +63,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Torre F5c @ELEMENTOS no portal | `feat/torre-f5c-elementos` → `feat/torre` | concluído |
 | Torre F5d Planos de voo | `feat/torre-f5d-planos` → `feat/torre` | concluído |
 | Pilha de NOTAMs | `feat/pilha-notams` | concluído |
-| Responder ao Devin pela Torre, e o som dos avisos | `feat/devin-prioridade` | concluído (PR) |
+| Responder ao Devin pela Torre, e o som dos avisos | `feat/devin-prioridade` | concluído |
+| Histórico do Rádio | `feat/radio-historico` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -242,7 +243,6 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 
 - **Desenho e Grupo** (mesmo item; quadro 02): os botões ficam na barra de ferramentas, desligados com "em breve", até os nós `drawing` e `group` terem desenho.
 - **Trocar os atalhos** (`TELAS.md`, quadro 18, aba Atalhos: "os de ⌥ podem ser trocados"): a aba só lista os atalhos.
-- **Histórico do Rádio guardado** (`NOVIDADES-E-BACKEND.md`, item 12): hoje fica só no navegador (até 200 itens) e some ao recarregar; guardar por sessão.
 - **"✓ testes · ✓ revisão" na fila de pouso** (item 6): não existem; poderiam vir de um agente marcando o nível (`torre floor ready --check testes`).
 - **Modelo no boletim** ("por claude -p · haiku", quadro 08): o resumo só sabe a CLI que usou, não o modelo.
 - **Autor dos commits por indicativo** (quadro 14): no git o autor é a pessoa; seria preciso marcar os commits de cada voo.
@@ -280,4 +280,14 @@ Pedido do usuário em 2026-10-18 (item "Responder pela Torre no Devin…" do "Pa
 - **Devin:** AUTORIZAR, SEMPRE e NEGAR pela Torre, com as teclas conferidas no Devin real (conta gratuita do usuário, modelo SWE-1.6 Slow), a pergunta com opções do Devin entrando em PRIORIDADE, e o texto do agente em cada botão.
 - **Som:** ligado por padrão, também para outro workspace, liberado desde o começo na janela de app, e a opção de repetir enquanto o pedido espera.
 
-**Status:** pronto no PR `feat/devin-prioridade` → `main`.
+**Status:** mesclado na `main` pelo PR #28.
+
+## Histórico do Rádio
+
+Pedido do usuário em 2026-10-18 (item 12 de `docs/torre/NOVIDADES-E-BACKEND.md`, que estava em "Para depois"). O plano foi aprovado com os padrões propostos: 500 linhas por sessão, textos até 16 KB, "Limpar o Rádio" com confirmação e as edições de NOTAM agrupadas.
+
+- **Servidor (`internal/radio`):** monta as linhas do Rádio a partir dos eventos do workspace e as guarda em `radio.jsonl`, na pasta da sessão. Guarda também o texto inteiro de cada pedido e da resposta. Rotas `GET/DELETE /api/radio` e o evento `radio.item`.
+- **Interface:** o Rádio carrega o histórico do servidor, com "Mais antigos", "Ver a resposta", "Limpar o Rádio" e a data nas linhas de outro dia.
+- **Fora:** os agentes lerem o histórico (`torre radio`), busca no Rádio, exportar.
+
+**Status:** pronto no PR `feat/radio-historico` → `main`.

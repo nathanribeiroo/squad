@@ -35,6 +35,8 @@ const (
 	FloorsUpdated       = "floors.updated"    // the floors and their config (floors.State)
 	TurnCard            = "turn.card"         // an agent's last turn, or its summary (summary.Card)
 	SummarySettings     = "summary.settings"  // turn cards and summary engine (summary.Settings)
+	RadioItem           = "radio.item"        // a line of the Rádio, new or changed (radio.Item)
+	RadioCleared        = "radio.cleared"     // the user cleared the Rádio
 )
 
 // Event is one notification.
@@ -81,6 +83,13 @@ func (b *Bus) Close() {
 		close(ch)
 		delete(b.subs, id)
 	}
+}
+
+// Closed reports whether the bus was closed.
+func (b *Bus) Closed() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.closed
 }
 
 // Subscribe returns a channel of events and a cancel function.

@@ -2,6 +2,75 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Histórico do Rádio
+
+- **Pedido:** o item 12 do handoff ("Histórico do Rádio guardado"), que estava em "Para depois". Os quatro padrões propostos foram aceitos:
+  - 500 linhas por sessão;
+  - textos até 16 KB;
+  - "Limpar o Rádio" com confirmação;
+  - edições de NOTAM agrupadas.
+- **Como era:**
+  - o Rádio era montado só no navegador, a partir dos eventos ao vivo, com até 200 linhas;
+  - ao recarregar, voltavam só os pedidos pendentes e o último boletim de cada voo;
+  - o texto inteiro de um pedido sumia ao reiniciar o servidor, e a resposta nem chegava ao Rádio.
+- **Servidor (`internal/radio`, novo):**
+  - **Como monta:** um serviço por workspace (por sessão aberta) assina os eventos do workspace já ao ser criado e monta as linhas.
+  - **O que entra:**
+    - os pedidos e o desfecho;
+    - as suas mensagens;
+    - os retidos e o laço;
+    - as edições de NOTAM;
+    - o fim de turno;
+    - os pedidos de permissão respondidos.
+  - **Dados, não frases:** as linhas guardam dados (desfecho, nomes, `hold`, `by`, a ferramenta e a resposta dada), e a interface escreve as frases em português.
+- **Onde guarda (`radio.jsonl`):**
+  - **O arquivo:** fica na pasta da sessão, ao lado do `cards.json`.
+  - **Linhas que mudam:** uma linha que muda (um pedido respondido, um boletim resumido) é escrita de novo com a mesma chave, e a última vale.
+  - **Tamanho:** o arquivo é reescrito quando chega ao dobro das 500 linhas guardadas.
+  - **Arquivo corrompido:** uma linha cortada por uma queda é ignorada.
+  - **Textos:** o texto inteiro de cada pedido e da resposta ficam no arquivo (até 16 KB cada). O cabeçalho "[reply from …]" é tirado da resposta.
+- **Barramento:** além do texto dos pedidos recentes, passa a guardar a resposta deles (`ReplyText`). A rota `GET /api/requests/{id}` usa o barramento e, depois de reiniciar, o histórico, e devolve `reply`.
+- **Pedidos de permissão respondidos:**
+  - o app acompanha o que cada voo pede (no aviso de estado do monitor) e, quando o pedido acaba, registra a linha com o que foi pedido e com a resposta dada pela interface ("autorizado", "sempre", "negado");
+  - quando a resposta foi na tela do voo, a linha diz "respondido".
+- **Rotas e eventos:**
+  - `GET /api/radio?before=&limit=` (200 por página, com `more`) e `DELETE /api/radio`, só da interface;
+  - os eventos `radio.item` (uma linha nova ou mudada) e `radio.cleared`.
+- **Interface:**
+  - **Carregar:** o Rádio carrega a primeira página ao conectar, junto com os boletins. As linhas que chegam durante o carregamento entram também.
+  - **Eventos:** o navegador deixou de montar as linhas a partir dos eventos, e as animações dos fios continuam iguais.
+  - **Botões:** "Mais antigos" no fim, "Ver a resposta" ao lado de "Ver o pedido inteiro", e a lixeira no cabeçalho para limpar.
+  - **Data:** as linhas de outro dia mostram a data ("17/10 14:32").
+- **Correções de passagem:**
+  - cada salvamento automático de uma NOTAM virava uma linha nova; agora as edições da mesma NOTAM pelo mesmo autor, em até 2 minutos, são uma linha;
+  - uma linha longa (data, nomes de voos que já saíram do canvas) empurrava a etiqueta para fora do Rádio; agora ela desce de linha.
+- **Decisão sem consulta:**
+  - **Fim de turno:** entra como linha do Rádio a cada turno, e não só o último de cada voo, como no `cards.json`.
+  - **O botão de limpar** só aparece com o Rádio não vazio.
+- **Testado aqui:**
+  - **`internal/radio`** (também com o detector de corridas): cada tipo de linha, a troca de estado de um pedido, os textos, reabrir o arquivo, o agrupamento das NOTAMs, o limite com a reescrita, as páginas, limpar, os eventos e uma linha cortada.
+  - **Agentes falsos** (`TestRadioKept`):
+    - um pedido com o texto e a resposta;
+    - a sua mensagem;
+    - um pedido de permissão autorizado no Claude e um negado no Devin;
+    - a rota com páginas;
+    - o arquivo ao lado do canvas;
+    - limpar.
+  - **Claude real** (`TestRealClaudeRadio`, novo): a resposta "pong" fica guardada, sem o cabeçalho. `TestRealClaudePermission` também passa.
+  - **Validação:** `make check` com o navegador, `tsc` e o build.
+  - **Na tela, com agentes falsos:**
+    - o histórico;
+    - "Ver a resposta" e "Ver o pedido inteiro";
+    - reiniciar o servidor e o histórico continuar;
+    - "Mais antigos" (de 200 para 273 linhas);
+    - limpar com a confirmação;
+    - a data nas linhas de ontem;
+    - duas sessões com históricos separados.
+- **Não testado:**
+  - **Devin real:** não usei a conta. As linhas vêm dos mesmos eventos para todos os agentes, e o modo Devin do agente falso passou no teste.
+  - **Windows:** o Rádio no Windows.
+  - **Uso longo:** um histórico de dias com muitos voos.
+
 ## 2026-10-18, Responder ao Devin pela Torre, e o som dos avisos
 
 - **Pedido:**

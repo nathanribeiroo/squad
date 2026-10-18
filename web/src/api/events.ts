@@ -21,6 +21,7 @@ export function connectEvents(): () => void {
           retry = 0;
           useSquad.getState().setConnection('connected');
           useSquad.getState().loadSummaries();
+          useSquad.getState().loadRadio();
         }
         useSquad.getState().apply(ev);
       } catch {

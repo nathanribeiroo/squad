@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/notes"
 	"github.com/nathanribeiroo/squad/internal/plans"
 	"github.com/nathanribeiroo/squad/internal/portal"
+	"github.com/nathanribeiroo/squad/internal/radio"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -47,6 +49,7 @@ type App struct {
 	Floors  *floors.Service
 	Summary *summary.Service
 	Team    *team.Service
+	Radio   *radio.Service
 
 	exts     []agentbus.Extension
 	cancel   context.CancelFunc
@@ -62,8 +65,28 @@ func New(o Options) (*App, error) {
 		return nil, err
 	}
 	bus := agentbus.New(srv.Store(), srv.Terminals(), srv.Bus(), o.Server.Logger, o.Limits)
-	mon := activity.New(srv.Terminals(), o.Activity, bus.IsWaiting, func(id string, _ activity.State, _ time.Time) {
+	// The Rádio, kept with the canvas (each session has its own).
+	radioFile := ""
+	if p := srv.Store().Path(); p != "" {
+		radioFile = filepath.Join(filepath.Dir(p), "radio.jsonl")
+	}
+	radioSvc := radio.New(radio.Options{File: radioFile, Events: srv.Bus(), Logger: o.Server.Logger,
+		Name: func(id string) string {
+			if n, ok := srv.Store().Node(id); ok {
+				return n.Label()
+			}
+			return ""
+		},
+		Texts: func(id string) (string, string) {
+			req, _ := bus.RequestText(id)
+			reply, _ := bus.ReplyText(id)
+			return req, reply
+		}})
+	asks := newAskLog(radioSvc)
+	var mon *activity.Monitor
+	mon = activity.New(srv.Terminals(), o.Activity, bus.IsWaiting, func(id string, _ activity.State, _ time.Time) {
 		srv.PublishTerminalState(id)
+		asks.seen(id, mon.Attention(id))
 	})
 	bus.SetMonitor(mon)
 	srv.SetActivity(func(id string) (string, time.Time) {
@@ -80,6 +103,7 @@ func New(o Options) (*App, error) {
 	})
 	srv.SetAttention(mon.Attention)
 	srv.SetOnAnswer(func(id string, c attention.Choice) {
+		asks.answered(id, c)
 		if c == attention.Deny {
 			mon.Denied(id)
 		}
@@ -289,14 +313,7 @@ func New(o Options) (*App, error) {
 		writeJSON(w, bus.StateExtra())
 	}))
 	// Requests in the Rádio: the full message, and cancelling one.
-	srv.HandleSession("GET /api/requests/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		text, ok := bus.RequestText(r.PathValue("id"))
-		if !ok {
-			writeErrorCode(w, http.StatusNotFound, "request.gone", "the request is no longer kept")
-			return
-		}
-		writeJSON(w, map[string]string{"id": r.PathValue("id"), "text": text})
-	}))
+	registerRadio(srv, radioSvc, bus)
 	srv.HandleSession("POST /api/requests/{id}/cancel", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !bus.Cancel(r.PathValue("id")) {
 			writeErrorCode(w, http.StatusNotFound, "request.gone", "the request already ended")
@@ -313,7 +330,7 @@ func New(o Options) (*App, error) {
 	srv.HandleSession("GET /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	srv.HandleSession("PUT /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	bl := bus.Limits()
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, exts: exts, plans: o.Plans, roles: o.Roles,
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, Radio: radioSvc, exts: exts, plans: o.Plans, roles: o.Roles,
 		defaults: store.Limits{MaxHops: bl.MaxHops, PerMinute: bl.PerMinute, MaxTeam: teamSvc.MaxTeam(), PortalsPerAgent: portal.MaxCreated}}
 	app.applyLimits()
 	return app, nil
@@ -342,6 +359,7 @@ func (a *App) Close() {
 		a.cancel()
 	}
 	a.Monitor.Stop()
+	a.Radio.Close()
 	a.Portals.Close()
 	a.Floors.Close()
 	a.Server.Shutdown()

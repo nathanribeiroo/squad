@@ -3,12 +3,15 @@ import { create } from 'zustand';
 import { api, setWorkspace } from '../api/client';
 import { askPhrase } from '../lib/askText';
 import { noticeAsk } from '../lib/notify';
+import { mergeActivity, toActivity } from '../lib/radio';
 import { toast } from '../lib/toast';
 import type {
+  AttentionChoice,
   Floor,
   FloorConfig,
   FloorStatusResponse,
   PendingRequest,
+  RadioItem,
   RoleDef,
   ServerEvent,
   SessionList,
@@ -37,6 +40,11 @@ export interface ActivityItem {
   outcome: ActivityOutcome;
   elapsedMs?: number;
   source?: string;
+  hold?: 'paused' | 'rate' | 'loop';
+  /** An ask answered from the interface: the answer. */
+  choice?: AttentionChoice;
+  /** The reply's text is kept. */
+  hasReply?: boolean;
 }
 
 /** A request in flight, for wire animations (W3). */
@@ -136,7 +144,10 @@ interface SquadState {
   /** Since when the link is down (0 while connected), and when it tries again. */
   linkLostAt: number;
   retryAt: number;
+  /** The Rádio, newest first: kept by the server (internal/radio), a page at a time. */
   activity: ActivityItem[];
+  /** Older lines of the Rádio wait on the server. */
+  radioMore: boolean;
   flights: Record<string, Flight>;
   noteEdits: Record<string, NoteEdit>;
   lastReply: Record<string, LastReply>;
@@ -202,6 +213,10 @@ interface SquadState {
   takeComposerDraft(): string | null;
   /** Reads the cards and the summary settings (on connecting). */
   loadSummaries(): void;
+  /** Reads the Rádio's last lines (on connecting). */
+  loadRadio(): void;
+  /** Reads the Rádio's next older page. */
+  loadOlderRadio(): void;
   hideCard(terminal: string, at: string): void;
   setSummaryDialog(d: SquadState['summaryDialog']): void;
   setSummarySettings(s: SummarySettings): void;
@@ -308,6 +323,7 @@ const perWorkspace = {
   linkLostAt: 0,
   retryAt: 0,
   activity: [],
+  radioMore: false,
   flights: {},
   noteEdits: {},
   lastReply: {},
@@ -359,6 +375,9 @@ function validFloor(floor: string, floors?: Floor[]): string {
   return floor && floors?.some((f) => f.id === floor) ? floor : '';
 }
 
+/** Lines of the Rádio that arrive while its page is read (loadRadio). */
+let radioLive: ActivityItem[] | null = null;
+
 export const useSquad = create<SquadState>((set, get) => ({
   workspaces: [],
   roles: [],
@@ -383,6 +402,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   linkLostAt: 0,
   retryAt: 0,
   activity: [],
+  radioMore: false,
   flights: {},
   noteEdits: {},
   lastReply: {},
@@ -509,12 +529,6 @@ export const useSquad = create<SquadState>((set, get) => ({
     // The server only reports a count; spread it as "now" so it decays.
     const sendTimes = Array.from({ length: s.extra?.rate ?? 0 }, () => Date.now());
     const runtime = s.runtime ?? {};
-    // Requests sent before this page opened still show in the Rádio.
-    const known = new Set(get().activity.map((a) => a.key));
-    const seeded: ActivityItem[] = (s.extra?.pending ?? [])
-      .filter((p) => !known.has(`req-${p.id}`))
-      .map((p) => ({ key: `req-${p.id}`, time: p.sentAt, id: p.id, from: p.from, to: p.to, fromName: p.fromName, toName: p.toName, text: p.preview ?? '', outcome: 'pending' as const }));
-    const activity = seeded.length ? [...seeded, ...get().activity] : get().activity;
     // The docked flight comes back with the workspace; a hidden screen stays hidden.
     const isTerm = (id?: string | null) => !!id && s.workspace.nodes.some((n) => n.id === id && n.terminal);
     const cur = get();
@@ -526,7 +540,6 @@ export const useSquad = create<SquadState>((set, get) => ({
       extra: s.extra ?? emptyExtra,
       flights: pending,
       sendTimes,
-      activity,
       dock: dock && isTerm(dock.id) ? dock : null,
       focusPane: isTerm(cur.focusPane) ? cur.focusPane : null,
       hiddenScreens: storedHidden(cur.activeWs),
@@ -571,24 +584,6 @@ export const useSquad = create<SquadState>((set, get) => ({
           const t = ws?.nodes.find((n) => n.id === d.id)?.terminal;
           if (t) noticeAsk(t.callsign || t.name, [askPhrase(next.attention), next.attention?.detail].filter(Boolean).join(': '));
         }
-        // An answered ask goes into the Rádio, with how long it waited.
-        if (prev?.activity === 'ask' && next.activity !== 'ask' && prev.attention) {
-          const t = ws?.nodes.find((n) => n.id === d.id)?.terminal;
-          const since = Date.parse(prev.attention.since);
-          patch.activity = [
-            {
-              key: `ask-${d.id}-${prev.attention.since}`,
-              time: prev.attention.since,
-              from: d.id,
-              fromName: t?.name ?? '',
-              toName: 'Você',
-              text: [askPhrase(prev.attention), prev.attention.detail].filter(Boolean).join(': '),
-              outcome: 'answered' as const,
-              elapsedMs: Number.isFinite(since) ? Date.now() - since : undefined,
-            },
-            ...st.activity,
-          ].slice(0, 200);
-        }
         set(patch);
         return;
       }
@@ -611,10 +606,6 @@ export const useSquad = create<SquadState>((set, get) => ({
           sendTimes: [...st.sendTimes.filter((t) => now - t < 60_000), now],
           extra: { ...st.extra, pending: [...st.extra.pending.filter((x) => x.id !== p.id), p] },
           flights: { ...st.flights, [d.id]: { id: d.id, from: d.from, to: d.to, phase: 'sending', startedAt: now, updatedAt: now } },
-          activity: [
-            { key: `req-${d.id}`, time: ev.time, id: d.id, from: d.from, to: d.to, fromName: d.fromName, toName: d.toName, text: d.preview ?? '', outcome: 'pending' as const },
-            ...st.activity,
-          ].slice(0, 200),
         });
         return;
       }
@@ -641,9 +632,6 @@ export const useSquad = create<SquadState>((set, get) => ({
           flights,
           lastReply,
           extra: { ...st.extra, pending: st.extra.pending.filter((x) => x.id !== d.id) },
-          activity: st.activity.map((a) =>
-            a.id === d.id ? { ...a, outcome: cancelled ? 'cancelled' : 'replied', elapsedMs: d.elapsedMs, source: d.source } : a,
-          ),
         });
         // Forget finished flights after the "received" marker fades (~4 s).
         setTimeout(() => {
@@ -656,35 +644,17 @@ export const useSquad = create<SquadState>((set, get) => ({
         }, 4500);
         return;
       }
-      case 'request.held':
-        set({
-          activity: [
-            { key: `held-${ev.time}`, time: ev.time, from: d.from, to: d.to, fromName: d.fromName, toName: d.toName, text: d.paused ? 'Retido: espera geral' : 'Retido: limite de pedidos por minuto', outcome: 'held' as const },
-            ...st.activity,
-          ].slice(0, 200),
-        });
+      case 'conversations.paused':
+        set({ extra: { ...st.extra, paused: !!d.paused } });
         return;
-      case 'conversations.paused': {
-        const reason: string = d.reason ?? '';
-        const loop = d.paused && reason.startsWith('hop limit');
-        set({
-          extra: { ...st.extra, paused: !!d.paused },
-          activity: loop
-            ? [
-                { key: `loop-${ev.time}`, time: ev.time, fromName: 'Torre', toName: 'todos', text: `Laço: limite de ${st.extra.limits.maxHops} saltos atingido ${reason.replace(/^hop limit \d+ reached /, '')}. Espera geral até você liberar.`, outcome: 'held' as const },
-                ...st.activity,
-              ].slice(0, 200)
-            : st.activity,
-        });
+      case 'radio.item': {
+        const a = toActivity(d as RadioItem);
+        radioLive?.push(a);
+        set({ activity: mergeActivity(st.activity, [a]) });
         return;
       }
-      case 'message.sent':
-        set({
-          activity: [
-            { key: `msg-${ev.time}-${d.to}`, time: ev.time, to: d.to, fromName: 'Você', toName: d.toName, text: d.preview + (d.images ? ` (+${d.images} imagem${d.images > 1 ? 'ns' : ''})` : ''), outcome: 'delivered' as const },
-            ...st.activity,
-          ].slice(0, 200),
-        });
+      case 'radio.cleared':
+        set({ activity: [], radioMore: false });
         return;
       case 'portal.action': {
         const prev = st.portalActions[d.portal];
@@ -696,15 +666,7 @@ export const useSquad = create<SquadState>((set, get) => ({
         return;
       case 'turn.card': {
         const c = d as TurnCard;
-        const key = `turn-${c.terminal}-${c.at}`;
-        const text = c.summary?.text ?? c.message.split('\n').find((l) => l.trim()) ?? '';
-        const known = st.activity.some((a) => a.key === key);
-        set({
-          cards: { ...st.cards, [c.terminal]: c },
-          activity: known
-            ? st.activity.map((a) => (a.key === key ? { ...a, text } : a))
-            : [{ key, time: c.at, from: c.terminal, fromName: nameOf(ws, c.terminal), toName: '', text, outcome: 'turn' as const }, ...st.activity].slice(0, 200),
-        });
+        set({ cards: { ...st.cards, [c.terminal]: c } });
         return;
       }
       case 'summary.settings':
@@ -720,13 +682,7 @@ export const useSquad = create<SquadState>((set, get) => ({
       }
       case 'note.edited': {
         const author = d.author === 'external' ? 'Edição externa' : d.author === 'user' ? 'Você' : d.author;
-        set({
-          noteEdits: { ...st.noteEdits, [d.id]: { author, at: Date.now() } },
-          activity: [
-            { key: `note-${d.id}-${ev.time}`, time: ev.time, fromName: author, toName: nameOf(ws, d.id) || d.file, text: d.file, outcome: 'note' as const },
-            ...st.activity,
-          ].slice(0, 200),
-        });
+        set({ noteEdits: { ...st.noteEdits, [d.id]: { author, at: Date.now() } } });
         return;
       }
     }
@@ -746,29 +702,41 @@ export const useSquad = create<SquadState>((set, get) => ({
     if (d !== null) set({ composerDraft: null });
     return d;
   },
+  loadRadio: () => {
+    const ws = get().activeWs;
+    radioLive = [];
+    api.radio().then(
+      (r) => {
+        const live = radioLive ?? [];
+        radioLive = null;
+        if (get().activeWs !== ws) return;
+        // The page, and the lines that arrived while it was read.
+        set({ activity: mergeActivity(r.items.map(toActivity), live), radioMore: r.more });
+      },
+      () => {
+        radioLive = null;
+      },
+    );
+  },
+  loadOlderRadio: () => {
+    const st = get();
+    const last = st.activity[st.activity.length - 1];
+    if (!st.radioMore || !last) return;
+    const ws = st.activeWs;
+    api.radio(last.time).then(
+      (r) => {
+        if (get().activeWs !== ws) return;
+        set({ activity: mergeActivity(get().activity, r.items.map(toActivity)), radioMore: r.more });
+      },
+      () => {},
+    );
+  },
   loadSummaries: () => {
     const ws = get().activeWs;
     api.cards().then(
       (r) => {
-        const st = get();
-        if (st.activeWs !== ws) return;
-        // The turns that ended before the page opened join the activity.
-        const known = new Set(st.activity.map((a) => a.key));
-        const turns: ActivityItem[] = r.cards
-          .map((c) => ({
-            key: `turn-${c.terminal}-${c.at}`,
-            time: c.at,
-            from: c.terminal,
-            fromName: nameOf(st.workspace, c.terminal),
-            toName: '',
-            text: c.summary?.text ?? c.message.split('\n').find((l) => l.trim()) ?? '',
-            outcome: 'turn' as const,
-          }))
-          .filter((a) => !known.has(a.key));
-        set({
-          cards: Object.fromEntries(r.cards.map((c) => [c.terminal, c])),
-          activity: [...st.activity, ...turns].sort((a, b) => Date.parse(b.time) - Date.parse(a.time)).slice(0, 200),
-        });
+        if (get().activeWs !== ws) return;
+        set({ cards: Object.fromEntries(r.cards.map((c) => [c.terminal, c])) });
       },
       () => {},
     );
