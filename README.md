@@ -279,6 +279,23 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 | `GET /w/<id>/api/requests/<pedido>` | o texto inteiro de um pedido e a resposta (`reply`), quando guardada |
 - O rodapé mostra quantas mensagens passaram no último minuto, o limite e o máximo de saltos.
 
+**Consumo:** o que cada voo gastou e os limites do plano de cada agente, no botão CONSUMO do topo (entre RÁDIO e ENLACE).
+- **O botão** mostra a janela mais cheia ("5H 83%", em âmbar a partir de 80% e em vermelho a partir de 95%) ou, sem limites conhecidos, os tokens do workspace. Numa tela estreita, fica só o ícone e o número.
+- **A caixa** abre com um clique e fecha com Esc ou clicando fora:
+  - **uma seção por agente** dos voos do workspace (sem voos de agente, as contas já vistas): as janelas do plano, com a barra, a porcentagem e quando renova, e "visto há…", que diz de quando é o número. A conta é a mesma em todos os workspaces;
+  - **uma linha por voo**, de todos os níveis: entrada (fora do cache), saída, cache lido, cache criado, quanto do contexto está ocupado e o custo. Clicar na linha leva ao voo. O total fica embaixo.
+- **De onde vem:** tudo é lido no seu computador, do que o agente já grava. Nada vai para a rede, e nenhuma credencial é lida.
+
+| Agente | Tokens e contexto | Limites da conta | Custo |
+|---|---|---|---|
+| Claude Code | a status line que a Torre põe no Claude e a transcrição da conversa | sessão de 5 h e semana (Pro e Max), a partir da primeira resposta | a estimativa do Claude a preços da API (no Pro e no Max ela não é cobrada) |
+| Devin | o `sessions.db` do Devin (`~/.local/share/devin/cli`; no Windows, `%APPDATA%\devin\cli`) e o rodapé "Context: …" da tela | cota diária e semanal, quando você abre `/usage` no voo; numa conta de empresa, os ACUs que o `/usage` mostrar | ACUs ou créditos da sessão |
+| Codex | os arquivos da conversa (`~/.codex/sessions`) | as janelas do plano do ChatGPT | — |
+| Gemini | os arquivos da sessão (`~/.gemini/tmp`) | o Gemini não informa | — |
+
+- **A sua status line continua:** a Torre roda a do seu `settings.json` (do projeto ou o seu) e mostra o que ela imprimir.
+- **Rota** (só da interface): `GET /w/<id>/api/usage` dá os voos e as contas. As contas ficam em `~/.torre/usage-accounts.json`, para aparecerem depois de reiniciar.
+
 **Workspaces:**
 - o botão no topo, à esquerda, abre o seletor: a cor, o nome com o atalho (`⌥1`…), a pasta e o que está acontecendo ("2 no ar · 1 pendente"). Um ponto no botão indica atividade em outro workspace;
 - `⌥1`–`⌥9` trocam de workspace, e a URL guarda o workspace aberto (`?ws=<id>`), então dá para abrir dois em abas diferentes;

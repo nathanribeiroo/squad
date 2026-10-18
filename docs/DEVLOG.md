@@ -2,6 +2,69 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Consumo
+
+- **Pedido:**
+  - ver quanto os agentes estão gastando: para o Claude, os tokens de entrada e de saída, o cache, a sessão de 5 h e a semana; para o Devin, os tokens, o cache e os ACUs;
+  - na conta pessoal, os limites; na de empresa do Devin, o total de ACUs;
+  - os dois juntos, quando o workspace tem Claude e Devin;
+  - na interface, algo pequeno, que abre com um clique;
+  - tem de funcionar no Mac, no Windows e no Linux.
+- **O plano foi aprovado com os padrões propostos:**
+  - a cota do Devin é lida da tela quando o usuário abre `/usage`;
+  - o Codex e o Gemini entram agora, com arquivos de exemplo;
+  - nada vai para a rede e nenhuma credencial é lida. Ficaram de fora a rota de uso da conta do Claude, que usaria o token OAuth dele, e a API do Devin.
+- **Claude (`internal/usage/claude.go`, `internal/cli/statusline.go`):**
+  - **A status line:** a Torre põe uma status line nas configurações que já passa ao Claude (`--settings`): `torre hook claude-statusline`. O Claude manda a cada atualização um JSON com o contexto (`context_window`), o custo estimado (`cost.total_cost_usd`), o caminho da transcrição e, no Pro e no Max, `rate_limits.five_hour` e `seven_day` (a porcentagem e quando renova). Os limites só aparecem depois da primeira resposta da sessão.
+  - **A status line do usuário continua:** o hook manda o JSON à Torre e, ao mesmo tempo, roda a status line que o usuário configurou, na ordem do Claude: `.claude/settings.local.json` e `settings.json` do projeto, depois `$CLAUDE_CONFIG_DIR` ou `~/.claude/settings.json`. Ele imprime a saída dela. Roda como o Claude roda: `sh -c` no Mac e no Linux; no Windows, o Git Bash (`CLAUDE_CODE_GIT_BASH_PATH` ou o do Git for Windows) e, sem ele, o `cmd`. A própria status line da Torre nunca roda de novo.
+  - **Tokens:** vêm da transcrição (`~/.claude/projects/<pasta>/<id>.jsonl`), lida aos pedaços, só o que cresceu. O Claude grava o `usage` de uma resposta uma vez por bloco de conteúdo, então cada resposta conta uma vez (`message.id`). A linha `cost-state`, quando existe, ganha, porque soma os pedidos laterais e os subagentes.
+  - **Custo:** é a estimativa do Claude a preços da API. A caixa avisa que, no Pro e no Max, ela não é cobrada.
+- **Devin (`internal/usage/devin.go`), visto no levantamento real (Devin 3000.11.92, conta gratuita do usuário, SWE-1.6 Slow):**
+  - **O `sessions.db`:** fica em `~/.local/share/devin/cli` no Mac e no Linux (`$XDG_DATA_HOME`), em `%APPDATA%\devin\cli` no Windows, ou em `DEVIN_SESSIONS_DIR`. A Torre abre só para leitura, com `modernc.org/sqlite`, um SQLite em Go puro: o binário do Windows continua sem compilador C.
+  - **Cada resposta** do modelo (`message_nodes.chat_message`) traz `metadata.metrics`: `input_tokens` (fora do cache), `output_tokens`, `cache_read_tokens`, `cache_creation_tokens` e `context_input_tokens`. A mesma resposta aparece uma vez por ramo da árvore da sessão, então conta uma vez (`request_id`). A soma bate com o `final_metrics` da transcrição do Devin (`cli/transcripts/<sessão>.json`), mais os pings que mantêm o cache vivo (1 token de saída, `max_tokens`), que a transcrição não conta e que são consumo de verdade.
+  - **ACUs e créditos:** ficam na sessão (`sessions.metadata`: `total_acu_cost`, `total_credit_cost`). Com o SWE-1.6 Slow, os dois ficaram em 0.
+  - **O contexto:** o tamanho da janela não está em arquivo nenhum. Vem do rodapé que o Devin mostra depois de cada resposta ("Context: 13k / 200k tokens (6%)"). O monitor de atividade passou a entregar a tela dos agentes quando ela muda (`SetOnScreen`). Um rodapé novo também faz a Torre ler o `sessions.db` de novo.
+  - **A cota:** só existe no servidor do Devin. Quando o usuário abre `/usage` no voo, a Torre lê o bloco da tela: "Daily ■■■ 4% used · resets in 9h 17m" e "Weekly … resets Oct 25, 8:00 AM (UTC)". A hora relativa vira hora certa, e a data vem em UTC. O mesmo bloco não é lido duas vezes.
+  - **Conta de empresa:** "No quota data available." vira uma conta sem limites. Os ACUs da conta saem das linhas " ACUs consumed" e "ACU limit ", que achei no texto do binário. Esse formato **não foi visto de verdade** (veja "Precisa de você").
+- **Codex e Gemini:**
+  - o Codex grava eventos `token_count` na conversa (`~/.codex/sessions/AAAA/MM/DD/rollout-…-<id>.jsonl`), com o total e as janelas do plano do ChatGPT (`primary` e `secondary`, com `window_minutes`);
+  - o Gemini grava os tokens de cada resposta em `~/.gemini/tmp/<projeto>/chats/session-…json` (ou `.jsonl` nas versões novas) e não informa limites;
+  - os formatos vieram do código-fonte das duas CLIs e foram testados com arquivos de exemplo.
+- **Contas:** a conta do Claude ou do Devin é a mesma em todos os workspaces, então fica no hub, em `~/.torre/usage-accounts.json`, e aparece depois de reiniciar. Os voos são por workspace e são lidos de novo no fim de cada turno e ao abrir.
+- **Interface:**
+  - **o botão CONSUMO** fica entre RÁDIO e ENLACE, com a janela mais cheia ("5H 89%"), em âmbar a partir de 80% e em vermelho a partir de 95%. Sem limites, mostra os tokens do workspace. Abaixo de 1500 px, o nome some e ficam o ícone e o número;
+  - **a caixa** (620 px) tem uma seção por agente dos voos do workspace, com as janelas, a barra, quando renova e "visto há…", e o ACU da conta quando houver;
+  - **a tabela** tem um voo por linha, de todos os níveis (com "FL2"), com entrada, saída, cache lido, cache criado, contexto e custo (US$ do Claude, ACUs ou créditos do Devin). O clique leva ao voo, e o total fica embaixo;
+  - **o rodapé** diz que tudo é lido no computador e que o custo do Claude não é cobrado no Pro e no Max;
+  - **ícone novo:** `data_usage`.
+- **Testes:**
+  - **`internal/usage`:**
+    - a status line e a transcrição do Claude: cada resposta uma vez, o `cost-state`;
+    - as contas guardadas;
+    - o Codex, e o Gemini em `.json` e `.jsonl`;
+    - o `sessions.db` com o formato real, as respostas repetidas e o rodapé;
+    - a tela do `/usage`, inclusive a de empresa (inferida) e "No quota data available.";
+    - as horas de renovação;
+    - o caminho do banco do Devin.
+  - **`internal/app`:**
+    - `TestUsageFromClaudeStatusLine`: o hook pela CLI de verdade, a rota, a status line do usuário (a do projeto ganha da pessoal, a da Torre é pulada) e o voo removido;
+    - `TestUsageFromDevinScreen`: um Devin falso mostra o `/usage`, e a conta aparece na rota. O agente falso ganhou `SHOW:<texto>`.
+  - **Claude real:** `TestRealClaudeUsage` passou: os tokens, o custo, o contexto e a conta (5 h e 7 dias).
+  - **Devin real:**
+    - **`TestRealDevinUsage`:** passou com os tokens do `sessions.db`, o contexto de 200k pelo rodapé e as cotas diária e semanal pelo `/usage`;
+    - **na tela:** o `torre serve` com um Claude e um Devin reais. As capturas mostram as duas contas e os dois voos, nos temas escuro e claro e em 1280 px;
+    - `make check` passou, inclusive o build do Windows; o build do Mac (arm64) também foi conferido.
+- **Devin real, o que custou:**
+  - o login foi o manual, com o código que o usuário mandou;
+  - tudo rodou no SWE-1.6 Slow;
+  - foram 2 pedidos no levantamento e 1 no teste automático. No teste de tela, dei ao voo o papel de Revisor, e o pedido curto virou uma revisão do repositório: uns 6 pedidos ao modelo, até eu negar o `go test` que ele quis rodar. Depois, a captura digitou o `/usage` com as letras dobradas, e o Devin entendeu como "continue": interrompi com Esc;
+  - a cota diária foi de 4% a 8%, e a semanal de 2% a 3%;
+  - no fim: `devin auth logout` e a pasta apagada.
+- **Precisa de você:**
+  - **Devin de empresa:** abra `/usage` (ou o comando que mostra os ACUs) no Devin da empresa e me mande o texto da tela. Assim confiro o formato dos ACUs, que não vi de verdade;
+  - **Windows:** a status line do Claude roda pelo Git Bash, e o `sessions.db` do Devin fica em `%APPDATA%\devin\cli`. Os dois foram compilados e testados só no Linux;
+  - **Mac:** o caminho do Devin é o mesmo do Linux, e o binário foi compilado, mas não rodou.
+
 ## 2026-10-18, Desenho e Grupo
 
 - **Pedido:** a opção de Desenho e de Grupo, que estava em "Para depois" com os botões desligados ("em breve"). Antes do plano, o usuário pediu a explicação de para que servem; depois decidiu: só visual, sem nenhum backend que dê ao grupo sentido para os agentes. Isso ficou no "Para depois" do PLAN, com um roteiro de como fazer.
