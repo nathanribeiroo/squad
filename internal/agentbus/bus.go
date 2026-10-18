@@ -101,6 +101,7 @@ type Bus struct {
 	waiters map[*waiter]bool            // callers blocked in torre wait
 	last    map[string]activity.TurnEnd // each terminal's last final turn end (torre wait)
 	paused  bool
+	pause   *Pause // why, while paused
 	resume  chan struct{}
 	sends   []time.Time
 	// texts keeps the full messages of the last requests (the Rádio shows a
@@ -240,21 +241,9 @@ func (b *Bus) Paused() bool {
 	return b.paused
 }
 
-// SetPaused pauses or resumes conversations; held requests continue on resume.
-func (b *Bus) SetPaused(p bool, reason string) {
-	b.mu.Lock()
-	if b.paused == p {
-		b.mu.Unlock()
-		return
-	}
-	b.paused = p
-	if !p {
-		close(b.resume)
-		b.resume = make(chan struct{})
-	}
-	b.mu.Unlock()
-	b.events.Publish(events.ConversationsPaused, map[string]any{"paused": p, "reason": reason})
-}
+// SetPaused pauses (the user's Espera geral) or resumes conversations; held
+// requests continue on resume.
+func (b *Bus) SetPaused(p bool, reason string) { b.setPause(p, Pause{By: "user"}, reason) }
 
 // StateExtra is merged into /api/state and the events hello message.
 // SetLimits changes the hop and per-minute limits (Configurações → Limites).
@@ -269,10 +258,16 @@ func (b *Bus) StateExtra() map[string]any {
 	b.mu.Lock()
 	recent := b.recentSendsLocked(time.Now())
 	paused := b.paused
+	var pause *Pause
+	if b.pause != nil {
+		cp := *b.pause
+		pause = &cp
+	}
 	limits := map[string]int{"maxHops": b.limits.MaxHops, "perMinute": b.limits.PerMinute}
 	b.mu.Unlock()
 	return map[string]any{
 		"paused":  paused,
+		"pause":   pause,
 		"limits":  limits,
 		"rate":    recent,
 		"pending": b.Pending(),
