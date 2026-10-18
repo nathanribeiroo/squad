@@ -11,7 +11,9 @@ import { wire, type Rect, type Wire } from '../geometry';
 import { actionVerb, usePortalAction } from '../nodes/portalAction';
 import './wire.css';
 
-export type WireData = { rope?: [number, number][] };
+/** rope: bend points; a, b: the wire's real ends when it is drawn to a
+ * collapsed group's card instead (the group hides them). */
+export type WireData = { rope?: [number, number][]; a?: string; b?: string };
 export type WireFlowEdge = Edge<WireData, 'wire'>;
 
 /** Envelope travel time (handoff §6). */
@@ -49,9 +51,12 @@ function visualOf(f: Flight, now: number): Visual | null {
   }
 }
 
-export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireFlowEdge>) {
-  const a = useInternalNode(source);
-  const b = useInternalNode(target);
+export function WireEdge({ id, source: drawnFrom, target: drawnTo, selected, data }: EdgeProps<WireFlowEdge>) {
+  const a = useInternalNode(drawnFrom);
+  const b = useInternalNode(drawnTo);
+  // Requests, loops and names follow the wire's real ends.
+  const source = data?.a ?? drawnFrom;
+  const target = data?.b ?? drawnTo;
   const aName = useNodeName(source);
   const bName = useNodeName(target);
   const allFlights = useSquad((s) => s.flights);
@@ -92,7 +97,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
   };
 
   const waiting = pending?.kind === 'pending' || pending?.kind === 'queued';
-  const wireClass = `wire${selected ? ' selected' : ''}${waiting ? ' pending' : ''}${paused && !pending ? ' held' : ''}${inLoop ? ' loop' : ''}`;
+  const wireClass = `wire${selected ? ' selected' : ''}${waiting ? ' pending' : ''}${paused && !pending ? ' held' : ''}${inLoop ? ' loop' : ''}${data?.a ? ' via-group' : ''}`;
   const endClass = (isOrigin: boolean) => (waiting ? (isOrigin ? ' origin' : ' dest') : '');
 
   return (

@@ -7,6 +7,10 @@ function MiniNode({ id, x, y, width, height }: MiniMapNodeProps) {
   const node = useSquad((s) => s.workspace?.nodes.find((n) => n.id === id));
   const state = useSquad((s) => s.runtime[id]?.activity ?? 'off');
   const isTerm = node?.kind === 'terminal';
+  if (node?.kind === 'drawing') return null;
+  if (node?.group && !node.group.collapsed) {
+    return <rect x={x} y={y} width={width} height={height} style={{ fill: 'none', stroke: 'var(--line-2)', strokeWidth: 10, strokeDasharray: '30 20' }} />;
+  }
   return (
     <rect
       x={x}

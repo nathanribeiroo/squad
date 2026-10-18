@@ -5,6 +5,7 @@ import { CHECK_NAMES, GROUND, checkViews, flightLevel, plural, slugify, useBranc
 import { callsign } from '../lib/model';
 import { shortPath } from '../lib/paths';
 import { toast } from '../lib/toast';
+import { isVisual } from '../lib/visual';
 import { useSquad } from '../state/store';
 import { expectGone } from './FloorBar';
 import { Dialog } from './Dialog';
@@ -203,7 +204,8 @@ function useFloorNodes(id: string): { closes: WNode[]; notes: WNode[] } {
   const nodes = useSquad((s) => s.workspace?.nodes);
   return useMemo(() => {
     const on = (nodes ?? []).filter((n) => n.floor === id);
-    return { closes: on.filter((n) => n.kind !== 'note'), notes: on.filter((n) => n.kind === 'note') };
+    // Groups and drawings go with the floor without a word.
+    return { closes: on.filter((n) => n.kind !== 'note' && !isVisual(n)), notes: on.filter((n) => n.kind === 'note') };
   }, [nodes, id]);
 }
 

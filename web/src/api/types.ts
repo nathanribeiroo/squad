@@ -1,6 +1,6 @@
 // Mirrors of the Go server types (internal/store, internal/server, agentbus).
 
-export type NodeKind = 'terminal' | 'note' | 'portal';
+export type NodeKind = 'terminal' | 'note' | 'portal' | 'group' | 'drawing';
 export type AgentType = 'claude' | 'codex' | 'devin' | 'gemini' | 'shell' | 'custom';
 export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'ask' | 'done' | 'err' | 'off';
 
@@ -88,6 +88,29 @@ export interface PortalData {
   name?: string;
 }
 
+/** A frame around nodes, for the user's eyes only (internal/store/visual.go). */
+export interface GroupData {
+  name: string;
+  /** A color key: a role color (plan, impl…) or none. */
+  color?: string;
+  /** Shown as a card the node's size; members are the nodes it hides, openW × openH its frame. */
+  collapsed?: boolean;
+  members?: string[];
+  openW?: number;
+  openH?: number;
+}
+
+export type DrawingShape = 'pen' | 'arrow' | 'rect' | 'ellipse' | 'text';
+
+/** A stroke, an arrow, a shape or a text on the canvas (internal/store/visual.go). */
+export interface DrawingData {
+  shape: DrawingShape;
+  /** pen and arrow: 0–1 across the node's box (resizing scales the drawing). */
+  points?: [number, number][];
+  color?: string;
+  text?: string;
+}
+
 export interface WNode {
   id: string;
   kind: NodeKind;
@@ -98,6 +121,8 @@ export interface WNode {
   terminal?: TerminalData;
   note?: NoteData;
   portal?: PortalData;
+  group?: GroupData;
+  drawing?: DrawingData;
   /** The terminal whose agent created this node (torre new, torre portal create). */
   createdBy?: string;
   /** The floor the node is on (a Floor id); absent on the ground floor. */
@@ -497,6 +522,16 @@ export interface PlanPortal extends PlanBox {
   url?: string;
   level?: string;
 }
+export interface PlanGroup extends PlanBox {
+  key: string;
+  name: string;
+  color?: string;
+  level?: string;
+}
+export interface PlanDrawing extends PlanBox, DrawingData {
+  key: string;
+  level?: string;
+}
 export interface Plan {
   id: string;
   name: string;
@@ -508,6 +543,8 @@ export interface Plan {
   portals: PlanPortal[];
   links: [string, string][];
   levels: { key: string; name: string; branch?: string }[];
+  groups: PlanGroup[];
+  drawings: PlanDrawing[];
 }
 /** What putting a plan in the air made. */
 export interface PlanResult {

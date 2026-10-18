@@ -1,4 +1,5 @@
 import type { IconName } from '../lib/icons';
+import { groupSelection } from '../lib/visual';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
 import { TerminalForm } from './TerminalForm';
@@ -22,8 +23,8 @@ export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => 
     { icon: 'flight_takeoff', label: 'Novo voo', key: 'T', action: () => setNewTerm(!newTerm), active: newTerm },
     { icon: 'sticky_note_2', label: 'NOTAM', key: 'N', action: onCreateNote },
     { icon: 'public', label: 'Portal', key: 'P', action: onCreatePortal },
-    { icon: 'gesture', label: 'Desenho (em breve)', key: 'D', action: () => {}, disabled: true },
-    { icon: 'select', label: 'Grupo (em breve)', key: 'G', action: () => {}, disabled: true },
+    { icon: 'gesture', label: 'Desenho', key: 'D', action: () => setTool(tool === 'draw' ? 'select' : 'draw'), active: tool === 'draw' },
+    { icon: 'select', label: 'Grupo', key: 'G', action: groupSelection, active: tool === 'frame' },
     { icon: 'flight_class', label: 'Planos de voo', key: '⌥M', action: () => useSquad.getState().setPlansDialog('gallery') },
   ];
 

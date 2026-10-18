@@ -18,3 +18,23 @@
 }
 .react-flow.tool-pan .react-flow__pane { cursor: grab; }
 .react-flow.tool-pan .react-flow__pane.dragging { cursor: grabbing; }
+
+/* Desenho (D) and a new group's frame (G): a layer over the canvas takes
+   the drag; the bar picks the shape and the color. */
+/* Over the nodes (the renderer is 4, earlier), under the minimap and the zoom (5). */
+.draw-layer { position: absolute; inset: 0; z-index: 4; cursor: crosshair; touch-action: none; }
+.draw-layer.texting { cursor: text; }
+.dl-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.dl-svg .d-hit { display: none; }
+.dl-frame { fill: color-mix(in srgb, var(--st-work) 8%, transparent); stroke: var(--st-work); stroke-width: 1.5; stroke-dasharray: 6 4; }
+/* Beside its button in the tools (D, then G), clear of the bands on top. */
+.draw-bar {
+  position: absolute; left: 60px; top: 194px; z-index: 11; display: flex; align-items: center; gap: 2px; padding: 3px;
+  background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow-pop);
+}
+.draw-bar.frame-hint { top: 228px; }
+.draw-bar-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); padding: 0 8px; }
+.draw-bar-div { width: 1px; height: 22px; background: var(--line-2); margin: 0 4px; }
+.draw-bar-hint { font-size: 12px; color: var(--text-2); padding: 0 8px; }
+.draw-swatch { width: 18px; height: 18px; margin: 0 2px; padding: 0; border: 1px solid var(--line-2); cursor: pointer; flex: none; }
+.draw-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }

@@ -87,6 +87,8 @@ export const api = {
   addNode: (n: Partial<WNode>) => req<WNode>('POST', wsPath('/api/nodes'), n),
   updateNode: (id: string, patch: Partial<WNode>, keepalive?: boolean) => req<WNode>('PATCH', wsPath(`/api/nodes/${id}`), patch, keepalive),
   removeNode: (id: string) => req<void>('DELETE', wsPath(`/api/nodes/${id}`)),
+  /** Moves several nodes at once (a group with what is inside it). */
+  moveNodes: (moves: { id: string; x: number; y: number }[]) => req<{ nodes: WNode[] }>('POST', wsPath('/api/nodes/move'), { moves }),
   nodeAction: (id: string, action: 'start' | 'stop' | 'restart' | 'new-conversation') => req<unknown>('POST', wsPath(`/api/nodes/${id}/${action}`)),
   /** Answers the prompt on a flight's screen (only the interface can). */
   limits: () => req<LimitsView>('GET', wsPath('/api/limits')),

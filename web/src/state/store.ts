@@ -8,6 +8,7 @@ import { toast } from '../lib/toast';
 import type {
   CheckKind,
   AttentionChoice,
+  DrawingShape,
   Floor,
   FloorConfig,
   FloorStatusResponse,
@@ -172,7 +173,13 @@ interface SquadState {
   editTermId: string | null;
   focusedTerminal: string | null;
   selectedNode: string | null;
-  tool: 'select' | 'pan';
+  /** The canvas tool: select, pan, draw (Desenho, D) or frame (drag a new group, G). */
+  tool: 'select' | 'pan' | 'draw' | 'frame';
+  /** What the Desenho tool draws, and in which color. */
+  drawShape: DrawingShape;
+  drawColor: string;
+  /** A text drawing open for typing (just made, or double-clicked). */
+  editText: string | null;
   /** Level from the live zoom (changes during a gesture). */
   zoomLevel: ZoomLevel;
   /** Zoom content is laid out for; updated when a gesture ends. */
@@ -234,6 +241,8 @@ interface SquadState {
   setFocusedTerminal(id: string | null): void;
   setSelectedNode(id: string | null): void;
   setTool(t: SquadState['tool']): void;
+  setDraw(d: { shape?: DrawingShape; color?: string }): void;
+  setEditText(id: string | null): void;
   setZoom(z: number, settled: boolean): void;
   setTheme(t: SquadState['themePref']): void;
   openSettings(tab?: SettingsTab | null): void;
@@ -242,6 +251,7 @@ interface SquadState {
   setSynPinned(pinned: boolean, id: string): void;
   setTermTheme(t: SquadState['termTheme']): void;
   moveNodeLocal(id: string, x: number, y: number): void;
+  moveNodesLocal(moves: { id: string; x: number; y: number }[]): void;
   setDock(d: Dock | null): void;
   setFocusPane(id: string | null): void;
   toggleHiddenScreen(id: string): void;
@@ -290,7 +300,7 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 
 function nameOf(ws: Workspace | null, id?: string): string {
   const n = ws?.nodes.find((x) => x.id === id);
-  return n?.terminal?.name ?? n?.note?.title ?? (n?.portal ? n.portal.name || 'Portal' : '');
+  return n?.terminal?.name ?? n?.note?.title ?? (n?.portal ? n.portal.name || 'Portal' : (n?.group?.name ?? ''));
 }
 
 function prefersDark(): boolean {
@@ -425,6 +435,9 @@ export const useSquad = create<SquadState>((set, get) => ({
   focusedTerminal: null,
   selectedNode: null,
   tool: 'select',
+  drawShape: 'pen',
+  drawColor: 'none',
+  editText: null,
   zoomLevel: 'live',
   renderZoom: 1,
   theme: initialPref() === 'system' ? (prefersDark() ? 'dark' : 'light') : stored<'dark' | 'light'>('torre.theme', prefersDark() ? 'dark' : 'light'),
@@ -769,6 +782,8 @@ export const useSquad = create<SquadState>((set, get) => ({
   setFocusedTerminal: (focusedTerminal) => set({ focusedTerminal }),
   setSelectedNode: (selectedNode) => set({ selectedNode }),
   setTool: (tool) => set({ tool }),
+  setDraw: (d) => set((st) => ({ drawShape: d.shape ?? st.drawShape, drawColor: d.color ?? st.drawColor })),
+  setEditText: (editText) => set({ editText }),
   setZoom: (z, settled) => {
     const st = get();
     const zoomLevel = levelFor(z, st.zoomLevel);
@@ -792,6 +807,12 @@ export const useSquad = create<SquadState>((set, get) => ({
     const ws = get().workspace;
     if (!ws) return;
     set({ workspace: { ...ws, nodes: ws.nodes.map((n) => (n.id === id ? { ...n, x, y } : n)) } });
+  },
+  moveNodesLocal: (moves) => {
+    const ws = get().workspace;
+    if (!ws) return;
+    const to = new Map(moves.map((m) => [m.id, m]));
+    set({ workspace: { ...ws, nodes: ws.nodes.map((n) => (to.has(n.id) ? { ...n, x: to.get(n.id)!.x, y: to.get(n.id)!.y } : n)) } });
   },
 }));
 

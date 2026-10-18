@@ -3,14 +3,15 @@ import type { WNode } from '../api/types';
 import { askPhrase, goToNextAsk } from '../lib/attention';
 import { flightLevel } from '../lib/floors';
 import { callsign } from '../lib/model';
+import { hiddenBy, shownAs } from '../lib/visual';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
 import './PriorityBanner.css';
 
 /**
  * PRIORIDADE out of sight (docs/torre/NOVIDADES-E-BACKEND.md, item 1): the
- * oldest flight asking you that isn't on screen (another level, or outside
- * the view), with IR ATÉ ELE (⌥⏎).
+ * oldest flight asking you that isn't on screen (another level, outside the
+ * view, or in a collapsed group), with IR ATÉ ELE (⌥⏎).
  */
 export function PriorityBanner() {
   const ids = useSquad((s) => s.askingIds);
@@ -22,8 +23,9 @@ export function PriorityBanner() {
   const width = useStore((s) => s.width);
   const height = useStore((s) => s.height);
 
+  const hidden = hiddenBy(nodes ?? []);
   const onScreen = (n: WNode) => {
-    if ((n.floor ?? '') !== activeFloor) return false;
+    if ((n.floor ?? '') !== activeFloor || hidden.has(n.id)) return false;
     const cx = (n.x + n.w / 2) * zoom + tx;
     const cy = (n.y + n.h / 2) * zoom + ty;
     return cx > 0 && cx < width && cy > 0 && cy < height;
@@ -32,7 +34,8 @@ export function PriorityBanner() {
   const off = asking.find((n) => !onScreen(n));
   if (!off) return null;
   const phrase = askPhrase(runtime[off.id]?.attention);
-  const level = off.floor ? ` em ${flightLevel(floors?.find((f) => f.id === off.floor))}` : '';
+  const group = hidden.has(off.id) ? nodes?.find((n) => n.id === shownAs(hidden, off.id))?.group : undefined;
+  const level = off.floor ? ` em ${flightLevel(floors?.find((f) => f.id === off.floor))}` : group ? ` no grupo ${group.name}` : '';
   return (
     <div className="pb" role="alert">
       <Icon name="front_hand" size={17} />

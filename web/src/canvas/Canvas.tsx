@@ -22,17 +22,24 @@ import { MiniMapAndZoom } from '../components/ZoomControls';
 import { callsign } from '../lib/model';
 import { hiddenInStack, stackGains, stackOf } from '../lib/stacks';
 import { toast } from '../lib/toast';
+import { hiddenBy, insideGroup, removeVisuals, reveal, shownAs } from '../lib/visual';
 import { useSquad } from '../state/store';
 import { pruneSessions } from '../term/session';
+import { DrawLayer } from './DrawLayer';
 import { WireEdge } from './edges/WireEdge';
 import { insertRopePoint } from './geometry';
+import { DrawingNode } from './nodes/DrawingNode';
+import { GroupNode } from './nodes/GroupNode';
 import { NoteNode } from './nodes/NoteNode';
 import { PortalNode } from './nodes/PortalNode';
 import { TerminalNode } from './nodes/TerminalNode';
 import './canvas.css';
 import './nodes/nodes.css';
 
-const nodeTypes = { terminal: TerminalNode, note: NoteNode, portal: PortalNode };
+// A group is a "frame" to React Flow, whose "group" type has styles of its own.
+const nodeTypes = { terminal: TerminalNode, note: NoteNode, portal: PortalNode, frame: GroupNode, drawing: DrawingNode };
+const flowType = (n: WNode) => (n.kind === 'group' ? 'frame' : n.kind);
+const isVisualType = (t?: string) => t === 'frame' || t === 'drawing';
 const edgeTypes = { wire: WireEdge };
 
 // Each session of a workspace (a canvas of its own), and each of its floors,
@@ -56,15 +63,23 @@ function toFlow(n: WNode, prev?: Node): Node {
   return {
     ...prev,
     id: n.id,
-    type: n.kind,
+    type: flowType(n),
     // Keep the local position while the user is dragging.
     position: prev?.dragging ? prev.position : { x: n.x, y: n.y },
     width: n.w,
     height: n.h,
-    dragHandle: '.node-drag',
+    // A drawing is taken by its lines anywhere (nodes.css).
+    dragHandle: n.kind === 'drawing' ? undefined : '.node-drag',
+    // Group frames at the back, drawings over them, then the rest. A
+    // selected node rises by 1000: a selected frame comes to the front (its
+    // tab and menu over the nodes inside, which still take the clicks).
+    zIndex: n.kind === 'group' ? (n.group?.collapsed ? 0 : -2) : n.kind === 'drawing' ? -1 : undefined,
     data: { node: n },
   };
 }
+
+/** Group frames first, then drawings: what is drawn first is behind. */
+const layer = (n: WNode) => (n.kind === 'group' && !n.group?.collapsed ? 0 : n.kind === 'drawing' ? 1 : 2);
 
 export function Canvas() {
   const ws = useSquad((s) => s.workspace);
@@ -82,29 +97,41 @@ export function Canvas() {
   // The server is the source of truth; local state only adds React Flow's
   // own fields (selection, measured size, drag). The canvas shows the floor
   // on screen; each floor (a git worktree) has its own nodes.
-  // A note stacked on another is drawn inside the stack (its base's node).
-  const onScreen = useCallback((n: WNode) => (n.floor ?? '') === floor && !hiddenInStack(n), [floor]);
+  // A note stacked on another is drawn inside the stack (its base's node);
+  // a collapsed group hides what it holds behind its card.
+  const hidden = useMemo(() => hiddenBy(ws?.nodes ?? []), [ws?.nodes]);
+  const hiddenKey = [...hidden].map(([id, g]) => `${id}:${g}`).join(' ');
+  const onScreen = useCallback((n: WNode) => (n.floor ?? '') === floor && !hiddenInStack(n) && !hidden.has(n.id), [floor, hidden]);
   useEffect(() => {
     setNodes((prev) => {
       const byId = new Map(prev.map((n) => [n.id, n]));
-      return (ws?.nodes ?? []).filter(onScreen).map((n) => toFlow(n, byId.get(n.id)));
+      return (ws?.nodes ?? [])
+        .filter(onScreen)
+        .sort((a, b) => layer(a) - layer(b))
+        .map((n) => toFlow(n, byId.get(n.id)));
     });
     if (ws) pruneSessions(new Set(ws.nodes.filter((n) => n.kind === 'terminal').map((n) => n.id)));
   }, [ws?.nodes, onScreen]);
   useEffect(() => useSquad.getState().setZoom(defaultViewport.zoom, true), [defaultViewport]);
   // Wires show when both ends are on the canvas (wires to other floors show
   // as a tag on the node); the key changes only when the set of shown nodes
-  // does, not on every drag.
+  // does, not on every drag. A wire to a node a collapsed group hides ends
+  // at the group's card (and one inside the group isn't drawn).
   const shownKey = useMemo(() => (ws?.nodes ?? []).filter(onScreen).map((n) => n.id).join(' '), [ws?.nodes, onScreen]);
   useEffect(() => {
+    const hid = new Map(hiddenKey ? hiddenKey.split(' ').map((p) => p.split(':') as [string, string]) : []);
     setEdges((prev) => {
       const byId = new Map(prev.map((e) => [e.id, e]));
       const shown = new Set(shownKey.split(' '));
-      return (ws?.edges ?? [])
-        .filter((e) => shown.has(e.a) && shown.has(e.b))
-        .map((e) => ({ ...byId.get(e.id), id: e.id, source: e.a, target: e.b, type: 'wire', data: { rope: e.ropePoints } }));
+      return (ws?.edges ?? []).flatMap((e) => {
+        const a = shownAs(hid, e.a);
+        const b = shownAs(hid, e.b);
+        if (a === b || !shown.has(a) || !shown.has(b)) return [];
+        const via = a !== e.a || b !== e.b;
+        return [{ ...byId.get(e.id), id: e.id, source: a, target: b, type: 'wire', data: via ? { a: e.a, b: e.b } : { rope: e.ropePoints } }];
+      });
     });
-  }, [ws?.edges, shownKey]);
+  }, [ws?.edges, shownKey, hiddenKey]);
 
   const onNodesChange = useCallback((c: NodeChange[]) => setNodes((n) => applyNodeChanges(c, n)), []);
   const onEdgesChange = useCallback((c: EdgeChange[]) => setEdges((e) => applyEdgeChanges(c, e)), []);
@@ -127,9 +154,13 @@ export function Canvas() {
     [],
   );
 
-  // Keyboard deletion only removes wires; nodes are removed from their menu
-  // (removing a terminal kills its process).
-  const onBeforeDelete: OnBeforeDelete = useCallback(async ({ edges }) => ({ nodes: [], edges }), []);
+  // Keyboard deletion removes wires, drawings and group frames; the other
+  // nodes are removed from their menu (removing a terminal kills its process).
+  const onBeforeDelete: OnBeforeDelete = useCallback(async ({ nodes, edges }) => {
+    const visuals = nodes.filter((n) => isVisualType(n.type));
+    removeVisuals(visuals.map((n) => n.id));
+    return { nodes: visuals, edges };
+  }, []);
   const onEdgesDelete = useCallback((removed: Edge[]) => {
     for (const e of removed) {
       api
@@ -139,13 +170,46 @@ export function Canvas() {
     }
   }, []);
 
-  // Where the dragged nodes were, to go back if stacking is cancelled.
+  // Where the dragged nodes were, to go back if stacking is cancelled; what
+  // a dragged group carries along (what lies inside it), from where.
   const dragFrom = useRef<Record<string, { x: number; y: number }>>({});
+  const carried = useRef<Record<string, { x: number; y: number }>>({});
   const onNodeDragStart = useCallback((_: unknown, _node: Node, moved: Node[]) => {
     dragFrom.current = Object.fromEntries(moved.map((n) => [n.id, { ...n.position }]));
+    const all = useSquad.getState().workspace?.nodes ?? [];
+    const out: Record<string, { x: number; y: number }> = {};
+    for (const m of moved) {
+      const g = m.type === 'frame' ? all.find((n) => n.id === m.id) : undefined;
+      if (g) for (const c of insideGroup(all, g)) if (!(c.id in dragFrom.current)) out[c.id] = { x: c.x, y: c.y };
+    }
+    carried.current = out;
+  }, []);
+  const delta = (moved: Node[]) => {
+    const from = dragFrom.current[moved[0].id];
+    return from ? { dx: moved[0].position.x - from.x, dy: moved[0].position.y - from.y } : { dx: 0, dy: 0 };
+  };
+  const onNodeDrag = useCallback((_: unknown, _node: Node, moved: Node[]) => {
+    const c = carried.current;
+    if (!Object.keys(c).length) return;
+    const { dx, dy } = delta(moved);
+    setNodes((ns) => ns.map((n) => (c[n.id] ? { ...n, dragging: true, position: { x: c[n.id].x + dx, y: c[n.id].y + dy } } : n)));
   }, []);
   const onNodeDragStop = useCallback((_: unknown, _node: Node, moved: Node[]) => {
     const st = useSquad.getState();
+    const c = carried.current;
+    carried.current = {};
+    // A group moves with what is inside it, at once.
+    if (Object.keys(c).length) {
+      const { dx, dy } = delta(moved);
+      const moves = [
+        ...moved.map((n) => ({ id: n.id, x: Math.round(n.position.x), y: Math.round(n.position.y) })),
+        ...Object.entries(c).map(([id, p]) => ({ id, x: Math.round(p.x + dx), y: Math.round(p.y + dy) })),
+      ];
+      st.moveNodesLocal(moves);
+      setNodes((ns) => ns.map((n) => (c[n.id] ? { ...n, dragging: false } : n)));
+      api.moveNodes(moves).catch((e: Error) => toast(e.message, 'err'));
+      return;
+    }
     // A note dropped on another note (its center inside it) stacks on it.
     const onto = moved.length === 1 && moved[0].type === 'note' ? noteUnder(moved[0]) : null;
     if (onto) {
@@ -187,8 +251,11 @@ export function Canvas() {
     void rf.setViewport(defaultViewport);
   }, [activeWs, session, floor, defaultViewport, rf]);
   // A wire's tag on another floor asked to show this node: center it once
-  // it is on the canvas.
+  // it is on the canvas (opening the groups that hide it).
   const focusRequest = useSquad((s) => s.focusRequest);
+  useEffect(() => {
+    if (focusRequest && hiddenBy(useSquad.getState().workspace?.nodes ?? []).has(focusRequest)) void reveal(focusRequest);
+  }, [focusRequest]);
   useEffect(() => {
     if (!focusRequest || !nodes.some((n) => n.id === focusRequest)) return;
     const t = window.setTimeout(() => {
@@ -221,7 +288,7 @@ export function Canvas() {
       const a = rf.getInternalNode(edge.source);
       const b = rf.getInternalNode(edge.target);
       const we = useSquad.getState().workspace?.edges.find((x) => x.id === edge.id);
-      if (!a || !b || !we) return;
+      if (!a || !b || !we || edge.source !== we.a || edge.target !== we.b) return; // not one ending at a group's card
       const rect = (n: typeof a) => ({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: n.measured.width ?? 0, h: n.measured.height ?? 0 });
       const p = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
       api.updateEdge(edge.id, insertRopePoint(rect(a), rect(b), we.ropePoints ?? [], p)).catch((err: Error) => toast(err.message, 'err'));
@@ -240,12 +307,15 @@ export function Canvas() {
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
-      isValidConnection={(c) => c.source !== c.target && !linked(c.source, c.target)}
+      isValidConnection={(c) =>
+        c.source !== c.target && !linked(c.source, c.target) && !nodes.some((n) => (n.id === c.source || n.id === c.target) && isVisualType(n.type))
+      }
       onBeforeDelete={onBeforeDelete}
       onEdgesDelete={onEdgesDelete}
       onEdgeDoubleClick={onEdgeDoubleClick}
       zoomOnDoubleClick={false}
       onNodeDragStart={onNodeDragStart}
+      onNodeDrag={onNodeDrag}
       onNodeDragStop={onNodeDragStop}
       onSelectionChange={({ nodes: sel }) => {
         setSelected(sel.length === 1 ? sel[0].id : null);
@@ -271,6 +341,7 @@ export function Canvas() {
     >
       <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--grid)" />
       <MiniMapAndZoom />
+      <DrawLayer />
     </ReactFlow>
   );
 }

@@ -31,11 +31,15 @@ const MESSAGES: Record<string, (p: Params) => string> = {
   'notam.stack_self': () => 'Essa NOTAM já está nessa pilha.',
   'notam.not_stacked': () => 'Essa NOTAM não está numa pilha.',
 
+  'edge.visual': () => 'Grupos e desenhos não entram em frequência: ligue os voos, NOTAMs ou portais.',
+
   'plan.name_required': () => 'O plano precisa de um nome.',
   'plan.name_too_long': (p) => `O nome do plano tem no máximo ${p.max} caracteres.`,
   'plan.empty': () => 'Não há nada para guardar: selecione voos, NOTAMs ou portais.',
   'plan.too_big': (p) => `Um plano guarda no máximo ${p.max} itens.`,
   'plan.too_many_levels': (p) => `Um plano guarda no máximo ${p.max} níveis.`,
+  'plan.too_many_groups': (p) => `Um plano guarda no máximo ${p.max} grupos.`,
+  'plan.too_many_drawings': (p) => `Um plano guarda no máximo ${p.max} desenhos.`,
   'plan.note_too_long': (p) => `A NOTAM "${p.note}" é grande demais para o plano: salve sem o conteúdo das NOTAMs.`,
   'plan.bad_agent': (p) => `O plano tem um agente desconhecido: ${p.agent}.`,
   'plan.bad_item': () => 'O arquivo do plano está incompleto ou corrompido.',

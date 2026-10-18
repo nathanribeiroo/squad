@@ -29,6 +29,7 @@ import { answerKey, goToNextAsk } from './lib/attention';
 import { callsign } from './lib/model';
 import { noticePrefs, remindAsks, remindYourTurns, unlockAudio } from './lib/notify';
 import { dockAt, nextNode, toggleFocus } from './lib/screens';
+import { groupSelection } from './lib/visual';
 import { termSession } from './term/session';
 import { Toast, toast } from './lib/toast';
 import { useSquad } from './state/store';
@@ -174,7 +175,8 @@ function Stage() {
         return;
       }
       if (e.key === 'Escape') {
-        if (st.focusPane && !typing(e.target)) st.setFocusPane(null);
+        if ((st.tool === 'draw' || st.tool === 'frame') && !typing(e.target)) st.setTool('select');
+        else if (st.focusPane && !typing(e.target)) st.setFocusPane(null);
         else if (st.newTermOpen) st.setNewTerm(false);
         else if (st.editTermId) st.setEditTerm(null);
         else if (st.composerOpen) st.setComposer(false);
@@ -218,6 +220,8 @@ function Stage() {
         KeyT: () => st.setNewTerm(!st.newTermOpen),
         KeyN: () => create('note'),
         KeyP: () => create('portal'),
+        KeyD: () => st.setTool(st.tool === 'draw' ? 'select' : 'draw'),
+        KeyG: () => groupSelection(),
       };
       const fn = plain[e.code];
       if (fn && !e.shiftKey) {
