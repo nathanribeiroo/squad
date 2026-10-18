@@ -1,6 +1,6 @@
 //go:build e2e && !windows
 
-// End-to-end test with the real Devin CLI, logged in. It costs three tiny
+// End-to-end tests with the real Devin CLI, logged in. They cost five tiny
 // prompts. Run:
 //
 //	TORRE_E2E_DEVIN_MODEL=swe-1-6-slow go test -tags e2e -run TestRealDevin -v ./internal/app/
