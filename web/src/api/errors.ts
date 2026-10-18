@@ -91,6 +91,7 @@ const MESSAGES: Record<string, (p: Params) => string> = {
   'attention.none': () => 'O voo não está perguntando nada agora.',
   'attention.changed': () => 'A pergunta na tela mudou: abra a tela do voo para responder.',
   'attention.no_keys': () => 'Essa resposta não pode ser enviada daqui para este agente: abra a tela do voo.',
+  'attention.too_long': () => 'A resposta passou de 2000 caracteres: encurte ou responda na tela do voo.',
   'attention.not_agent': () => 'Só os agentes respondem por aqui.',
 
   'limits.range': (p) => `Esse limite vai de ${p.min} a ${p.max}.`,
