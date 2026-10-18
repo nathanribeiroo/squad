@@ -441,8 +441,17 @@ export const useSquad = create<SquadState>((set, get) => ({
   closeRoles: () => set({ rolesPanel: false }),
 
   setWorkspaces: (workspaces) => {
+    const before = get().workspaces;
     set({ workspaces });
     const st = get();
+    // A flight asking you in another workspace: the same notice as here (the
+    // first list, when the page opens, isn't news).
+    for (const w of workspaces) {
+      const was = before.find((b) => b.id === w.id);
+      if (was && w.id !== st.activeWs && (w.attention ?? 0) > (was.attention ?? 0)) {
+        noticeAsk(w.name, w.attention === 1 ? 'Um voo pede você neste workspace' : `${w.attention} voos pedem você neste workspace`);
+      }
+    }
     if (workspaces.length === 0) return;
     const cur = workspaces.find((w) => w.id === st.activeWs);
     if (cur) {

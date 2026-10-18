@@ -20,6 +20,8 @@ export interface Attention {
   since: string;
   /** The answers the interface may send; empty: open the terminal. */
   choices?: AttentionChoice[];
+  /** The agent's own words for each answer: what "always" saves, and where. */
+  labels?: Partial<Record<AttentionChoice, string>>;
 }
 
 export interface TerminalData {
