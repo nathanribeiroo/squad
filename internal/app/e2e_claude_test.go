@@ -94,6 +94,37 @@ func TestRealClaudeStack(t *testing.T) {
 	}
 }
 
+// Two flights ask the same Claude, the second while the first's turn runs:
+// the second waits in Claude's line, and each gets the answer to its own
+// message (before, the second got the first's).
+func TestRealClaudeQueue(t *testing.T) {
+	e, shell, claude := startRealClaude(t, "")
+	other, err := e.app.Server.Store().AddNode(store.Node{Kind: store.KindTerminal, Terminal: &store.TerminalData{Name: "Outro", Agent: "shell", Shell: "/bin/sh"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.connect(other, claude)
+	if err := e.app.Server.StartTerminal(other.ID); err != nil {
+		t.Fatal(err)
+	}
+	l := e.requestLog()
+	first := e.askAsync(shell, "Claude", "Escreva os numeros de 1 a 120 por extenso, um por linha, e na ultima linha escreva PRIMEIRO-OK.")
+	e.waitWorking(claude.ID)
+	time.Sleep(3 * time.Second) // well into the first turn
+	second := e.run(other, "ask", "Claude", "Responda apenas com a palavra: SEGUNDO-OK")
+	r := <-first
+	t.Logf("first: %s · second: %s", r.Source, second.Source)
+	if r.Code != 200 || !strings.Contains(r.Body, "PRIMEIRO-OK") || strings.Contains(r.Body, "SEGUNDO-OK") {
+		t.Fatalf("first: %+v", r)
+	}
+	if second.Code != 200 || second.Source != "claude-stop" || !strings.Contains(second.Body, "SEGUNDO-OK") || strings.Contains(second.Body, "PRIMEIRO-OK") {
+		t.Fatalf("second: %+v\n%s", second, e.app.Server.Terminals().Get(claude.ID).Snapshot())
+	}
+	if queued, _ := l.snapshot(); queued[l.sent(other)] != 1 {
+		t.Fatalf("queued: %v", queued)
+	}
+}
+
 // A Claude on a floor gets the ground floor's permissions (when the floor is
 // made and as it starts), "always" from the interface works there (Claude's
 // "don’t ask again", with its typographic apostrophe) and what it saves is

@@ -5,6 +5,7 @@
 package activity
 
 import (
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -92,8 +93,9 @@ type Monitor struct {
 
 	listeners []func(TurnEnd) // every turn end (OnAnyTurnEnd)
 
-	quit chan struct{}
-	once sync.Once
+	quit    chan struct{}
+	once    sync.Once
+	sampler sync.WaitGroup // the sampling goroutine (Start)
 }
 
 type track struct {
@@ -147,7 +149,9 @@ func (m *Monitor) SetAgentOf(fn func(id string) (string, bool)) { m.agentOf = fn
 
 // Start begins sampling.
 func (m *Monitor) Start() {
+	m.sampler.Add(1)
 	go func() {
+		defer m.sampler.Done()
 		t := time.NewTicker(m.opts.Tick)
 		defer t.Stop()
 		for {
@@ -161,8 +165,13 @@ func (m *Monitor) Start() {
 	}()
 }
 
-// Stop ends sampling.
-func (m *Monitor) Stop() { m.once.Do(func() { close(m.quit) }) }
+// Stop ends sampling. A sample in progress finishes first, so no turn end
+// or state change is reported from sampling after Stop returns (its
+// listeners write files the caller may be about to remove).
+func (m *Monitor) Stop() {
+	m.once.Do(func() { close(m.quit) })
+	m.sampler.Wait()
+}
 
 func (m *Monitor) get(id string) *track {
 	tr := m.st[id]
@@ -427,6 +436,25 @@ func (m *Monitor) Working(id string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.get(id).working
+}
+
+// Idle returns how long the terminal has been out of a turn: zero while it
+// works or waits for the user.
+func (m *Monitor) Idle(id string) time.Duration {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	tr := m.get(id)
+	if tr.working || tr.attn != nil {
+		return 0
+	}
+	last := tr.turnEndedAt
+	if tr.lastMeaningful.After(last) {
+		last = tr.lastMeaningful
+	}
+	if last.IsZero() {
+		return math.MaxInt64 // never worked
+	}
+	return time.Since(last)
 }
 
 // ExpectTurn marks a turn as started on an agent whose turns end with a

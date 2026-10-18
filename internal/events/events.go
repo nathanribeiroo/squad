@@ -20,6 +20,7 @@ const (
 	EdgeUpdated         = "edge.updated"    //
 	EdgeRemoved         = "edge.removed"    //
 	RequestSent         = "request.sent"    // ask left the sender
+	RequestQueued       = "request.queued"  // waits for a busy flight's turn to end
 	RequestDelivered    = "request.delivered"
 	RequestPending      = "request.pending"
 	ReplySent           = "reply.sent"

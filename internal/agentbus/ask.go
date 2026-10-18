@@ -65,6 +65,16 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 	}
 	fromName, toName := callerNode.Terminal.Name, tn.Terminal.Name
 
+	// A request from the target (or from someone the target waits for) still
+	// in the caller's line: its sender waits for the caller's turn, which
+	// this ask would keep open. The caller gets that request instead.
+	b.mu.Lock()
+	q := b.handOverLocked(caller, tn.ID)
+	b.mu.Unlock()
+	if q != nil {
+		return b.handedOver(q, fmt.Sprintf("Your message to %s wasn't sent: send it again after answering.", quote(toName)))
+	}
+
 	// Ask-back: the target is blocked waiting for the caller, so this message
 	// is the caller's answer to that request (docs/03 §9.1). It goes straight
 	// to the waiting command instead of interrupting the target with a prompt.
@@ -75,7 +85,7 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 		if p.resolved || p.From != tn.ID {
 			continue
 		}
-		if p.To == caller {
+		if p.To == caller && p.delivered {
 			direct = p
 			break
 		}
@@ -173,14 +183,17 @@ func (b *Bus) active(id string, t *terminal.Terminal) bool {
 func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Terminal, tn store.Node, msg string) Result {
 	shell := tn.Terminal.Agent == "shell"
 	hooked := b.hasHooks(tn.Terminal.Agent)
-	// A flight waiting for the user would take the message as the answer to
-	// its prompt: it gets it once the prompt is answered (and the end of
-	// that turn doesn't count as this request's).
-	if r, done := b.holdWhileAsking(ctx, p, tn.ID); done {
+	// A flight in a turn reads a message only after it (one waiting for the
+	// user would take it as the answer to its prompt), and the end of that
+	// turn isn't this request's: the request waits in the flight's line.
+	handed, r, done := b.takeTurn(ctx, p, tn)
+	if done {
 		return r
 	}
 	if b.mon != nil {
-		b.mon.ResetTurn(tn.ID)
+		if !handed {
+			b.mon.ResetTurn(tn.ID)
+		}
 		defer b.onFinalTurnEnd(tn.ID, hooked, func(te activity.TurnEnd) {
 			if te.Message != "" {
 				b.resolve(p, Result{Code: 200, Body: replyBody(p.ToName, p.ID, te.Message), Source: te.Reason})
@@ -192,7 +205,7 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 	// A target blocked in torre wait for the caller (or for someone who,
 	// through a chain, waits for the caller) would read a pasted message only
 	// after its wait, which can't end: the message ends the wait instead.
-	if !b.handToWaiter(p, msg) {
+	if !handed && !b.handToWaiter(p, msg) {
 		if err := t.Paste(Envelope(p.FromName, p.ID, msg, shell), true); err != nil {
 			b.resolve(p, Result{Code: 500, Body: "torre: delivery failed: " + err.Error(), Source: "cancelled"})
 			return <-p.done
@@ -241,32 +254,6 @@ func (b *Bus) deliverAndWait(ctx context.Context, p *Pending, t *terminal.Termin
 			b.resolve(p, Result{Code: 200, Body: screenBody(p, t.Snapshot()) + "\n[torre: " + note + "]", Source: "timeout"})
 		}
 	}
-}
-
-// holdWhileAsking waits while the target asks the user something (until
-// MaxWait); done is true when the request ended meanwhile, with its result.
-func (b *Bus) holdWhileAsking(ctx context.Context, p *Pending, id string) (Result, bool) {
-	if b.mon == nil || !b.mon.Asking(id) {
-		return Result{}, false
-	}
-	tick := time.NewTicker(250 * time.Millisecond)
-	defer tick.Stop()
-	limit := time.NewTimer(time.Until(p.SentAt.Add(b.limits.MaxWait)))
-	defer limit.Stop()
-	for b.mon.Asking(id) {
-		select {
-		case r := <-p.done:
-			return r, true
-		case <-ctx.Done():
-			b.resolve(p, Result{Code: 499, Body: "torre: caller went away", Source: "cancelled"})
-			return <-p.done, true
-		case <-limit.C:
-			b.resolve(p, Result{Code: 200, Body: fmt.Sprintf("[torre: %s waited for the user at a prompt the whole time; the message was not delivered]", quote(p.ToName)), Source: "timeout"})
-			return <-p.done, true
-		case <-tick.C:
-		}
-	}
-	return Result{}, false
 }
 
 func screenBody(p *Pending, snapshot string) string {

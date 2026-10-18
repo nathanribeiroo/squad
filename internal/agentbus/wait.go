@@ -53,6 +53,10 @@ func (b *Bus) Wait(ctx context.Context, caller, target string) Result {
 	name := tn.Terminal.Name
 	w := &waiter{From: caller, To: tn.ID, ToName: name, done: make(chan Result, 1)}
 	b.mu.Lock()
+	if q := b.handOverLocked(caller, tn.ID); q != nil {
+		b.mu.Unlock()
+		return b.handedOver(q, fmt.Sprintf("Then run torre wait %s again.", quote(name)))
+	}
 	if b.reachableLocked(tn.ID, caller) {
 		how := "through other agents"
 		for _, p := range b.pending {
