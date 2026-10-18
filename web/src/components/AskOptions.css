@@ -1,0 +1,29 @@
+/* The agent's own options on a question or a plan, in the RESPONDER bar,
+   the Sinóptico's PRIORIDADE card and the Rádio. */
+.ao-opt,
+.ao-plan {
+  height: 30px; max-width: 240px; display: inline-flex; align-items: center; gap: 8px; padding: 0 10px 0 6px;
+  border: 1px solid var(--stl-wait); background: transparent; color: var(--stt-ask);
+  font-size: 12px; font-weight: 700; cursor: pointer; flex: none;
+}
+.ao-opt:hover, .ao-plan:hover { background: color-mix(in srgb, var(--st-ask) 18%, transparent); }
+.ao-opt:first-of-type { background: var(--stt-ask); border-color: var(--stt-ask); color: var(--stb-ask); }
+.ao-opt .kbd { color: inherit; border-color: currentColor; flex: none; }
+.ao-opt-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ao-plan { padding: 0 10px; letter-spacing: 0.06em; text-transform: uppercase; font-size: 11px; }
+.ao-field { display: inline-flex; height: 30px; flex: 1 1 160px; min-width: 140px; max-width: 320px; }
+.ao-field input {
+  flex: 1; min-width: 0; height: 30px; padding: 0 8px; border: 1px solid var(--stl-wait); border-right: 0;
+  background: var(--canvas); color: var(--text); font: inherit; font-size: 12px;
+}
+.ao-field input::placeholder { color: var(--text-3); }
+.ao-field input:focus { outline: 1.5px solid var(--st-ask); outline-offset: -1px; }
+.ao-field button {
+  width: 32px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--stt-ask); background: var(--stt-ask); color: var(--stb-ask); cursor: pointer;
+}
+.ao-field button:disabled { opacity: 0.45; cursor: default; }
+.ao-plan-text {
+  margin: 0; max-height: 60vh; overflow: auto; padding: 12px 14px; white-space: pre-wrap;
+  background: var(--canvas); border: 1px solid var(--line-3); font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5;
+}

@@ -85,11 +85,15 @@ func New(o Options) (*App, error) {
 		}})
 	asks := newAskLog(radioSvc)
 	var mon *activity.Monitor
-	mon = activity.New(srv.Terminals(), o.Activity, bus.IsWaiting, func(id string, _ activity.State, _ time.Time) {
+	mon = activity.New(srv.Terminals(), o.Activity, bus.IsWaiting, func(id string, st activity.State, _ time.Time) {
+		if st != activity.Done && st != activity.Idle {
+			srv.SetYourTurn(id, false) // it moved on
+		}
 		srv.PublishTerminalState(id)
 		asks.seen(id, mon.Attention(id))
 	})
 	bus.SetMonitor(mon)
+	bus.SetOnYourTurn(func(id string) { srv.SetYourTurn(id, true) })
 	srv.SetActivity(func(id string) (string, time.Time) {
 		st, since := mon.State(id)
 		return string(st), since
@@ -103,8 +107,8 @@ func New(o Options) (*App, error) {
 		return n.Terminal.Agent, true
 	})
 	srv.SetAttention(mon.Attention)
-	srv.SetOnAnswer(func(id string, c attention.Choice) {
-		asks.answered(id, c)
+	srv.SetOnAnswer(func(id string, c attention.Choice, answer string) {
+		asks.answered(id, c, answer)
 		if c == attention.Deny {
 			mon.Denied(id)
 		}

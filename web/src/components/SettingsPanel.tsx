@@ -360,7 +360,7 @@ function Notices() {
   return (
     <>
       <h2>Avisos</h2>
-      <p className="st-lead">Quando um voo pede você (PRIORIDADE), em qualquer workspace. Valem neste navegador.</p>
+      <p className="st-lead">Quando um voo pede você (PRIORIDADE), em qualquer workspace; e quando termina um turno seu. Valem neste navegador.</p>
       <label className="st-check">
         <input type="checkbox" checked={p.title} onChange={(e) => set({ title: e.target.checked })} />
         <span>
@@ -397,6 +397,26 @@ function Notices() {
           <span>O som de novo a cada 2 minutos, até 3 vezes, enquanto o voo continuar pedindo você.</span>
         </span>
       </label>
+      <div className="st-row">
+        <div className="st-label">
+          <b>Quando um voo termina e espera você</b>
+          <span>
+            O turno era seu (você escreveu, usou Transmitir ou Continuar) e terminou: o voo mostra SUA VEZ. Com a janela da Torre atrás, avisa uma vez,
+            com a notificação e um toque só, como escolhido acima.
+          </span>
+        </div>
+        <Choice
+          value={p.turnAfter}
+          onChange={(v) => set({ turnAfter: v })}
+          options={[
+            { id: 'off', label: 'Não', icon: 'block' },
+            { id: '0', label: 'Na hora', icon: 'notifications' },
+            { id: '1', label: '1 min', icon: 'hourglass_top' },
+            { id: '3', label: '3 min', icon: 'hourglass_top' },
+            { id: '10', label: '10 min', icon: 'hourglass_top' },
+          ]}
+        />
+      </div>
     </>
   );
 }

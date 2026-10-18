@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,10 +20,14 @@ type askLog struct {
 	mu     sync.Mutex
 	open   map[string]attention.Attention
 	choice map[string]attention.Choice
+	// answers are the options picked on an ask, in order (a question after
+	// another, then "Submit answers").
+	answers map[string][]string
 }
 
 func newAskLog(r *radio.Service) *askLog {
-	return &askLog{radio: r, open: map[string]attention.Attention{}, choice: map[string]attention.Choice{}}
+	return &askLog{radio: r, open: map[string]attention.Attention{}, choice: map[string]attention.Choice{},
+		answers: map[string][]string{}}
 }
 
 // seen follows what terminal id asks the user now (nil: nothing).
@@ -41,20 +46,26 @@ func (l *askLog) seen(id string, a *attention.Attention) {
 		delete(l.open, id)
 	}
 	var choice attention.Choice
+	var answers []string
 	if ended != nil {
-		choice = l.choice[id]
+		choice, answers = l.choice[id], l.answers[id]
 		delete(l.choice, id)
+		delete(l.answers, id)
 	}
 	l.mu.Unlock()
 	if ended != nil {
-		l.radio.Answered(id, *ended, string(choice), time.Now().UTC())
+		l.radio.Answered(id, *ended, string(choice), strings.Join(answers, " · "), time.Now().UTC())
 	}
 }
 
-// answered records the interface's answer to terminal id's ask.
-func (l *askLog) answered(id string, c attention.Choice) {
+// answered records the interface's answer to terminal id's ask: a choice, or
+// an option of the agent's (answer is its text, or the user's own).
+func (l *askLog) answered(id string, c attention.Choice, answer string) {
 	l.mu.Lock()
 	l.choice[id] = c
+	if answer != "" {
+		l.answers[id] = append(l.answers[id], answer)
+	}
 	l.mu.Unlock()
 }
 

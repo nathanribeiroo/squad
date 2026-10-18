@@ -59,7 +59,7 @@ func TestLinesAndReload(t *testing.T) {
 	s.handle(ev(events.MessageSent, 5*time.Second, map[string]any{"to": "t1", "toName": "Implementador", "preview": "oi", "images": 2}))
 	s.handle(ev(events.TurnCard, 0, map[string]any{"terminal": "t1", "at": t0.Add(6 * time.Second), "message": "\n  pronto\nmais"}))
 	s.handle(ev(events.TurnCard, 0, map[string]any{"terminal": "t1", "at": t0.Add(6 * time.Second), "message": "pronto", "summary": map[string]any{"text": "Exportou o CSV."}}))
-	s.Answered("t1", attention.Attention{Kind: attention.Permission, Tool: "exec", Detail: "npm test", Since: t0.Add(7 * time.Second)}, "allow", t0.Add(11*time.Second))
+	s.Answered("t1", attention.Attention{Kind: attention.Permission, Tool: "exec", Detail: "npm test", Since: t0.Add(7 * time.Second)}, "allow", "", t0.Add(11*time.Second))
 
 	items, more := s.Page(time.Time{}, 50)
 	if more || keys(items) != "answered,turn,delivered,held,held,replied" {

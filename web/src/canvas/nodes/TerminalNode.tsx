@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NodeResizer, useReactFlow, type Node, type NodeProps, type ResizeParams } from '@xyflow/react';
 import { api } from '../../api/client';
 import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
+import { AskOptions } from '../../components/AskOptions';
 import { confirmDialog } from '../../components/ConfirmDialog';
 import { HiddenScreen } from '../../components/HiddenScreen';
 import { CHOICES, askPhrase, choiceTitle, respond } from '../../lib/attention';
@@ -14,7 +15,7 @@ import { shortPath, terminalCwd } from '../../lib/paths';
 import { dockAt, toggleFocus, useScreenHidden, useScreenPlace, type ScreenPlace } from '../../lib/screens';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
-import { useSquad } from '../../state/store';
+import { useNodeName, useSquad } from '../../state/store';
 import { termSession } from '../../term/session';
 import { gridFor } from '../../term/grid';
 import { ScreenSpace, XTermView } from '../../term/XTermView';
@@ -93,7 +94,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
             <span className="tm-callsign mono">{callsign(t)}</span>
             <span className="tm-name">{t.name}</span>
             <span className="tn-spacer" />
-            <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} compact />
+            <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} yourTurn={rt?.yourTurn} compact />
           </header>
           {hidden ? (
             <div className="tm-body" style={{ position: 'relative' }}>
@@ -157,18 +158,22 @@ export function AskStrip({ rt }: { rt?: TerminalRuntime }) {
     <div className="tn-ask" title={a?.text}>
       <Icon name="front_hand" size={15} />
       <span className="tn-ask-what">{askPhrase(a)}</span>
-      {a?.detail && <span className="tn-ask-detail">{a.detail}</span>}
+      {(a?.detail || (a?.kind !== 'permission' && a?.text)) && <span className="tn-ask-detail">{a?.detail || a?.text}</span>}
     </div>
   );
 }
 
 /**
  * RESPONDER, under the flight (outside it): the answers its prompt offers,
- * with their keys (1, 2, 3 when the flight is selected), and ABRIR TELA.
- * An agent whose keys Torre hasn't verified only gets ABRIR TELA.
+ * with their keys (1, 2, 3 when the flight is selected), or on a question
+ * or a plan the agent's own options; and ABRIR TELA. An agent whose keys
+ * Torre hasn't verified only gets ABRIR TELA.
  */
 export function RespondBar({ id, rt, focused }: { id: string; rt?: TerminalRuntime; focused: boolean }) {
-  const choices = CHOICES.filter((c) => rt?.attention?.choices?.includes(c.choice));
+  const t = useSquad((s) => s.workspace?.nodes.find((n) => n.id === id)?.terminal);
+  const name = useNodeName(id);
+  const a = rt?.attention;
+  const choices = CHOICES.filter((c) => a?.choices?.includes(c.choice));
   const open = () => {
     useSquad.getState().setFocusedTerminal(id);
     termSession(id).focus();
@@ -182,7 +187,8 @@ export function RespondBar({ id, rt, focused }: { id: string; rt?: TerminalRunti
           <span className="kbd">{c.key}</span>
         </button>
       ))}
-      {choices.length === 0 && <span className="tn-respond-note">Responda na tela do voo.</span>}
+      {a?.options?.length ? <AskOptions id={id} a={a} who={t ? callsign(t) : name} /> : null}
+      {choices.length === 0 && !a?.options?.length && <span className="tn-respond-note">Responda na tela do voo.</span>}
       <span className="tn-spacer" />
       {!focused && (
         <button className="tn-respond-open" onClick={open}>
@@ -353,7 +359,7 @@ function LiveHeader({ id, t, rt, state, focused }: { id: string; t: TerminalData
           arremetida
         </span>
       )}
-      <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} />
+      <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} yourTurn={rt?.yourTurn} />
       <NodeMenu items={items} />
     </header>
   );

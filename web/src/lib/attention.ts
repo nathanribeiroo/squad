@@ -24,6 +24,31 @@ export function respond(id: string, choice: AttentionChoice) {
   api.respond(id, choice).catch((e: Error) => toast(e.message, 'err'));
 }
 
+/** Picks one of the agent's options (with the user's text on its text field); false when refused (a toast says why). */
+export function pickOption(id: string, option: string, text?: string): Promise<boolean> {
+  return api
+    .respondOption(id, option, text)
+    .then(() => true)
+    .catch((e: Error) => {
+      toast(e.message, 'err');
+      return false;
+    });
+}
+
+/** Answers the flight's prompt with key 1–9: on a question or a plan, the agent's option of that number; on a permission, 1 allow, 2 always, 3 deny. */
+export function answerKey(id: string, a: Attention | undefined, digit: string): boolean {
+  if (!a) return false;
+  if (a.options?.length) {
+    const o = a.options.find((x) => x.key === digit && !x.input);
+    if (o) void pickOption(id, o.key);
+    return !!o;
+  }
+  const c = CHOICES.find((x) => x.key === digit);
+  if (!c || !a.choices?.includes(c.choice)) return false;
+  respond(id, c.choice);
+  return true;
+}
+
 /** Goes to the oldest flight asking the user: its level, centered, with the keyboard (⌥⏎). */
 export function goToNextAsk(): boolean {
   const st = useSquad.getState();

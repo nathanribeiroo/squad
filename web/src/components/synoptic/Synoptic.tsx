@@ -8,6 +8,7 @@ import { useNodeRoleColor } from '../../lib/roles';
 import { useNow } from '../../lib/useNow';
 import { useScreenHidden, useScreenPlace } from '../../lib/screens';
 import { XTermView } from '../../term/XTermView';
+import { AskOptions } from '../AskOptions';
 import { HiddenScreen } from '../HiddenScreen';
 import { LoopCard } from '../LoopCard';
 import { useSquad } from '../../state/store';
@@ -62,7 +63,11 @@ export function Synoptic() {
 const ORDER: UIState[] = ['ask', 'wait', 'work', 'boot', 'done', 'idle', 'err', 'off'];
 
 function sortStrips(flights: WNode[], runtime: Record<string, TerminalRuntime>): WNode[] {
-  const rank = (n: WNode) => ORDER.indexOf(runtime[n.id]?.activity ?? 'off');
+  // In solo after a turn of yours (SUA VEZ) right after who asks you.
+  const rank = (n: WNode) => {
+    const rt = runtime[n.id];
+    return rt?.yourTurn && rt.activity === 'done' ? 0.5 : ORDER.indexOf(rt?.activity ?? 'off');
+  };
   return [...flights].sort((a, b) => rank(a) - rank(b));
 }
 
@@ -256,7 +261,7 @@ function Strips({ flights, floors, runtime, selected }: { flights: WNode[]; floo
                 </span>
               </span>
               <span className="syn-strip-state mono">
-                {STATE_META[st].label}
+                {rt?.yourTurn && st === 'done' ? <b className="syn-your-turn">Sua vez</b> : STATE_META[st].label}
                 {rt?.activitySince && ['work', 'wait', 'ask', 'done'].includes(st) && <span>{elapsed(rt.attention?.since ?? rt.activitySince, now)}</span>}
               </span>
             </button>
@@ -406,7 +411,8 @@ function PriorityCard({ flights, floors, runtime }: { flights: WNode[]; floors: 
             <span className="kbd">{c.key}</span>
           </button>
         ))}
-        {!a?.choices?.length && <span className="syn-prio-note">Responda na tela do voo, abaixo.</span>}
+        {a?.options?.length ? <AskOptions id={n.id} a={a} who={callsign(n.terminal!)} /> : null}
+        {!a?.choices?.length && !a?.options?.length && <span className="syn-prio-note">Responda na tela do voo, abaixo.</span>}
       </div>
       {a?.choices?.includes('always') && a.labels?.always && <div className="syn-prio-text mono">Sempre = {a.labels.always}</div>}
     </div>

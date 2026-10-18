@@ -43,7 +43,9 @@ export interface ActivityItem {
   source?: string;
   hold?: 'paused' | 'rate' | 'loop';
   /** An ask answered from the interface: the answer. */
-  choice?: AttentionChoice;
+  choice?: AttentionChoice | 'option';
+  /** On a question or a plan: what was picked, or the user's own text. */
+  answer?: string;
   /** The reply's text is kept. */
   hasReply?: boolean;
   /** A pending request waiting for its target's turn to end. */

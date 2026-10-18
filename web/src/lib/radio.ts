@@ -26,6 +26,7 @@ export function toActivity(r: RadioItem): ActivityItem {
     source: r.source,
     hold: r.hold,
     choice: r.choice,
+    answer: r.answer,
     hasReply: r.hasReply,
     queued: r.queued,
     check: r.check,
@@ -43,7 +44,8 @@ export function toActivity(r: RadioItem): ActivityItem {
       return { ...a, toName: `${r.number ? `FL${r.number} · ` : ''}${a.toName}` };
     case 'answered': {
       const ask: Attention = { kind: r.kind ?? 'permission', tool: r.tool, source: 'hook', since: r.time };
-      return { ...a, toName: 'Você', text: [askPhrase(ask), r.detail || (r.kind === 'question' ? r.text : '')].filter(Boolean).join(': ') };
+      const what = [askPhrase(ask), r.detail || (r.kind === 'question' ? r.text : '')].filter(Boolean).join(': ');
+      return { ...a, toName: 'Você', text: r.answer ? `${what} → ${r.answer}` : what };
     }
   }
   return a;

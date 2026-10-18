@@ -1,6 +1,6 @@
 //go:build e2e && !windows
 
-// End-to-end test with the real Devin CLI, logged in. It costs three tiny
+// End-to-end tests with the real Devin CLI, logged in. They cost five tiny
 // prompts. Run:
 //
 //	TORRE_E2E_DEVIN_MODEL=swe-1-6-slow go test -tags e2e -run TestRealDevin -v ./internal/app/
@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -65,6 +66,54 @@ func TestRealDevinPermission(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(filepath.Join(dir, ".devin", "config.local.json")); !strings.Contains(string(b), "Exec(touch)") {
 		t.Fatalf("always: not saved in the project:\n%s", b)
+	}
+}
+
+// The real Devin's question (ask_user_question, read on screen) is answered
+// from the interface with the user's text, on its "Other" field.
+func TestRealDevinQuestion(t *testing.T) {
+	e, shell, devin, _ := startRealDevin(t)
+	done := make(chan agentbus.Result, 1)
+	go func() {
+		done <- e.run(shell, "ask", "Devin", "Use your ask_user_question tool to ask me exactly one question: 'Qual cor?' with the options Azul and Verde. Then reply with only my answer.")
+	}()
+	a := e.waitAttention(devin.ID, func(a *attention.Attention) bool { return a != nil && len(a.Options) > 0 }, 2*time.Minute)
+	field := slices.IndexFunc(a.Options, func(o attention.Option) bool { return o.Input })
+	if a.Kind != attention.Question || a.Text != "Qual cor?" || field < 0 {
+		t.Fatalf("attention: %+v", a)
+	}
+	if code, body := e.respondOption(devin.ID, a.Options[field].Key, "Roxo"); code != 204 {
+		t.Fatalf("respond: %d %s", code, body)
+	}
+	if r := <-done; r.Code != 200 || !strings.Contains(r.Body, "Roxo") {
+		t.Fatalf("reply: %+v\n%s", r, e.app.Server.Terminals().Get(devin.ID).Snapshot())
+	}
+}
+
+// The real Devin in plan mode (alt+p): its plan comes whole in the hook,
+// and the interface approves it (accepting edits); the file gets written.
+func TestRealDevinPlan(t *testing.T) {
+	e, shell, devin, dir := startRealDevin(t)
+	term := e.app.Server.Terminals().Get(devin.ID)
+	_ = term.Raw([]byte("\x1bp"))
+	waitUntil(t, "plan mode", func() bool { return strings.Contains(term.Snapshot(), "Plan ·") })
+	done := make(chan agentbus.Result, 1)
+	go func() {
+		done <- e.run(shell, "ask", "Devin", "Plan how to create the file hello.txt containing the word oi in this folder. Keep the plan to two short steps.")
+	}()
+	a := e.waitAttention(devin.ID, func(a *attention.Attention) bool { return a != nil && a.Kind == attention.Plan && len(a.Options) > 0 }, 3*time.Minute)
+	accept := slices.IndexFunc(a.Options, func(o attention.Option) bool { return strings.Contains(o.Text, "accept edits") })
+	if !strings.Contains(a.PlanText, "hello.txt") || accept < 0 || slices.ContainsFunc(a.Options, func(o attention.Option) bool { return strings.Contains(o.Text, "bypass") }) {
+		t.Fatalf("plan: %+v", a)
+	}
+	if code, body := e.respondOption(devin.ID, a.Options[accept].Key, ""); code != 204 {
+		t.Fatalf("approve: %d %s", code, body)
+	}
+	if r := <-done; r.Code != 200 {
+		t.Fatalf("reply: %+v", r)
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "hello.txt")); err != nil || !strings.Contains(string(b), "oi") {
+		t.Fatalf("the file: %q %v\n%s", b, err, term.Snapshot())
 	}
 }
 

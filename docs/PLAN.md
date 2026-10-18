@@ -68,7 +68,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Permissões nos níveis | `feat/permissoes-niveis` | concluído |
 | Fila de pedidos por voo | `feat/fila-pedidos` | concluído |
 | Testes e revisão no pouso, e ocupação no `torre list` | `feat/checagens-pouso` | concluído |
-| Cartão do laço | `feat/laco` | concluído (PR) |
+| Cartão do laço | `feat/laco` | concluído |
+| Perguntas e planos pela Torre, e SUA VEZ | `feat/perguntas-e-sua-vez` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -250,8 +251,6 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **Modelo no boletim** ("por claude -p · haiku", quadro 08): o resumo só sabe a CLI que usou, não o modelo.
 - **Autor dos commits por indicativo** (quadro 14): no git o autor é a pessoa; seria preciso marcar os commits de cada voo.
 - **Responder pela Torre no Codex e no Gemini** (F3, `internal/attention`, `verified`; o Devin foi feito em `feat/devin-prioridade`): hoje eles entram em PRIORIDADE pela tela e mostram só "Abrir tela". Para liberar AUTORIZAR/SEMPRE/NEGAR em cada um, conferir com a CLI real que tecla escolhe a opção e se confirma sozinha, guardar as telas como casos de teste e pôr o agente em `verified`.
-- **Aprovar o plano e responder às perguntas com opções do Devin** pela Torre: entram em PRIORIDADE, mas as opções não são autorizar/negar (seriam botões com as opções do próprio agente).
-- **Pergunta de "Notification" sem permissão** (F3): o hook `Notification` do Claude também avisa quando ele está ocioso há 60 s esperando uma mensagem; isso não virou PRIORIDADE (todo voo que termina um turno pediria você). Se quiser, pode virar uma opção em Configurações → Avisos.
 - **Mais erros com `code`** (F2, `internal/apierr`): os da interface que mais aparecem já têm (pasta, nomes, siglas, níveis, sessões, cópia, git, resumos). Os que só os agentes veem (CLI e MCP) continuam em inglês de propósito; os raros da interface que faltam (portal, NOTAM travada, cores) mostram a mensagem em inglês.
 - **Trocar a sigla de um papel renomeia os voos dele?** (F1, DEVLOG): hoje o indicativo é dado quando o voo é criado ou troca de papel; mudar a sigla em Papéis vale para os próximos. Renomear os voos abertos mexe no que os outros agentes já conhecem.
 - **Fim da compatibilidade com o nome antigo** (`RENOMEACAO.md`, 1.2): tirar o atalho `squad`, a leitura de `SQUAD_*`, o cookie e o cabeçalho antigos e a busca por `Squad.app`, quando o usuário quiser.
@@ -347,4 +346,23 @@ Pedido do usuário em 2026-10-18 (item 10 da lista de pendências, que estava em
   - a espera geral ligada pelo botão não mostra cartão.
 - **Fora:** perceber o laço antes do limite (o mesmo voo duas vezes na cadeia) e baixar o limite sozinho.
 
-**Status:** pronto no PR `feat/laco` → `main`.
+**Status:** mesclado na `main` pelo PR #33.
+
+## Perguntas e planos pela Torre, e SUA VEZ
+
+Pedido do usuário em 2026-10-18: dois itens do "Para depois" juntos, "Aprovar o plano e responder às perguntas com opções do Devin pela Torre" e o aviso do voo ocioso (o hook `Notification` do Claude), para todos os agentes. O plano foi aprovado com os padrões propostos:
+- no plano, todas as opções do agente viram botão, menos as que desligam todas as permissões;
+- o texto livre entra, porque o levantamento mostrou como digitar com segurança;
+- o aviso de SUA VEZ vem ligado, depois de 1 min, só com a janela atrás.
+
+- **Levantamento real:**
+  - **Claude Code 2.1.302:** pergunta, várias perguntas numa chamada, múltipla escolha, texto livre e plano, com as telas, os hooks e as teclas;
+  - **Devin 3000.11.92:** pergunta, texto livre e plano; logado pelo usuário, com o SWE-1.6 Slow.
+- **Perguntas e planos:** as opções do agente viram botões (teclas 1–9), com um campo para a resposta escrita e "Ver o plano". Ficam na tela: a múltipla escolha, as opções que desligam todas as permissões e a confiança na pasta.
+- **SUA VEZ:** o servidor marca o fim de um turno seu; o voo e a ficha mostram SUA VEZ, e Configurações → Avisos avisa com a janela atrás. Vale para todos os agentes, sem o hook `Notification` do Claude.
+- **Fora:**
+  - o Codex e o Gemini, porque as CLIs não estão instaladas aqui;
+  - a múltipla escolha;
+  - o aviso de SUA VEZ dos voos de outro workspace (vale o workspace aberto).
+
+**Status:** pronto no PR `feat/perguntas-e-sua-vez` → `main`.

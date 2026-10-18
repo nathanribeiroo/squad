@@ -177,18 +177,37 @@ func TestDevinAskAndRespond(t *testing.T) {
 		t.Fatal("the denied turn didn't end")
 	}
 
+	// Its question: its options from the screen, and its text field
+	// reached with the arrows.
 	go e.run(plan, "ask", "Devin", "ASKQ:Qual cor?")
-	a = e.waitAttention(d.ID, func(a *attention.Attention) bool { return a != nil }, 10*time.Second)
-	if a.Kind != attention.Question || a.Source != "screen" || a.Text != "Qual cor?" || len(a.Choices) != 0 {
+	a = e.waitAttention(d.ID, func(a *attention.Attention) bool { return a != nil && len(a.Options) == 3 }, 10*time.Second)
+	if a.Kind != attention.Question || a.Source != "screen" || a.Text != "Qual cor?" || len(a.Choices) != 0 || !a.Options[2].Input {
 		t.Fatalf("question: %+v", a)
 	}
 	if st, _ := e.app.Monitor.State(d.ID); st != activity.Ask {
 		t.Fatalf("state: %s", st)
 	}
-	if err := e.app.Server.Terminals().Get(d.ID).Input([]byte("1")); err != nil {
-		t.Fatal(err)
+	if code, body := e.respondOption(d.ID, "3", "Roxo"); code != 204 {
+		t.Fatalf("respond: %d %s", code, body)
 	}
+	waitUntil(t, "the text typed", func() bool { return strings.Contains(e.log("Devin"), `ASK-TEXT "Roxo"`) })
 	e.waitAttention(d.ID, func(a *attention.Attention) bool { return a == nil }, 5*time.Second)
+
+	// Its plan (exit_plan_mode): the plan from the hook, its options but
+	// the one that turns every permission off.
+	waitUntil(t, "the turn's end", func() bool { st, _ := e.app.Monitor.State(d.ID); return st != activity.Ask && st != activity.Work })
+	go e.run(plan, "ask", "Devin", "PLAN:Criar hello.txt")
+	a = e.waitAttention(d.ID, func(a *attention.Attention) bool { return a != nil && len(a.Options) == 2 }, 10*time.Second)
+	if a.Kind != attention.Plan || a.Tool != "exit_plan_mode" || !strings.Contains(a.PlanText, "Criar hello.txt") || a.Options[1].Text != "No" {
+		t.Fatalf("plan: %+v", a)
+	}
+	if code, body := e.respondOption(d.ID, "2", ""); code != 400 {
+		t.Fatalf("bypass picked: %d %s", code, body)
+	}
+	if code, body := e.respondOption(d.ID, "1", ""); code != 204 {
+		t.Fatalf("approve: %d %s", code, body)
+	}
+	waitUntil(t, "the plan approved", func() bool { return strings.Contains(e.log("Devin"), "ASK-CHOSE 1") })
 }
 
 // Agents whose keys aren't verified get the state from their screen, and

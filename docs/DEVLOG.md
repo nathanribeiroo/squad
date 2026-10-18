@@ -2,6 +2,111 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Perguntas e planos pela Torre, e SUA VEZ
+
+- **Pedido:** dois itens do "Para depois" juntos:
+  - "Aprovar o plano e responder às perguntas com opções do Devin pela Torre", feito também para o Claude;
+  - o aviso do voo ocioso, feito para todos os agentes.
+- **O plano foi aprovado com os padrões propostos:**
+  - no plano, todas as opções do agente viram botão, menos as que desligam todas as permissões;
+  - o texto livre entra;
+  - o aviso de SUA VEZ vem ligado, depois de 1 min, só com a janela atrás.
+- **Por que não usar o hook `Notification` do Claude:** só o Claude o tem, e ele não sabe se o turno era seu. A Torre já sabe quando cada agente termina o turno e se o turno respondia a outro voo, então o aviso sai dela, igual para todos.
+- **Levantamento no Claude Code 2.1.302 (o real, logado no container):**
+  - **A pergunta (`AskUserQuestion`):**
+    - o hook `PermissionRequest` traz as perguntas com as opções;
+    - na tela, cada opção tem a descrição embaixo, depois "Type something." e, abaixo de uma linha, "Chat about this";
+    - o número escolhe e confirma na hora;
+    - no "Type something.", o número leva ao campo, o texto vai e Enter envia.
+  - **Várias perguntas numa chamada:** uma por vez, com abas, e no fim "Ready to submit your answers?" com "Submit answers".
+  - **Múltipla escolha:** caixinhas "[ ] Maçã".
+  - **O plano (`ExitPlanMode`):**
+    - o hook traz o plano inteiro;
+    - as opções são "Yes, and use auto mode", "Yes, manually approve edits" e "Tell Claude what to change" (o campo, que devolve o plano revisado no mesmo turno);
+    - o rodapé "ctrl+g to edit in Vim" fazia a Torre não ler a tela.
+- **Levantamento no Devin 3000.11.92 (o usuário logou a conta dele):**
+  - **Gasto:** 8 pedidos curtos com o SWE-1.6 Slow (3 no levantamento, 5 nos testes); no fim, logout e a pasta apagada.
+  - **A pergunta (`ask_user_question`):**
+    - continua sem hook de permissão, só a tela;
+    - o número escolhe e confirma na hora;
+    - "Other (type your own)" não tem número: a seta para baixo chega nele, aparece o campo, o texto vai e Enter envia.
+  - **O plano:**
+    - o modo de plano liga com alt+P;
+    - o hook `PermissionRequest` traz `exit_plan_mode` com o plano;
+    - as opções são "Yes, switch to accept edits mode", "Yes, switch to bypass mode" e "No";
+    - o número confirma na hora.
+- **Servidor (`internal/attention`):**
+  - **A leitura da tela:**
+    - a descrição de cada opção fica separada do texto;
+    - as opções continuam depois de uma linha;
+    - as caixinhas marcam a múltipla escolha;
+    - o campo de texto é reconhecido, também o "Other" sem número do Devin;
+    - a posição do cursor é lida;
+    - o rodapé "ctrl+g" é aceito;
+    - uma pergunta quebrada em várias linhas num voo estreito é juntada.
+  - **Um tipo novo, `plan`:** o hook do Claude e o do Devin trazem o plano inteiro (até 32 KB) e o título.
+  - **As opções que a interface pode escolher:** todas as do agente, menos as que falam em "bypass", a múltipla escolha e a pergunta de confiança na pasta. Só no Claude e no Devin.
+  - **A rota de resposta:**
+    - aceita `{"option": "2"}` e `{"option": "3", "text": "…"}`;
+    - confere que a pergunta na tela é a mesma e que a opção foi oferecida;
+    - o texto vai numa linha só, até 2000 caracteres;
+    - digita a tecla, espera 300 ms, o texto, espera, e Enter.
+  - **Rádio:** a linha da pergunta ou do plano leva o que foi escolhido. Várias perguntas viram "Azul · Banana · Submit answers".
+- **Corrigido, um defeito antigo:** a pergunta do Claude não era lida (a opção abaixo da linha quebrava a leitura). Quando você a respondia ou recusava com Esc na tela, o voo ficava preso em "pede você", e a fila de pedidos dele parava.
+- **SUA VEZ (servidor):**
+  - no fim de um turno final, o barramento diz se o turno era seu:
+    - não respondeu a pedido nenhum (qualquer pedido entregue e resolvido nesse turno conta);
+    - não há pedido na fila;
+    - não foi o NEGAR dado por você;
+  - só para os agentes; o estado do voo ganha `yourTurn`, que sai quando ele volta a trabalhar.
+- **Interface:**
+  - **RESPONDER, no cartão da PRIORIDADE do Sinóptico e no Rádio:**
+    - as opções do agente, com o número (teclas 1–9) e a descrição ao passar o mouse;
+    - o campo "Outra resposta…" (no plano, "O que mudar no plano…");
+    - "Ver o plano", num diálogo fora do canvas;
+    - a barra quebra em duas linhas quando não cabe.
+  - **A faixa do voo:** "Pede para aprovar o plano · título" ou "Fez uma pergunta · a pergunta".
+  - **SUA VEZ:**
+    - a marca ao lado de "EM SOLO" no voo e na ficha;
+    - a ficha sobe no Sinóptico.
+  - **Configurações → Avisos, "Quando um voo termina e espera você":**
+    - as escolhas: Não, Na hora, 1, 3 ou 10 min;
+    - com a janela atrás, uma vez por turno;
+    - com a notificação do sistema (se ligada) e um toque só.
+- **Decisões sem consulta:**
+  - **"Yes, and use auto mode" vira botão:** ele não desliga todas as permissões, e o botão mostra as palavras do agente.
+  - **"Chat about this" também vira botão.**
+  - **O aviso de SUA VEZ só vale para o workspace aberto.**
+- **Testado aqui:**
+  - **Telas reais como casos de teste** (`TestParseClaudeQuestion`, `TestParseClaudePlan`, `TestParseWrappedQuestion`, `TestParseDevin`):
+    - do Claude: a pergunta, o texto digitado, a revisão, a múltipla escolha e o plano;
+    - do Devin: a pergunta com o cursor em outra opção e o plano.
+  - **Hooks:** `TestParseHookQuestionAndPlan`.
+  - **Agentes falsos** (`TestQuestionOptions`, `TestPlanOptionsAndYourTurn`, `TestYourTurnNotAfterDeny`, `TestDevinAskAndRespond`):
+    - as opções e o texto livre, no modo Claude e no modo Devin;
+    - as recusas: opção que não existe, texto onde não cabe, texto longo demais, bypass;
+    - a linha do Rádio;
+    - SUA VEZ: no turno seu sim; na resposta a outro voo, depois do NEGAR e num comando próprio, não.
+  - **Claude real:**
+    - `TestRealClaudeQuestion`: a pergunta respondida com texto livre pela Torre;
+    - `TestRealClaudePlan`: o plano aprovado pela Torre, com as permissões seguintes;
+    - os antigos `TestRealClaude` e `TestRealClaudePermission` também passam.
+  - **Devin real:**
+    - `TestRealDevinQuestion`: o "Other" pela Torre;
+    - `TestRealDevinPlan`: o plano aprovado pela Torre, com o arquivo criado;
+    - o antigo `TestRealDevinPermission` também passa.
+  - **Na tela, com agentes falsos no modo Claude:**
+    - a pergunta, o plano, "Ver o plano" e SUA VEZ no Espaço e no Sinóptico;
+    - a resposta escrita e o plano aprovado pela interface;
+    - o Rádio;
+    - a aba Avisos;
+    - a notificação de SUA VEZ disparando para os três voos com a janela atrás (numa notificação de mentira no navegador).
+  - **Validação:** `make check` com o navegador, `tsc` e o build.
+- **Não testado:**
+  - **Codex e Gemini:** não instalados aqui; as perguntas deles continuam com "Abrir tela".
+  - **Ouvir o toque de verdade** (aqui não há saída de áudio).
+  - **Windows.**
+
 ## 2026-10-18, Cartão do laço
 
 - **Pedido:** o item 10 da lista de pendências, o cartão "ESPERA GERAL · LAÇO" do quadro 21 (`docs/torre/TELAS.md`), que estava em "Para depois". O plano foi aprovado com os padrões propostos:

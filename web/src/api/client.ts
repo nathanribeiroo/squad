@@ -92,6 +92,9 @@ export const api = {
   limits: () => req<LimitsView>('GET', wsPath('/api/limits')),
   setLimits: (l: Partial<Limits>) => req<LimitsView>('PUT', wsPath('/api/limits'), l),
   respond: (id: string, choice: AttentionChoice) => req<void>('POST', wsPath(`/api/nodes/${id}/attention/respond`), { choice }),
+  /** One of the agent's options on a question or a plan; text on its text field. */
+  respondOption: (id: string, option: string, text?: string) =>
+    req<void>('POST', wsPath(`/api/nodes/${id}/attention/respond`), { option, text: text ?? '' }),
   /** Agents interrupted mid-turn: send them "continue", or forget it (all, or ids). */
   interrupted: (action: 'continue' | 'dismiss', ids?: string[]) => req<{ ids: string[] }>('POST', wsPath(`/api/interrupted/${action}`), { ids }),
   addEdge: (a: string, b: string) => req<WEdge>('POST', wsPath('/api/edges'), { a, b }),

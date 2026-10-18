@@ -144,7 +144,34 @@ func (b *Bus) turnEnded(te activity.TurnEnd) {
 	}
 	b.mu.Lock()
 	b.last[te.ID] = te
+	yours := b.yourTurnLocked(te, n.Terminal.Agent)
+	fn := b.onYourTurn
 	b.mu.Unlock()
+	if yours && fn != nil {
+		fn(te.ID)
+	}
+}
+
+// SetOnYourTurn installs fn, called when a flight's turn ended and that turn
+// was the user's (Avisos → "Quando um voo termina e espera você").
+func (b *Bus) SetOnYourTurn(fn func(id string)) { b.onYourTurn = fn }
+
+// yourTurnLocked reports whether the turn that te ended was the user's: an
+// agent's turn that answered no request (the asker gets that answer), with
+// no request waiting in its line (it goes on at once) and not ended by the
+// user's own "deny".
+func (b *Bus) yourTurnLocked(te activity.TurnEnd, agent string) bool {
+	answered := b.answered[te.ID]
+	delete(b.answered, te.ID)
+	if answered || !IsAgent(agent) || te.Reason == "denied" {
+		return false
+	}
+	for _, p := range b.pending {
+		if p.To == te.ID && !p.resolved {
+			return false
+		}
+	}
+	return true
 }
 
 // handToWaiter gives request p to its target when the target is blocked in
