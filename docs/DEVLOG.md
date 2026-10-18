@@ -2,6 +2,62 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Testes e revisão no pouso, e ocupação no `torre list`
+
+- **Pedido:** o item 12 da lista de pendências ("✓ testes · ✓ revisão" na fila de pouso, que estava no mockup mas nunca existiu) e, junto, mostrar no `torre list` quem está ocupado e a fila de cada voo. O plano foi aprovado com os padrões propostos:
+  - a marca não bloqueia o pouso;
+  - marcam os voos do nível e o líder que o criou;
+  - só testes e revisão;
+  - a interface só mostra;
+  - a cópia da sessão fica de fora.
+- **Marcas (`internal/floors/checks.go`, novo):**
+  - **O comando:** `torre floor mark tests|review pass|fail "nota" [--floor "Nome"]`. O nível é o do voo que roda, ou `--floor` para o líder na pista.
+  - **O que guarda (`store.Floor.Checks`):** o resultado, a nota (até 300 caracteres), quem marcou (nome e indicativo), quando e o commit do nível naquele momento.
+  - **Alterações sem commit:** não entram na marca, e a resposta avisa que, depois do commit, é preciso marcar de novo.
+  - **Quem pode:** um voo de outro nível ou da pista que não criou o nível recebe 403.
+  - **MCP:** a ferramenta `floors` ganhou a ação `mark`. Ela já era liberada, e a marca não roda nada, então não pede aprovação.
+  - **Agentes:** `torre floor list` mostra as marcas ("tests passed (TST: …) on the latest commit", "on an older commit, a1b2c3d, 1 commit(s) ago: mark again", "not marked"), e `torre floor land` diz como elas estavam no pouso.
+  - **Status:** `GET /api/floors/status` traz o commit de cada nível (`head`), e a interface compara com o da marca.
+  - **Rádio:** o evento `floor.checked` vira uma linha ("TST → FL1 · Login · testes · passou").
+- **Papéis padrão:**
+  - **Testador e Revisor:** num nível, terminam marcando o resultado, e marcam de novo depois de commits novos.
+  - **Planejador:** confere em `torre floor list` antes de pousar e, ao delegar, prefere quem está livre.
+  - **A skill** explica a marca e a ocupação no `torre list`.
+- **`torre list` (`internal/agentbus`):**
+  - **Em cada voo ligado,** uma segunda linha quando há o que dizer:
+    - "busy: answering request 7f3a from "Plano"";
+    - "1 more in its line (from "Revisor"): an ask now waits for those first";
+    - "waiting for "Impl" (#2 in its line)", ou "(request 7f3a)" quando já foi entregue, ou "(torre wait)".
+  - **Para quem roda:** "2 request(s) wait for your turn to end (from …)".
+  - **Uma linha de legenda** dos estados.
+- **Decisão sem consulta, pedido na fila sem número:** o voo de destino ainda não leu esse pedido. Com o número na mão, ele poderia responder sem ler. Pelo mesmo motivo, o `torre reply` agora recusa (409) responder a um pedido que ainda não chegou.
+- **Interface:**
+  - **Fila de pouso do Sinóptico:** "✓ testes · ⟳ revisão · ✓ tudo commitado · ✓ ninguém no ar", com quem marcou, a nota, quando e o commit ao passar o mouse.
+  - **"Autorizar pouso":** duas caixas a mais (testes e revisão), numa grade de 3 por 2.
+  - **Rádio:** a linha da marca.
+- **Testado aqui:**
+  - **`internal/floors`:**
+    - marcar pelo voo do nível e pelo líder;
+    - as recusas;
+    - o evento;
+    - a marca desatualizada depois de um commit;
+    - o aviso de alterações sem commit;
+    - o `head` no status.
+  - **Agentes falsos:**
+    - um Testador criado pelo líder no nível marca pelo MCP;
+    - a linha do Rádio;
+    - `floor list`;
+    - o pouso pela CLI citando as marcas;
+    - o `torre list` com um voo ocupado, fila e espera, de fora e pelo próprio voo;
+    - o `reply` recusado.
+  - **Claude real** (`TestRealClaudeFloorMark`, novo): um Claude Testador num nível roda `sh test.sh` (a Torre autoriza o comando) e marca pelo MCP sem pedir aprovação, com o commit certo.
+  - **Na tela:** a fila de pouso, o diálogo e o Rádio, com marcas feitas por shells no nível.
+  - **Validação:** `make check` com o navegador, `tsc` e o build.
+- **Não testado:**
+  - **Devin real:** a conta está deslogada. A ferramenta é a mesma `floors`, já liberada na configuração do Devin.
+  - **Codex e Gemini reais:** não instalados aqui. O Gemini usa a CLI.
+  - **Windows.**
+
 ## 2026-10-18, Fila de pedidos por voo
 
 - **Pedido:** o item 19 da lista de pendências, que apareceu nos testes do item 18. O plano foi aprovado com os padrões propostos:

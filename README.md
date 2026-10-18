@@ -133,7 +133,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 **Sinóptico (`⌥S`, ou ESPAÇO · SINÓPTICO no topo):** a sessão inteira de relance, para deixar aberta o dia todo.
 - **Radar:** cada voo é um símbolo no seu nível (a pista no centro, um anel por nível), na posição que tem no canvas: ▲ no ar, ● pede você (com o anel pulsando), △ aguarda, □ em solo, ○ hangar. Linhas âmbar tracejadas são pedidos abertos; verdes, respostas recentes. Os contadores ficam em cima e a legenda embaixo. Clique seleciona; duplo clique abre o voo no Espaço.
 - **Fichas:** uma faixa de papel por voo, na ordem pede você › aguarda › no ar › em solo › hangar, com o que ele está fazendo, o agente, o nível e o tempo no estado.
-- **Fila de pouso:** os níveis com commits, com as checagens (tudo commitado, ninguém no ar) e "Autorizar pouso…".
+- **Fila de pouso:** os níveis com commits, com as checagens (testes, revisão, tudo commitado, ninguém no ar) e "Autorizar pouso…". Testes e revisão são marcas que os voos do nível deixam (veja "Testes e revisão", nos níveis de voo).
 - **Frequências:** os pares de voos, com pedido aberto (âmbar) ou resposta recente (verde), mais a taxa e os saltos.
 - **Prioridade:** o voo que pede você há mais tempo ("1 de N"), com a pergunta, o comando e AUTORIZAR (1), SEMPRE (2) e NEGAR (3). Sem prioridade, o cartão some.
 - **Terminal:** a tela do voo selecionado, ao vivo; clique para digitar; o alfinete fixa o voo, que deixa de seguir a seleção.
@@ -315,6 +315,12 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - Os voos do nível abrem na cópia; pastas relativas, e mesmo uma pasta da pista dada por inteiro, apontam para a cópia. Um voo pode estar na frequência de voos de outros níveis: o líder na pista conversa com quem está no nível.
 - **Pousar** fecha os voos e portais do nível e apaga a pasta; as NOTAMs descem para a pista. O branch fica. Com `--merge`, antes mescla o branch no branch de origem (`--into outro` para outro), com commit de merge. Se o branch de destino não estiver aberto em nenhuma pasta, a mescla acontece sem tocar em pasta nenhuma. É recusado se o nível tiver alteração não commitada, se a pasta de destino tiver alteração em arquivo versionado, ou se o branch do nível tiver commitado um arquivo copiado da pista (como o `.env`, que pode ter segredos). Com conflito, nada muda, e a resposta lista os arquivos.
 - **Autorizar pouso · FL2:** o diálogo mostra os commits do nível, as checagens (conflitos, tudo commitado, voos no ar, commits novos na origem), onde mesclar e o que fecha. Os conflitos com o branch de origem são checados antes de tentar (`git merge-tree`, sem tocar em pasta): "✓ sem conflitos" ou "✕ 1 conflito · README.md". Com um git anterior ao 2.38, ou mesclando em outro branch, eles são checados ao pousar, e o diálogo lista os arquivos.
+- **Testes e revisão:** o Testador e o Revisor de um nível registram o resultado deles com `torre floor mark tests pass "12 testes passaram"` ou `torre floor mark review fail "falta tratar o erro"` (pelo MCP, a ferramenta `floors` com `action: mark`, que não pede aprovação).
+  - **Quem marca:** os voos do próprio nível e o líder que o criou.
+  - **A marca vale para o commit do nível naquele momento:** com um commit novo depois, ela fica "desatualizada" e precisa ser feita de novo. Alterações sem commit na hora não entram nela, e a resposta avisa.
+  - **Onde aparece:** na fila de pouso do Sinóptico e no "Autorizar pouso", como ✓ (passou), ✕ (falhou), ⟳ (desatualizada) ou ○ (sem marca); passando o mouse, quem marcou, a nota, quando e o commit. O Rádio ganha uma linha a cada marca.
+  - **Para os agentes:** `torre floor list` mostra as marcas, e `torre floor land` diz como elas estavam no pouso.
+  - **Não bloqueiam o pouso:** quem decide é você, ao autorizar. Os papéis padrão do Testador e do Revisor marcam, e o do Planejador confere antes de pousar; quem editou esses papéis antes usa "Restaurar padrão" em Papéis para trazer a regra.
 - **Permissões (o SEMPRE):** o Claude e o Devin guardam o que você libera com SEMPRE num arquivo da pasta do projeto, fora do git (`.claude/settings.local.json` e `.devin/config.local.json`).
   - **Ao criar o nível:** os dois arquivos vêm da pista;
   - **quando um Claude ou Devin decola nele:** ganha as regras que a pista ganhou depois (só soma, nunca tira);
@@ -443,7 +449,7 @@ Dentro de um terminal da Torre, o comando `torre` está no PATH:
 
 | Comando | O que faz |
 |---|---|
-| `torre list` | quem você é e o que está ligado a você |
+| `torre list` | quem você é e o que está ligado a você, com o estado de cada voo, o pedido que ele está atendendo, quantos esperam na fila dele e por quem ele espera |
 | `torre ask "Nome" "mensagem"` | entrega a mensagem (com o envelope `[de: Você · pedido 7f3a]`) e espera a resposta |
 | `torre ask "Nome" --raw "teclas"` | digita teclas (`\n` Enter, `\x03` Ctrl-C…) e devolve a tela |
 | `torre ask --batch '{"A":"…","B":"…"}'` | vários pedidos em paralelo |
@@ -462,6 +468,7 @@ Dentro de um terminal da Torre, o comando `torre` está no PATH:
 | `torre floor list` | os níveis de voo: número (FL1…), branch, estado, pasta |
 | `torre floor create "Nome"` | líderes: cria um nível a partir do último commit (`--branch B`, `--existing` para abrir um branch que já existe) |
 | `torre new "Bia" --role impl --floor "Nome"` | líderes: cria o voo no nível, trabalhando na cópia (`--floor ground` ou `--floor pista` é a pista) |
+| `torre floor mark tests\|review pass\|fail "nota"` | os voos do nível (e o líder que o criou): registram o resultado dos testes ou da revisão no último commit, para a fila de pouso |
 | `torre floor land "Nome" [--merge \| --into BRANCH]` | líderes: pousa um nível que criou, mesclando o branch antes se pedido |
 
 Com mais de um portal ligado, diga qual: `torre portal "Docs" snapshot`. `torre portal help` mostra tudo.
@@ -489,6 +496,13 @@ Se não estiver livre, o pedido espera na fila dele, por ordem de chegada, e ent
 - **O que não entra na fila:** shells e comandos próprios (`--raw` também), a resposta a quem pergunta de volta, a mensagem para quem está em `torre wait` esperando quem mandou e as suas mensagens (Transmitir).
 - **Laços:** se um voo ocupado pergunta (ou espera com `torre wait`) e há na fila dele um pedido de alguém da mesma cadeia, ele recebe esse pedido na hora, como resultado do comando, com a instrução de responder primeiro (`torre reply`) e mandar a mensagem dele de novo depois. Sem isso, um esperaria o turno do outro.
 - **Limite:** a espera na fila conta para o limite de 30 min do pedido. Passou disso, o pedido volta dizendo que a mensagem não foi entregue.
+- **No `torre list`:** cada voo ligado mostra o pedido que está atendendo e de quem, quantos esperam na fila dele e por quem ele mesmo espera. Para você mesmo, mostra quantos esperam o seu turno acabar e de quem. Uma linha de legenda explica os estados (`idle`, `work`, `wait`, `ask`…). Um pedido na fila aparece sem o número, e o `torre reply` recusa responder a um pedido que ainda não chegou: o agente responderia sem ter lido.
+  ```
+  - name: "Impl", agent: claude, state: work, callsign: IMP
+    busy: answering request 7f3a from "Plano"; 1 more in its line (from "Revisor"): an ask now waits for those first
+  - name: "Revisor", agent: devin, state: wait, callsign: REV
+    waiting for "Impl" (#2 in its line)
+  ```
 
 **Tempo de espera:**
 - o `ask` espera enquanto o agente trabalha (até 30 min) e volta depois de 2 min sem atividade nenhuma, com a tela e o aviso `[torre: timeout …]`. Isso acontece, por exemplo, quando o agente fica parado num pedido de permissão;

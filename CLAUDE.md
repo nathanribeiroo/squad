@@ -76,7 +76,7 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `torre portal` |
 | `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |
 | `internal/radio` | o Rádio de cada sessão: as linhas montadas dos eventos, em `radio.jsonl` na pasta da sessão, com o texto dos pedidos e das respostas |
-| `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `torre floor`, `/api/floors`; a cópia em que uma sessão trabalha, e mesclar sem fechar (`copy.go`); as permissões do SEMPRE do Claude e do Devin que seguem os níveis e voltam no pouso (`permissions.go`) |
+| `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `torre floor`, `/api/floors`; a cópia em que uma sessão trabalha, e mesclar sem fechar (`copy.go`); as permissões do SEMPRE do Claude e do Devin que seguem os níveis e voltam no pouso (`permissions.go`); as marcas de testes e revisão dos voos, `torre floor mark` (`checks.go`) |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
 | `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas`, sessões em `src/components/SessionsMenu.tsx` |
 

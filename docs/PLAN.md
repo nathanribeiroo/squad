@@ -66,7 +66,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Responder ao Devin pela Torre, e o som dos avisos | `feat/devin-prioridade` | concluído |
 | Histórico do Rádio | `feat/radio-historico` | concluído |
 | Permissões nos níveis | `feat/permissoes-niveis` | concluído |
-| Fila de pedidos por voo | `feat/fila-pedidos` | concluído (PR) |
+| Fila de pedidos por voo | `feat/fila-pedidos` | concluído |
+| Testes e revisão no pouso, e ocupação no `torre list` | `feat/checagens-pouso` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -245,7 +246,6 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 
 - **Desenho e Grupo** (mesmo item; quadro 02): os botões ficam na barra de ferramentas, desligados com "em breve", até os nós `drawing` e `group` terem desenho.
 - **Trocar os atalhos** (`TELAS.md`, quadro 18, aba Atalhos: "os de ⌥ podem ser trocados"): a aba só lista os atalhos.
-- **"✓ testes · ✓ revisão" na fila de pouso** (item 6): não existem; poderiam vir de um agente marcando o nível (`torre floor ready --check testes`).
 - **Modelo no boletim** ("por claude -p · haiku", quadro 08): o resumo só sabe a CLI que usou, não o modelo.
 - **Autor dos commits por indicativo** (quadro 14): no git o autor é a pessoa; seria preciso marcar os commits de cada voo.
 - **Responder pela Torre no Codex e no Gemini** (F3, `internal/attention`, `verified`; o Devin foi feito em `feat/devin-prioridade`): hoje eles entram em PRIORIDADE pela tela e mostram só "Abrir tela". Para liberar AUTORIZAR/SEMPRE/NEGAR em cada um, conferir com a CLI real que tecla escolhe a opção e se confirma sozinha, guardar as telas como casos de teste e pôr o agente em `verified`.
@@ -318,4 +318,16 @@ Pedido do usuário em 2026-10-18 (item 19 da lista de pendências, que apareceu 
 - **Interface:** o fio mostra "NA FILA"; as faixas dos voos e o Rádio dizem quem espera quem.
 - **Fora:** um botão para furar a fila; mostrar a fila no `torre list`.
 
-**Status:** pronto no PR `feat/fila-pedidos` → `main`.
+**Status:** mesclado na `main` pelo PR #31.
+
+## Testes e revisão no pouso, e ocupação no `torre list`
+
+Pedido do usuário em 2026-10-18: o item 12 da lista de pendências ("✓ testes · ✓ revisão" na fila de pouso, que estava em "Para depois") e, junto, mostrar no `torre list` quem está ocupado e a fila de cada voo. O plano foi aprovado com os padrões propostos: a marca não bloqueia o pouso; marcam os voos do nível e o líder que o criou; só testes e revisão; a interface só mostra; a cópia da sessão fica de fora.
+
+- **Marcar:** `torre floor mark tests|review pass|fail "nota"` (ou a ferramenta `floors` do MCP, com `action: mark`). Fica guardado no nível o resultado, a nota, quem marcou, quando e o commit do nível. Com um commit novo depois, a marca fica desatualizada.
+- **Onde aparece:** a fila de pouso do Sinóptico e o "Autorizar pouso" (✓, ✕, ⟳ ou ○), uma linha do Rádio a cada marca, `torre floor list` e a resposta do `torre floor land`.
+- **Papéis padrão:** o Testador e o Revisor marcam; o Planejador confere antes de pousar e olha o `torre list` antes de delegar.
+- **`torre list`:** em cada voo, o pedido que atende, a fila e por quem espera; para quem roda, quantos esperam o turno dele; a legenda dos estados. Um pedido na fila não mostra o número, e o `torre reply` recusa responder a um pedido que ainda não chegou.
+- **Fora:** marcar pela interface; "arquitetura" como terceira marca; a cópia da sessão; bloquear o pouso com marca reprovada.
+
+**Status:** pronto no PR `feat/checagens-pouso` → `main`.
