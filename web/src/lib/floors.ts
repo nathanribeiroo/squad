@@ -1,6 +1,7 @@
 // Floors: isolated copies of the workspace's repository (git worktrees on
 // their own branch), each with its own canvas (internal/floors).
-import type { Floor, FloorGit, Workspace } from '../api/types';
+import type { CheckKind, Floor, FloorGit, Workspace } from '../api/types';
+import { ago } from './sessions';
 import { useSquad } from '../state/store';
 
 /** Name of the ground floor (the runway) when its branch isn't known. */
@@ -70,4 +71,37 @@ export function plural(n: number, one: string, many: string): string {
 /** "FL2" for a floor, "PISTA" for the ground floor. */
 export function flightLevel(f?: Floor): string {
   return f ? `FL${f.number || '?'}` : 'PISTA';
+}
+
+export const CHECK_NAMES: Record<CheckKind, string> = { tests: 'testes', review: 'revisão' };
+
+/** A floor's tests or review as the landing queue shows it. */
+export interface CheckView {
+  kind: CheckKind;
+  /** stale: marked on an older commit than the floor's latest. */
+  state: 'pass' | 'fail' | 'stale' | 'none';
+  label: string;
+  /** Who marked it, the note, when and on which commit. */
+  detail: string;
+}
+
+/** The floor's checks, against its latest commit (head; unknown: as marked). */
+export function checkViews(f: Floor, head?: string): CheckView[] {
+  return (['tests', 'review'] as CheckKind[]).map((kind) => {
+    const c = f.checks?.[kind];
+    const name = CHECK_NAMES[kind];
+    if (!c) return { kind, state: 'none', label: `○ ${name}`, detail: 'sem marca' };
+    const stale = !!head && c.commit !== head;
+    const state = stale ? 'stale' : c.result;
+    const mark = stale ? '⟳' : c.result === 'pass' ? '✓' : '✕';
+    const who = c.callsign || c.byName;
+    const detail = [
+      `${who} ${c.result === 'pass' ? 'passou' : 'falhou'}${c.note ? `: ${c.note}` : ''}`,
+      `${ago(c.at)} · commit ${c.commit.slice(0, 7)}`,
+      stale ? 'chegou commit depois: marcar de novo' : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    return { kind, state, label: `${mark} ${name}`, detail };
+  });
 }

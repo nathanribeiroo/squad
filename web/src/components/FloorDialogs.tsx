@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import type { Floor, FloorChanges, LandResult, PermissionRule, WNode } from '../api/types';
-import { GROUND, flightLevel, plural, slugify, useBranch } from '../lib/floors';
+import { CHECK_NAMES, GROUND, checkViews, flightLevel, plural, slugify, useBranch, type CheckView } from '../lib/floors';
 import { callsign } from '../lib/model';
 import { shortPath } from '../lib/paths';
 import { toast } from '../lib/toast';
@@ -283,11 +283,17 @@ function Commits({ changes, base, what }: { changes: FloorChanges; base?: string
  * the base moved, and the conflicts a merge into the base would have (git
  * merge-tree, before trying; checked again when landing).
  */
-function LandChecks({ changes, base, flying }: { changes: FloorChanges; base?: string; flying: string[] }) {
+function LandChecks({ changes, base, flying, checks }: { changes: FloorChanges; base?: string; flying: string[]; checks?: CheckView[] }) {
   const clean = changes.files.length === 0;
   const conflicts = changes.conflicts;
   return (
-    <div className="fl-checks">
+    <div className={`fl-checks${checks?.length ? ' six' : ''}`}>
+      {checks?.map((c) => (
+        <div key={c.kind} className={`fl-check ${CHECK_LOOK[c.state]}`} title={c.detail}>
+          <b>{c.state === 'none' ? CHECK_NAMES[c.kind] : c.label}</b>
+          <span>{c.state === 'none' ? 'sem marca' : c.state === 'stale' ? 'commit antigo · marcar de novo' : c.detail.split(' · ')[0]}</span>
+        </div>
+      ))}
       {!conflicts ? (
         <div className="fl-check idle">
           <b>conflitos</b>
@@ -372,6 +378,9 @@ function taken(r: LandResult): string {
   return r.permissions ? ` · ${plural(r.permissions, 'permissão levada', 'permissões levadas')}` : '';
 }
 
+// How a floor's tests or review look among the land checks.
+const CHECK_LOOK = { pass: 'ok', fail: 'err', stale: 'wait', none: 'idle' } as const;
+
 /** "Mesclar em [branch]": the target, among the branches it can merge into. */
 function IntoSelect({ into, branches, onChange, onClick }: { into: string; branches: string[]; onChange: (b: string) => void; onClick?: () => void }) {
   return (
@@ -437,6 +446,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const { closes, notes } = useFloorNodes(floor.id);
   const runtime = useSquad((s) => s.runtime);
+  const head = useSquad((s) => s.floorStatus?.floors[floor.id]?.head);
   const flying = closes.filter((n) => n.terminal && ['work', 'wait'].includes(runtime[n.id]?.activity ?? '')).map((n) => callsign(n.terminal!));
   // Nothing to merge: keeping the branch is the obvious choice.
   useEffect(() => {
@@ -501,7 +511,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
       {changes && (
         <>
           {changes.missing && <p className="fl-warn">A pasta do nível sumiu. Pousar só limpa o registro; os commits do branch continuam.</p>}
-          <LandChecks changes={changes} base={floor.base} flying={flying} />
+          <LandChecks changes={changes} base={floor.base} flying={flying} checks={checkViews(floor, head)} />
           <Commits changes={changes} base={floor.base} what={['commit do nível', 'commits do nível', 'Nenhum commit novo no nível']} />
           {dirty && (
             <div className="fl-warn">

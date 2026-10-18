@@ -28,6 +28,8 @@ export function toActivity(r: RadioItem): ActivityItem {
     choice: r.choice,
     hasReply: r.hasReply,
     queued: r.queued,
+    check: r.check,
+    result: r.result,
   };
   switch (r.outcome) {
     case 'held':
@@ -37,6 +39,8 @@ export function toActivity(r: RadioItem): ActivityItem {
       return { ...a, fromName: 'Você', text: a.text + (r.images ? ` (+${r.images} imagem${r.images > 1 ? 'ns' : ''})` : '') };
     case 'note':
       return { ...a, fromName: r.by === 'user' ? 'Você' : r.by === 'external' ? 'Edição externa' : a.fromName, toName: a.toName || a.text };
+    case 'check':
+      return { ...a, toName: `${r.number ? `FL${r.number} · ` : ''}${a.toName}` };
     case 'answered': {
       const ask: Attention = { kind: r.kind ?? 'permission', tool: r.tool, source: 'hook', since: r.time };
       return { ...a, toName: 'Você', text: [askPhrase(ask), r.detail || (r.kind === 'question' ? r.text : '')].filter(Boolean).join(': ') };

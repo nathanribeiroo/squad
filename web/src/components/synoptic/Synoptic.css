@@ -71,6 +71,9 @@
 .syn-land-checks { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; }
 .syn-land-checks .ok { color: var(--stt-done); }
 .syn-land-checks .bad { color: var(--stt-err); }
+.syn-land-checks .warn { color: var(--stt-wait); }
+.syn-land-checks .idle { color: var(--text-3); }
+.syn-land-checks span[title] { cursor: help; }
 .syn-land .btn { align-self: flex-start; }
 .syn-freqs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
 .syn-freq { font-size: 11px; padding: 2px 6px; border: 1px solid var(--line-3); color: var(--text-3); }
