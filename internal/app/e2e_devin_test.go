@@ -1,6 +1,6 @@
 //go:build e2e && !windows
 
-// End-to-end tests with the real Devin CLI, logged in. They cost five tiny
+// End-to-end tests with the real Devin CLI, logged in. They cost six tiny
 // prompts. Run:
 //
 //	TORRE_E2E_DEVIN_MODEL=swe-1-6-slow go test -tags e2e -run TestRealDevin -v ./internal/app/
@@ -10,6 +10,7 @@
 package app
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +23,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/config"
 	"github.com/nathanribeiroo/squad/internal/store"
+	"github.com/nathanribeiroo/squad/internal/usage"
 )
 
 // PRIORIDADE with the real Devin: a command stops at its permission prompt;
@@ -169,4 +171,44 @@ func startRealDevin(t *testing.T) (e *env, shell, devin store.Node, dir string) 
 	}
 	time.Sleep(2 * time.Second)
 	return e, shell, devin, dir
+}
+
+// Consumo with the real Devin: a reply's tokens come from its sessions.db,
+// the context window's size from its footer, the account's quota from
+// /usage on its screen.
+func TestRealDevinUsage(t *testing.T) {
+	e, shell, devin, _ := startRealDevin(t)
+	if r := e.run(shell, "ask", "Devin", "Reply with only the word: oi"); r.Code != 200 {
+		t.Fatalf("ask: %+v", r)
+	}
+	term := e.app.Server.Terminals().Get(devin.ID)
+	_ = term.Raw([]byte("/usage"))
+	time.Sleep(time.Second)
+	_ = term.Raw([]byte("\r"))
+	var got struct {
+		Flights  []usage.Flight  `json:"flights"`
+		Accounts []usage.Account `json:"accounts"`
+	}
+	ok := func() bool {
+		w := e.call("GET", "/api/usage", nil)
+		got.Flights, got.Accounts = nil, nil
+		_ = json.Unmarshal(w.Body.Bytes(), &got)
+		return len(got.Flights) == 1 && got.Flights[0].Tokens.Output > 0 && got.Flights[0].Context != nil && got.Flights[0].Context.Size > 0 &&
+			len(got.Accounts) == 1 && got.Accounts[0].Agent == "devin"
+	}
+	deadline := time.Now().Add(time.Minute)
+	for !ok() {
+		if time.Now().After(deadline) {
+			t.Fatalf("usage: %+v\n%s", got, term.Snapshot())
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	f, a := got.Flights[0], got.Accounts[0]
+	t.Logf("flight: %+v context %+v\naccount: %+v", f, *f.Context, a)
+	if f.ID != devin.ID || f.Agent != "devin" || f.Tokens.Input+f.Tokens.CacheRead < 1000 || f.Context.Percent <= 0 {
+		t.Errorf("flight: %+v", f)
+	}
+	if a.ACUs == nil && len(a.Windows) == 0 && !strings.Contains(term.Snapshot(), "No quota data available") {
+		t.Errorf("account without quota or ACUs: %+v\n%s", a, term.Snapshot())
+	}
 }

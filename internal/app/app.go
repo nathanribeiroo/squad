@@ -293,6 +293,12 @@ func New(o Options) (*App, error) {
 		Publish: srv.Bus().Publish,
 	})
 	mon.OnAnyTurnEnd(func(te activity.TurnEnd) { go tracker.Refresh(te.ID) })
+	// Devin tells its context's size and the account's quota on its screen.
+	mon.SetOnScreen(func(id, agent, snap string) {
+		if agent == "devin" {
+			tracker.DevinScreen(id, snap)
+		}
+	})
 	srv.HandleSession("GET /api/usage", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{"flights": tracker.Flights(), "accounts": accounts.All()})
 	}))

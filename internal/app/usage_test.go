@@ -103,3 +103,32 @@ func TestUsageFromClaudeStatusLine(t *testing.T) {
 		t.Fatalf("after removal: %+v", got)
 	}
 }
+
+// Devin's quota comes from its screen, when the user opens /usage there; the
+// accounts are the same in every workspace.
+func TestUsageFromDevinScreen(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	dv := e.agentOfType("Dv", "devin")
+	term := e.app.Server.Terminals().Get(dv.ID)
+	_ = term.Raw([]byte(`SHOW:❭ /usage\n\n Fetching account usage…\n\n Daily   ■■■■■■■■■■  41% used  · resets in 3h 5m\n Weekly  ■■■■■■■■■■  12% used  · resets Oct 25, 8:00 AM (UTC)\n\n This session\n Model     SWE-1.6 Slow` + "\r"))
+	var got struct {
+		Accounts []usage.Account `json:"accounts"`
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		w := e.call("GET", "/api/usage", nil)
+		_ = json.Unmarshal(w.Body.Bytes(), &got)
+		if len(got.Accounts) == 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no account: %s\n%s", w.Body, term.Snapshot())
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	a := got.Accounts[0]
+	if a.Agent != "devin" || len(a.Windows) != 2 || a.Windows[0].Kind != usage.Daily || a.Windows[0].Used != 41 || a.Windows[1].Used != 12 ||
+		time.Until(a.Windows[0].ResetsAt) < 3*time.Hour || time.Until(a.Windows[0].ResetsAt) > 3*time.Hour+10*time.Minute {
+		t.Fatalf("account: %+v", a)
+	}
+}

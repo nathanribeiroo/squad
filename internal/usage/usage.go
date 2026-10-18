@@ -49,9 +49,10 @@ type Flight struct {
 	Agent  string `json:"agent"`
 	Tokens Tokens `json:"tokens"`
 	// CostUSD is Claude Code's estimate at API prices (a subscription isn't
-	// charged it); ACUs are Devin's.
+	// charged it); ACUs and credits are what Devin charged.
 	CostUSD float64   `json:"costUsd,omitempty"`
 	ACUs    float64   `json:"acus,omitempty"`
+	Credits float64   `json:"credits,omitempty"`
 	Context *Context  `json:"context,omitempty"`
 	Models  []string  `json:"models,omitempty"`
 	At      time.Time `json:"at"`

@@ -28,6 +28,8 @@
 //	                      ExitPlanMode: 1 or 2 approve, 3 then text and CR
 //	                      sends feedback, Esc declines; as Devin, its
 //	                      exit_plan_mode: 1 or 2 approve, 3 says no
+//	SHOW:<text>           prints the text, with \n as line breaks (what an
+//	                      agent shows, such as Devin's /usage)
 //
 // $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
 // $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Torre's hooks:
@@ -227,6 +229,9 @@ func turn(msg string, work float64) {
 			"   ❯ 1. Yes, and use auto mode\n     2. Yes, manually approve edits\n     3. Tell Claude what to change\n" +
 			"        shift+tab to approve with this feedback\n\n   ctrl+g to edit in Vim · ~/.claude/plans/plan.md\n")
 		readOption('2', '3')
+	}
+	if text, ok := strings.CutPrefix(lastLine(msg), "SHOW:"); ok {
+		out(strings.ReplaceAll(text, `\n`, "\n") + "\n")
 	}
 	if rest, ok := strings.CutPrefix(lastLine(msg), "SLEEP:"); ok {
 		if s, err := strconv.ParseFloat(rest, 64); err == nil {

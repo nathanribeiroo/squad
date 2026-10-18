@@ -31,6 +31,13 @@ type Tracker struct {
 	mu      sync.Mutex
 	flights map[string]Flight
 	claude  map[string]*claudeTranscript // by terminal
+	devin   map[string]*devinScreen      // by terminal
+}
+
+// devinScreen is what a Devin terminal's screen last told.
+type devinScreen struct {
+	context Context // the footer's (its size is in no file)
+	usage   string  // the last /usage block read
 }
 
 // NewTracker makes a workspace's tracker.
@@ -44,7 +51,7 @@ func NewTracker(o Options) *Tracker {
 	if o.Publish == nil {
 		o.Publish = func(string, any) {}
 	}
-	return &Tracker{o: o, flights: map[string]Flight{}, claude: map[string]*claudeTranscript{}}
+	return &Tracker{o: o, flights: map[string]Flight{}, claude: map[string]*claudeTranscript{}, devin: map[string]*devinScreen{}}
 }
 
 // Flights returns what each flight used, as last read.
@@ -67,6 +74,39 @@ func (t *Tracker) Forget(id string) {
 	defer t.mu.Unlock()
 	delete(t.flights, id)
 	delete(t.claude, id)
+	delete(t.devin, id)
+}
+
+// DevinScreen reads a Devin terminal's screen when it changed: a new
+// context in the footer (a reply came: its files have more) and the
+// account's quota, when /usage is open.
+func (t *Tracker) DevinScreen(id, snap string) {
+	ctx, hasCtx := devinContext(snap)
+	block := devinUsageBlock(snap)
+	t.mu.Lock()
+	ds := t.devin[id]
+	if ds == nil {
+		ds = &devinScreen{}
+		t.devin[id] = ds
+	}
+	newCtx := hasCtx && ctx != ds.context
+	if newCtx {
+		ds.context = ctx
+	}
+	newUsage := block != "" && block != ds.usage
+	if newUsage {
+		ds.usage = block
+	}
+	t.mu.Unlock()
+	if newUsage {
+		// Nothing yet while it says "Fetching account usage…".
+		if a, ok := devinAccount(block, t.o.Now()); ok {
+			t.o.Accounts.Set(a)
+		}
+	}
+	if newCtx {
+		go t.Refresh(id)
+	}
 }
 
 // StatusLine takes a Claude Code status line payload from terminal id: the
@@ -141,6 +181,16 @@ func (t *Tracker) Refresh(id string) {
 		fl, err = readGemini(p)
 	case "devin":
 		fl, err = readDevin(home(t.o.DevinDB, DevinDB), term.Conversation)
+		t.mu.Lock()
+		if ds := t.devin[id]; ds != nil && ds.context.Size > 0 {
+			c := ds.context
+			if fl.Context != nil { // the file's count is exact
+				c.Used = fl.Context.Used
+				c.Percent = float64(c.Used) * 100 / float64(c.Size)
+			}
+			fl.Context = &c
+		}
+		t.mu.Unlock()
 	default:
 		return
 	}

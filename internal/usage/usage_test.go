@@ -3,9 +3,11 @@ package usage
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -51,7 +53,14 @@ func appendFile(t *testing.T, path, data string) {
 }
 
 type events struct {
+	mu      sync.Mutex
 	flights []Flight
+}
+
+func (e *events) count() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return len(e.flights)
 }
 
 func newTestTracker(t *testing.T, terms map[string]Terminal, o Options) (*Tracker, *events, *Accounts) {
@@ -61,10 +70,14 @@ func newTestTracker(t *testing.T, terms map[string]Terminal, o Options) (*Tracke
 	o.Terminal = func(id string) (Terminal, bool) { x, ok := terms[id]; return x, ok }
 	o.Publish = func(typ string, data any) {
 		if fl, ok := data.(Flight); ok && typ == "usage.flight" {
+			ev.mu.Lock()
 			ev.flights = append(ev.flights, fl)
+			ev.mu.Unlock()
 		}
 	}
-	o.Now = func() time.Time { return time.Date(2026, 10, 18, 21, 0, 0, 0, time.UTC) }
+	if o.Now == nil {
+		o.Now = func() time.Time { return time.Date(2026, 10, 18, 21, 0, 0, 0, time.UTC) }
+	}
 	return NewTracker(o), ev, acc
 }
 
@@ -97,11 +110,11 @@ func TestClaudeStatusLineAndTranscript(t *testing.T) {
 	if fl.Tokens != (Tokens{Input: 1241, Output: 540, CacheRead: 107918, CacheWrite: 10197}) || fl.Context == nil || fl.CostUSD != 0.166712 {
 		t.Fatalf("after cost-state: %+v", fl)
 	}
-	if len(ev.flights) != 2 {
-		t.Fatalf("events: %d", len(ev.flights))
+	if ev.count() != 2 {
+		t.Fatalf("events: %d", ev.count())
 	}
 	tr.Refresh("T") // nothing new: no event
-	if len(ev.flights) != 2 {
+	if ev.count() != 2 {
 		t.Fatalf("an unchanged flight was announced again")
 	}
 
@@ -199,29 +212,146 @@ func TestGeminiSession(t *testing.T) {
 	}
 }
 
+// Devin 3000.11.92's sessions.db: a reply is stored once per branch of the
+// session's tree (the same request_id); the session row has its cost.
 func TestDevinSessionsDB(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sessions.db")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
 	}
+	reply := func(msg, req string, in, out, cache, ctx int, at string) string {
+		return fmt.Sprintf(`{"message_id":%q,"role":"assistant","content":"oi","metadata":{"num_tokens":%d,"request_id":%q,"metrics":{"ttft_ms":558,"input_tokens":%d,"output_tokens":%d,"cache_read_tokens":%d,"cache_creation_tokens":null,"context_input_tokens":%d},"finish_reason":"stop","created_at":%q,"generation_model":"swe-1-6-slow"}}`, msg, out, req, in, out, cache, ctx, at)
+	}
 	for _, q := range []string{
+		`CREATE TABLE sessions (id TEXT PRIMARY KEY NOT NULL, working_directory TEXT NOT NULL, backend_type TEXT, model TEXT, agent_mode TEXT, created_at INTEGER NOT NULL, last_activity_at INTEGER NOT NULL, title TEXT, main_chain_id INTEGER, metadata TEXT)`,
 		`CREATE TABLE message_nodes (row_id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, node_id INTEGER NOT NULL, parent_node_id INTEGER, chat_message TEXT NOT NULL, created_at INTEGER NOT NULL, metadata TEXT)`,
-		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('d1', 1, '{"role":"user","content":"oi","metadata":{"is_user_input":true}}', 1)`,
-		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('d1', 2, '{"role":"assistant","metadata":{"metrics":{"input_tokens":1000,"output_tokens":50,"cache_read_tokens":4000,"cache_creation_tokens":200},"committed_acu_cost":0.25}}', 2)`,
-		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('d1', 3, '{"role":"assistant","metadata":{"metrics":{"input_tokens":10,"output_tokens":5,"cache_read_tokens":5000,"cache_creation_tokens":0},"committed_acu_cost":0.05}}', 3)`,
-		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('d2', 1, '{"role":"assistant","metadata":{"metrics":{"input_tokens":999,"output_tokens":999},"committed_acu_cost":9}}', 1)`,
+		`INSERT INTO sessions VALUES ('childlike-metacarpal', '/p', 'windsurf', 'swe-1-6-slow', 'normal', 1, 2, 't', 29, '{"total_credit_cost":0,"total_acu_cost":1.25}')`,
+		`INSERT INTO sessions VALUES ('other', '/p', 'windsurf', 'swe-1-6-slow', 'normal', 1, 2, 't', 1, '{"total_acu_cost":9}')`,
+		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('childlike-metacarpal', 1, '{"message_id":"u1","role":"user","content":"oi","metadata":{"is_user_input":true,"metrics":null}}', 1)`,
+		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('childlike-metacarpal', 22, '` + reply("b96e", "aed1", 1084, 68, 11840, 12924, "2026-10-18T22:42:44.81Z") + `', 2)`,
+		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('childlike-metacarpal', 23, '` + reply("b96e", "aed1", 1084, 68, 11840, 12924, "2026-10-18T22:42:44.81Z") + `', 2)`,
+		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('childlike-metacarpal', 25, '` + reply("acab", "8cac", 46, 95, 12896, 12942, "2026-10-18T22:47:01Z") + `', 3)`,
+		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('childlike-metacarpal', 28, '` + reply("ba7b", "a621", 155, 30, 12928, 13083, "2026-10-18T22:47:03Z") + `', 4)`,
+		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('childlike-metacarpal', 29, '` + reply("ba7b", "a621", 155, 30, 12928, 13083, "2026-10-18T22:47:03Z") + `', 4)`,
+		`INSERT INTO message_nodes (session_id, node_id, chat_message, created_at) VALUES ('other', 1, '` + reply("x", "y", 999, 999, 0, 999, "2026-10-18T22:00:00Z") + `', 1)`,
 	} {
 		if _, err := db.Exec(q); err != nil {
 			t.Fatal(err)
 		}
 	}
 	db.Close()
-	tr, _, _ := newTestTracker(t, map[string]Terminal{"D": {Agent: "devin", Conversation: "d1"}}, Options{DevinDB: path})
+	tr, ev, _ := newTestTracker(t, map[string]Terminal{"D": {Agent: "devin", Conversation: "childlike-metacarpal"}, "N": {Agent: "devin", Conversation: "unknown"}}, Options{DevinDB: path})
 	tr.Refresh("D")
+	tr.Refresh("N")
 	f := tr.Flights()
-	if len(f) != 1 || f[0].Tokens != (Tokens{Input: 1010, Output: 55, CacheRead: 9000, CacheWrite: 200}) || f[0].ACUs < 0.2999 || f[0].ACUs > 0.3001 {
+	// The same totals as the session's transcript (38949 prompt tokens, 37664 of them cached, 193 out).
+	if len(f) != 1 || f[0].Tokens != (Tokens{Input: 1285, Output: 193, CacheRead: 37664}) || f[0].ACUs != 1.25 || f[0].Models[0] != "swe-1-6-slow" {
 		t.Fatalf("devin: %+v", f)
+	}
+	if c := f[0].Context; c == nil || c.Used != 13113 || c.Size != 0 {
+		t.Fatalf("context without the screen: %+v", f[0].Context)
+	}
+
+	// The footer gives the window's size; the file, the exact count.
+	tr.DevinScreen("D", devinScreenText)
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if f = tr.Flights(); f[0].Context.Size > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if c := f[0].Context; c.Used != 13113 || c.Size != 200000 || c.Percent < 6.5 || c.Percent > 6.6 {
+		t.Fatalf("context with the screen: %+v", c)
+	}
+	if ev.count() != 2 {
+		t.Fatalf("events: %d", ev.count())
+	}
+}
+
+// Devin's screen after /usage and a reply (Devin 3000.11.92, a free account).
+const devinScreenText = `❭ Responda apenas com a palavra: oi
+
+ oi
+
+❭ /usage
+
+ Fetching account usage…
+
+ Daily   ■■■■■■■■■■■■■■■■■■■■  4% used  · resets in 9h 15m
+ Weekly  ■■■■■■■■■■■■■■■■■■■■  2% used  · resets Oct 25, 8:00 AM (UTC)
+
+ This session
+ Activity  1 turn · 0 tool calls · 0 files · 0 commands
+ Tokens    13k in · 68 out  (~13k per turn)
+ Model     SWE-1.6 Slow
+
+❭ Leia o arquivo a.txt e responda apenas com o conteúdo dele
+
+ ⏺ Read ./a.txt
+ └ 1 lines
+
+ torre consumo
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❭ Ask Devin to build features, fix bugs, or work on your code
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+SWE-1.6 Slow                                                                             Context: 13k / 200k tokens (6%)
+`
+
+func TestDevinUsageScreen(t *testing.T) {
+	now := time.Date(2026, 10, 18, 22, 44, 50, 0, time.UTC)
+	tr, _, acc := newTestTracker(t, map[string]Terminal{"D": {Agent: "devin"}}, Options{Now: func() time.Time { return now }})
+	var sets int
+	acc.Subscribe(func(Account) { sets++ })
+	tr.DevinScreen("D", devinScreenText)
+	a, ok := acc.Get("devin")
+	if !ok || len(a.Windows) != 2 || a.ACUs != nil {
+		t.Fatalf("account: %+v", a)
+	}
+	if w := a.Windows[0]; w.Kind != Daily || w.Used != 4 || !w.ResetsAt.Equal(time.Date(2026, 10, 19, 8, 0, 0, 0, time.UTC)) {
+		t.Fatalf("daily: %+v", w)
+	}
+	if w := a.Windows[1]; w.Kind != Weekly || w.Used != 2 || !w.ResetsAt.Equal(time.Date(2026, 10, 25, 8, 0, 0, 0, time.UTC)) {
+		t.Fatalf("weekly: %+v", w)
+	}
+	// The same block again (the screen changed elsewhere): read once.
+	now = now.Add(5 * time.Minute)
+	tr.DevinScreen("D", devinScreenText+"x")
+	if sets != 1 {
+		t.Fatalf("set %d times", sets)
+	}
+
+	// Still fetching: nothing; a company account: no quota, its ACUs.
+	tr.DevinScreen("D", "❭ /usage\n\n Fetching account usage…\n")
+	if sets != 1 {
+		t.Fatalf("set while fetching")
+	}
+	tr.DevinScreen("D", "❭ /usage\n\n Fetching account usage…\n\n No quota data available.\n 1,234.5 ACUs consumed\n ACU limit 2,000\n\n This session\n ACUs      0.75 ACUs consumed\n")
+	a, _ = acc.Get("devin")
+	if len(a.Windows) != 0 || a.ACUs == nil || a.ACUs.Used != 1234.5 || a.ACUs.Limit != 2000 {
+		t.Fatalf("company account: %+v %+v", a, a.ACUs)
+	}
+	tr.DevinScreen("D", "❭ /usage\n Fetching account usage…\n No quota data available.\n This session\n No ACUs consumed yet in this session.\n")
+	if a, _ = acc.Get("devin"); len(a.Windows) != 0 || a.ACUs != nil {
+		t.Fatalf("no quota: %+v", a)
+	}
+}
+
+func TestDevinResets(t *testing.T) {
+	now := time.Date(2026, 12, 30, 10, 0, 0, 0, time.UTC)
+	for in, want := range map[string]time.Time{
+		"in 2d 3h":                  now.Add(51 * time.Hour),
+		"in 45m":                    now.Add(45 * time.Minute),
+		"Jan 2, 8:00 AM (UTC)":      time.Date(2027, 1, 2, 8, 0, 0, 0, time.UTC),
+		"Dec 31, 11:30 PM (-03:00)": time.Date(2027, 1, 1, 2, 30, 0, 0, time.UTC),
+		"":                          {},
+		"soon":                      {},
+	} {
+		if got := devinResets(in, now); !got.Equal(want) {
+			t.Errorf("%q: %v, want %v", in, got, want)
+		}
 	}
 }
 
