@@ -134,7 +134,8 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - **Radar:** cada voo é um símbolo no seu nível (a pista no centro, um anel por nível), na posição que tem no canvas: ▲ no ar, ● pede você (com o anel pulsando), △ aguarda, □ em solo, ○ hangar. Linhas âmbar tracejadas são pedidos abertos; verdes, respostas recentes. Os contadores ficam em cima e a legenda embaixo. Clique seleciona; duplo clique abre o voo no Espaço.
 - **Fichas:** uma faixa de papel por voo, na ordem pede você › aguarda › no ar › em solo › hangar, com o que ele está fazendo, o agente, o nível e o tempo no estado.
 - **Fila de pouso:** os níveis com commits, com as checagens (testes, revisão, tudo commitado, ninguém no ar) e "Autorizar pouso…". Testes e revisão são marcas que os voos do nível deixam (veja "Testes e revisão", nos níveis de voo).
-- **Frequências:** os pares de voos, com pedido aberto (âmbar) ou resposta recente (verde), mais a taxa e os saltos.
+- **Frequências:** os pares de voos, com pedido aberto (âmbar) ou resposta recente (verde), mais a taxa e os saltos. Num laço, os pares da cadeia ficam em âmbar cheio, e o radar liga os voos da cadeia.
+- **Laço:** o mesmo cartão "ESPERA GERAL · LAÇO" do Espaço, no alto da coluna da direita. Ali, um clique no indicativo mostra o terminal do voo, e o duplo clique abre o voo no Espaço.
 - **Prioridade:** o voo que pede você há mais tempo ("1 de N"), com a pergunta, o comando e AUTORIZAR (1), SEMPRE (2) e NEGAR (3). Sem prioridade, o cartão some.
 - **Terminal:** a tela do voo selecionado, ao vivo; clique para digitar; o alfinete fixa o voo, que deixa de seguir a seleção.
 - **Rodapé:** o Rádio passando (clique abre) e a barra Transmitir.
@@ -208,6 +209,8 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 **Erros em português:** as mensagens de erro da interface (pasta não encontrada, nome repetido, sigla em uso, nível com alterações…) chegam em português. A API manda `code` e `params` junto com o `error` em inglês, que é o que os agentes e a CLI continuam lendo.
 
 **Frequências:** arraste a partir da bolinha lateral de um nó e solte sobre outro nó: os dois ficam na mesma frequência. Um clique no fio o seleciona; para tirar da frequência, use Delete ou o botão "Desligar". Duplo clique no fio cria um ponto de curva, que pode ser arrastado; duplo clique no ponto o remove. Enquanto um pedido passa, o fio corre tracejado. Na espera geral (`⌥P`), o botão do topo vira "Liberar todos" em âmbar e cada frequência ganha um quadrado com ∞.
+
+**Laço:** quando uma cadeia de pedidos passa do limite de saltos (Configurações → Limites; padrão 6), a Torre põe tudo em espera geral e mostra, no alto do canvas, o cartão "ESPERA GERAL · LAÇO" com a cadeia (por exemplo, "PLN → IMP → REV → TST → ARQ passou de 3 saltos"). Um clique num indicativo centraliza o voo; o nome aparece ao passar o mouse. Os fios da cadeia ficam em âmbar cheio com "∞ laço · 3 saltos · espera geral". "Liberar todos" (`⌥P`) solta os pedidos retidos e o cartão some; o limite continua o mesmo, e "Limites…" abre a configuração. O voo que passou do limite recebe a cadeia na recusa e é orientado a avisar você. A espera geral que você liga pelo botão não mostra cartão.
 
 **Indicativos e níveis:**
 - cada voo tem um **indicativo** de até 4 letras, único no canvas da sessão. Vem da **sigla** do papel (PLN, IMP; o segundo Implementador é IM2) ou, sem papel, das consoantes do nome (Claude → CLD). Dá para escolher outro em Novo voo ou em Configurar…;

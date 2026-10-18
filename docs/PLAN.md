@@ -67,7 +67,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Histórico do Rádio | `feat/radio-historico` | concluído |
 | Permissões nos níveis | `feat/permissoes-niveis` | concluído |
 | Fila de pedidos por voo | `feat/fila-pedidos` | concluído |
-| Testes e revisão no pouso, e ocupação no `torre list` | `feat/checagens-pouso` | concluído (PR) |
+| Testes e revisão no pouso, e ocupação no `torre list` | `feat/checagens-pouso` | concluído |
+| Cartão do laço | `feat/laco` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -251,7 +252,6 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **Responder pela Torre no Codex e no Gemini** (F3, `internal/attention`, `verified`; o Devin foi feito em `feat/devin-prioridade`): hoje eles entram em PRIORIDADE pela tela e mostram só "Abrir tela". Para liberar AUTORIZAR/SEMPRE/NEGAR em cada um, conferir com a CLI real que tecla escolhe a opção e se confirma sozinha, guardar as telas como casos de teste e pôr o agente em `verified`.
 - **Aprovar o plano e responder às perguntas com opções do Devin** pela Torre: entram em PRIORIDADE, mas as opções não são autorizar/negar (seriam botões com as opções do próprio agente).
 - **Pergunta de "Notification" sem permissão** (F3): o hook `Notification` do Claude também avisa quando ele está ocioso há 60 s esperando uma mensagem; isso não virou PRIORIDADE (todo voo que termina um turno pediria você). Se quiser, pode virar uma opção em Configurações → Avisos.
-- **Cartão "ESPERA GERAL · LAÇO"** (`TELAS.md`, quadro 21): mostraria a cadeia de um laço de pedidos (A → B → A). O barramento já solta a espera de um ciclo (`agentbus/ask.go`), mas não guarda nem publica a cadeia; precisa de um evento novo.
 - **Mais erros com `code`** (F2, `internal/apierr`): os da interface que mais aparecem já têm (pasta, nomes, siglas, níveis, sessões, cópia, git, resumos). Os que só os agentes veem (CLI e MCP) continuam em inglês de propósito; os raros da interface que faltam (portal, NOTAM travada, cores) mostram a mensagem em inglês.
 - **Trocar a sigla de um papel renomeia os voos dele?** (F1, DEVLOG): hoje o indicativo é dado quando o voo é criado ou troca de papel; mudar a sigla em Papéis vale para os próximos. Renomear os voos abertos mexe no que os outros agentes já conhecem.
 - **Fim da compatibilidade com o nome antigo** (`RENOMEACAO.md`, 1.2): tirar o atalho `squad`, a leitura de `SQUAD_*`, o cookie e o cabeçalho antigos e a busca por `Squad.app`, quando o usuário quiser.
@@ -330,4 +330,21 @@ Pedido do usuário em 2026-10-18: o item 12 da lista de pendências ("✓ testes
 - **`torre list`:** em cada voo, o pedido que atende, a fila e por quem espera; para quem roda, quantos esperam o turno dele; a legenda dos estados. Um pedido na fila não mostra o número, e o `torre reply` recusa responder a um pedido que ainda não chegou.
 - **Fora:** marcar pela interface; "arquitetura" como terceira marca; a cópia da sessão; bloquear o pouso com marca reprovada.
 
-**Status:** pronto no PR `feat/checagens-pouso` → `main`.
+**Status:** mesclado na `main` pelo PR #32.
+
+## Cartão do laço
+
+Pedido do usuário em 2026-10-18 (item 10 da lista de pendências, que estava em "Para depois"; quadro 21 de `docs/torre/TELAS.md`). O "A → B → A" citado no "Para depois" já se resolvia sozinho: a pergunta de volta responde a quem perguntou, e um ciclo maior é solto. Laço, aqui, é a cadeia de pedidos que passa do limite de saltos e põe tudo em espera geral. O plano foi aprovado com os padrões propostos: o cartão só nos laços, liberar não muda o limite e a cadeia aparece pelos indicativos (o nome, ao passar o mouse).
+
+- **A cadeia:** quando um pedido passa do limite, o servidor volta pelos pedidos que cada voo está atendendo até quem começou.
+- **O estado:** o evento da espera leva a cadeia, os saltos e o limite. O estado guarda o motivo da espera (você ou um laço), então recarregar a página mantém o cartão. Liberar apaga.
+- **Quem perguntou** recebe a cadeia na recusa, com ele mesmo como "you".
+- **Rádio:** a linha do laço traz a cadeia inteira.
+- **Interface:**
+  - o cartão "ESPERA GERAL · LAÇO" no alto do Espaço e no Sinóptico, com a cadeia (cada indicativo leva ao voo), LIBERAR TODOS ⌥P e LIMITES…;
+  - os fios da cadeia em âmbar cheio com "∞ laço · 6 saltos · espera geral";
+  - no Sinóptico, o radar e as frequências marcam a cadeia;
+  - a espera geral ligada pelo botão não mostra cartão.
+- **Fora:** perceber o laço antes do limite (o mesmo voo duas vezes na cadeia) e baixar o limite sozinho.
+
+**Status:** pronto no PR `feat/laco` → `main`.
