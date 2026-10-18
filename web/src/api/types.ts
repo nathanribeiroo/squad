@@ -109,6 +109,22 @@ export interface Floor {
   /** From GET /api/floors and floors.updated. */
   terminals?: number;
   missing?: boolean;
+  /** What its agents marked (torre floor mark), by kind. */
+  checks?: Partial<Record<CheckKind, FloorCheck>>;
+}
+
+export type CheckKind = 'tests' | 'review';
+
+/** A floor's tests or review, as an agent marked them on a commit. */
+export interface FloorCheck {
+  result: 'pass' | 'fail';
+  note?: string;
+  /** The floor's commit when marked: a later one makes it stale. */
+  commit: string;
+  by: string;
+  byName: string;
+  callsign?: string;
+  at: string;
 }
 
 /** How new floors are seeded: untracked files to copy and a setup command. */
@@ -123,6 +139,8 @@ export interface FloorGit {
   changes: number;
   ahead?: number;
   missing?: boolean;
+  /** Floors: the commit their checks are compared with. */
+  head?: string;
 }
 
 /** GET /api/floors/status. */
@@ -157,7 +175,7 @@ export interface PermissionRule {
 export interface RadioItem {
   key: string;
   time: string;
-  outcome: 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn' | 'answered';
+  outcome: 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn' | 'answered' | 'check';
   id?: string;
   from?: string;
   to?: string;
@@ -180,6 +198,10 @@ export interface RadioItem {
   hasReply?: boolean;
   /** A pending request waiting for its target's turn to end. */
   queued?: boolean;
+  /** check: what a flight marked on a floor (toName), and the result. */
+  check?: CheckKind;
+  result?: 'pass' | 'fail';
+  number?: number;
 }
 
 export interface TurnCard {

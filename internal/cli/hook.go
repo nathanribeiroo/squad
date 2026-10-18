@@ -88,7 +88,7 @@ works everywhere.
 
 ## Commands
 
-- ` + "`torre list`" + `: who you are and what is connected to you, with each agent's role (Planejador, Implementador, Revisor, Testador…). Run it first, use names (or the short callsigns, like IMP) exactly as printed, and give work to the agent whose role fits it. Your own role's instructions came with your session.
+- ` + "`torre list`" + `: who you are and what is connected to you, with each agent's role (Planejador, Implementador, Revisor, Testador…). Run it first, use names (or the short callsigns, like IMP) exactly as printed, and give work to the agent whose role fits it. It also says who is busy (the request each one is answering, how many wait in its line) and who waits for whom: between two agents that fit, prefer the free one. Your own role's instructions came with your session.
 - ` + "`torre ask \"Name\" \"message\"`" + `: send a message and wait for the reply. The reply is the other agent's final answer for that turn (or its screen when it has no hook). An agent in the middle of a turn gets your message when that turn ends (requests to it go in one at a time). Set your shell tool timeout generously (minutes for real tasks).
 - ` + "`torre ask \"Name\" --raw \"keys\"`" + `: type keys into a terminal (escapes: \n Enter, \t Tab, \e ESC, \xNN byte, e.g. \x03 Ctrl-C) and get its screen back. Use for menus or shells.
 - ` + "`torre ask --batch '{\"A\": \"m1\", \"B\": \"m2\"}'`" + `: ask several at once; returns a JSON array of {name, output|error}.
@@ -98,7 +98,8 @@ works everywhere.
 - ` + "`torre note …`" + `: read and write connected notes (` + "`torre note help`" + `).
 - ` + "`torre portal …`" + `: use a connected portal, a browser page the user also sees live on the canvas (` + "`torre portal help`" + `).
 - ` + "`torre new`" + `, ` + "`torre connect`" + `, ` + "`torre close`" + `: managers only, see below.
-- ` + "`torre floor list`" + `: the floors of the workspace; ` + "`create`" + ` and ` + "`land`" + ` are for managers, see below.
+- ` + "`torre floor list`" + `: the floors of the workspace and their checks; ` + "`create`" + ` and ` + "`land`" + ` are for managers, see below.
+- ` + "`torre floor mark tests|review pass|fail \"summary\"`" + `: on a floor, record the result of its tests or review on its latest commit, for the landing queue the user sees. A later commit makes the mark stale: mark again.
 
 For long messages use a heredoc: ` + "`torre ask \"Name\" <<'EOF'`" + ` … ` + "`EOF`" + `.
 
@@ -178,7 +179,9 @@ of work that would otherwise touch the same files at the same time.
    changes stay behind), on branch ` + "`login`" + `, and runs the workspace's setup command.
 2. ` + "`torre new \"Bia\" --role impl --floor \"Login\"`" + ` creates an agent on that floor,
    connected to you; it works in the floor's folder. Tell it to commit there.
-3. When the floor's work is done and reviewed: ` + "`torre floor land \"Login\" --merge`" + `
+3. When the floor's work is done, its tester and reviewer mark it (` + "`torre floor mark`" + `);
+   ` + "`torre floor list`" + ` shows whether tests and review passed on its latest commit.
+   Then: ` + "`torre floor land \"Login\" --merge`" + `
    merges its branch into the branch it started from (` + "`--into main`" + ` for another),
    closes its terminals and removes its folder; the branch is kept. Without
    ` + "`--merge`" + ` nothing is merged. Landing is refused while the floor has uncommitted

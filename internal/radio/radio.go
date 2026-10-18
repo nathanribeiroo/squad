@@ -43,7 +43,8 @@ type Item struct {
 	Time time.Time `json:"time"`
 	// Outcome: pending, replied, cancelled (a request); delivered (the
 	// user's message); held (a request held back, or a loop); note; turn
-	// (a turn ended); answered (an ask the user answered).
+	// (a turn ended); answered (an ask the user answered); check (a flight
+	// marked a floor's tests or review).
 	Outcome   string `json:"outcome"`
 	ID        string `json:"id,omitempty"` // the request
 	From      string `json:"from,omitempty"`
@@ -66,6 +67,11 @@ type Item struct {
 	HasReply bool `json:"hasReply,omitempty"`
 	// Queued: a pending request waiting for its target's turn to end.
 	Queued bool `json:"queued,omitempty"`
+	// A check: what was marked (tests, review) and the result (pass, fail);
+	// ToName is the floor, Number its level.
+	Check  string `json:"check,omitempty"`
+	Result string `json:"result,omitempty"`
+	Number int    `json:"number,omitempty"`
 }
 
 // record is a line of the file: the item and a request's whole texts.
@@ -205,6 +211,22 @@ func (s *Service) handle(ev events.Event) {
 			r.Queued = queued
 			return true
 		})
+	case events.FloorChecked:
+		var d struct {
+			Floor     string `json:"floor"`
+			FloorName string `json:"floorName"`
+			Number    int    `json:"number"`
+			Check     string `json:"check"`
+			Result    string `json:"result"`
+			Note      string `json:"note"`
+			From      string `json:"from"`
+			FromName  string `json:"fromName"`
+		}
+		if !decode(ev.Data, &d) || d.Check == "" {
+			return
+		}
+		s.put(&record{Item: Item{Key: "check-" + d.Floor + "-" + d.Check + "-" + stamp(ev.Time), Time: ev.Time, Outcome: "check",
+			From: d.From, FromName: d.FromName, ToName: d.FloorName, Number: d.Number, Check: d.Check, Result: d.Result, Text: d.Note}})
 	case events.RequestHeld:
 		var d struct {
 			From     string `json:"from"`

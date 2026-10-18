@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { CHOICES, askPhrase, choiceTitle, respond } from '../lib/attention';
 import type { IconName } from '../lib/icons';
+import { CHECK_NAMES } from '../lib/floors';
 import { callsign, clock, clockDay, elapsed } from '../lib/model';
 import { useNodeRoleColor } from '../lib/roles';
 import { toast } from '../lib/toast';
@@ -24,6 +25,11 @@ const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: n
   held: { label: (a) => (a.hold === 'rate' ? 'Retido · limite por minuto' : 'Retido · espera geral'), icon: 'all_inclusive', style: 'wait dashed' },
   note: { label: () => 'NOTAM editado', icon: 'description', style: 'idle' },
   turn: { label: () => 'Em solo', icon: 'flight_land', style: 'done' },
+  check: {
+    label: (a) => `${a.check ? CHECK_NAMES[a.check] : ''} · ${a.result === 'fail' ? 'falhou' : 'passou'}`,
+    icon: 'check_circle',
+    style: 'done',
+  },
   answered: {
     label: (a) => `Pediu você · ${a.choice ? ANSWERED[a.choice] : 'respondido'} em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`,
     icon: 'front_hand',
@@ -197,13 +203,13 @@ export function ActivityDrawer() {
                 ) : (
                   <>
                     <span className="ad-arrow">→</span>
-                    <b style={{ color: color(a.to) }}>{a.outcome === 'note' ? a.toName : who(a.to, a.toName)}</b>
+                    <b style={{ color: color(a.to) }}>{a.outcome === 'note' || a.outcome === 'check' ? a.toName : who(a.to, a.toName)}</b>
                   </>
                 )}
                 {a.id && <span className="ad-id">{a.id}</span>}
                 <span style={{ flex: 1 }} />
-                <span className={`ad-pill ${o.style}`}>
-                  <Icon name={o.icon} size={13} />
+                <span className={`ad-pill ${a.outcome === 'check' && a.result === 'fail' ? 'err' : o.style}`}>
+                  <Icon name={a.outcome === 'check' && a.result === 'fail' ? 'error' : o.icon} size={13} />
                   {o.label(a, now)}
                 </span>
               </div>

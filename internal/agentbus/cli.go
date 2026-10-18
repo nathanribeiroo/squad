@@ -185,6 +185,10 @@ func (b *Bus) List(caller string) Result {
 			sb.WriteString("  " + note + "\n")
 		}
 	}
+	if line := b.occupancy(caller).line; len(line) > 0 {
+		// Without their ids: an agent could reply to a message it hasn't read.
+		fmt.Fprintf(&sb, "  %d request(s) wait for your turn to end (from %s); they arrive one at a time after it.\n", len(line), senders(line))
+	}
 
 	neighbors := b.store.Neighbors(caller)
 	sort.Slice(neighbors, func(i, j int) bool { return neighbors[i].Label() < neighbors[j].Label() })
@@ -225,6 +229,12 @@ func (b *Bus) List(caller string) Result {
 				fmt.Fprintf(&sb, ", callsign: %s", n.Terminal.Callsign)
 			}
 			sb.WriteString("\n")
+			if busy := b.occupancy(n.ID).String(); busy != "" {
+				sb.WriteString("    " + busy + "\n")
+			}
+		}
+		if b.mon != nil {
+			sb.WriteString("  States: idle/done free · work in a turn · wait waiting for another agent · ask waiting for the user · boot starting · off/err not running.\n")
 		}
 	}
 	if len(notes) > 0 {

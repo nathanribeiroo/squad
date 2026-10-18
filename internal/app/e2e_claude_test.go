@@ -94,6 +94,70 @@ func TestRealClaudeStack(t *testing.T) {
 	}
 }
 
+// A Claude on a floor runs the floor's tests and marks the result for the
+// landing queue (the floors tool needs no approval; the user allows the
+// test command from the interface).
+func TestRealClaudeFloorMark(t *testing.T) {
+	if _, err := exec.LookPath("claude"); err != nil {
+		t.Skip("claude CLI not installed")
+	}
+	e := newEnv(t, agentbus.Limits{Timeout: 3 * time.Minute})
+	repo := e.gitRepo()
+	if err := os.WriteFile(filepath.Join(repo, "test.sh"), []byte("echo '3 testes passaram'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	e.git(repo, "add", "test.sh")
+	e.git(repo, "commit", "-q", "-m", "tests")
+	code, f := e.api("POST", "/api/floors", `{"name":"Login"}`)
+	if code != 201 {
+		t.Fatalf("floor: %d %v", code, f)
+	}
+	id := f["id"].(string)
+	st := e.app.Server.Store()
+	shell, err := st.AddNode(store.Node{Kind: store.KindTerminal, Terminal: &store.TerminalData{Name: "Shell", Agent: "shell", Shell: "/bin/sh"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claude, err := st.AddNode(store.Node{Kind: store.KindTerminal, Floor: id,
+		Terminal: &store.TerminalData{Name: "Testador", Agent: "claude", Command: "claude --permission-mode default", Cols: 120, Rows: 36}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.connect(shell, claude)
+	for _, n := range []store.Node{shell, claude} {
+		if err := e.app.Server.StartTerminal(n.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	waitRealClaude(t, e, claude.ID)
+	done := e.askAsync(shell, "Testador", "Rode `sh test.sh` (são os testes deste nível) e registre o resultado com a ferramenta floors do MCP torre (action mark, check tests). Depois responda só OK.")
+	// Allow what it asks for (the test command), as the user would.
+	var r agentbus.Result
+	for answered := 0; ; {
+		select {
+		case r = <-done:
+		case <-time.After(200 * time.Millisecond):
+			if a := e.app.Monitor.Attention(claude.ID); a != nil && slices.Contains(a.Choices, attention.Allow) && answered < 3 {
+				t.Logf("allowing %s %q", a.Tool, a.Detail)
+				if code, body := e.respond(claude.ID, "allow"); code != 204 {
+					t.Fatalf("respond: %d %s", code, body)
+				}
+				answered++
+				time.Sleep(time.Second)
+			}
+			continue
+		}
+		break
+	}
+	fl, _ := st.Floor(id)
+	c, ok := fl.Checks[store.CheckTests]
+	head := e.git(fl.Path, "rev-parse", "HEAD")
+	t.Logf("reply: %s · check: %+v", r.Source, c)
+	if r.Code != 200 || !ok || c.Result != store.CheckPass || c.By != claude.ID || c.Commit != head {
+		t.Fatalf("check: %+v %v\nreply: %+v\n%s", c, ok, r, e.app.Server.Terminals().Get(claude.ID).Snapshot())
+	}
+}
+
 // Two flights ask the same Claude, the second while the first's turn runs:
 // the second waits in Claude's line, and each gets the answer to its own
 // message (before, the second got the first's).

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Floor, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { CHOICES, askPhrase, choiceTitle, respond } from '../../lib/attention';
-import { flightLevel, gitSummary } from '../../lib/floors';
+import { checkViews, flightLevel, gitSummary } from '../../lib/floors';
 import { STATE_META, callsign, clock, elapsed } from '../../lib/model';
 import { useNodeRoleColor } from '../../lib/roles';
 import { useNow } from '../../lib/useNow';
@@ -258,6 +258,8 @@ function Strips({ flights, floors, runtime, selected }: { flights: WNode[]; floo
   );
 }
 
+const CHECK_CLASS = { pass: 'ok', fail: 'bad', stale: 'warn', none: 'idle' } as const;
+
 function LandingQueue({ floors, flights, runtime }: { floors: Floor[]; flights: WNode[]; runtime: Record<string, TerminalRuntime> }) {
   const status = useSquad((s) => s.floorStatus);
   const ready = floors.filter((f) => (status?.floors[f.id]?.ahead ?? 0) > 0);
@@ -276,6 +278,11 @@ function LandingQueue({ floors, flights, runtime }: { floors: Floor[]; flights: 
               <b>{flightLevel(f)}</b> · {f.branch} → {f.base || 'main'} · {g?.ahead} {g?.ahead === 1 ? 'commit' : 'commits'}
             </div>
             <div className="syn-land-checks mono">
+              {checkViews(f, g?.head).map((c) => (
+                <span key={c.kind} className={CHECK_CLASS[c.state]} title={c.detail}>
+                  {c.label}
+                </span>
+              ))}
               <span className={g?.changes ? 'bad' : 'ok'}>{g?.changes ? `✕ ${gitSummary(g)?.text}` : '✓ tudo commitado'}</span>
               <span className={flying ? 'bad' : 'ok'}>{flying ? `✕ ${flying} no ar` : '✓ ninguém no ar'}</span>
             </div>

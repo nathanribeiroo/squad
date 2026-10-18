@@ -18,6 +18,10 @@ each with its own canvas, for work in parallel that touches the same files.
         managers: a new floor from the last commit (uncommitted changes stay
         behind), with its own branch (default: the name). Then create its
         agents with torre new "Name" --floor "Floor": they work in its folder.
+  torre floor mark tests|review pass|fail ["note"] [--floor "Name"]
+        the floor's agents (and the one that created it): record the result
+        of the floor's tests or review on its latest commit, for the landing
+        queue the user sees. A later commit makes the mark stale: mark again.
   torre floor land "Name" [--merge | --into BRANCH]
         managers, floors you created: close the floor's terminals and remove
         its folder, keeping its branch. --merge first merges the branch into
@@ -39,7 +43,9 @@ func (s *Service) Extension(ctx context.Context, caller string, args []string) (
 	}
 	switch args[0] {
 	case "list":
-		return s.cliList(me), true
+		return s.cliList(ctx, me), true
+	case "mark":
+		return s.cliMark(ctx, me, args[1:]), true
 	case "create", "land":
 	default:
 		return res(400, fmt.Sprintf("torre: unknown floor command %q\n\n%s", args[0], Usage)), true
@@ -56,7 +62,7 @@ func (s *Service) Extension(ctx context.Context, caller string, args []string) (
 	return s.cliLand(ctx, me, args[1:]), true
 }
 
-func (s *Service) cliList(me store.Node) agentbus.Result {
+func (s *Service) cliList(ctx context.Context, me store.Node) agentbus.Result {
 	st := s.State()
 	var b strings.Builder
 	where := "the ground floor"
@@ -91,7 +97,7 @@ func (s *Service) cliList(me store.Node) agentbus.Result {
 		if f.CreatedBy == me.ID {
 			b.WriteString(", created by you")
 		}
-		fmt.Fprintf(&b, "\n  folder: %s\n", f.Cwd)
+		fmt.Fprintf(&b, "\n  folder: %s\n  checks: %s\n", f.Cwd, checksLine(ctx, f.Floor))
 	}
 	return res(200, b.String())
 }
@@ -201,17 +207,21 @@ func (s *Service) cliLand(ctx context.Context, me store.Node, args []string) age
 	if me.Floor == f.ID {
 		return res(403, "torre: you are on this floor, and landing it closes its terminals (you too). Ask whoever created it, or the user.")
 	}
+	checks := checksLine(ctx, f) // before landing removes the folder
 	r, err := s.Land(context.WithoutCancel(ctx), f.ID, req)
 	if err != nil {
 		return errResult(err)
 	}
+	var msg string
 	switch {
 	case r.UpToDate:
-		return res(200, fmt.Sprintf("Landed %q: %s already had every commit of %s, so nothing was merged. Its terminals were closed and its folder removed; the branch %s is kept.", r.Floor, r.Into, r.Branch, r.Branch))
+		msg = fmt.Sprintf("Landed %q: %s already had every commit of %s, so nothing was merged. Its terminals were closed and its folder removed; the branch %s is kept.", r.Floor, r.Into, r.Branch, r.Branch)
 	case r.Merged:
-		return res(200, fmt.Sprintf("Landed %q: merged %s into %s (commit %s). Its terminals were closed and its folder removed; the branch %s is kept.", r.Floor, r.Branch, r.Into, shortHash(r.Commit), r.Branch))
+		msg = fmt.Sprintf("Landed %q: merged %s into %s (commit %s). Its terminals were closed and its folder removed; the branch %s is kept.", r.Floor, r.Branch, r.Into, shortHash(r.Commit), r.Branch)
+	default:
+		msg = fmt.Sprintf("Landed %q without merging: its terminals were closed and its folder removed. Its work stays on the branch %s.", r.Floor, r.Branch)
 	}
-	return res(200, fmt.Sprintf("Landed %q without merging: its terminals were closed and its folder removed. Its work stays on the branch %s.", r.Floor, r.Branch))
+	return res(200, msg+"\nChecks when it landed: "+checks+".")
 }
 
 func errResult(err error) agentbus.Result {
@@ -222,6 +232,8 @@ func errResult(err error) agentbus.Result {
 		return res(409, "torre: "+err.Error())
 	case errors.Is(err, ErrNotFound):
 		return res(404, "torre: "+err.Error())
+	case errors.Is(err, ErrForbidden):
+		return res(403, "torre: "+err.Error())
 	case errors.Is(err, ErrInvalid), errors.Is(err, store.ErrInvalid):
 		return res(400, "torre: "+err.Error())
 	}

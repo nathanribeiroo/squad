@@ -43,8 +43,9 @@ const MaxName = 40
 
 // Errors returned by the service.
 var (
-	ErrNotFound = errors.New("floor not found")
-	ErrInvalid  = errors.New("invalid floor request")
+	ErrNotFound  = errors.New("floor not found")
+	ErrInvalid   = errors.New("invalid floor request")
+	ErrForbidden = errors.New("not allowed")
 )
 
 type invalidError string
@@ -1073,6 +1074,7 @@ type FloorStatus struct {
 	Changes int    `json:"changes"`           // uncommitted files (copied ones left out)
 	Ahead   int    `json:"ahead,omitempty"`   // floors and copies: commits not on their base yet
 	Missing bool   `json:"missing,omitempty"` // floors and copies: the folder is gone
+	Head    string `json:"head,omitempty"`    // floors: the commit checks are compared with
 }
 
 // Status reads the branch and uncommitted changes of the ground floor (the
@@ -1117,6 +1119,7 @@ func worktreeStatus(ctx context.Context, f store.Floor) FloorStatus {
 	if files, err := status(ctx, f.Path, untrackedAll); err == nil {
 		fs.Changes = len(withoutCopied(files, localFiles(f.Path, f.Cwd, f.Copied)))
 	}
+	fs.Head, _ = git(ctx, f.Path, "rev-parse", "HEAD")
 	base := f.BaseCommit
 	if f.Base != "" && hasRef(ctx, f.Path, "refs/heads/"+f.Base) {
 		base = "refs/heads/" + f.Base

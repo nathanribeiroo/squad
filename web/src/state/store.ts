@@ -6,6 +6,7 @@ import { noticeAsk } from '../lib/notify';
 import { mergeActivity, toActivity } from '../lib/radio';
 import { toast } from '../lib/toast';
 import type {
+  CheckKind,
   AttentionChoice,
   Floor,
   FloorConfig,
@@ -26,7 +27,7 @@ import type {
   WorkspaceSummary,
 } from '../api/types';
 
-export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn' | 'answered';
+export type ActivityOutcome = 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn' | 'answered' | 'check';
 
 export interface ActivityItem {
   key: string;
@@ -47,6 +48,9 @@ export interface ActivityItem {
   hasReply?: boolean;
   /** A pending request waiting for its target's turn to end. */
   queued?: boolean;
+  /** check: what a flight marked on a floor, and the result. */
+  check?: CheckKind;
+  result?: 'pass' | 'fail';
 }
 
 /** A request in flight, for wire animations (W3). */
