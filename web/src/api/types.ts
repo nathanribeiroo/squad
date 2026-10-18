@@ -276,8 +276,9 @@ export interface UsageFlight {
   tokens: UsageTokens;
   /** Claude Code's estimate at API prices (a subscription isn't charged it). */
   costUsd?: number;
-  /** Devin's Agent Compute Units. */
+  /** What Devin charged: Agent Compute Units, or credits. */
   acus?: number;
+  credits?: number;
   context?: { used: number; size: number; percent: number };
   models?: string[];
   at: string;

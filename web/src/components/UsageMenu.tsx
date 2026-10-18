@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { UsageAccount, UsageFlight, WNode } from '../api/types';
 import { AGENTS, callsign } from '../lib/model';
 import { ago } from '../lib/sessions';
-import { USAGE_AGENTS, acus, level, percent, renewed, resets, tightest, tokens, usd, windowLabel, windowShort } from '../lib/usage';
+import { USAGE_AGENTS, acus, credits, level, percent, renewed, resets, tightest, tokens, usd, windowLabel, windowShort } from '../lib/usage';
 import { useNow } from '../lib/useNow';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -100,9 +100,10 @@ function UsageMenu({ rows, accounts, onClose }: { rows: { node: WNode; usage?: U
         cacheWrite: s.cacheWrite + u.tokens.cacheWrite,
         cost: s.cost + (u.costUsd ?? 0),
         acus: s.acus + (u.acus ?? 0),
+        credits: s.credits + (u.credits ?? 0),
       };
     },
-    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, acus: 0 },
+    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, acus: 0, credits: 0 },
   );
   const floorOf = (n: WNode) => (n.floor ? floors?.find((f) => f.id === n.floor) : undefined);
 
@@ -122,7 +123,7 @@ function UsageMenu({ rows, accounts, onClose }: { rows: { node: WNode; usage?: U
               <th title="Tokens lidos do cache (mais baratos)">Cache lido</th>
               <th title="Tokens gravados no cache">Cache criado</th>
               <th title="Quanto da janela de contexto a conversa ocupa agora">Contexto</th>
-              <th title="Claude: estimativa a preços da API. Devin: ACUs">Custo</th>
+              <th title="Claude: estimativa a preços da API. Devin: ACUs ou créditos">Custo</th>
             </tr>
           </thead>
           <tbody>
@@ -145,10 +146,11 @@ function UsageMenu({ rows, accounts, onClose }: { rows: { node: WNode; usage?: U
                       <td className="mono">{tokens(u.tokens.output)}</td>
                       <td className="mono">{tokens(u.tokens.cacheRead)}</td>
                       <td className="mono">{tokens(u.tokens.cacheWrite)}</td>
-                      <td className="mono" title={u.context ? `${tokens(u.context.used)} de ${tokens(u.context.size)} tokens` : undefined}>
-                        {u.context ? <span className={level(u.context.percent)}>{percent(u.context.percent)}</span> : '—'}
+                      <td className="mono" title={u.context ? `${tokens(u.context.used)}${u.context.size ? ` de ${tokens(u.context.size)}` : ''} tokens` : undefined}>
+                        {/* Without the window's size (Devin before its footer showed), the tokens. */}
+                        {!u.context ? '—' : u.context.size ? <span className={level(u.context.percent)}>{percent(u.context.percent)}</span> : tokens(u.context.used)}
                       </td>
-                      <td className="mono">{u.acus ? acus(u.acus) : u.costUsd ? usd(u.costUsd) : '—'}</td>
+                      <td className="mono">{cost(u)}</td>
                     </>
                   ) : (
                     <td className="usage-none" colSpan={6}>
@@ -171,7 +173,8 @@ function UsageMenu({ rows, accounts, onClose }: { rows: { node: WNode; usage?: U
                 <td className="mono">
                   {sum.cost > 0 && <div>{usd(sum.cost)}</div>}
                   {sum.acus > 0 && <div>{acus(sum.acus)}</div>}
-                  {!sum.cost && !sum.acus && '—'}
+                  {sum.credits > 0 && <div>{credits(sum.credits)}</div>}
+                  {!sum.cost && !sum.acus && !sum.credits && '—'}
                 </td>
               </tr>
             </tfoot>
@@ -186,6 +189,14 @@ function UsageMenu({ rows, accounts, onClose }: { rows: { node: WNode; usage?: U
       </div>
     </div>
   );
+}
+
+/** What a flight cost: Claude's estimate in dollars, Devin's ACUs or credits. */
+function cost(u: UsageFlight): string {
+  if (u.acus) return acus(u.acus);
+  if (u.credits) return credits(u.credits);
+  if (u.costUsd) return usd(u.costUsd);
+  return '—';
 }
 
 /** An agent account: its plan windows, its ACUs, or why there are none. */

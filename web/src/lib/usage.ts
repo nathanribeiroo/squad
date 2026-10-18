@@ -23,6 +23,12 @@ export function acus(n: number): string {
   return `${(n < 1 ? n.toFixed(2) : n.toFixed(1)).replace('.', ',')} ACU`;
 }
 
+/** "12 créditos", "1,5 crédito". */
+export function credits(n: number): string {
+  const s = Number.isInteger(n) ? String(n) : n.toFixed(n < 1 ? 2 : 1).replace('.', ',');
+  return `${s} ${n < 2 ? 'crédito' : 'créditos'}`;
+}
+
 export function percent(n: number): string {
   return `${Math.round(n)}%`;
 }
