@@ -91,7 +91,7 @@ export function ScreenPane({ id, mode }: { id: string; mode: 'focus' | 'left' | 
         <span className="tn-agent mono">{t.agent}</span>
         <span className="tn-spacer" />
         <span className="sp-where mono">{where}</span>
-        <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} />
+        <StatePill state={state} since={rt?.activitySince} exitCode={rt?.exitCode} yourTurn={rt?.yourTurn} />
         {mode !== 'focus' && (
           <button className="icon-btn" onClick={() => dockAt(mode === 'left' ? 'right' : 'left', id)} title={mode === 'left' ? 'Encaixar à direita (⌥⇧→)' : 'Encaixar à esquerda (⌥⇧←)'}>
             <Icon name={mode === 'left' ? 'arrow_forward' : 'arrow_back'} size={16} />

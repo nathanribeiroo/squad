@@ -5,6 +5,7 @@ import type { Attention } from '../api/types';
 export function askPhrase(a?: Attention): string {
   if (!a) return 'Pede você';
   if (a.kind === 'question') return 'Fez uma pergunta';
+  if (a.kind === 'plan') return 'Pede para aprovar o plano';
   const tool = a.tool ?? '';
   // Claude Code's names, then Devin's.
   if (['Bash', 'BashOutput', 'exec'].includes(tool)) return 'Quer executar um comando';

@@ -25,8 +25,9 @@ import { Synoptic } from './components/synoptic/Synoptic';
 import { SummaryDialogs } from './components/SummaryDialogs';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
-import { goToNextAsk, respond } from './lib/attention';
-import { noticePrefs, remindAsks, unlockAudio } from './lib/notify';
+import { answerKey, goToNextAsk } from './lib/attention';
+import { callsign } from './lib/model';
+import { noticePrefs, remindAsks, remindYourTurns, unlockAudio } from './lib/notify';
 import { dockAt, nextNode, toggleFocus } from './lib/screens';
 import { termSession } from './term/session';
 import { Toast, toast } from './lib/toast';
@@ -60,7 +61,15 @@ export function App() {
         ...s.askingIds.map((id) => `${id}@${s.runtime[id]?.attention?.since ?? ''}`),
         ...s.workspaces.filter((w) => w.id !== s.activeWs && (w.attention ?? 0) > 0).map((w) => `ws:${w.id}`),
       ]);
-    }, 10_000);
+      remindYourTurns(
+        Object.values(s.runtime)
+          .filter((rt) => rt.yourTurn && rt.activity === 'done')
+          .map((rt) => {
+            const t = s.workspace?.nodes.find((n) => n.id === rt.id)?.terminal;
+            return { key: `${rt.id}@${rt.activitySince}`, since: rt.activitySince, who: t ? callsign(t) : 'Um voo', said: (s.cards[rt.id]?.message ?? '').trim().split('\n')[0].slice(0, 160) };
+          }),
+      );
+    }, 5_000);
     return () => clearInterval(t);
   }, []);
   // "Sistema" follows the system's theme as it changes.
@@ -177,17 +186,13 @@ function Stage() {
       // Sinóptico, the one on the PRIORIDADE card.
       const askId = st.view === 'synoptic' ? st.askingIds[0] : st.selectedNode && st.askingIds.includes(st.selectedNode) ? st.selectedNode : null;
       const ask = askId ? st.runtime[askId]?.attention : undefined;
-      const answer = (choice: 'allow' | 'always' | 'deny') => () => {
-        if (askId && ask?.choices?.includes(choice)) respond(askId, choice);
-      };
-      if (st.view !== 'space') {
-        const key = { Digit1: 'allow', Digit2: 'always', Digit3: 'deny' }[e.code] as 'allow' | 'always' | 'deny' | undefined;
-        if (key && ask && !e.shiftKey) {
-          e.preventDefault();
-          answer(key)();
-        }
-        return; // the canvas' keys need the canvas
+      // 1–9: on a question or a plan, the agent's option of that number.
+      const digit = /^Digit([1-9])$/.exec(e.code)?.[1];
+      if (digit && askId && !e.shiftKey && answerKey(askId, ask, digit)) {
+        e.preventDefault();
+        return;
       }
+      if (st.view !== 'space') return; // the canvas' keys need the canvas
       // Tab / ⇧Tab pass the selection along the nodes; Enter gives the
       // selected flight the keyboard. Not over a button or a link, which
       // keep their own Tab and Enter.
@@ -208,7 +213,6 @@ function Stage() {
         return;
       }
       const plain: Record<string, () => void> = {
-        ...(ask ? { Digit1: answer('allow'), Digit2: answer('always'), Digit3: answer('deny') } : {}),
         KeyV: () => st.setTool('select'),
         KeyH: () => st.setTool('pan'),
         KeyT: () => st.setNewTerm(!st.newTermOpen),

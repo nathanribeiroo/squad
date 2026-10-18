@@ -61,6 +61,7 @@
 .ad-reply { border-left: 2px solid var(--line-2, var(--text-3)); padding-left: 8px; color: var(--text-2); }
 .ad-older { display: flex; align-items: center; gap: 6px; margin: 10px auto 14px; height: 28px; font-size: 10.5px; }
 .ad-actions { display: flex; gap: 6px; margin-top: 8px; }
+.ad-actions.ao-wrap { flex-wrap: wrap; }
 .ad-actions .btn { height: 26px; font-size: 10.5px; padding: 0 8px; }
 .ad-always { margin-top: 6px; font-size: 10.5px; color: var(--text-3); overflow-wrap: anywhere; }
 .ad-foot { height: 44px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px; border-top: 1px solid var(--line); font-size: 11px; color: var(--text-2); }

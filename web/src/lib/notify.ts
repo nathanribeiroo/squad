@@ -1,5 +1,5 @@
-// Avisos (Configurações → Avisos): what happens when a flight asks you. Per
-// browser, in localStorage.
+// Avisos (Configurações → Avisos): what happens when a flight asks you, or
+// finishes a turn of yours and waits for you. Per browser, in localStorage.
 
 export interface NoticePrefs {
   /** The count in the window title: "(1) squad · Torre". */
@@ -10,10 +10,15 @@ export interface NoticePrefs {
   sound: boolean;
   /** The sound again while a flight keeps asking (every 2 min, 3 times). */
   repeat: boolean;
+  /**
+   * A flight finished a turn of yours and waits (SUA VEZ): minutes before
+   * the notice ("0": at once), or "off". Only while the window is behind.
+   */
+  turnAfter: 'off' | '0' | '1' | '3' | '10';
 }
 
 const KEY = 'torre.notices';
-const DEFAULTS: NoticePrefs = { title: true, system: false, sound: true, repeat: false };
+const DEFAULTS: NoticePrefs = { title: true, system: false, sound: true, repeat: false, turnAfter: '1' };
 
 export function noticePrefs(): NoticePrefs {
   try {
@@ -74,6 +79,37 @@ export function remindAsks(keys: string[], now = Date.now()) {
   if (due && p.sound && p.repeat) beep();
 }
 
+const toldTurns = new Set<string>();
+
+/**
+ * Tells of the flights waiting for you after a turn of yours (Avisos → SUA
+ * VEZ), once per turn, after the chosen time, while the window is behind:
+ * each entry is one turn (key), since when it waits, who and what it said.
+ */
+export function remindYourTurns(turns: { key: string; since: string; who: string; said: string }[], now = Date.now()) {
+  for (const k of [...toldTurns]) if (!turns.some((t) => t.key === k)) toldTurns.delete(k);
+  const p = noticePrefs();
+  if (p.turnAfter === 'off') return;
+  const after = Number(p.turnAfter) * 60_000;
+  const due = turns.filter((t) => !toldTurns.has(t.key) && now - Date.parse(t.since) >= after);
+  if (due.length === 0 || document.hasFocus()) return;
+  for (const t of due) toldTurns.add(t.key);
+  if (p.system && typeof Notification === 'function' && Notification.permission === 'granted') {
+    for (const t of due) {
+      try {
+        const n = new Notification(`${t.who} terminou: sua vez`, { body: t.said || 'O voo espera você.', tag: `torre-turn-${t.key}` });
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+      } catch {
+        /* some browsers only notify from a service worker */
+      }
+    }
+  }
+  if (p.sound) tone();
+}
+
 // One audio context for the page. Browsers let it play only after the user
 // touched the page (the app window that torre serve opens lets it play from
 // the start): the first click or key prepares it, so a flight asking later
@@ -99,6 +135,24 @@ export function unlockAudio() {
   };
   addEventListener('pointerdown', on, true);
   addEventListener('keydown', on, true);
+}
+
+/** One soft tone: a flight waits for you, not asking anything (SUA VEZ). */
+export function tone() {
+  const ac = audio();
+  if (!ac) return;
+  try {
+    const g = ac.createGain();
+    g.gain.value = 0.045;
+    g.connect(ac.destination);
+    const o = ac.createOscillator();
+    o.frequency.value = 523;
+    o.connect(g);
+    o.start(ac.currentTime);
+    o.stop(ac.currentTime + 0.16);
+  } catch {
+    /* no audio */
+  }
 }
 
 /** Two short tones (no audio file to ship). */

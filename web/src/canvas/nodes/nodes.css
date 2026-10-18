@@ -43,8 +43,8 @@
 .tn-ask-detail { font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .tn-ask-detail::before { content: '· '; }
 .tn-respond {
-  position: absolute; left: 0; right: 0; top: calc(100% + 4px); height: 44px; z-index: 6;
-  display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px;
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); min-height: 44px; z-index: 6;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px 6px 12px;
   background: var(--stb-ask); border: 1.5px solid var(--st-ask); box-shadow: var(--shadow-pop);
 }
 .tn-respond-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--stt-ask); margin-right: 4px; }
@@ -210,6 +210,8 @@
 .state-pill { height: 22px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; flex: none; }
 .state-pill.compact { height: 20px; font-size: 10.5px; }
 .state-time { font-weight: 700; letter-spacing: 0; }
+/* SUA VEZ: in solo after a turn of the user's. */
+.your-turn { height: 18px; display: inline-flex; align-items: center; padding: 0 6px; background: var(--st-done); color: var(--stb-done, var(--canvas)); font-size: 10px; letter-spacing: 0.08em; }
 .tn-strip { height: var(--h-sender); flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tn-body { flex: 1; min-height: 0; background: var(--term-bg); position: relative; cursor: text; }
 .xterm-slot { position: absolute; left: 10px; top: 8px; transform-origin: 0 0; overflow: hidden; }

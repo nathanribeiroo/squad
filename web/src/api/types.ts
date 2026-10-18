@@ -8,8 +8,20 @@ export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'ask' | 'done' | 'err'
 export type AttentionChoice = 'allow' | 'always' | 'deny';
 
 /** What a flight asks the user (activity "ask", PRIORIDADE). */
+/** One of the agent's own options on a question or a plan. */
+export interface AttentionOption {
+  /** Its number: what picks it. */
+  key: string;
+  /** Its first line ("Azul", "Yes, manually approve edits"). */
+  text: string;
+  /** The line under it: its description. */
+  detail?: string;
+  /** The text field: the user writes their own answer. */
+  input?: boolean;
+}
+
 export interface Attention {
-  kind: 'permission' | 'question';
+  kind: 'permission' | 'question' | 'plan';
   /** Bash, Edit, WebFetch, mcp__… (from the agent's hook). */
   tool?: string;
   /** The agent's question on screen ("Do you want to proceed?"). */
@@ -22,6 +34,10 @@ export interface Attention {
   choices?: AttentionChoice[];
   /** The agent's own words for each answer: what "always" saves, and where. */
   labels?: Partial<Record<AttentionChoice, string>>;
+  /** On a question or a plan: the agent's options the interface may pick. */
+  options?: AttentionOption[];
+  /** The plan to approve, whole (Claude Code sends it). */
+  plan?: string;
 }
 
 export interface TerminalData {
@@ -190,10 +206,12 @@ export interface RadioItem {
   by?: 'user' | 'external';
   images?: number;
   /** An ask the user answered: what it was, and the interface's answer. */
-  kind?: 'permission' | 'question';
+  kind?: 'permission' | 'question' | 'plan';
   tool?: string;
   detail?: string;
-  choice?: AttentionChoice;
+  choice?: AttentionChoice | 'option';
+  /** On a question or a plan: what was picked ("Azul · Submit answers"), or the user's own text. */
+  answer?: string;
   /** The reply's text is kept (GET /api/requests/{id}). */
   hasReply?: boolean;
   /** A pending request waiting for its target's turn to end. */
@@ -282,6 +300,8 @@ export interface TerminalRuntime {
   interrupted?: boolean;
   /** What it asks the user (activity "ask"). */
   attention?: Attention;
+  /** Its last turn was the user's and ended: it waits for them (shown while "done"). */
+  yourTurn?: boolean;
 }
 
 export interface PendingRequest {

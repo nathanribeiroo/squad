@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { CHOICES, askPhrase, choiceTitle, respond } from '../lib/attention';
+import { AskOptions } from './AskOptions';
 import type { IconName } from '../lib/icons';
 import { CHECK_NAMES } from '../lib/floors';
 import { callsign, clock, clockDay, elapsed } from '../lib/model';
@@ -38,7 +39,7 @@ const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: n
 };
 
 // How an ask was answered from the interface (none: in the terminal).
-const ANSWERED = { allow: 'autorizado', always: 'sempre', deny: 'negado' } as const;
+const ANSWERED = { allow: 'autorizado', always: 'sempre', deny: 'negado', option: 'respondido' } as const;
 
 /** Asks before clearing the session's Rádio. */
 async function clearRadio(session?: string) {
@@ -174,7 +175,13 @@ export function ActivityDrawer() {
               <div className="ad-msg">
                 {askPhrase(a)}
                 {a?.detail && <code className="ad-detail mono">{a.detail}</code>}
+                {a?.kind !== 'permission' && a?.text && <div className="ad-detail">{a.text}</div>}
               </div>
+              {a?.options?.length ? (
+                <div className="ad-actions ao-wrap">
+                  <AskOptions id={id} a={a} who={who(id, '')} />
+                </div>
+              ) : null}
               <div className="ad-actions">
                 {CHOICES.filter((c) => a?.choices?.includes(c.choice)).map((c) => (
                   <button key={c.choice} className={`btn${c.choice === 'allow' ? ' filled ask' : ''}`} title={choiceTitle(a, c)} onClick={() => respond(id, c.choice)}>
