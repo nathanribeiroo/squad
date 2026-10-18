@@ -70,7 +70,7 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | `internal/attention`, `internal/apierr` | PRIORIDADE: ler o prompt na tela e as teclas de cada resposta; erros da API com `code` (traduzidos em `web/src/api/errors.ts`) |
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |
 | `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot`; pilhas de NOTAMs (`stacks.go`: a base guarda os fios e a caixa) |
-| `internal/agentbus` | `torre list/ask/check/wait/reply`, limites, pausa, modo `Safe`; a fila de pedidos de cada voo e a entrega a quem está ocupado num laço (`queue.go`) |
+| `internal/agentbus` | `torre list/ask/check/wait/reply`, limites, pausa, modo `Safe`; a fila de pedidos de cada voo e a entrega a quem está ocupado num laço (`queue.go`); o motivo da espera geral e a cadeia de um laço que passou do limite de saltos (`loop.go`) |
 | `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools`; a conversa de cada terminal, nova ou retomada (`conversation.go`); a cópia da configuração do Devin e o registro do MCP nele (`devin.go`) |
 | `internal/roles`, `internal/team` | biblioteca de papéis; `torre new/connect/close` (gerente) |
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `torre portal` |

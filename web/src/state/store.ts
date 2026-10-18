@@ -658,7 +658,7 @@ export const useSquad = create<SquadState>((set, get) => ({
         return;
       }
       case 'conversations.paused':
-        set({ extra: { ...st.extra, paused: !!d.paused } });
+        set({ extra: { ...st.extra, paused: !!d.paused, pause: d.paused ? (d.pause ?? null) : null } });
         return;
       case 'radio.item': {
         const a = toActivity(d as RadioItem);

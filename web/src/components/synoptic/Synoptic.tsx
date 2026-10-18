@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 import type { Floor, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { CHOICES, askPhrase, choiceTitle, respond } from '../../lib/attention';
 import { checkViews, flightLevel, gitSummary } from '../../lib/floors';
+import { loopOf, onLoop } from '../../lib/loop';
 import { STATE_META, callsign, clock, elapsed } from '../../lib/model';
 import { useNodeRoleColor } from '../../lib/roles';
 import { useNow } from '../../lib/useNow';
 import { useScreenHidden, useScreenPlace } from '../../lib/screens';
 import { XTermView } from '../../term/XTermView';
 import { HiddenScreen } from '../HiddenScreen';
+import { LoopCard } from '../LoopCard';
 import { useSquad } from '../../state/store';
 import { Icon } from '../Icon';
 import './Synoptic.css';
@@ -39,6 +41,7 @@ export function Synoptic() {
         <Frequencies flights={flights} />
       </section>
       <section className="syn-right">
+        <LoopCard inSynoptic />
         <PriorityCard flights={flights} floors={floors ?? []} runtime={runtime} />
         {shown && <SelectedTerminal n={shown} floors={floors ?? []} rt={runtime[shown.id]} pinned={pinned && shown.id === pick} />}
       </section>
@@ -77,6 +80,7 @@ const SYMBOL: Record<UIState, string> = { work: '▲', ask: '●', done: '□', 
 function Radar({ flights, floors, runtime, selected }: { flights: WNode[]; floors: Floor[]; runtime: Record<string, TerminalRuntime>; selected?: string }) {
   const pending = useSquad((s) => s.extra.pending);
   const lastReply = useSquad((s) => s.lastReply);
+  const loop = useSquad((s) => loopOf(s.extra.pause));
   const now = useNow(2000);
   const levels = useMemo(() => [...floors].sort((a, b) => (a.number ?? 0) - (b.number ?? 0)), [floors]);
   const R = 290;
@@ -151,6 +155,11 @@ function Radar({ flights, floors, runtime, selected }: { flights: WNode[]; floor
         <g className="syn-sweep">
           <path d={`M${C},${C} L${C + R},${C} A${R},${R} 0 0,0 ${C + R * Math.cos(-0.6)},${C + R * Math.sin(-0.6)} Z`} fill="url(#syn-sweep)" />
         </g>
+        {loop?.chain.slice(1).map((s, i) => {
+          const a = pos.get(loop.chain[i].id);
+          const b = pos.get(s.id);
+          return a && b ? <line key={`l-${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="syn-link loop" /> : null;
+        })}
         {pending.map((p) => {
           const a = pos.get(p.from);
           const b = pos.get(p.to);
@@ -302,6 +311,7 @@ function Frequencies({ flights }: { flights: WNode[] }) {
   const lastReply = useSquad((s) => s.lastReply);
   const limits = useSquad((s) => s.extra.limits);
   const sendTimes = useSquad((s) => s.sendTimes);
+  const loop = useSquad((s) => loopOf(s.extra.pause));
   const now = useNow(2000);
   const cs = (id: string) => {
     const t = flights.find((n) => n.id === id)?.terminal;
@@ -316,7 +326,7 @@ function Frequencies({ flights }: { flights: WNode[] }) {
         const r = lastReply[id];
         return r && now - r.at < 60_000 && (r.from === w.e.a || r.from === w.e.b);
       });
-      return { ...w, kind: open ? 'pending' : replied ? 'reply' : 'idle' };
+      return { ...w, kind: onLoop(loop, w.e.a, w.e.b) ? 'loop' : open ? 'pending' : replied ? 'reply' : 'idle' };
     });
   const rate = sendTimes.filter((t) => now - t < 60_000).length;
   return (
@@ -329,6 +339,7 @@ function Frequencies({ flights }: { flights: WNode[] }) {
         {wires.map((w) => (
           <span key={w.e.id} className={`syn-freq mono ${w.kind}`}>
             {w.a} ⇄ {w.b}
+            {w.kind === 'loop' && ' · laço'}
             {w.kind === 'pending' && ' · pedido'}
             {w.kind === 'reply' && ' · respondeu'}
           </span>

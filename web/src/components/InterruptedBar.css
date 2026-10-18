@@ -1,16 +1,9 @@
 /* ARREMETIDA (docs/torre/TELAS.md, quadro 21): flights interrupted
    mid-turn are back in their conversations; a band atop the canvas. */
 .ib {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 15;
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 860px;
-  max-width: calc(100% - 32px);
   min-height: 44px;
   padding: 6px 8px 6px 14px;
   background: var(--stb-wait);

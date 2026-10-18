@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, type Edge, type EdgeProps, type InternalNode } from '@xyflow/react';
 import { api } from '../../api/client';
 import { Icon } from '../../components/Icon';
+import { loopOf, onLoop } from '../../lib/loop';
 import { elapsed } from '../../lib/model';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
@@ -55,6 +56,12 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
   const bName = useNodeName(target);
   const allFlights = useSquad((s) => s.flights);
   const paused = useSquad((s) => s.extra.paused);
+  // A hop of the loop that holds every conversation: its limit, else 0.
+  const loopLimit = useSquad((s) => {
+    const loop = loopOf(s.extra.pause);
+    return loop && onLoop(loop, source, target) ? (loop.limit ?? 0) : 0;
+  });
+  const inLoop = loopLimit > 0;
   const flights = useMemo(
     () => Object.values(allFlights).filter((f) => (f.from === source && f.to === target) || (f.from === target && f.to === source)),
     [allFlights, source, target],
@@ -85,7 +92,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
   };
 
   const waiting = pending?.kind === 'pending' || pending?.kind === 'queued';
-  const wireClass = `wire${selected ? ' selected' : ''}${waiting ? ' pending' : ''}${paused && !pending ? ' held' : ''}`;
+  const wireClass = `wire${selected ? ' selected' : ''}${waiting ? ' pending' : ''}${paused && !pending ? ' held' : ''}${inLoop ? ' loop' : ''}`;
   const endClass = (isOrigin: boolean) => (waiting ? (isOrigin ? ' origin' : ' dest') : '');
 
   return (
@@ -187,12 +194,23 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
               );
           }
         })}
+        {inLoop && (
+          <div
+            className="wire-pill loop nodrag nopan"
+            style={{ transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y + visuals.length * 36}px)` }}
+            title="Esta frequência faz parte do laço · clique para ver no Rádio"
+            onClick={() => useSquad.getState().setDrawer(true)}
+          >
+            <Icon name="all_inclusive" size={14} />
+            laço · {loopLimit} saltos · espera geral
+          </div>
+        )}
         {portalAct && (
           <div
             key={`act-${portalAct.act.seq}`}
             className="wire-pill act"
             style={{
-              transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y + visuals.length * 36}px)`,
+              transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y + (visuals.length + (inLoop ? 1 : 0)) * 36}px)`,
               borderColor: `var(--r-${portalAct.role})`,
               color: `var(--r-${portalAct.role})`,
             }}
@@ -202,7 +220,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
             {actionVerb(portalAct.act.kind)}
           </div>
         )}
-        {paused && visuals.length === 0 && !selected && (
+        {paused && !inLoop && visuals.length === 0 && !selected && (
           <div className="wire-paused" style={{ transform: `translate(-50%, -50%) translate(${w.low.x}px, ${w.low.y}px)` }} title="Espera geral: os pedidos ficam retidos">
             <Icon name="all_inclusive" size={16} />
           </div>

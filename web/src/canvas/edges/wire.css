@@ -12,6 +12,8 @@
 @keyframes wire-dash { to { stroke-dashoffset: -13; } }
 /* Held by the general hold: dotted. */
 .react-flow__edge-path.wire.held { stroke-dasharray: 2 5; stroke-linecap: round; }
+/* A hop of the loop that holds everything: full amber. */
+.react-flow__edge-path.wire.loop { stroke: var(--wire-wait); stroke-width: 3; stroke-dasharray: none; animation: none; }
 
 .wire-end { fill: var(--wire); stroke: none; }
 .wire-end.origin { fill: var(--st-wait); }
@@ -73,6 +75,7 @@
   pointer-events: all;
 }
 .wire-pill.wait { color: var(--stt-wait); cursor: pointer; }
+.wire-pill.loop { background: var(--st-wait); color: var(--stb-wait); text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; }
 .wire-pill.queued { border-style: dashed; text-transform: uppercase; letter-spacing: 0.04em; }
 .wire-pill.done { background: var(--pill-done-bg); border-color: var(--st-done); color: var(--stt-done); }
 .wire-pill.err { background: var(--pill-err-bg); border-color: var(--st-err); color: var(--stt-err); }

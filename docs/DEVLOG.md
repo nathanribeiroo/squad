@@ -2,6 +2,58 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Cartão do laço
+
+- **Pedido:** o item 10 da lista de pendências, o cartão "ESPERA GERAL · LAÇO" do quadro 21 (`docs/torre/TELAS.md`), que estava em "Para depois". O plano foi aprovado com os padrões propostos:
+  - o cartão só aparece nos laços;
+  - liberar não muda o limite;
+  - a cadeia aparece pelos indicativos, com o nome ao passar o mouse.
+- **O que é um laço:** o "A → B → A" que o "Para depois" citava já se resolvia: a pergunta de volta responde a quem perguntou, e um ciclo maior é solto (`ring-break`). O que põe tudo em espera é a cadeia de pedidos que passa do limite de saltos, e era essa cadeia que a Torre não guardava.
+- **Servidor (`internal/agentbus/loop.go`, novo):**
+  - **A cadeia:** quando um pedido passa do limite, o servidor volta pelos pedidos que cada voo está atendendo (o de maior salto abaixo do anterior) até quem começou. Depois põe no fim o voo a quem o pedido recusado ia.
+  - **O motivo da espera (`Pause`):** você ou um laço. O de um laço leva a cadeia (id, nome e indicativo de cada voo), os saltos e o limite.
+    - O evento `conversations.paused` leva o motivo.
+    - O estado (`/api/state` e o primeiro aviso do WebSocket) também, então recarregar a página mantém o cartão.
+    - Liberar apaga o motivo.
+    - A espera geral ligada pelo botão durante um laço não apaga a cadeia.
+  - **Quem perguntou:** a recusa (409) agora diz "torre: hop limit (6) reached: PLN → IMP → you → REV. Conversations are paused until the user releases them; tell the user.".
+  - **Rádio:** a linha do laço traz a cadeia inteira ("Laço: limite de 6 saltos atingido PLN → IMP → REV…").
+- **Interface:**
+  - **O cartão (`LoopCard.tsx`, novo):**
+    - ∞, "ESPERA GERAL · LAÇO", a cadeia, "passou de N saltos. Tudo em espera até você liberar.", LIBERAR TODOS ⌥P e LIMITES…;
+    - no Espaço, um clique no indicativo centraliza o voo (no nível dele);
+    - no Sinóptico, o clique mostra o terminal do voo, e o duplo clique abre no Espaço;
+    - um voo já fechado fica apagado na cadeia.
+  - **As faixas do alto do canvas:** a ARREMETIDA, o laço e a PRIORIDADE ficam numa coluna só, uma embaixo da outra. Antes, a PRIORIDADE descia 52 px quando havia ARREMETIDA.
+  - **Fios:** os da cadeia ficam em âmbar cheio, sem tracejado, com a pílula "∞ laço · 6 saltos · espera geral". Os outros fios continuam com o quadrado ∞ da espera geral.
+  - **Sinóptico:** o cartão no alto da coluna da direita; o radar liga os voos da cadeia em âmbar; as frequências da cadeia ficam em âmbar cheio, com "· laço".
+- **Testado aqui:**
+  - **Agentes falsos** (`TestLoopChain`, novo): uma cadeia real Plano → Impl → Revisor → Testador com limite 2, feita com `torre ask` dentro dos agentes. O teste confere:
+    - o evento, com a cadeia, os saltos e o limite;
+    - a recusa a quem perguntou, com "you";
+    - que o pedido recusado não chega;
+    - o estado;
+    - a linha do Rádio;
+    - que a espera geral do botão por cima não troca o motivo;
+    - que liberar apaga;
+    - que a espera manual não tem cadeia nem linha de laço.
+  - **Na tela, com agentes falsos num servidor de teste:** um laço de verdade (cinco voos, limite 3). Conferi, no tema escuro (e o cartão do Espaço também no claro):
+    - o cartão no Espaço e no Sinóptico;
+    - centralizar pelo indicativo;
+    - LIMITES…;
+    - LIBERAR TODOS (o cartão some);
+    - a espera manual sem cartão;
+    - a linha do Rádio;
+    - o cartão depois de recarregar a página.
+  - **Validação:** `make check` com o navegador, `tsc` e o build.
+    - Antes da rodada que passou inteira, duas falhas apareceram uma vez cada, em testes que este PR não muda, e passaram ao rodar de novo.
+    - `TestCycleIsReleased`: a pasta temporária não estava vazia na limpeza. O teste termina com os voos ainda no meio do turno, e alguém grava depois do fechamento.
+    - `TestFramesHaveViewportSize`: o prazo de 3 s para o primeiro quadro estourou com a máquina carregada pelos outros pacotes.
+- **Não testado:**
+  - **Claude real e Devin real:** um laço de verdade com agentes reais gastaria muitos turnos. A recusa é a mesma resposta do `torre ask` e da ferramenta `ask` do MCP para todos os agentes, e a skill já diz para parar e avisar o usuário. O Devin está deslogado.
+  - **Codex e Gemini reais:** não instalados aqui.
+  - **Windows.**
+
 ## 2026-10-18, Testes e revisão no pouso, e ocupação no `torre list`
 
 - **Pedido:** o item 12 da lista de pendências ("✓ testes · ✓ revisão" na fila de pouso, que estava no mockup mas nunca existiu) e, junto, mostrar no `torre list` quem está ocupado e a fila de cada voo. O plano foi aprovado com os padrões propostos:

@@ -112,8 +112,7 @@ func (b *Bus) Ask(ctx context.Context, caller, target, msg string) Result {
 	maxHops := b.limits.MaxHops
 	b.mu.Unlock()
 	if hop > maxHops {
-		b.SetPaused(true, fmt.Sprintf("hop limit %d reached (%s → %s)", maxHops, fromName, toName))
-		return Result{Code: 409, Body: fmt.Sprintf("torre: hop limit (%d) reached; conversations are paused until the user resumes them", maxHops)}
+		return b.holdLoop(caller, tn.ID, hop, maxHops)
 	}
 
 	p := &Pending{From: caller, To: tn.ID, FromName: fromName, ToName: toName,
