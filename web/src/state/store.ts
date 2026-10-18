@@ -45,6 +45,8 @@ export interface ActivityItem {
   choice?: AttentionChoice;
   /** The reply's text is kept. */
   hasReply?: boolean;
+  /** A pending request waiting for its target's turn to end. */
+  queued?: boolean;
 }
 
 /** A request in flight, for wire animations (W3). */
@@ -52,7 +54,8 @@ export interface Flight {
   id: string;
   from: string;
   to: string;
-  phase: 'sending' | 'pending' | 'replying' | 'received' | 'cancelled';
+  /** queued: waiting in the target's line for its turn to end. */
+  phase: 'sending' | 'queued' | 'pending' | 'replying' | 'received' | 'cancelled';
   startedAt: number;
   updatedAt: number;
   /** When the reply started travelling back (reply.sent, or reply.received when it came straight from a hook). */
@@ -524,7 +527,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   load: (s) => {
     const pending: Record<string, Flight> = {};
     for (const p of s.extra?.pending ?? []) {
-      pending[p.id] = { id: p.id, from: p.from, to: p.to, phase: 'pending', startedAt: Date.parse(p.sentAt), updatedAt: Date.now() };
+      pending[p.id] = { id: p.id, from: p.from, to: p.to, phase: p.queued ? 'queued' : 'pending', startedAt: Date.parse(p.sentAt), updatedAt: Date.now() };
     }
     // The server only reports a count; spread it as "now" so it decays.
     const sendTimes = Array.from({ length: s.extra?.rate ?? 0 }, () => Date.now());
@@ -609,9 +612,15 @@ export const useSquad = create<SquadState>((set, get) => ({
         });
         return;
       }
+      case 'request.queued':
       case 'request.pending': {
+        // Waiting in the target's line, then delivered.
+        const queued = ev.type === 'request.queued';
         const f = st.flights[d.id];
-        if (f) set({ flights: { ...st.flights, [d.id]: { ...f, phase: 'pending', updatedAt: Date.now() } } });
+        set({
+          flights: f ? { ...st.flights, [d.id]: { ...f, phase: queued ? 'queued' : 'pending', updatedAt: Date.now() } } : st.flights,
+          extra: { ...st.extra, pending: st.extra.pending.map((p) => (p.id === d.id ? { ...p, queued } : p)) },
+        });
         return;
       }
       case 'reply.sent': {

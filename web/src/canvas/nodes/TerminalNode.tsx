@@ -400,7 +400,9 @@ function SenderStrip({ id }: { id: string }) {
   const pending = useSquad((s) => s.extra.pending);
   const reply = useSquad((s) => s.lastReply[id]);
   const nodes = useSquad((s) => s.workspace?.nodes);
-  const incoming = pending.find((p) => p.to === id);
+  // The request it is answering; those still in its line wait for the turn to end.
+  const line = pending.filter((p) => p.to === id && p.queued);
+  const incoming = pending.find((p) => p.to === id && !p.queued);
   const outgoing = pending.find((p) => p.from === id);
   const now = useNow(1000, !!outgoing || !!reply);
   const lookup = useRoleLookup();
@@ -417,6 +419,18 @@ function SenderStrip({ id }: { id: string }) {
       <div className="tn-strip" style={{ background: `var(--rb-${r})`, color: `var(--rt-${r})` }}>
         <Icon name="call_received" size={15} />
         Pedido {incoming.id} de {cs(incoming.from, incoming.fromName)} · a resposta volta para ele
+        {line.length > 0 && ` · ${line.length} na fila`}
+      </div>
+    );
+  }
+  if (line.length > 0) {
+    const r = roleOf(line[0].from);
+    return (
+      <div className="tn-strip" style={{ background: `var(--rb-${r})`, color: `var(--rt-${r})` }}>
+        <Icon name="call_received" size={15} />
+        {line.length === 1
+          ? `Pedido ${line[0].id} de ${cs(line[0].from, line[0].fromName)} na fila · entra quando este turno acabar`
+          : `${line.length} pedidos na fila · entram um por vez quando este turno acabar`}
       </div>
     );
   }
@@ -424,7 +438,7 @@ function SenderStrip({ id }: { id: string }) {
     return (
       <div className="tn-strip" style={{ background: 'var(--stb-wait)', color: 'var(--stt-wait)' }}>
         <Icon name="hourglass_top" size={15} />
-        Aguardando {cs(outgoing.to, outgoing.toName)} · pedido {outgoing.id} · enviado há {secondsAgo(outgoing.sentAt, now)}
+        {outgoing.queued ? 'Na fila de' : 'Aguardando'} {cs(outgoing.to, outgoing.toName)} · pedido {outgoing.id} · enviado há {secondsAgo(outgoing.sentAt, now)}
       </div>
     );
   }
