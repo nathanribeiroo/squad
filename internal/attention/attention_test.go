@@ -218,6 +218,20 @@ const devinMCP = `
 ↑↓ select · ↵ confirm · esc cancel
 `
 
+// Its plan, at the end of plan mode (alt+p): its exit_plan_mode tool.
+const devinPlan = `
+ ⏺ write_plan(file_path="/tmp/proj/.devin/plans/plan.md")
+ │  6 +  # Create hello.txt file
+ └ 19 +  - Verify the content with ` + "`cat hello.txt`" + `
+
+ ⏺ Starting implementation
+
+❭ 1 Yes, switch to accept edits mode  (Auto-approve edits in workspace dirs)
+  2 Yes, switch to bypass mode
+  3 No
+↑↓ select · ↵ confirm · esc cancel
+`
+
 // Its question tool (no permission hook for it) and the folder trust.
 const devinQuestion = `
 ── Cor ─────────────────────────────────────────────────────────────────────
@@ -280,15 +294,47 @@ func TestParseDevin(t *testing.T) {
 		t.Fatalf("header: %+v %v", p, ok)
 	}
 
-	// A question: read (the flight asks you), nothing to answer from here.
+	// A question: its options, and the text field with no number under
+	// them; a digit picks an option, the down arrow reaches the field.
 	q, ok := Parse(devinQuestion)
-	if !ok || q.Question != "Qual cor?" || len(q.Options) != 2 || Answerable("devin", &q) != nil {
+	if !ok || q.Question != "Qual cor?" || len(q.Options) != 3 || Answerable("devin", &q) != nil || q.Cursor != 0 {
 		t.Fatalf("question: %+v %v", q, ok)
 	}
-	// Trusting the folder: "No, exit" alone is no permission to deny.
+	if o := q.Options[1]; o.Text != "Verde" || o.Detail != "Green color" {
+		t.Fatalf("option 2: %+v", o)
+	}
+	if o := q.Options[2]; !o.Input || !o.Unnumbered || o.Key != "3" || o.Text != "Other (type your own)" {
+		t.Fatalf("text field: %+v", o)
+	}
+	if got := Pickable("devin", &q); len(got) != 3 {
+		t.Fatalf("pickable: %+v", got)
+	}
+	if k, ok := OptionKeys("devin", q, "2", ""); !ok || !reflect.DeepEqual(k, []string{"2"}) {
+		t.Fatalf("keys 2: %q %v", k, ok)
+	}
+	if k, ok := OptionKeys("devin", q, "3", "Roxo"); !ok || !reflect.DeepEqual(k, []string{"\x1b[B\x1b[B", "Roxo", "\r"}) {
+		t.Fatalf("keys 3: %q %v", k, ok)
+	}
+	// The cursor moved in the terminal: fewer steps down.
+	moved, _ := Parse(strings.Replace(strings.Replace(devinQuestion, "❭ 1 Azul", "  1 Azul", 1), "    2 Verde", "  ❭ 2 Verde", 1))
+	if k, ok := OptionKeys("devin", moved, "3", "Roxo"); !ok || moved.Cursor != 1 || k[0] != "\x1b[B" {
+		t.Fatalf("moved: %q %v (cursor %d)", k, ok, moved.Cursor)
+	}
+	// Trusting the folder: "No, exit" alone is no permission to deny, and
+	// isn't answered from here.
 	tr, ok := Parse(devinTrust)
-	if !ok || tr.Options[1].Choice != Deny || Answerable("devin", &tr) != nil {
+	if !ok || tr.Options[1].Choice != Deny || Answerable("devin", &tr) != nil || Pickable("devin", &tr) != nil {
 		t.Fatalf("trust: %+v %v", tr, ok)
+	}
+
+	// Its plan (exit_plan_mode): the tool's header, and an option that
+	// turns every permission off, which stays in the terminal.
+	pl, ok := Parse(devinPlan)
+	if !ok || pl.Question != "Starting implementation" || len(pl.Options) != 3 || pl.Choices() != nil {
+		t.Fatalf("plan: %+v %v", pl, ok)
+	}
+	if got := Pickable("devin", &pl); len(got) != 2 || got[0].Key != "1" || got[1].Text != "No" {
+		t.Fatalf("plan pickable: %+v", got)
 	}
 
 	// Devin's prompt line with something typed in it is no prompt.
@@ -486,8 +532,8 @@ func TestParseClaudeQuestion(t *testing.T) {
 			t.Fatalf("keys for %+v", c)
 		}
 	}
-	// The other agents' questions aren't verified yet.
-	for _, agent := range []string{"devin", "codex", "gemini", "custom"} {
+	// Codex's and Gemini's questions aren't verified yet.
+	for _, agent := range []string{"codex", "gemini", "custom"} {
 		if Pickable(agent, &q) != nil {
 			t.Fatalf("%s pickable", agent)
 		}

@@ -8,6 +8,8 @@ package attention
 
 import (
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -94,6 +96,9 @@ type Option struct {
 	// Input marks the option that is a text field: the user's own answer
 	// ("Type something.", "Tell Claude what to change").
 	Input bool `json:"input,omitempty"`
+	// Unnumbered: no digit picks it, the arrows reach it (Devin's "Other
+	// (type your own)"); its Key only names it.
+	Unnumbered bool `json:"-"`
 }
 
 // Prompt is a question on screen with numbered choices, one of them under
@@ -103,6 +108,8 @@ type Prompt struct {
 	Options  []Option
 	// Multi: the options are checkboxes ("[ ] Maçã"), several at once.
 	Multi bool
+	// Cursor is the index of the option under the selection cursor.
+	Cursor int
 }
 
 // Same reports whether two prompts are the same question with the same choices.
@@ -151,6 +158,8 @@ var (
 	cursorLine = regexp.MustCompile(`^\s*[❯›▶●>❭]\s*\d(?:[.)]\s|\s)`)
 	// A checkbox in front of an option: "[ ] Maçã", "[✔] Uva".
 	checkbox = regexp.MustCompile(`^\[[ xX✔✓×]\]\s*`)
+	// Devin's text field on a question, under its options, with no number.
+	otherLine = regexp.MustCompile(`(?i)^other \(type your own\)$`)
 )
 
 // window is how many lines at the bottom of the screen a prompt may use.
@@ -207,11 +216,20 @@ func Parse(screen string) (Prompt, bool) {
 					p.Multi, text = true, strings.TrimPrefix(text, c)
 				}
 				p.Options = append(p.Options, Option{Key: m[2], Label: text, Text: text})
+				if cursorLine.MatchString(lines[end]) {
+					p.Cursor = len(p.Options) - 1
+				}
 				continue
 			}
 			if len(p.Options) > 0 && continuation(lines[end]) {
-				o := &p.Options[len(p.Options)-1]
 				more := strings.TrimSpace(lines[end])
+				if otherLine.MatchString(more) {
+					// Devin's text field, after its options, with no number.
+					key := strconv.Itoa(len(p.Options) + 1)
+					p.Options = append(p.Options, Option{Key: key, Label: more, Text: more, Unnumbered: true})
+					continue
+				}
+				o := &p.Options[len(p.Options)-1]
 				o.Label += " " + more
 				o.Detail = strings.TrimSpace(o.Detail + " " + more)
 				continue
@@ -324,7 +342,7 @@ func onlyFooter(lines []string) bool {
 // plan, where the user writes their own answer.
 func input(text string) bool {
 	t := strings.ToLower(text)
-	return strings.HasPrefix(t, "type something") || strings.HasPrefix(t, "tell claude what to change")
+	return strings.HasPrefix(t, "type something") || strings.HasPrefix(t, "tell claude what to change") || otherLine.MatchString(text)
 }
 
 // continuation is the wrapped rest of an option's label: indented text that
@@ -372,10 +390,10 @@ func classify(label string) Choice {
 var verified = map[string]bool{"claude": true, "devin": true}
 
 // verifiedOptions are the agents whose questions and plans were checked
-// against the real CLI (Claude Code 2.1.302): a digit picks an option and
-// confirms it; on the text field it moves there, the text goes in and Enter
-// sends it.
-var verifiedOptions = map[string]bool{"claude": true}
+// against the real CLI (Claude Code 2.1.302, Devin 3000.11.92): a digit
+// picks an option and confirms it; the text field is reached with its digit
+// (Claude) or the down arrow (Devin), the text goes in and Enter sends it.
+var verifiedOptions = map[string]bool{"claude": true, "devin": true}
 
 // Keys returns what to type to answer c on agent's prompt p, false when the
 // agent's keys aren't verified or p has no option for c.
@@ -442,7 +460,16 @@ func OptionKeys(agent string, p Prompt, key, text string) ([]string, bool) {
 		if text == "" {
 			return nil, false
 		}
-		return []string{o.Key, text, "\r"}, true
+		move := o.Key
+		if o.Unnumbered {
+			// Down from the option under the cursor to the text field.
+			i := slices.IndexFunc(p.Options, func(x Option) bool { return x.Key == key })
+			if i <= p.Cursor {
+				return nil, false
+			}
+			move = strings.Repeat("\x1b[B", i-p.Cursor)
+		}
+		return []string{move, text, "\r"}, true
 	}
 	return nil, false
 }

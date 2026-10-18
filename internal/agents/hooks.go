@@ -94,8 +94,8 @@ func ParseHook(name string, body []byte) (HookEvent, bool) {
 					a.Text, _ = q["question"].(string)
 				}
 			}
-		case "ExitPlanMode":
-			// Claude Code's plan, whole, for the interface to show.
+		case "ExitPlanMode", "exit_plan_mode":
+			// Claude Code's and Devin's plan, whole, for the interface to show.
 			a.Kind = attention.Plan
 			a.PlanText, _ = p.ToolInput["plan"].(string)
 			a.PlanText = clipPlan(a.PlanText)

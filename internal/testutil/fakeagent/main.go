@@ -16,7 +16,9 @@
 //	                      deny), or its MCP prompt for a command that is a
 //	                      tool name (mcp__torre__keys: 1–6 go on, 7 denies)
 //	ASKQ:<question>       asks a question with two options like Devin's
-//	                      question tool (no hook) and reads one key
+//	                      question tool (no hook): 1 or 2 answer, two down
+//	                      arrows reach "Other (type your own)" (the text up
+//	                      to CR is the answer), Esc cancels
 //	ASKCQ:<question>      asks a question like Claude Code's AskUserQuestion
 //	                      (its permission hook, then the screen), with two
 //	                      options ("question|one|two"; Azul, Verde): 1, 2 or 4
@@ -24,7 +26,8 @@
 //	                      to CR is the answer), Esc declines
 //	PLAN:<title>          asks to approve a plan like Claude Code's
 //	                      ExitPlanMode: 1 or 2 approve, 3 then text and CR
-//	                      sends feedback, Esc declines
+//	                      sends feedback, Esc declines; as Devin, its
+//	                      exit_plan_mode: 1 or 2 approve, 3 says no
 //
 // $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
 // $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Torre's hooks:
@@ -190,9 +193,9 @@ func turn(msg string, work float64) {
 		return
 	}
 	if q, ok := strings.CutPrefix(lastLine(msg), "ASKQ:"); ok {
-		out("── Pergunta ──────────────────────────────\n  " + q + "\n  ❭ 1 Azul\n      Blue color\n    2 Verde\n      Green color\n" +
+		out("── Pergunta ──────────────────────────────\n  " + q + "\n  ❭ 1 Azul\n      Blue color\n    2 Verde\n      Green color\n      Other (type your own)\n" +
 			"──────────────────────────────────────────\n↑↓ navigate · ↵ select · ? help me out · esc cancel\n? Not ready to answer, help me out!\n")
-		readChoice(0x1b, '2') // 1 or 2 answers, Esc cancels
+		readDevinQuestion()
 	}
 	if q, ok := strings.CutPrefix(lastLine(msg), "ASKCQ:"); ok {
 		// "question|option one|option two" (Azul and Verde by default).
@@ -209,7 +212,13 @@ func turn(msg string, work float64) {
 			"────────────────────────────────────────\n  4. Chat about this\n\nEnter to select · ↑/↓ to navigate · Esc to cancel\n")
 		readOption('4', '3')
 	}
-	if title, ok := strings.CutPrefix(lastLine(msg), "PLAN:"); ok {
+	if title, ok := strings.CutPrefix(lastLine(msg), "PLAN:"); ok && os.Getenv("FAKEAGENT_HOOK") == "devin" {
+		input, _ := json.Marshal(map[string]any{"plan": "# " + title + "\n\n1. Create hello.txt\n"})
+		hook("permission", `{"hook_event_name":"PermissionRequest","session_id":"`+sessionID+`","tool_name":"exit_plan_mode","tool_input":`+string(input)+`}`)
+		out(" ⏺ Starting implementation\n\n❭ 1 Yes, switch to accept edits mode  (Auto-approve edits in workspace dirs)\n" +
+			"  2 Yes, switch to bypass mode\n  3 No\n↑↓ select · ↵ confirm · esc cancel\n")
+		readOption('3', 0)
+	} else if ok {
 		plan := "# " + title + "\n\n1. Create hello.txt\n2. Read it back\n"
 		input, _ := json.Marshal(map[string]any{"plan": plan, "planFilePath": "/tmp/plan.md"})
 		hook("permission", `{"hook_event_name":"PermissionRequest","session_id":"`+sessionID+`","tool_name":"ExitPlanMode","tool_input":`+string(input)+`}`)
@@ -342,6 +351,51 @@ func readOption(last, text byte) {
 			logf("ASK-CHOSE %c", c)
 			out(fmt.Sprintf("chose %c\n", c))
 			return
+		}
+	}
+}
+
+// readDevinQuestion reads the answer to Devin's question: 1 or 2 pick an
+// option; two down arrows reach "Other (type your own)", whose answer is the
+// text up to CR; Esc cancels.
+func readDevinQuestion() {
+	key := make([]byte, 64)
+	down := 0
+	var typed []byte
+	for {
+		n, err := os.Stdin.Read(key)
+		if err != nil {
+			return
+		}
+		logf("ASK-KEY %x", key[:n])
+		in := key[:n]
+		for len(in) > 0 {
+			switch {
+			case in[0] == 0x03:
+				logf("CTRL-C")
+				os.Exit(130)
+			case bytes.HasPrefix(in, []byte("\x1b[B")):
+				down++
+				in = in[3:]
+				continue
+			case in[0] == 0x1b:
+				out("\x1b[2J\x1b[H")
+				logf("ASK-DECLINED")
+				return
+			case down >= 2 && in[0] == '\r':
+				out("\x1b[2J\x1b[H")
+				logf("ASK-TEXT %q", typed)
+				out(fmt.Sprintf("answered %s\n", typed))
+				return
+			case down >= 2:
+				typed = append(typed, in[0])
+			case down == 0 && (in[0] == '1' || in[0] == '2'):
+				out("\x1b[2J\x1b[H")
+				logf("ASK-CHOSE %c", in[0])
+				out(fmt.Sprintf("chose %c\n", in[0]))
+				return
+			}
+			in = in[1:]
 		}
 	}
 }
