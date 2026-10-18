@@ -22,6 +22,8 @@ import type {
   SummarySettings,
   TerminalRuntime,
   TurnCard,
+  UsageAccount,
+  UsageFlight,
   WEdge,
   WNode,
   Workspace,
@@ -143,6 +145,10 @@ interface SquadState {
   hiddenCards: Record<string, string>;
   summarySettings: SummarySettings | null;
   summaryDialog: 'overview' | 'settings' | null;
+  /** What each flight used (Consumo), by terminal. */
+  usage: Record<string, UsageFlight>;
+  /** The agents' plan limits, by agent: the same in every workspace. */
+  accounts: Record<string, UsageAccount>;
   /** Text the Composer starts with (a suggested next step). */
   composerDraft: string | null;
   workspace: Workspace | null;
@@ -231,6 +237,8 @@ interface SquadState {
   loadSummaries(): void;
   /** Reads the Rádio's last lines (on connecting). */
   loadRadio(): void;
+  /** Reads what the flights used and the plan limits (on connecting). */
+  loadUsage(): void;
   /** Reads the Rádio's next older page. */
   loadOlderRadio(): void;
   hideCard(terminal: string, at: string): void;
@@ -361,6 +369,7 @@ const perWorkspace = {
   hiddenCards: {},
   summarySettings: null,
   summaryDialog: null,
+  usage: {},
   composerDraft: null,
   dock: null,
   focusPane: null,
@@ -412,6 +421,8 @@ export const useSquad = create<SquadState>((set, get) => ({
   hiddenCards: {},
   summarySettings: null,
   summaryDialog: null,
+  usage: {},
+  accounts: {},
   composerDraft: null,
   workspace: null,
   runtime: {},
@@ -586,6 +597,11 @@ export const useSquad = create<SquadState>((set, get) => ({
         return;
       case 'node.removed':
         if (ws) set({ workspace: { ...ws, nodes: ws.nodes.filter((n) => n.id !== d.id) } });
+        if (st.usage[d.id]) {
+          const usage = { ...st.usage };
+          delete usage[d.id];
+          set({ usage });
+        }
         if (st.dock?.id === d.id) st.setDock(null);
         if (st.focusPane === d.id) set({ focusPane: null });
         return;
@@ -700,6 +716,16 @@ export const useSquad = create<SquadState>((set, get) => ({
       case 'summary.settings':
         set({ summarySettings: d as SummarySettings });
         return;
+      case 'usage.flight': {
+        const f = d as UsageFlight;
+        set({ usage: { ...st.usage, [f.id]: f } });
+        return;
+      }
+      case 'usage.account': {
+        const a = d as UsageAccount;
+        set({ accounts: { ...st.accounts, [a.agent]: a } });
+        return;
+      }
       case 'floors.updated': {
         if (!ws) return;
         const floors = d.floors as Floor[];
@@ -770,6 +796,19 @@ export const useSquad = create<SquadState>((set, get) => ({
     );
     api.summarySettings().then(
       (s) => get().activeWs === ws && set({ summarySettings: s }),
+      () => {},
+    );
+  },
+  loadUsage: () => {
+    const ws = get().activeWs;
+    api.usage().then(
+      (r) => {
+        if (get().activeWs !== ws) return;
+        set({
+          usage: Object.fromEntries(r.flights.map((f) => [f.id, f])),
+          accounts: { ...get().accounts, ...Object.fromEntries(r.accounts.map((a) => [a.agent, a])) },
+        });
+      },
       () => {},
     );
   },

@@ -22,6 +22,7 @@ export function connectEvents(): () => void {
           useSquad.getState().setConnection('connected');
           useSquad.getState().loadSummaries();
           useSquad.getState().loadRadio();
+          useSquad.getState().loadUsage();
         }
         useSquad.getState().apply(ev);
       } catch {
