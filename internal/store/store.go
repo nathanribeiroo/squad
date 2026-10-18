@@ -23,6 +23,8 @@ const (
 	KindTerminal = "terminal"
 	KindNote     = "note"
 	KindPortal   = "portal"
+	KindGroup    = "group"   // visual.go
+	KindDrawing  = "drawing" // visual.go
 )
 
 // SchemaVersion of workspace.json.
@@ -64,6 +66,8 @@ type Node struct {
 	Terminal *TerminalData `json:"terminal,omitempty"`
 	Note     *NoteData     `json:"note,omitempty"`
 	Portal   *PortalData   `json:"portal,omitempty"`
+	Group    *GroupData    `json:"group,omitempty"`
+	Drawing  *DrawingData  `json:"drawing,omitempty"`
 	// CreatedBy is the terminal whose agent created this node (torre new,
 	// torre portal create); empty when the user did.
 	CreatedBy string `json:"createdBy,omitempty"`
@@ -83,6 +87,8 @@ func (n Node) Label() string {
 			return n.Portal.Name
 		}
 		return "Portal"
+	case n.Group != nil:
+		return n.Group.Name
 	}
 	return n.ID
 }
@@ -399,8 +405,12 @@ func (s *Store) AddNode(n Node) (Node, error) {
 		if n.Portal == nil {
 			n.Portal = &PortalData{}
 		}
+	case KindGroup, KindDrawing:
 	default:
 		return Node{}, fmt.Errorf("%w: kind %q", ErrInvalid, n.Kind)
+	}
+	if err := checkVisual(&n); err != nil {
+		return Node{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -437,6 +447,9 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 			return Node{}, err
 		}
 		n.ID, n.Kind, n.Floor = id, s.ws.Nodes[i].Kind, s.ws.Nodes[i].Floor
+		if err := checkVisual(&n); err != nil {
+			return Node{}, err
+		}
 		if n.Note != nil && s.ws.Nodes[i].Note != nil { // stacks change through Stack and Unstack
 			n.Note.Stack, n.Note.StackPos = s.ws.Nodes[i].Note.Stack, s.ws.Nodes[i].Note.StackPos
 		}
@@ -452,7 +465,7 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 		}
 		s.ws.Nodes[i] = n
 		s.syncStackLocked(n)
-		return n, s.save()
+		return cloneNode(n), s.save()
 	}
 	return Node{}, ErrNotFound
 }
@@ -474,6 +487,16 @@ func cloneNode(n Node) Node {
 	if n.Portal != nil {
 		v := *n.Portal
 		n.Portal = &v
+	}
+	if n.Group != nil {
+		v := *n.Group
+		v.Members = slices.Clone(v.Members)
+		n.Group = &v
+	}
+	if n.Drawing != nil {
+		v := *n.Drawing
+		v.Points = slices.Clone(v.Points)
+		n.Drawing = &v
 	}
 	return n
 }
@@ -521,6 +544,9 @@ func (s *Store) AddEdge(a, b string, rope [][2]float64) (Edge, error) {
 	}
 	if !has(a) || !has(b) {
 		return Edge{}, ErrNotFound
+	}
+	if s.ws.Nodes[s.nodeIndexLocked(a)].Visual() || s.ws.Nodes[s.nodeIndexLocked(b)].Visual() {
+		return Edge{}, apierr.With(fmt.Errorf("%w: groups and drawings take no wires", ErrInvalid), "edge.visual")
 	}
 	// A wire to a note of a stack is the stack's: it ends at the base.
 	a, b = s.baseLocked(a), s.baseLocked(b)

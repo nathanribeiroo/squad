@@ -40,3 +40,5 @@
 .pl-opt.off { opacity: 0.5; cursor: default; }
 .pl-opt-n { margin-left: auto; font-size: 11px; color: var(--text-3); }
 .pl-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.pl-mini-g { fill: none; stroke-width: 10; stroke-dasharray: 40 24; }
+.pl-mini-d { fill: none; stroke-width: 8; opacity: 0.6; }

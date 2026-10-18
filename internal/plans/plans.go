@@ -1,14 +1,15 @@
 // Package plans keeps flight plans: a team saved from a canvas (flights,
-// notes, portals, the wires between them and the levels they were on) that
-// can be put in the air again in any workspace, with new conversations.
-// They live in ~/.torre/plans, one JSON file each, and can be exported and
-// imported as files.
+// notes, portals, the wires between them, the levels they were on, and the
+// user's groups and drawings) that can be put in the air again in any
+// workspace, with new conversations. They live in ~/.torre/plans, one JSON
+// file each, and can be exported and imported as files.
 package plans
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/ids"
+	"github.com/nathanribeiroo/squad/internal/store"
 )
 
 // Plan is a saved team. Positions are relative to the plan's top-left on
@@ -36,6 +38,9 @@ type Plan struct {
 	Portals  []Portal    `json:"portals"`
 	Links    [][2]string `json:"links"` // keys of linked items
 	Levels   []Level     `json:"levels"`
+	// Groups and drawings: the user's own arrangement, for the eyes only.
+	Groups   []Group   `json:"groups"`
+	Drawings []Drawing `json:"drawings"`
 }
 
 // Box is where an item sits on its level, relative to the plan.
@@ -82,6 +87,26 @@ type Portal struct {
 	Box
 }
 
+// Group is a frame of the plan (always open).
+type Group struct {
+	Key   string `json:"key"`
+	Name  string `json:"name"`
+	Color string `json:"color,omitempty"`
+	Level string `json:"level,omitempty"`
+	Box
+}
+
+// Drawing is a drawing of the plan (store.DrawingData).
+type Drawing struct {
+	Key    string       `json:"key"`
+	Shape  string       `json:"shape"`
+	Points [][2]float64 `json:"points,omitempty"`
+	Color  string       `json:"color,omitempty"`
+	Text   string       `json:"text,omitempty"`
+	Level  string       `json:"level,omitempty"`
+	Box
+}
+
 // Level is a flight level of the plan: a new one is made from it, named
 // after it; Branch is the branch it had, as a reference.
 type Level struct {
@@ -95,6 +120,8 @@ const (
 	MaxName    = 60
 	MaxItems   = 60
 	MaxLevels  = 8
+	MaxGroups  = 30
+	MaxDraw    = 300       // drawings
 	MaxContent = 256 << 10 // per note
 	MaxFile    = 4 << 20   // an imported plan
 )
@@ -132,12 +159,16 @@ func (p *Plan) Check() error {
 		return invalid("a plan needs a name", "plan.name_required")
 	case utf8.RuneCountInString(p.Name) > MaxName:
 		return invalid(fmt.Sprintf("plan names have at most %d characters", MaxName), "plan.name_too_long", "max", fmt.Sprint(MaxName))
-	case len(p.Flights)+len(p.Notes)+len(p.Portals) == 0:
+	case len(p.Flights)+len(p.Notes)+len(p.Portals)+len(p.Groups)+len(p.Drawings) == 0:
 		return invalid("the plan is empty", "plan.empty")
 	case len(p.Flights)+len(p.Notes)+len(p.Portals) > MaxItems:
 		return invalid(fmt.Sprintf("a plan holds at most %d items", MaxItems), "plan.too_big", "max", fmt.Sprint(MaxItems))
 	case len(p.Levels) > MaxLevels:
 		return invalid(fmt.Sprintf("a plan holds at most %d levels", MaxLevels), "plan.too_many_levels", "max", fmt.Sprint(MaxLevels))
+	case len(p.Groups) > MaxGroups:
+		return invalid(fmt.Sprintf("a plan holds at most %d groups", MaxGroups), "plan.too_many_groups", "max", fmt.Sprint(MaxGroups))
+	case len(p.Drawings) > MaxDraw:
+		return invalid(fmt.Sprintf("a plan holds at most %d drawings", MaxDraw), "plan.too_many_drawings", "max", fmt.Sprint(MaxDraw))
 	}
 	levels := map[string]bool{"": true}
 	for _, l := range p.Levels {
@@ -181,6 +212,20 @@ func (p *Plan) Check() error {
 			return err
 		}
 	}
+	linkable := maps.Clone(keys)
+	for _, g := range p.Groups {
+		if err := item(g.Key, g.Level, g.Name, g.Box); err != nil {
+			return err
+		}
+	}
+	for _, d := range p.Drawings {
+		if err := item(d.Key, d.Level, d.Shape, d.Box); err != nil {
+			return err
+		}
+		if len(d.Points) > store.MaxDrawingPoints || utf8.RuneCountInString(d.Text) > store.MaxDrawingText {
+			return invalid(fmt.Sprintf("drawing %q is too big", d.Key), "plan.bad_item")
+		}
+	}
 	for _, n := range p.Notes {
 		if n.Stack == "" {
 			continue
@@ -191,7 +236,7 @@ func (p *Plan) Check() error {
 		}
 	}
 	for _, l := range p.Links {
-		if !keys[l[0]] || !keys[l[1]] || l[0] == l[1] {
+		if !linkable[l[0]] || !linkable[l[1]] || l[0] == l[1] {
 			return invalid("links must join two items of the plan", "plan.bad_item")
 		}
 	}
@@ -276,6 +321,12 @@ func (p Plan) normal() Plan {
 	}
 	if p.Levels == nil {
 		p.Levels = []Level{}
+	}
+	if p.Groups == nil {
+		p.Groups = []Group{}
+	}
+	if p.Drawings == nil {
+		p.Drawings = []Drawing{}
 	}
 	return p
 }

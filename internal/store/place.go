@@ -5,6 +5,7 @@ const placeGap = 40
 
 // FreeSpot returns a position for a w×h node next to near that overlaps none
 // of nodes: to its right first, then below, left and above, ring by ring.
+// Drawings and open group frames don't take room (a node may go over them).
 func FreeSpot(nodes []Node, near Node, w, h float64) (x, y float64) {
 	col := func(i int) float64 {
 		switch {
@@ -26,6 +27,9 @@ func FreeSpot(nodes []Node, near Node, w, h float64) (x, y float64) {
 	}
 	free := func(x, y float64) bool {
 		for _, n := range nodes {
+			if n.Kind == KindDrawing || n.Group != nil && !n.Group.Collapsed {
+				continue
+			}
 			if x < n.X+n.W+placeGap/2 && n.X < x+w+placeGap/2 && y < n.Y+n.H+placeGap/2 && n.Y < y+h+placeGap/2 {
 				return false
 			}

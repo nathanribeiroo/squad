@@ -124,3 +124,5 @@
 @media (prefers-reduced-motion: reduce) {
   .react-flow__edge-path.wire.pending { animation: none; }
 }
+/* A wire drawn to a collapsed group's card: it goes on inside. */
+.react-flow__edge-path.wire.via-group:not(.pending):not(.loop) { stroke-dasharray: 10 4; }

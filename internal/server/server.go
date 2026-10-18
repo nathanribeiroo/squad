@@ -217,6 +217,7 @@ func (s *Server) APIHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/state", s.handleState)
 	mux.HandleFunc("POST /api/nodes", s.handleAddNode)
+	mux.HandleFunc("POST /api/nodes/move", s.handleMoveNodes)
 	mux.HandleFunc("PATCH /api/nodes/{id}", s.handleUpdateNode)
 	mux.HandleFunc("DELETE /api/nodes/{id}", s.handleRemoveNode)
 	mux.HandleFunc("POST /api/nodes/{id}/{action}", s.handleNodeAction)

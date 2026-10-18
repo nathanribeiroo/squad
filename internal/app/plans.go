@@ -110,14 +110,27 @@ func writePlanError(w http.ResponseWriter, err error) {
 
 // buildPlan reads a plan off the canvas. Each level's items are placed
 // from its top-left corner; the wires kept are the ones between kept items.
+// Groups are kept open.
 func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 	st := a.Server.Store()
 	snap := st.Snapshot()
+	// A selected group brings what is inside it.
+	sel := map[string]bool{}
+	for _, id := range req.Nodes {
+		sel[id] = true
+	}
+	for _, n := range snap.Nodes {
+		if n.Group != nil && sel[n.ID] && req.Scope == "selection" {
+			for _, m := range store.Inside(snap.Nodes, n) {
+				sel[m.ID] = true
+			}
+		}
+	}
 	var picked []store.Node
 	for _, n := range snap.Nodes {
 		switch req.Scope {
 		case "selection": // a selected stack brings its notes
-			if slices.Contains(req.Nodes, n.ID) || n.Note != nil && n.Note.Stack != "" && slices.Contains(req.Nodes, n.Note.Stack) {
+			if sel[n.ID] || n.Note != nil && n.Note.Stack != "" && sel[n.Note.Stack] {
 				picked = append(picked, n)
 			}
 		case "level":
@@ -130,7 +143,8 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 			return plans.Plan{}, apierr.With(fmt.Errorf("%w: scope is selection, level or session", plans.ErrInvalid), "plan.bad_scope")
 		}
 	}
-	p := plans.Plan{Name: req.Name, Flights: []plans.Flight{}, Notes: []plans.Note{}, Portals: []plans.Portal{}, Links: [][2]string{}, Levels: []plans.Level{}}
+	p := plans.Plan{Name: req.Name, Flights: []plans.Flight{}, Notes: []plans.Note{}, Portals: []plans.Portal{}, Links: [][2]string{}, Levels: []plans.Level{},
+		Groups: []plans.Group{}, Drawings: []plans.Drawing{}}
 	levelKey := map[string]string{"": ""}
 	origin := map[string][2]float64{}
 	for _, n := range picked {
@@ -148,7 +162,8 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 	}
 	box := func(n store.Node) plans.Box {
 		o := origin[n.Floor]
-		return plans.Box{X: math.Round(n.X - o[0]), Y: math.Round(n.Y - o[1]), W: n.W, H: n.H}
+		x, y, w, h := n.Box() // a collapsed group goes open
+		return plans.Box{X: math.Round(x - o[0]), Y: math.Round(y - o[1]), W: w, H: h}
 	}
 	workdir := st.Workdir()
 	keyOf := map[string]string{}
@@ -184,6 +199,13 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 			}
 			p.Portals = append(p.Portals, plans.Portal{Key: key, Name: name, URL: n.Portal.URL, Level: lvl, Box: box(n)})
 			keyOf[n.ID] = key
+		case n.Group != nil:
+			key := fmt.Sprintf("g%d", len(p.Groups)+1)
+			p.Groups = append(p.Groups, plans.Group{Key: key, Name: n.Group.Name, Color: n.Group.Color, Level: lvl, Box: box(n)})
+		case n.Drawing != nil:
+			d := n.Drawing
+			key := fmt.Sprintf("d%d", len(p.Drawings)+1)
+			p.Drawings = append(p.Drawings, plans.Drawing{Key: key, Shape: d.Shape, Points: slices.Clone(d.Points), Color: d.Color, Text: d.Text, Level: lvl, Box: box(n)})
 		}
 	}
 	for i, n := range stacked {
@@ -350,6 +372,25 @@ func (a *App) applyPlan(ctx context.Context, p plans.Plan, floor string) (PlanRe
 			continue
 		}
 		idOf[o.Key] = n.ID
+		res.Nodes = append(res.Nodes, n.ID)
+	}
+	for _, g := range p.Groups {
+		fl, x, y := place(g.Level, g.Box)
+		n, err := a.Server.AddNode(store.Node{Kind: store.KindGroup, Floor: fl, X: x, Y: y, W: g.W, H: g.H, Group: &store.GroupData{Name: g.Name, Color: g.Color}})
+		if err != nil {
+			warn("group %s: %v", g.Name, err)
+			continue
+		}
+		res.Nodes = append(res.Nodes, n.ID)
+	}
+	for _, d := range p.Drawings {
+		fl, x, y := place(d.Level, d.Box)
+		n, err := a.Server.AddNode(store.Node{Kind: store.KindDrawing, Floor: fl, X: x, Y: y, W: d.W, H: d.H,
+			Drawing: &store.DrawingData{Shape: d.Shape, Points: d.Points, Color: d.Color, Text: d.Text}})
+		if err != nil {
+			warn("drawing %s: %v", d.Key, err)
+			continue
+		}
 		res.Nodes = append(res.Nodes, n.ID)
 	}
 	for _, l := range p.Links {

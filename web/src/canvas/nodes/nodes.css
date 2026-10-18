@@ -245,6 +245,9 @@
 .node-menu-item:disabled { opacity: 0.45; cursor: default; }
 .node-menu-div { height: 1px; background: var(--line); margin: 4px 0; }
 .node-menu-section { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); padding: 8px 14px 4px; }
+.node-menu-colors { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 12px 8px; }
+.node-menu-swatch { width: 17px; height: 17px; border: 1px solid var(--line-2); cursor: pointer; padding: 0; }
+.node-menu-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
 .node-menu-hint { margin-left: auto; padding-left: 12px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-4); }
 
 /* NOTAM (docs/torre/TELAS.md, quadro 09): paper, a tag, PRÉVIA | EDITAR. */
@@ -457,3 +460,65 @@
 }
 .nn-stack-fresh:hover { text-decoration: underline; }
 .nn-stack-pos { font-size: 11px; flex: none; }
+
+/* Groups (Grupo) and drawings (Desenho): behind the nodes, they take clicks
+   only on their own parts (a group's tab, a drawing's lines), so what lies
+   behind or inside them stays usable. pointer-events is inherited: each
+   part that takes clicks says so. */
+.react-flow__node-frame, .react-flow__node-drawing { padding: 0; border: 0; background: transparent; pointer-events: none !important; }
+.react-flow__node-frame .react-flow__resize-control, .react-flow__node-drawing .react-flow__resize-control { pointer-events: all; }
+
+/* An open group: a frame in its color, its name on a tab that stays legible
+   when zoomed out (--gs). */
+.gnode {
+  width: 100%; height: 100%; position: relative;
+  border: 1.5px dashed color-mix(in srgb, var(--gc) 75%, transparent);
+  background: color-mix(in srgb, var(--gc) 5%, transparent);
+}
+.gnode.selected { border-style: solid; border-color: var(--gc); }
+.gn-head {
+  position: absolute; left: -1.5px; top: -1.5px; height: 30px; max-width: calc((100% + 3px) / var(--gs));
+  display: inline-flex; align-items: center; gap: 8px; padding: 0 4px 0 9px; white-space: nowrap;
+  background: color-mix(in srgb, var(--gc) 16%, var(--canvas)); border: 1.5px solid var(--gc); color: var(--text);
+  transform: scale(var(--gs)); transform-origin: 0 0; pointer-events: all; cursor: grab;
+}
+.gn-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gc); flex: none; }
+.gn-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.gn-count { font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.gn-head .icon-btn, .gc-head .icon-btn { width: 24px; height: 24px; color: var(--text-3); flex: none; }
+.gn-input {
+  width: 170px; height: 22px; padding: 0 6px; border: 1px solid var(--gc); outline: none;
+  background: var(--surface); color: var(--text); font: inherit; font-size: 13px; font-weight: 700;
+}
+
+/* A collapsed group: a card with its flights' states; amber when one of
+   them asks you. Its wires end at it. */
+.gcard {
+  width: 100%; height: 100%; display: flex; flex-direction: column; pointer-events: all; cursor: grab;
+  background: var(--surface); border: 1.5px solid var(--gc); border-left-width: 6px; box-shadow: var(--shadow-pop);
+}
+.gcard.selected { outline: 1.5px solid var(--focus); outline-offset: 3px; }
+.gcard.ask { border-color: var(--st-ask); outline: 2px solid var(--st-ask); box-shadow: 0 0 0 6px var(--st-ask-halo), var(--shadow-pop); }
+.gc-head { height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-bottom: 1px solid var(--line); color: var(--gc); white-space: nowrap; }
+.gc-head .gn-name { color: var(--text); }
+.gc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 7px; padding: 0 12px; }
+.gc-dots { display: flex; gap: 4px; }
+.gc-dot { width: 10px; height: 10px; display: block; background: var(--band); }
+.gc-sum { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gcard.ask .gc-sum { color: var(--stt-ask); font-weight: 700; }
+.react-flow__handle.gc-handle { opacity: 0; pointer-events: none; top: 50%; }
+
+/* Drawings: lines in their color, taken by a wide invisible stroke. */
+.dnode { width: 100%; height: 100%; position: relative; }
+.dnode.selected { outline: 1px dashed var(--focus); outline-offset: 4px; }
+.d-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.d-hit > * { fill: none; stroke: transparent; stroke-width: 16px; pointer-events: stroke; cursor: grab; }
+.d-line { fill: none; stroke: var(--dc); stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.d-line .d-head { fill: var(--dc); stroke-width: 1; }
+.d-text {
+  position: absolute; left: 0; top: 0; width: 100%; min-height: 100%; padding: 2px 4px; pointer-events: all; cursor: grab;
+  color: var(--dc); font-family: var(--font-ui); font-size: 20px; line-height: 26px; font-weight: 700;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.d-edit { border: 1px dashed var(--dc); background: transparent; outline: none; resize: none; cursor: text; overflow: hidden; }
+.d-edit::placeholder { color: var(--text-4); }

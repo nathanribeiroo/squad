@@ -2,6 +2,55 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Desenho e Grupo
+
+- **Pedido:** a opção de Desenho e de Grupo, que estava em "Para depois" com os botões desligados ("em breve"). Antes do plano, o usuário pediu a explicação de para que servem; depois decidiu: só visual, sem nenhum backend que dê ao grupo sentido para os agentes. Isso ficou no "Para depois" do PLAN, com um roteiro de como fazer.
+- **O plano foi aprovado com os padrões propostos:**
+  - quem está no grupo é o que está inteiro dentro da moldura na hora, sem lista fixa (como as molduras do Figma);
+  - grupo dentro de grupo só anda junto;
+  - pousar ou descartar um nível remove as molduras e os desenhos dele;
+  - de fora: borracha parcial, camadas, desenho no Sinóptico.
+- **Servidor (`internal/store/visual.go`):**
+  - **Dois tipos de nó novos, guardados no `workspace.json` como os outros:**
+    - `group`: nome (até 60), cor (uma chave: `none`, `amber` ou as cores dos papéis), recolhido, o tamanho aberto e os nós que ele esconde enquanto recolhido;
+    - `drawing`: a forma (`pen`, `arrow`, `rect`, `ellipse`, `text`), os pontos de 0 a 1 na caixa (redimensionar só escala; até 2000 por traço; a seta tem 2), a cor e o texto (até 2000).
+  - **Regras:**
+    - o fio para um grupo ou um desenho é recusado (`edge.visual`);
+    - o lugar livre de um voo novo (`FreeSpot`) ignora molduras abertas e desenhos; o cartão de um grupo recolhido ocupa lugar;
+    - `torre connect` e `torre close` não acham grupos pelo nome; `torre list`, as menções e o MCP já não os viam (só mostram vizinhos, e grupos não têm fio).
+  - **API:** os mesmos POST, PATCH e DELETE de nós, e `POST /api/nodes/move` (`{"moves": [{id, x, y}]}`, até 1000) para mover o grupo com o que está dentro numa gravação só. Uma nota de pilha leva a pilha.
+  - **Planos de voo:** `groups` e `drawings` no arquivo. O grupo vai sempre aberto. Salvar a seleção com um grupo selecionado leva o que está dentro dele (o recolhido, os que ele esconde). Decolar cria os dois ao lado do que já está no nível. Um plano só com desenhos é aceito.
+  - **Corrigido de passagem:** `UpdateNode` devolvia o nó guardado, e não uma cópia; as listas (os apelidos de uma NOTAM, os membros de um grupo) ficavam compartilhadas com quem chamou.
+- **Interface:**
+  - **Nós novos:** `GroupNode` (para o React Flow, o tipo é `frame`, porque `group` tem estilos próprios dele) e `DrawingNode` (SVG).
+  - **Camadas:** molduras atrás, desenhos por cima delas, os voos na frente. O nó do React Flow deles não pega clique (`pointer-events: none`); só a aba do grupo, o cartão, as linhas de um desenho (um traço invisível de 16 px) e o texto pegam. Assim, um retângulo desenhado em volta de um voo não atrapalha o terminal. Uma moldura selecionada sobe para a frente (o menu ⋯ dela abria atrás dos voos de dentro), e o interior continua deixando o clique passar.
+  - **Grupo (G):** com seleção, uma moldura em volta (com espaço para a aba); sem seleção, o modo de arrastar a moldura. A aba mostra o nome, o que tem dentro e os botões; ela cresce quando o zoom afasta, para o nome continuar legível.
+  - **Mover em bloco:** ao começar a arrastar uma moldura, a interface guarda o que está dentro; durante o arrasto, move esses nós junto; no fim, manda tudo de uma vez pela rota nova. Arrastar o cartão de um grupo recolhido leva os nós escondidos.
+  - **Recolher:**
+    - o cartão (300 × 104) mostra um quadrado por voo na cor do estado e "4 voos · 1 pede você · 2 no ar · 1 NOTAM";
+    - fica âmbar quando alguém de dentro pede você;
+    - os fios para os escondidos vão para o cartão, tracejados, e o fio continua sabendo as pontas reais (as pílulas de pedido, o laço e o portal seguem os voos de verdade);
+    - um fio entre dois nós do mesmo grupo recolhido some.
+  - **Voo escondido que pede você:** a faixa PRIORIDADE conta o voo escondido como fora da tela ("REV no grupo Front-end quer executar um comando"). IR ATÉ ELE, "Ver no espaço" e os indicativos do laço pedem para centrar o voo, e o canvas abre antes os grupos que o escondem.
+  - **Desenho (D):** uma camada sobre o canvas pega o arrasto, com a prévia na tela, e cria o nó no fim do traço. A caneta guarda até 1500 pontos. A seta e as formas usam dois pontos, e o texto começa num clique e abre para digitar. A barrinha fica ao lado do botão D, longe das faixas do topo.
+  - **Delete** apaga desenhos e molduras selecionados (os voos continuam saindo só pelo menu). `Tab` pula desenhos, molduras e o que está escondido.
+  - **Planos de voo:** a miniatura desenha as molduras (tracejadas, na cor) e as caixas dos desenhos; a composição diz "2 grupos · 3 desenhos".
+  - **Ícones novos:** `north_east`, `rectangle`, `circle`, `title`, `unfold_less` e `unfold_more`.
+- **Corrigido, um defeito antigo:** a galeria de planos de voo ficava preta numa sessão sem níveis (o erro 185 do React, atualização em laço). O seletor `useSquad((s) => s.workspace?.floors ?? [])` devolvia um array novo a cada leitura, e o zustand 5 entende isso como mudança. Ele apareceu ao tirar a captura da galeria.
+- **Testes:**
+  - **`internal/store`:**
+    - `TestGroupsAndDrawings`: a validação, a cópia das listas, o fio recusado, recolher e abrir, e o que está dentro;
+    - `TestMoveNodes`: a pilha anda junto, e um nó desconhecido não move nada;
+    - `TestFreeSpotIgnoresVisuals`.
+  - **`internal/app`:**
+    - `TestGroupsAndDrawings`, com agentes falsos: a API cria, recusa formas erradas e o fio, recolhe, move em bloco e remove; `torre list`, `torre connect` e o MCP `list` não veem o grupo; o plano da seleção leva o que está dentro do grupo, e o da sessão decola grupo e desenho;
+    - `TestVisualsLeaveWithTheirLevel`: descartar o nível remove os dele.
+  - **Na tela:** foi tudo testado com o `torre serve` real e quatro voos falsos.
+    - **Grupo:** criado pela seleção e pelo arrasto, renomeado, com outra cor, movido com os voos (as posições conferidas no servidor), recolhido, com o cartão âmbar quando o REV escondido pediu permissão, IR ATÉ ELE, o cartão movido com os voos escondidos, expandido e a moldura removida;
+    - **Desenho:** seta, texto, elipse e caneta; apagado com Delete e o texto editado;
+    - **o resto:** a galeria de planos, o tema claro e o zoom de 38%.
+- **Agentes:** o recurso é só da interface; nada muda no lançamento, nos hooks, no papel, no MCP, nas permissões ou na skill de nenhum agente. O teste com agentes falsos confere que eles não enxergam grupos nem desenhos. Não usei o Claude real nem o Devin real desta vez.
+
 ## 2026-10-18, Perguntas e planos pela Torre, e SUA VEZ
 
 - **Pedido:** dois itens do "Para depois" juntos:

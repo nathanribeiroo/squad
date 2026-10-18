@@ -13,8 +13,17 @@ export interface MenuItem {
   hint?: string;
 }
 
+/** A row of color swatches (a group's color). */
+export interface MenuColors {
+  colors: readonly string[];
+  value?: string;
+  /** The CSS color of a key. */
+  css: (key: string) => string;
+  pick: (key: string) => void;
+}
+
 /** A divider, or a label over the items that follow ("Papel"). */
-export type MenuEntry = MenuItem | 'divider' | { section: string };
+export type MenuEntry = MenuItem | MenuColors | 'divider' | { section: string };
 
 /** The `more_horiz` menu in node headers. */
 export function NodeMenu({ items }: { items: MenuEntry[] }) {
@@ -41,6 +50,21 @@ export function NodeMenu({ items }: { items: MenuEntry[] }) {
             ) : 'section' in it ? (
               <span key={i} className="node-menu-section">
                 {it.section}
+              </span>
+            ) : 'colors' in it ? (
+              <span key={i} className="node-menu-colors">
+                {it.colors.map((c) => (
+                  <button
+                    key={c}
+                    className={`node-menu-swatch${c === (it.value || 'none') ? ' on' : ''}`}
+                    style={{ background: it.css(c) }}
+                    aria-label={`Cor ${c}`}
+                    onClick={() => {
+                      setOpen(false);
+                      it.pick(c);
+                    }}
+                  />
+                ))}
               </span>
             ) : (
               <button

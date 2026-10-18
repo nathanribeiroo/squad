@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, hub } from '../api/client';
-import type { AgentInfo, Plan } from '../api/types';
+import type { AgentInfo, Floor, Plan } from '../api/types';
 import { flightLevel, plural } from '../lib/floors';
 import { useRoleLookup, roleColor } from '../lib/roles';
+import { colorVar } from '../lib/visual';
 import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
 import { confirmDialog } from './ConfirmDialog';
@@ -10,9 +11,21 @@ import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import './PlansDialogs.css';
 
+// A selector must not return a new [] each time (zustand would loop).
+const NO_FLOORS: Floor[] = [];
+
 /** A plan with every list (a hand-written file may leave some out). */
 function normal(p: Plan): Plan {
-  return { ...p, flights: p.flights ?? [], notes: p.notes ?? [], portals: p.portals ?? [], links: p.links ?? [], levels: p.levels ?? [] };
+  return {
+    ...p,
+    flights: p.flights ?? [],
+    notes: p.notes ?? [],
+    portals: p.portals ?? [],
+    links: p.links ?? [],
+    levels: p.levels ?? [],
+    groups: p.groups ?? [],
+    drawings: p.drawings ?? [],
+  };
 }
 
 /** The flight plan dialogs (TELAS.md, quadro 20): the gallery (⌥M) and saving one (⌥⇧M). */
@@ -32,6 +45,8 @@ function composition(p: Plan): string {
   else if (p.portals.length) parts.push(plural(p.portals.length, 'portal', 'portais'));
   if (p.levels.length) parts.push(plural(p.levels.length, 'nível', 'níveis'));
   if (p.links.length) parts.push(plural(p.links.length, 'frequência', 'frequências'));
+  if (p.groups.length) parts.push(plural(p.groups.length, 'grupo', 'grupos'));
+  if (p.drawings.length) parts.push(plural(p.drawings.length, 'desenho', 'desenhos'));
   return parts.join(' · ');
 }
 
@@ -84,7 +99,7 @@ function Gallery({ onClose }: { onClose: () => void }) {
       title: `Remover o plano ${p.name}?`,
       tone: 'danger',
       lose: ['O plano, nesta Torre (exporte antes, se quiser guardar o arquivo)'],
-      keep: ['Os voos, NOTAMs e portais que ele já pôs no ar'],
+      keep: ['Os voos, NOTAMs, portais, grupos e desenhos que ele já pôs no ar'],
       action: 'Remover plano',
     });
     if (!ok) return;
@@ -168,7 +183,7 @@ function Gallery({ onClose }: { onClose: () => void }) {
           <Icon name="library_add" size={22} />
           <b>Salvar a seleção como plano</b>
           <span>
-            Selecione voos, NOTAMs e portais no Espaço e use <span className="kbd">⌥⇧M</span>, ou guarde o nível ou a sessão inteira.
+            Selecione voos, NOTAMs, portais ou um grupo no Espaço e use <span className="kbd">⌥⇧M</span>, ou guarde o nível ou a sessão inteira.
           </span>
         </button>
       </div>
@@ -189,7 +204,7 @@ function commandsOf(p: Plan): string[] {
  */
 function Review({ plan, agents }: { plan: Plan; agents: AgentInfo[] }) {
   const roleOf = useRoleLookup();
-  const levels = useSquad((s) => s.workspace?.floors ?? []);
+  const levels = useSquad((s) => s.workspace?.floors) ?? NO_FLOORS;
   const onLevel = useSquad((s) => s.activeFloor);
   const here = onLevel ? flightLevel(levels.find((f) => f.id === onLevel)) : 'PISTA';
   return (
@@ -237,7 +252,7 @@ function Review({ plan, agents }: { plan: Plan; agents: AgentInfo[] }) {
 /** A drawing of the plan: its items where they sit, levels side by side. */
 function Miniature({ plan }: { plan: Plan }) {
   const roleOf = useRoleLookup();
-  const { items, lines, view } = useMemo(() => {
+  const { items, lines, frames, view } = useMemo(() => {
     const levels = ['', ...plan.levels.map((l) => l.key)];
     type It = { key: string; x: number; y: number; w: number; h: number; kind: 'f' | 'n' | 'p'; label: string; level: string; color?: string };
     const all: It[] = [
@@ -245,14 +260,23 @@ function Miniature({ plan }: { plan: Plan }) {
       ...plan.notes.map((n) => ({ ...n, kind: 'n' as const, label: 'NOTAM', level: n.level ?? '' })),
       ...plan.portals.map((o) => ({ ...o, kind: 'p' as const, label: '⊕', level: o.level ?? '' })),
     ].map((it) => ({ ...it, w: it.w || 400, h: it.h || 300 }));
+    // Groups and drawings: the frames behind (a drawing as its box).
+    type Fr = { key: string; x: number; y: number; w: number; h: number; kind: 'g' | 'd'; level: string; color?: string };
+    const backs: Fr[] = [
+      ...plan.groups.map((g) => ({ ...g, kind: 'g' as const, level: g.level ?? '' })),
+      ...plan.drawings.map((d) => ({ key: d.key, x: d.x, y: d.y, w: d.w, h: d.h, kind: 'd' as const, level: d.level ?? '', color: d.color })),
+    ];
     // Each level is a column after the previous one.
     let x0 = 0;
     const placed: It[] = [];
+    const frames: Fr[] = [];
     for (const l of levels) {
       const mine = all.filter((it) => it.level === l);
-      if (!mine.length) continue;
-      const right = Math.max(...mine.map((it) => it.x + it.w));
+      const back = backs.filter((f) => f.level === l);
+      if (!mine.length && !back.length) continue;
+      const right = Math.max(...mine.map((it) => it.x + it.w), ...back.map((f) => f.x + f.w));
       for (const it of mine) placed.push({ ...it, x: it.x + x0 });
+      for (const f of back) frames.push({ ...f, x: f.x + x0 });
       x0 += right + 300;
     }
     const at = new Map(placed.map((it) => [it.key, it]));
@@ -261,13 +285,16 @@ function Miniature({ plan }: { plan: Plan }) {
       const q = at.get(b);
       return p && q ? [{ k: `${a}-${b}`, x1: p.x + p.w / 2, y1: p.y + p.h / 2, x2: q.x + q.w / 2, y2: q.y + q.h / 2 }] : [];
     });
-    const w = Math.max(1, ...placed.map((it) => it.x + it.w));
-    const h = Math.max(1, ...placed.map((it) => it.y + it.h));
+    const w = Math.max(1, ...placed.map((it) => it.x + it.w), ...frames.map((f) => f.x + f.w));
+    const h = Math.max(1, ...placed.map((it) => it.y + it.h), ...frames.map((f) => f.y + f.h));
     const pad = 120;
-    return { items: placed, lines, view: `${-pad} ${-pad} ${w + 2 * pad} ${h + 2 * pad}` };
+    return { items: placed, lines, frames, view: `${-pad} ${-pad} ${w + 2 * pad} ${h + 2 * pad}` };
   }, [plan, roleOf]);
   return (
     <svg className="pl-mini" viewBox={view} preserveAspectRatio="xMidYMid meet" aria-hidden>
+      {frames.map((f) => (
+        <rect key={f.key} x={f.x} y={f.y} width={f.w} height={f.h} className={`pl-mini-${f.kind}`} style={{ stroke: colorVar(f.color) }} />
+      ))}
       {lines.map((l) => (
         <line key={l.k} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} className="pl-mini-wire" />
       ))}
@@ -320,7 +347,12 @@ function SavePlan({ onClose }: { onClose: () => void }) {
     </label>
   );
   return (
-    <Dialog icon="library_add" title="Salvar como plano de voo" sub="Guarda voos (agente, papel, nome, posição), NOTAMs, portais, frequências e níveis." onClose={onClose}>
+    <Dialog
+      icon="library_add"
+      title="Salvar como plano de voo"
+      sub="Guarda voos (agente, papel, nome, posição), NOTAMs, portais, frequências, níveis, grupos e desenhos. Um grupo selecionado leva o que está dentro dele."
+      onClose={onClose}
+    >
       <form className="pl-form" onSubmit={submit}>
         <label className="field">
           Nome

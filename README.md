@@ -109,7 +109,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 **Ícones:** a fonte Material Symbols é cortada para os ícones listados em `web/src/lib/icons.ts` (cerca de 9 KB em vez de 4 MB). Para usar um ícone novo, acrescente o nome nessa lista e rode `make icons`. O `npm run build` recusa uma fonte desatualizada.
 
 **Atalhos:**
-- canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal, `Tab`/`⇧Tab` o próximo/anterior nó (na ordem de leitura, trazendo o nó para a tela), `⏎` dá o teclado ao voo selecionado;
+- canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal, `D` desenho, `G` grupo, `Delete` apaga o fio, o desenho ou a moldura selecionados, `Tab`/`⇧Tab` o próximo/anterior nó (na ordem de leitura, trazendo o nó para a tela), `⏎` dá o teclado ao voo selecionado;
 - globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥F` foco, `⌥⇧←`/`⌥⇧→` encaixar, `⌥M` planos de voo, `⌥⇧M` salvar como plano, `⌥1`–`⌥9` workspaces;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
 
@@ -207,7 +207,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 **Espaço vazio:** uma sessão sem voos na pista mostra "Ponha a primeira equipe no ar.", com **Usar um plano de voo** (`⌥M`), **Novo voo** (`T`) e **Escrever o plano numa NOTAM** (`N`).
 
 **Planos de voo:** uma equipe guardada para decolar de novo, em qualquer workspace, com conversas novas.
-- **Salvar** (`⌥⇧M`, ou o cartão tracejado da galeria): a seleção no Espaço, tudo no nível aberto, ou a sessão inteira com os níveis. Guarda os voos (agente, nome, indicativo, papel, líder, comando próprio, pasta relativa, posição e tamanho), as NOTAMs (o nome e, se quiser, o conteúdo), os portais (nome e endereço), as frequências entre eles e os níveis (nome e branch). Fica em `~/.torre/plans`.
+- **Salvar** (`⌥⇧M`, ou o cartão tracejado da galeria): a seleção no Espaço, tudo no nível aberto, ou a sessão inteira com os níveis. Guarda os voos (agente, nome, indicativo, papel, líder, comando próprio, pasta relativa, posição e tamanho), as NOTAMs (o nome e, se quiser, o conteúdo), os portais (nome e endereço), as frequências entre eles, os níveis (nome e branch), os grupos (abertos) e os desenhos. Um grupo selecionado leva o que está dentro dele. Fica em `~/.torre/plans`.
 - **Galeria** (`⌥M`, o botão na barra de ferramentas, ou "Com um plano de voo" na primeira abertura): os planos com uma miniatura e a composição ("PLN · IMP · REV · 1 NOTAM · 3 frequências"); **Importar** um arquivo; em cada cartão, exportar o arquivo e remover.
 - **Antes de decolar:** a lista do que cada voo vai rodar (o comando do agente, de Configurações → Agentes, ou o comando próprio do plano, em âmbar). Um plano importado com comandos próprios mostra o aviso. O servidor recusa decolar se a interface não mandar a lista de comandos que mostrou.
 - **Decolar a equipe:** os itens vão para o nível aberto, ao lado do que já está lá; os níveis do plano viram níveis novos (com o nome dele, ou "Login 2" se já existir). Nomes que já existem ganham um número, e o indicativo também (IMP → IM2). O que não dá para criar (um papel que não existe nesta Torre, uma pasta que não existe, níveis sem git) vira um aviso, e o resto decola.
@@ -294,6 +294,20 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - Cada portal tem um nome ("Portal", "Portal 2"…). Duplo clique no nome (ou ⋯ → Renomear) troca; os agentes usam esse nome para escolher o portal.
 - **Agentes no portal:** um voo na frequência do portal usa a página com `torre portal` (tabela abaixo). Enquanto ele age, o cursor dele aparece na página com o nome e a cor do papel, e o fio mostra "clicando", "preenchendo", "digitando"…
 - **@ ELEMENTOS**, no cabeçalho do portal, mostra o que os voos veem: um contorno tracejado em cada elemento do último `torre portal snapshot`, com a etiqueta ("@e7 botão"), na cor do papel de quem usa a página. Os contornos acompanham a rolagem e não pegam cliques. Sem snapshot (ou depois que a página muda de endereço), aparece "Sem refs". Ligar a camada não tira um snapshot novo, para não trocar as refs que um agente está usando.
+
+**Grupo (`G`):** uma moldura com nome e cor em volta de vários nós, para organizar uma equipe grande ("Front-end" com PLN, IMP e o portal). É só visual: os agentes não veem o grupo, e quem conversa com quem continua sendo decidido pelos fios.
+- **Criar:** com nós selecionados, `G` põe a moldura em volta deles ("Grupo 1"); sem seleção, `G` e arraste um retângulo no canvas. `Esc` desiste.
+- **Quem está dentro:** o que está inteiro dentro da moldura na hora. Para entrar ou sair, arraste o nó para dentro ou para fora. Uma moldura dentro de outra só anda junto.
+- **Mover:** arraste pela aba do nome; tudo o que está dentro vai junto, com os fios. As alças (com a moldura selecionada) redimensionam a moldura sem mexer nos nós.
+- **Renomear e cor:** duplo clique no nome, ou o menu `⋯` (Renomear, Cor, Recolher, Remover moldura). **Remover moldura** tira só a moldura; os nós ficam.
+- **Recolher:** a moldura vira um cartão com o nome e os estados de dentro ("4 voos · 1 pede você · 2 no ar"). Os voos continuam no ar, só somem da tela. Os fios para eles saem do cartão (tracejados), com as pílulas de pedido. Quando alguém de dentro pede você, o cartão fica âmbar e a faixa PRIORIDADE diz "REV no grupo Front-end…": **IR ATÉ ELE** (`⌥⏎`), "Ver no espaço" e os indicativos do laço abrem o grupo antes. Arrastar o cartão leva junto o que está escondido; **Expandir** (ou duplo clique no cartão) devolve tudo para onde estava.
+
+**Desenho (`D`):** setas, formas e texto à mão, para explicar o canvas ("IMP entrega para REV", um círculo em volta do que está travado). Ninguém lê os desenhos: não são NOTAMs nem fios.
+- **A barra:** Caneta, Seta, Retângulo, Elipse e Texto, e as cores. Cada traço vira um objeto, e a ferramenta continua ligada até `Esc` ou `V`. No Texto, um clique começa a escrever; `Esc` ou clicar fora termina (vazio, ele some).
+- **Depois:** com `V`, um clique na linha (ou no texto) seleciona, arrastar move, as alças redimensionam e `Delete` apaga. Duplo clique num texto edita.
+- Os desenhos ficam atrás dos voos e só pegam o clique nas próprias linhas, então não atrapalham o terminal embaixo.
+
+**Grupos e desenhos nos níveis e nos planos:** ficam no nível em que foram feitos. Pousar ou descartar o nível remove os dele (as NOTAMs continuam descendo para a pista). Os planos de voo guardam e decolam grupos e desenhos; salvar a seleção com um grupo selecionado leva o que está dentro dele.
 
 **Papéis:** instruções que o agente recebe ao decolar (⚙ → Papéis…, ou "Editar papéis…" no menu do voo).
 - O painel lista os papéis com o ícone, o nome, a sigla e "editado". O editor tem **Nome**, **Sigla**, **Cor**, **Ícone**, **Líder** e as **Instruções** (com o contador). O rodapé mostra quem usa o papel neste workspace.
