@@ -126,6 +126,12 @@ type NoteData struct {
 	// Aliases are the note's former titles: agents that knew one still find
 	// the note.
 	Aliases []string `json:"aliases,omitempty"`
+	// Stack is the id of the note at the base of the stack this note is in
+	// (the base's own id on the base); StackPos its place, 0 at the base.
+	// The stack's wires are the base's, and a wire to the stack reaches
+	// every note in it (stacks.go).
+	Stack    string `json:"stack,omitempty"`
+	StackPos int    `json:"stackPos,omitempty"`
 }
 
 // PortalData configures a portal node.
@@ -431,6 +437,9 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 			return Node{}, err
 		}
 		n.ID, n.Kind, n.Floor = id, s.ws.Nodes[i].Kind, s.ws.Nodes[i].Floor
+		if n.Note != nil && s.ws.Nodes[i].Note != nil { // stacks change through Stack and Unstack
+			n.Note.Stack, n.Note.StackPos = s.ws.Nodes[i].Note.Stack, s.ws.Nodes[i].Note.StackPos
+		}
 		if n.Terminal != nil {
 			for _, other := range s.ws.Nodes {
 				if other.ID != id && other.Terminal != nil && other.Terminal.Name == n.Terminal.Name {
@@ -442,6 +451,7 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 			}
 		}
 		s.ws.Nodes[i] = n
+		s.syncStackLocked(n)
 		return n, s.save()
 	}
 	return Node{}, ErrNotFound
@@ -477,6 +487,14 @@ func (s *Store) RemoveNode(id string) ([]Edge, error) {
 	if idx < 0 {
 		return nil, ErrNotFound
 	}
+	// A stacked note leaves its stack first (Server.RemoveNode does it
+	// itself, to announce the wires the next base gets).
+	if n := s.ws.Nodes[idx]; n.Note != nil && n.Note.Stack != "" {
+		if _, err := s.unstackLocked(id, false, false); err != nil {
+			return nil, err
+		}
+		idx = s.nodeIndexLocked(id)
+	}
 	s.ws.Nodes = slices.Delete(s.ws.Nodes, idx, idx+1)
 	var removed []Edge
 	kept := s.ws.Edges[:0]
@@ -503,6 +521,11 @@ func (s *Store) AddEdge(a, b string, rope [][2]float64) (Edge, error) {
 	}
 	if !has(a) || !has(b) {
 		return Edge{}, ErrNotFound
+	}
+	// A wire to a note of a stack is the stack's: it ends at the base.
+	a, b = s.baseLocked(a), s.baseLocked(b)
+	if a == b {
+		return Edge{}, fmt.Errorf("%w: notes of a stack are already together", ErrInvalid)
 	}
 	for _, e := range s.ws.Edges {
 		if (e.A == a && e.B == b) || (e.A == b && e.B == a) {

@@ -60,10 +60,49 @@ func TestRealClaudePermission(t *testing.T) {
 	}
 }
 
+// A Claude wired only to the base of a stack of notes reads another note of
+// the stack, by its own name.
+func TestRealClaudeStack(t *testing.T) {
+	e, shell, claude := startRealClaude(t, "")
+	plano, dec := e.notam("Plano", 0), e.notam("Decisoes", 500)
+	if err := e.app.Notes.Write(dec, "Codigo da decisao: TORRE-7341", "test"); err != nil {
+		t.Fatal(err)
+	}
+	if w := e.call("POST", "/api/notes/"+dec.ID+"/stack", map[string]string{"onto": plano.ID}); w.Code != 200 {
+		t.Fatalf("stack: %d %s", w.Code, w.Body)
+	}
+	e.connect(claude, plano)
+	r := e.run(shell, "ask", "Claude", `Leia a NOTAM "Decisoes" e responda apenas com o codigo que esta nela.`)
+	t.Logf("source=%s\n%s", r.Source, r.Body)
+	if r.Code != 200 || r.Source != "claude-stop" || !strings.Contains(r.Body, "TORRE-7341") {
+		t.Fatalf("the stack wasn't read: code=%d source=%s\n%s\n--- screen ---\n%s", r.Code, r.Source, r.Body, e.app.Server.Terminals().Get(claude.ID).Snapshot())
+	}
+}
+
 // askRealClaude starts a Claude Code terminal (with a role, when prompt isn't
 // empty, and extra arguments) and asks it msg from a shell; during, when
 // set, runs while the ask waits.
 func askRealClaude(t *testing.T, rolePrompt, msg string, during func(e *env, id string), args ...string) (agentbus.Result, string) {
+	e, shell, claude := startRealClaude(t, rolePrompt, args...)
+	term := e.app.Server.Terminals().Get(claude.ID)
+	start := time.Now()
+	if during != nil {
+		done := make(chan agentbus.Result, 1)
+		go func() { done <- e.run(shell, "ask", "Claude", msg) }()
+		during(e, claude.ID)
+		r := <-done
+		t.Logf("ask took %v, source=%s\n%s", time.Since(start), r.Source, r.Body)
+		return r, term.Snapshot()
+	}
+	r := e.run(shell, "ask", "Claude", msg)
+	t.Logf("ask took %v, source=%s\n%s", time.Since(start), r.Source, r.Body)
+	return r, term.Snapshot()
+}
+
+// startRealClaude starts a shell and a Claude Code terminal wired to it (with
+// a role, when prompt isn't empty, and extra arguments), and waits for Claude
+// Code's prompt.
+func startRealClaude(t *testing.T, rolePrompt string, args ...string) (e *env, shell, claude store.Node) {
 	if _, err := exec.LookPath("claude"); err != nil {
 		t.Skip("claude CLI not installed")
 	}
@@ -72,7 +111,7 @@ func askRealClaude(t *testing.T, rolePrompt, msg string, during func(e *env, id 
 		cwd, _ = filepath.Abs("../..")
 	}
 	limits := agentbus.Limits{Timeout: 3 * time.Minute}
-	e := newEnv(t, limits)
+	e = newEnv(t, limits)
 	role := ""
 	if rolePrompt != "" {
 		r, err := e.roles.Create(roles.Role{Name: "Gritador", Prompt: rolePrompt})
@@ -90,7 +129,7 @@ func askRealClaude(t *testing.T, rolePrompt, msg string, during func(e *env, id 
 	if len(args) > 0 {
 		command = "claude " + strings.Join(args, " ")
 	}
-	claude, err := st.AddNode(store.Node{Kind: store.KindTerminal, Terminal: &store.TerminalData{Name: "Claude", Agent: "claude", Command: command, Role: role, Cwd: cwd, Cols: 120, Rows: 36}})
+	claude, err = st.AddNode(store.Node{Kind: store.KindTerminal, Terminal: &store.TerminalData{Name: "Claude", Agent: "claude", Command: command, Role: role, Cwd: cwd, Cols: 120, Rows: 36}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +140,7 @@ func askRealClaude(t *testing.T, rolePrompt, msg string, during func(e *env, id 
 		}
 	}
 	term := e.app.Server.Terminals().Get(claude.ID)
-	defer func() { _ = term.Raw([]byte("/exit\r")) }()
+	t.Cleanup(func() { _ = term.Raw([]byte("/exit\r")) }) // before the env closes
 
 	// Wait for Claude Code's prompt, past its first-run notes on a new machine
 	// and its question about trusting the folder (the repository itself).
@@ -123,17 +162,5 @@ func askRealClaude(t *testing.T, rolePrompt, msg string, during func(e *env, id 
 		time.Sleep(500 * time.Millisecond)
 	}
 	time.Sleep(2 * time.Second)
-
-	start := time.Now()
-	if during != nil {
-		done := make(chan agentbus.Result, 1)
-		go func() { done <- e.run(shell, "ask", "Claude", msg) }()
-		during(e, claude.ID)
-		r := <-done
-		t.Logf("ask took %v, source=%s\n%s", time.Since(start), r.Source, r.Body)
-		return r, term.Snapshot()
-	}
-	r := e.run(shell, "ask", "Claude", msg)
-	t.Logf("ask took %v, source=%s\n%s", time.Since(start), r.Source, r.Body)
-	return r, term.Snapshot()
+	return e, shell, claude
 }

@@ -4,7 +4,7 @@ A torre de controle dos seus agentes de código. Antes se chamava **Squad** (vej
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
-> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você), o Sinóptico, foco e encaixe, e planos de voo. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você), o Sinóptico, foco e encaixe, planos de voo e a pilha de NOTAMs. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -317,6 +317,23 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - **Renomear** as suas NOTAMs: duplo clique no título, ou "Renomear" no menu ⋯. O arquivo fica, e **o nome antigo continua valendo para os agentes**: um agente que pedir a NOTAM pelo nome antigo a encontra, e a resposta diz o nome novo.
 - **NOTAMs criadas por agentes** (`torre note create "Nome"`, ou a ferramenta `note` do MCP) ficam com o nome que o agente deu: aparecem com "por IMP" e sem "Renomear".
 - **Nomes únicos no workspace**, sem diferenciar maiúsculas, contando os nomes antigos. Os agentes acham a NOTAM pelo nome em qualquer caixa.
+
+**Pilha de NOTAMs:** várias NOTAMs no lugar de uma, para dar a um voo todo o material de um assunto com um fio só.
+- **Empilhar:** arraste uma NOTAM e solte em cima de outra do mesmo nível. A de baixo é a base. Os fios das duas passam para a pilha, sem repetir, e um fio entre as duas some. Soltar uma pilha em cima de outra junta as duas.
+- **Antes de empilhar:** se algum voo passa a ler NOTAMs que não lia, a Torre pergunta, com quem ganha acesso ("IMP e REV passam a ler e escrever as 3 NOTAMs da pilha"). Sem ninguém ganhando acesso, empilha direto.
+- **Um fio ligado à pilha vale para todas as NOTAMs dela.** Um fio novo para qualquer NOTAM da pilha vai para a pilha.
+- **Na tela:** a faixa "PILHA · 3 NOTAMs", uma aba por NOTAM, "‹ 1/3 ›" para passar, a NOTAM da aba aberta inteira e as folhas desenhadas atrás. Mover ou redimensionar leva a pilha toda.
+- **Quando um agente escreve** numa NOTAM que não está à mostra, a aba dela ganha um ponto e a faixa avisa "REV escreveu em Arquitetura". O clique abre essa NOTAM. A pilha não troca de NOTAM sozinha.
+- **Tirar da pilha** (menu ⋯): a NOTAM vai para o lado da pilha e continua com os fios dela (a pilha também). Se sair a base, a próxima NOTAM vira a base. Uma pilha que fica com uma NOTAM só deixa de ser pilha.
+- **Desfazer a pilha** (menu ⋯): solta todas, cada uma com os fios da pilha.
+- **O cadeado continua por NOTAM.** Remover uma NOTAM da pilha tira só ela.
+- **Agentes:** leem e escrevem cada NOTAM pelo próprio nome, pela CLI e pelo MCP. O `torre list` e o `torre note list` mostram `stack: "Plano"` (o nome da base). As @menções do Transmitir também oferecem as NOTAMs da pilha. Só a interface empilha.
+- **Planos de voo e níveis:** um plano guarda as pilhas e decola com elas; pousar um nível desce as pilhas inteiras para a pista.
+
+| Rota (só da interface) | O que faz |
+|---|---|
+| `POST /w/<id>/api/notes/<nota>/stack` `{"onto"}` | empilha a nota (com a pilha dela) sobre a pilha de `onto`; devolve as notas da pilha |
+| `POST /w/<id>/api/notes/<nota>/unstack` `{"all"}` | tira a nota da pilha (com `all`, desfaz a pilha); as que saem ficam com os fios |
 
 ### Sessões
 

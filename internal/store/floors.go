@@ -194,24 +194,25 @@ func (s *Store) SetFloorConfig(c FloorConfig) (FloorConfig, error) {
 }
 
 // MoveNode puts a node on another floor ("" is the ground floor) at x, y.
+// A note of a stack takes the whole stack along.
 func (s *Store) MoveNode(id, floor string, x, y float64) (Node, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if floor != "" && s.floorIndexLocked(floor) < 0 {
 		return Node{}, fmt.Errorf("%w: floor %q", ErrNotFound, floor)
 	}
-	for i := range s.ws.Nodes {
-		if s.ws.Nodes[i].ID == id {
-			old := s.ws.Nodes[i]
-			s.ws.Nodes[i].Floor, s.ws.Nodes[i].X, s.ws.Nodes[i].Y = floor, x, y
-			if err := s.save(); err != nil {
-				s.ws.Nodes[i] = old
-				return Node{}, err
-			}
-			return cloneNode(s.ws.Nodes[i]), nil
-		}
+	if s.nodeIndexLocked(id) < 0 {
+		return Node{}, ErrNotFound
 	}
-	return Node{}, ErrNotFound
+	restore := s.snapshotLocked()
+	for _, i := range s.stackLocked(s.baseLocked(id)) {
+		s.ws.Nodes[i].Floor, s.ws.Nodes[i].X, s.ws.Nodes[i].Y = floor, x, y
+	}
+	if err := s.save(); err != nil {
+		restore()
+		return Node{}, err
+	}
+	return cloneNode(s.ws.Nodes[s.nodeIndexLocked(id)]), nil
 }
 
 // IsGround reports whether a floor name means the ground floor.

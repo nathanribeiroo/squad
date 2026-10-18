@@ -66,6 +66,10 @@ type Note struct {
 	Title   string `json:"title"`
 	Content string `json:"content,omitempty"`
 	Level   string `json:"level,omitempty"`
+	// Stack is the key of the note at the base of its stack (its own on
+	// the base); StackPos its place.
+	Stack    string `json:"stack,omitempty"`
+	StackPos int    `json:"stackPos,omitempty"`
 	Box
 }
 
@@ -175,6 +179,15 @@ func (p *Plan) Check() error {
 	for _, o := range p.Portals {
 		if err := item(o.Key, o.Level, o.Name, o.Box); err != nil {
 			return err
+		}
+	}
+	for _, n := range p.Notes {
+		if n.Stack == "" {
+			continue
+		}
+		base := slices.IndexFunc(p.Notes, func(b Note) bool { return b.Key == n.Stack })
+		if base < 0 || p.Notes[base].Level != n.Level {
+			return invalid(fmt.Sprintf("note %q: its stack is a note of the plan, on its level", n.Title), "plan.bad_item")
 		}
 	}
 	for _, l := range p.Links {

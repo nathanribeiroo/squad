@@ -26,6 +26,10 @@ const MESSAGES: Record<string, (p: Params) => string> = {
 
   'notam.name_taken': (p) => `Já existe uma NOTAM chamada "${p.name}".`,
   'notam.name_alias': (p) => `"${p.name}" já é um nome da NOTAM "${p.note}".`,
+  'notam.stack_kind': () => 'Só NOTAMs empilham.',
+  'notam.stack_level': () => 'Só NOTAMs do mesmo nível empilham.',
+  'notam.stack_self': () => 'Essa NOTAM já está nessa pilha.',
+  'notam.not_stacked': () => 'Essa NOTAM não está numa pilha.',
 
   'plan.name_required': () => 'O plano precisa de um nome.',
   'plan.name_too_long': (p) => `O nome do plano tem no máximo ${p.max} caracteres.`,

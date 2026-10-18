@@ -62,6 +62,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Torre F5b Foco, encaixe, ocultar, Tab | `feat/torre-f5b-foco` → `feat/torre` | concluído |
 | Torre F5c @ELEMENTOS no portal | `feat/torre-f5c-elementos` → `feat/torre` | concluído |
 | Torre F5d Planos de voo | `feat/torre-f5d-planos` → `feat/torre` | concluído |
+| Pilha de NOTAMs | `feat/pilha-notams` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -234,11 +235,10 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **F5c:** @ELEMENTOS no portal.
 - **F5d:** planos de voo (salvar, importar, aplicar com revisão dos comandos).
 
-**Status:** todas as fases concluídas e mescladas na `feat/torre` em 2026-10-17; o PR `feat/torre` → `main` espera o seu merge. O que ficou de fora está logo abaixo.
+**Status:** todas as fases concluídas e mescladas na `feat/torre` em 2026-10-17, e na `main` pelo PR #26. O que ficou de fora está logo abaixo.
 
 **Para depois (fora destas fases), com a referência no handoff:**
 
-- **Pilha de NOTAMs** (`docs/torre/NOVIDADES-E-BACKEND.md`, "Depois"; quadro 09 em `TELAS.md`): `stack` nas notas. A frequência ligada à pilha valeria para todas, o que mexe na regra de permissão; precisa de desenho próprio.
 - **Desenho e Grupo** (mesmo item; quadro 02): os botões ficam na barra de ferramentas, desligados com "em breve", até os nós `drawing` e `group` terem desenho.
 - **Trocar os atalhos** (`TELAS.md`, quadro 18, aba Atalhos: "os de ⌥ podem ser trocados"): a aba só lista os atalhos.
 - **Histórico do Rádio guardado** (`NOVIDADES-E-BACKEND.md`, item 12): hoje fica só no navegador (até 200 itens) e some ao recarregar; guardar por sessão.
@@ -256,3 +256,17 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **Planos de voo pelos agentes** (F5d): hoje só a interface salva e decola planos (decolar inicia processos, então ficou fora do `/cli` e do MCP, como a resposta da PRIORIDADE). Um líder poderia pedir "decole o plano Trio" com aprovação, se fizer falta.
 - **Galeria com planos prontos** (F5d; o mockup do quadro 20 mostra "Trio clássico", "Front-end com teste visual", "Duas frentes em paralelo"): a galeria começa vazia. Planos prontos que venham com a Torre precisariam escolher agentes e papéis que existam na máquina.
 - **Dois voos encaixados** (F5b): hoje um por vez, numa borda. As duas bordas ao mesmo tempo pediriam um desenho para o canvas espremido no meio.
+
+## Pilha de NOTAMs
+
+Pedido do usuário em 2026-10-18, depois da Torre (estava em "Para depois"; quadro 09 em `docs/torre/TELAS.md`). As três decisões foram dele:
+
+1. **Empilhar dá acesso:** um fio ligado à pilha vale para todas as NOTAMs dela. Empilhar pede confirmação, com a lista de quem ganha acesso.
+2. **Tirar da pilha mantém os fios:** a NOTAM que sai continua ligada a quem a pilha estava ligada.
+3. **O cadeado continua por NOTAM.**
+
+- **Servidor:** `stack` e `stackPos` nas notas. A base guarda os fios e a caixa da pilha, e o acesso segue a pilha como segue as notas encadeadas (`notes.accessible`). Rotas só da interface para empilhar e tirar; `torre list`, `torre note list`, as @menções, os planos de voo e o pouso dos níveis conhecem as pilhas.
+- **Interface:** arrastar uma NOTAM sobre outra, a confirmação, a faixa com as abas, o aviso de edição de um agente, "Tirar da pilha" e "Desfazer a pilha".
+- **Fora:** agentes empilhando (pela CLI ou pelo MCP), reordenar as abas e trocar a base.
+
+**Status:** pronto no PR `feat/pilha-notams` → `main`.

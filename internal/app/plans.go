@@ -116,8 +116,8 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 	var picked []store.Node
 	for _, n := range snap.Nodes {
 		switch req.Scope {
-		case "selection":
-			if slices.Contains(req.Nodes, n.ID) {
+		case "selection": // a selected stack brings its notes
+			if slices.Contains(req.Nodes, n.ID) || n.Note != nil && n.Note.Stack != "" && slices.Contains(req.Nodes, n.Note.Stack) {
 				picked = append(picked, n)
 			}
 		case "level":
@@ -152,6 +152,7 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 	}
 	workdir := st.Workdir()
 	keyOf := map[string]string{}
+	stacked := map[int]store.Node{} // plan note → its note on the canvas, when stacked
 	for _, n := range picked {
 		lvl := levelKey[n.Floor]
 		switch {
@@ -170,6 +171,9 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 					note.Content = c
 				}
 			}
+			if n.Note.Stack != "" {
+				stacked[len(p.Notes)] = n
+			}
 			p.Notes = append(p.Notes, note)
 			keyOf[n.ID] = key
 		case n.Portal != nil:
@@ -180,6 +184,11 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 			}
 			p.Portals = append(p.Portals, plans.Portal{Key: key, Name: name, URL: n.Portal.URL, Level: lvl, Box: box(n)})
 			keyOf[n.ID] = key
+		}
+	}
+	for i, n := range stacked {
+		if base := keyOf[n.Note.Stack]; base != "" {
+			p.Notes[i].Stack, p.Notes[i].StackPos = base, n.Note.StackPos
 		}
 	}
 	for _, e := range snap.Edges {
@@ -309,6 +318,21 @@ func (a *App) applyPlan(ctx context.Context, p plans.Plan, floor string) (PlanRe
 		}
 		idOf[nt.Key] = n.ID
 		res.Nodes = append(res.Nodes, n.ID)
+	}
+	// The stacks again, in their order.
+	order := slices.Clone(p.Notes)
+	slices.SortStableFunc(order, func(x, y plans.Note) int { return x.StackPos - y.StackPos })
+	for _, nt := range order {
+		base, id := idOf[nt.Stack], idOf[nt.Key]
+		if nt.Stack == "" || nt.Stack == nt.Key || base == "" || id == "" {
+			continue
+		}
+		ch, err := st.Stack(id, base)
+		if err != nil {
+			warn("NOTAM %s: %v", nt.Title, err)
+			continue
+		}
+		a.Server.PublishStack(ch)
 	}
 	portalTaken := func(name string) bool {
 		for _, n := range st.Snapshot().Nodes {

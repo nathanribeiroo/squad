@@ -166,6 +166,7 @@ func New(o Options) (*App, error) {
 		}
 		writeJSON(w, map[string]any{"id": n.ID, "file": n.Note.File, "title": n.Note.Title, "locked": n.Note.Locked, "content": content})
 	}))
+	registerStacks(srv, notesSvc)
 	// Naming a note the user made: its first name names the file; renaming
 	// later keeps the file and the old name (agents still find the note).
 	srv.HandleSession("PATCH /api/notes/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

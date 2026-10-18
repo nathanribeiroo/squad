@@ -234,11 +234,19 @@ func (s *Server) handleRemoveNode(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// RemoveNode removes a node with its edges, stopping its terminal.
+// RemoveNode removes a node with its edges, stopping its terminal. A note
+// of a stack leaves it first (the next base gets its wires).
 func (s *Server) RemoveNode(id string) error {
 	n, ok := s.store.Node(id)
 	if !ok {
 		return fmt.Errorf("node %w", store.ErrNotFound)
+	}
+	if n.Note != nil && n.Note.Stack != "" {
+		ch, err := s.store.Unstack(id, false, false)
+		if err != nil {
+			return err
+		}
+		s.PublishStack(ch)
 	}
 	removed, err := s.store.RemoveNode(id)
 	if err != nil {
@@ -262,6 +270,22 @@ func (s *Server) RemoveNode(id string) error {
 	}
 	s.bus.Publish(events.NodeRemoved, map[string]string{"id": id})
 	return nil
+}
+
+// PublishStack announces what stacking or unstacking notes changed.
+func (s *Server) PublishStack(ch store.StackChange) {
+	for _, e := range ch.Removed {
+		if s.onEdgeGone != nil {
+			s.onEdgeGone(e)
+		}
+		s.bus.Publish(events.EdgeRemoved, e)
+	}
+	for _, e := range ch.Added {
+		s.bus.Publish(events.EdgeAdded, e)
+	}
+	for _, n := range ch.Nodes {
+		s.bus.Publish(events.NodeUpdated, n)
+	}
 }
 
 func (s *Server) handleNodeAction(w http.ResponseWriter, r *http.Request) {

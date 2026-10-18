@@ -268,7 +268,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 			return []string{"reply", id, in.Message}, nil
 		})
 
-	addTool(s, env, "note", "Read and write notes connected to you (Markdown): list, read (with line numbers), write (replace all), edit (replace text that appears once), create (a new note connected to you, with a clear name: names are unique in the workspace and permanent).",
+	addTool(s, env, "note", "Read and write notes connected to you (Markdown): list, read (with line numbers), write (replace all), edit (replace text that appears once), create (a new note connected to you, with a clear name: names are unique in the workspace and permanent). A wire to a stack of notes reaches every note in it.",
 		false, func(in noteInput) ([]string, error) {
 			if in.Action == "list" {
 				return []string{"note", "list"}, nil
