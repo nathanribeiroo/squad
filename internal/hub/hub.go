@@ -30,6 +30,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
 	"github.com/nathanribeiroo/squad/internal/summary"
+	"github.com/nathanribeiroo/squad/internal/usage"
 )
 
 // Colors are the workspace color keys the UI knows; a new workspace takes
@@ -74,6 +75,7 @@ type Options struct {
 	Browser    *browser.Manager     // the portals' browser, shared by all workspaces (nil: no portals)
 	Roles      *roles.Library       // nil: roles.json next to Root (~/.torre/roles.json)
 	Plans      *plans.Library       // nil: plans/ next to Root (~/.torre/plans)
+	Usage      *usage.Accounts      // the agents' plan limits, shared (nil: usage-accounts.json next to Root)
 }
 
 // Summary is a workspace as the selector shows it.
@@ -136,6 +138,9 @@ func New(opts Options) (*Hub, error) {
 	if opts.Plans == nil {
 		opts.Plans = plans.Open(filepath.Join(filepath.Dir(opts.Root), "plans"))
 	}
+	if opts.Usage == nil {
+		opts.Usage = usage.OpenAccounts(filepath.Join(filepath.Dir(opts.Root), "usage-accounts.json"))
+	}
 	h := &Hub{
 		opts: opts, log: opts.Logger, roles: opts.Roles, events: events.NewBus(),
 		dirty: make(chan struct{}, 1), quit: make(chan struct{}),
@@ -197,6 +202,7 @@ func (h *Hub) build(st *store.Store, ss *sessions) (*workspace, error) {
 		Browser:    h.opts.Browser,
 		Roles:      h.roles,
 		Plans:      h.opts.Plans,
+		Usage:      h.opts.Usage,
 	})
 	if err != nil {
 		return nil, err

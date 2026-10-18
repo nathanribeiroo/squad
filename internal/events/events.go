@@ -39,6 +39,8 @@ const (
 	SummarySettings     = "summary.settings"  // turn cards and summary engine (summary.Settings)
 	RadioItem           = "radio.item"        // a line of the Rádio, new or changed (radio.Item)
 	RadioCleared        = "radio.cleared"     // the user cleared the Rádio
+	UsageFlight         = "usage.flight"      // what a flight's conversation used (usage.Flight)
+	UsageAccount        = "usage.account"     // an agent account's plan limits (usage.Account)
 )
 
 // Event is one notification.

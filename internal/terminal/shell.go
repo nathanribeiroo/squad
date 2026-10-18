@@ -198,6 +198,9 @@ func windowsCandidates(pref, envShell string, lookPath func(string) (string, err
 	return out
 }
 
+// GitBash returns Git for Windows' bash.exe ("" if Git isn't installed).
+func GitBash() string { return findGitBash(exec.LookPath, os.Getenv, isFile) }
+
 // findGitBash returns Git for Windows' bin\bash.exe, found next to git.exe on
 // PATH or in the usual install folders; "" if Git isn't installed.
 func findGitBash(lookPath func(string) (string, error), getenv func(string) string, isFile func(string) bool) string {

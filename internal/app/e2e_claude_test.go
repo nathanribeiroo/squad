@@ -30,6 +30,32 @@ func TestRealClaude(t *testing.T) {
 	}
 }
 
+// Consumo: the real Claude Code's status line brings the flight's tokens
+// (from its transcript), its context and estimated cost; a claude.ai Pro or
+// Max login also brings the plan's 5-hour and weekly windows.
+func TestRealClaudeUsage(t *testing.T) {
+	e, shell, claude := startRealClaude(t, "")
+	if r := e.run(shell, "ask", "Claude", "Responda apenas com a palavra: pong"); r.Code != 200 {
+		t.Fatalf("ask: %+v", r)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, f := range e.app.Usage.Flights() {
+			if f.ID == claude.ID && f.Tokens.Total() > 0 && f.Context != nil && f.CostUSD > 0 {
+				t.Logf("flight: %+v context %+v", f, *f.Context)
+				if a, ok := e.app.Usage.Account("claude"); ok {
+					t.Logf("account: %+v", a)
+				} else {
+					t.Log("no plan limits (not a claude.ai Pro/Max login)")
+				}
+				return
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	t.Fatalf("no usage: %+v", e.app.Usage.Flights())
+}
+
 // The Rádio keeps a real Claude's reply with the request, after the turn.
 func TestRealClaudeRadio(t *testing.T) {
 	e, shell, _ := startRealClaude(t, "")

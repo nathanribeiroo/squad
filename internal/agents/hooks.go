@@ -128,6 +128,8 @@ type HookOptions struct {
 	Conversation func(id, conversation, source string)
 	// Busy gets the start (true) and end (false) of each turn.
 	Busy func(id string, busy bool)
+	// StatusLine gets Claude Code's status line payloads (Consumo).
+	StatusLine func(id string, body []byte)
 }
 
 // HookHandler serves POST /hooks/{agent}: it turns hook payloads into turn
@@ -137,6 +139,13 @@ func HookHandler(o HookOptions) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("agent")
 		body, _ := io.ReadAll(io.LimitReader(r.Body, 16<<20))
+		if name == "claude-statusline" {
+			if o.StatusLine != nil {
+				o.StatusLine(o.CallerOf(r), body)
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		ev, ok := ParseHook(name, body)
 		if !ok {
 			w.WriteHeader(http.StatusNoContent)

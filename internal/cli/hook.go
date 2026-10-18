@@ -28,6 +28,9 @@ func runHook(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	name := args[1]
+	if name == statusLineHook {
+		return runStatusLine(stdout, stderr)
+	}
 	var payload []byte
 	if len(args) >= 3 {
 		payload = []byte(args[len(args)-1])
