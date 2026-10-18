@@ -69,7 +69,7 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | `internal/plans` | planos de voo em `~/.torre/plans`: validar, salvar, importar |
 | `internal/attention`, `internal/apierr` | PRIORIDADE: ler o prompt na tela e as teclas de cada resposta (permissões; as opções das perguntas e dos planos, com o campo de texto); erros da API com `code` (traduzidos em `web/src/api/errors.ts`) |
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |
-| `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot`; pilhas de NOTAMs (`stacks.go`: a base guarda os fios e a caixa) |
+| `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot`; pilhas de NOTAMs (`stacks.go`: a base guarda os fios e a caixa); grupos e desenhos, só visuais (`visual.go`: o que está dentro de uma moldura, mover vários nós) |
 | `internal/agentbus` | `torre list/ask/check/wait/reply`, limites, pausa, modo `Safe`; a fila de pedidos de cada voo e a entrega a quem está ocupado num laço (`queue.go`); o motivo da espera geral e a cadeia de um laço que passou do limite de saltos (`loop.go`) |
 | `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools`; a conversa de cada terminal, nova ou retomada (`conversation.go`); a cópia da configuração do Devin e o registro do MCP nele (`devin.go`) |
 | `internal/roles`, `internal/team` | biblioteca de papéis; `torre new/connect/close` (gerente) |
@@ -78,7 +78,7 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | `internal/radio` | o Rádio de cada sessão: as linhas montadas dos eventos, em `radio.jsonl` na pasta da sessão, com o texto dos pedidos e das respostas |
 | `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `torre floor`, `/api/floors`; a cópia em que uma sessão trabalha, e mesclar sem fechar (`copy.go`); as permissões do SEMPRE do Claude e do Devin que seguem os níveis e voltam no pouso (`permissions.go`); as marcas de testes e revisão dos voos, `torre floor mark` (`checks.go`) |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
-| `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas`, sessões em `src/components/SessionsMenu.tsx` |
+| `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` (o Desenho em `DrawLayer.tsx`; grupos e desenhos em `src/lib/visual.ts`), sessões em `src/components/SessionsMenu.tsx` |
 
 ## Segurança (já decidido)
 

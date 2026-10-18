@@ -69,7 +69,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fila de pedidos por voo | `feat/fila-pedidos` | concluído |
 | Testes e revisão no pouso, e ocupação no `torre list` | `feat/checagens-pouso` | concluído |
 | Cartão do laço | `feat/laco` | concluído |
-| Perguntas e planos pela Torre, e SUA VEZ | `feat/perguntas-e-sua-vez` | concluído (PR) |
+| Perguntas e planos pela Torre, e SUA VEZ | `feat/perguntas-e-sua-vez` | concluído |
+| Desenho e Grupo | `feat/desenho-grupo` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -246,7 +247,14 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 
 **Para depois (fora destas fases), com a referência no handoff:**
 
-- **Desenho e Grupo** (mesmo item; quadro 02): os botões ficam na barra de ferramentas, desligados com "em breve", até os nós `drawing` e `group` terem desenho.
+- **Grupo com sentido para os agentes** (depois de Desenho e Grupo, que são só visuais). Mexe nas regras de conversa e merece uma etapa própria. Roteiro para quando vier:
+  1. **Decidir a regra:** o grupo só informa (o `torre list` diz "você está no grupo Front-end, com IMP e REV") ou também autoriza (falar com quem está no grupo sem fio)? Recomendo só informar: os fios continuam sendo a única autorização.
+  2. **Quem está no grupo:** `store.Inside` (em `internal/store/visual.go`) já diz o que está dentro de uma moldura, aberta ou recolhida. Usar a mesma conta no servidor, sem lista fixa.
+  3. **`torre list` e MCP `list`** (`internal/agentbus/cli.go`): uma linha com o grupo e os indicativos de dentro.
+  4. **Pedir ao grupo:** `torre ask --group "Front-end" "…"` mandaria um pedido a cada voo do grupo ligado a quem pede (respeitando os fios e os limites de `internal/agentbus`); o MCP ganharia o mesmo parâmetro.
+  5. **O líder agrupa:** `torre new --group "Front-end"` poria o voo novo dentro da moldura (o lugar livre teria de procurar dentro dela, em `store.FreeSpot`).
+  6. **Textos:** a skill (`skillMD`, em `internal/cli/hook.go`, e `make skill-zip`), o `--help` e as instruções do MCP.
+  7. **Testes:** com agentes falsos em `internal/app`, como `TestGroupsAndDrawings` (que hoje confere que os agentes **não** veem o grupo).
 - **Trocar os atalhos** (`TELAS.md`, quadro 18, aba Atalhos: "os de ⌥ podem ser trocados"): a aba só lista os atalhos.
 - **Modelo no boletim** ("por claude -p · haiku", quadro 08): o resumo só sabe a CLI que usou, não o modelo.
 - **Autor dos commits por indicativo** (quadro 14): no git o autor é a pessoa; seria preciso marcar os commits de cada voo.
@@ -365,4 +373,25 @@ Pedido do usuário em 2026-10-18: dois itens do "Para depois" juntos, "Aprovar o
   - a múltipla escolha;
   - o aviso de SUA VEZ dos voos de outro workspace (vale o workspace aberto).
 
-**Status:** pronto no PR `feat/perguntas-e-sua-vez` → `main`.
+**Status:** mesclado na `main` pelo PR #34.
+
+## Desenho e Grupo
+
+Pedido do usuário em 2026-10-18 (estava em "Para depois"; quadro 02 de `docs/torre/TELAS.md` e o brief em `docs/design_handoff_squad/`). Os dois são só visuais, para o usuário organizar e explicar o canvas: os agentes não veem nada. O grupo com sentido para os agentes foi para o "Para depois", como o usuário pediu. O plano foi aprovado com os padrões propostos:
+- quem está no grupo é o que está inteiro dentro da moldura na hora, sem lista fixa;
+- grupo dentro de grupo só anda junto;
+- pousar ou descartar um nível remove as molduras e os desenhos dele.
+
+- **Servidor (`internal/store/visual.go`):**
+  - dois tipos novos de nó: `group` (nome, cor, recolhido, o tamanho aberto e quem ele esconde) e `drawing` (forma, pontos de 0 a 1 na caixa, cor, texto);
+  - o fio para eles é recusado (`edge.visual`), o lugar livre de um voo novo ignora molduras abertas e desenhos, e `torre connect`/`close` não os acham pelo nome;
+  - `POST /api/nodes/move` move vários nós de uma vez (o grupo com o que está dentro);
+  - planos de voo salvam e decolam grupos e desenhos; um grupo selecionado leva o que está dentro dele.
+- **Interface:**
+  - **Grupo (G):** moldura em volta da seleção, ou arrastada no canvas; renomear, cor, recolher num cartão com os estados de dentro (âmbar quando alguém pede você), expandir, remover a moldura; arrastar leva o que está dentro;
+  - **recolhido:** os voos continuam no ar, os fios vão para o cartão com as pílulas de pedido, a PRIORIDADE diz "no grupo …" e IR ATÉ ELE abre o grupo;
+  - **Desenho (D):** caneta, seta, retângulo, elipse e texto, nas cores do tema; Delete apaga, duplo clique edita o texto;
+  - molduras e desenhos ficam atrás dos voos e só pegam o clique nas próprias linhas.
+- **Fora:** borracha parcial, camadas, desenho no Sinóptico e o grupo com sentido para os agentes.
+
+**Status:** pronto no PR `feat/desenho-grupo` → `main`.
