@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '../api/client';
-import type { Floor, FloorChanges, WNode } from '../api/types';
+import type { Floor, FloorChanges, LandResult, PermissionRule, WNode } from '../api/types';
 import { GROUND, flightLevel, plural, slugify, useBranch } from '../lib/floors';
 import { callsign } from '../lib/model';
 import { shortPath } from '../lib/paths';
@@ -325,6 +325,53 @@ function LandChecks({ changes, base, flying }: { changes: FloorChanges; base?: s
   );
 }
 
+const RULE_KINDS: Record<PermissionRule['kind'], string> = { allow: 'permitir', ask: 'perguntar', deny: 'negar' };
+
+/** The agent whose permissions file it is. */
+function ruleAgent(file: string): string {
+  return file.startsWith('.claude/') ? 'Claude' : file.startsWith('.devin/') ? 'Devin' : file;
+}
+
+/**
+ * The permission rules the agents saved on a floor (or in the session's
+ * copy) that its ground floor lacks, and the box that takes them there. It
+ * starts unchecked: a flight can write those files too, so the user reads
+ * the rules before they apply to the whole project.
+ */
+function NewRules({ rules, take, onTake, where }: { rules: PermissionRule[]; take: boolean; onTake: (t: boolean) => void; where: string }) {
+  if (rules.length === 0) return null;
+  return (
+    <section className="fl-section">
+      <div className="fl-section-title">
+        <Icon name="shield" size={16} />
+        {plural(rules.length, 'permissão nova', 'permissões novas')}
+        <span className="fl-muted">· liberadas aqui com “sempre”, fora do git</span>
+      </div>
+      <ul className="fl-rules mono">
+        {rules.map((r) => (
+          <li key={`${r.file} ${r.kind} ${r.rule}`} title={r.file}>
+            <span className={`fl-rule-kind ${r.kind}`}>{RULE_KINDS[r.kind]}</span>
+            <span className="fl-rule-agent">{ruleAgent(r.file)}</span>
+            {r.rule}
+          </li>
+        ))}
+      </ul>
+      <label className={`fl-option${take ? ' on' : ''}`}>
+        <input type="checkbox" checked={take} onChange={(e) => onTake(e.target.checked)} />
+        <span>
+          <b>Levar essas permissões para {where}</b>
+          <span className="fl-option-sub">Os agentes de lá deixam de perguntar por elas. Confira antes: um voo também pode escrever esses arquivos.</span>
+        </span>
+      </label>
+    </section>
+  );
+}
+
+/** "· 2 permissões levadas", for a land's toast. */
+function taken(r: LandResult): string {
+  return r.permissions ? ` · ${plural(r.permissions, 'permissão levada', 'permissões levadas')}` : '';
+}
+
 /** "Mesclar em [branch]": the target, among the branches it can merge into. */
 function IntoSelect({ into, branches, onChange, onClick }: { into: string; branches: string[]; onChange: (b: string) => void; onClick?: () => void }) {
   return (
@@ -385,6 +432,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
   const branches = useTargets(floor.branch);
   const [mode, setMode] = useState<'merge' | 'keep'>('merge');
   const [into, setInto] = useState(floor.base ?? '');
+  const [take, setTake] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [busy, setBusy] = useState(false);
   const { closes, notes } = useFloorNodes(floor.id);
@@ -403,13 +451,14 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
     setRefusal(null);
     const undo = expectGone(floor.id);
     try {
-      const r = await api.landFloor(floor.id, mode === 'merge' ? { into } : {});
+      const permissions = take && (changes?.rules.length ?? 0) > 0;
+      const r = await api.landFloor(floor.id, mode === 'merge' ? { into, permissions } : { permissions });
       toast(
-        r.merged
+        (r.merged
           ? `${floor.name} pousou: ${r.branch} em ${r.into} (${(r.commit ?? '').slice(0, 7)})`
           : r.upToDate
             ? `${floor.name} pousou: ${r.into} já tinha tudo de ${r.branch}`
-            : `${floor.name} pousou; o trabalho continua no branch ${r.branch}`,
+            : `${floor.name} pousou; o trabalho continua no branch ${r.branch}`) + taken(r),
       );
       onClose();
     } catch (e) {
@@ -477,6 +526,7 @@ function LandFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) {
               </span>
             </label>
           </section>
+          <NewRules rules={changes.rules} take={take} onTake={setTake} where="a pista" />
           <p className="field-hint">
             Ao pousar: {closes.length ? `fecha ${list(closes.map(label))}; ` : ''}
             {notes.length ? `${list(notes.map(label))} ${notes.length > 1 ? 'descem' : 'desce'} para a pista; ` : ''}a pasta {shortPath(floor.cwd)} é apagada e o
@@ -495,6 +545,7 @@ function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
   const [changes, loadError] = useChanges(null);
   const branches = useTargets(copy.branch);
   const [into, setInto] = useState(copy.base ?? '');
+  const [take, setTake] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [busy, setBusy] = useState(false);
   const dirty = (changes?.files.length ?? 0) > 0;
@@ -503,8 +554,11 @@ function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
     setBusy(true);
     setRefusal(null);
     try {
-      const r = await api.mergeCopy(into);
-      toast(r.upToDate ? `${r.into} já tinha tudo de ${r.branch}` : `A sessão pousou: ${r.branch} em ${r.into} (${(r.commit ?? '').slice(0, 7)}); ela continua na cópia`);
+      const r = await api.mergeCopy(into, take && (changes?.rules.length ?? 0) > 0);
+      toast(
+        (r.upToDate ? `${r.into} já tinha tudo de ${r.branch}` : `A sessão pousou: ${r.branch} em ${r.into} (${(r.commit ?? '').slice(0, 7)}); ela continua na cópia`) +
+          taken(r),
+      );
       onClose();
     } catch (e) {
       setRefusal(refusalOf(e));
@@ -558,6 +612,7 @@ function MergeCopy({ copy, onClose }: { copy: Floor; onClose: () => void }) {
               </span>
             </div>
           </section>
+          <NewRules rules={changes.rules} take={take} onTake={setTake} where="a pasta do projeto" />
           <p className="field-hint">
             A cópia <span className="mono">{shortPath(copy.cwd)}</span> continua: a sessão segue trabalhando no branch {copy.branch} e pode mesclar de novo.
           </p>

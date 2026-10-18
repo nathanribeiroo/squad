@@ -126,7 +126,7 @@ export const api = {
   createFloor: (b: { name: string; branch?: string; existing?: boolean }) => req<Floor>('POST', wsPath('/api/floors'), b),
   floorConfig: (c: FloorConfig) => req<FloorConfig>('PUT', wsPath('/api/floors/config'), c),
   floorChanges: (id: string) => req<FloorChanges>('GET', wsPath(`/api/floors/${encodeURIComponent(id)}/changes`)),
-  landFloor: (id: string, b: { merge?: boolean; into?: string }) => req<LandResult>('POST', wsPath(`/api/floors/${encodeURIComponent(id)}/land`), b),
+  landFloor: (id: string, b: { merge?: boolean; into?: string; permissions?: boolean }) => req<LandResult>('POST', wsPath(`/api/floors/${encodeURIComponent(id)}/land`), b),
   discardFloor: (id: string) => req<void>('DELETE', wsPath(`/api/floors/${encodeURIComponent(id)}`)),
   /** Another name for a level; its branch and folder stay. */
   renameFloor: (id: string, name: string) => req<Floor>('PATCH', wsPath(`/api/floors/${encodeURIComponent(id)}`), { name }),
@@ -138,7 +138,7 @@ export const api = {
   floorLog: (id: string) => text(wsPath(`/api/floors/${encodeURIComponent(id)}/log`)),
   /** The session's copy: what merging would take, merge (the copy stays), the setup log. */
   copyChanges: () => req<FloorChanges>('GET', wsPath('/api/copy/changes')),
-  mergeCopy: (into: string) => req<LandResult>('POST', wsPath('/api/copy/merge'), { into }),
+  mergeCopy: (into: string, permissions?: boolean) => req<LandResult>('POST', wsPath('/api/copy/merge'), { into, permissions }),
   copyLog: () => text(wsPath('/api/copy/log')),
   /** Saves the selected nodes, a level or the whole session as a flight plan. */
   savePlan: (b: { name: string; scope: 'selection' | 'level' | 'session'; nodes?: string[]; floor?: string; notesContent?: boolean }) =>

@@ -141,6 +141,15 @@ export interface FloorChanges {
   missing?: boolean;
   /** Files a merge into the base would conflict in; null when git can't tell. */
   conflicts?: string[] | null;
+  /** Permission rules the agents saved here that the ground floor lacks. */
+  rules: PermissionRule[];
+}
+
+/** A rule of an agent's permissions file (.claude/settings.local.json, .devin/config.local.json). */
+export interface PermissionRule {
+  file: string;
+  kind: 'allow' | 'ask' | 'deny';
+  rule: string;
 }
 
 /** An agent's last turn (internal/summary): its final message, and a summary on demand. */
@@ -209,6 +218,8 @@ export interface LandResult {
   into?: string;
   commit?: string;
   upToDate?: boolean;
+  /** How many permission rules went to the ground floor. */
+  permissions?: number;
 }
 
 export interface WEdge {
