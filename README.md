@@ -479,6 +479,17 @@ Com mais de um portal ligado, diga qual: `torre portal "Docs" snapshot`. `torre 
 
 Com o Claude Code, o Codex e o Devin CLI, a resposta é a **mensagem final do turno** (via hook `Stop` ou `notify`), não a tela. Com outros programas, a Torre espera a tela parar de mudar.
 
+**Fila de cada voo:** um agente (Claude Code, Devin, Codex, Gemini) recebe um pedido por vez, quando está livre. Livre quer dizer:
+- não está trabalhando nem pedindo você;
+- está parado há um instante (1,5 s), porque uma mensagem que você digitou com ele trabalhando começa logo depois do turno;
+- e não tem outro pedido entregue sem resposta.
+
+Se não estiver livre, o pedido espera na fila dele, por ordem de chegada, e entra quando o turno acaba. Assim cada pedido recebe a resposta do turno que ele mesmo começou. Antes, um pedido que chegava no meio do turno de outro ficava com a resposta desse outro.
+- **Na tela:** o fio mostra "NA FILA", a faixa do voo diz "Na fila de IMP" (e, no destino, "1 na fila"), e a linha do Rádio diz "Na fila · Implementador termina o turno". Dá para cancelar pelo Rádio.
+- **O que não entra na fila:** shells e comandos próprios (`--raw` também), a resposta a quem pergunta de volta, a mensagem para quem está em `torre wait` esperando quem mandou e as suas mensagens (Transmitir).
+- **Laços:** se um voo ocupado pergunta (ou espera com `torre wait`) e há na fila dele um pedido de alguém da mesma cadeia, ele recebe esse pedido na hora, como resultado do comando, com a instrução de responder primeiro (`torre reply`) e mandar a mensagem dele de novo depois. Sem isso, um esperaria o turno do outro.
+- **Limite:** a espera na fila conta para o limite de 30 min do pedido. Passou disso, o pedido volta dizendo que a mensagem não foi entregue.
+
 **Tempo de espera:**
 - o `ask` espera enquanto o agente trabalha (até 30 min) e volta depois de 2 min sem atividade nenhuma, com a tela e o aviso `[torre: timeout …]`. Isso acontece, por exemplo, quando o agente fica parado num pedido de permissão;
 - se o turno dele ainda não acabou, o aviso manda usar `torre wait "Nome"`: ele espera esse mesmo turno acabar e devolve a resposta final, sem mandar outra mensagem;

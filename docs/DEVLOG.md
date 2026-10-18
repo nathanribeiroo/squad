@@ -2,6 +2,67 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Fila de pedidos por voo
+
+- **Pedido:** o item 19 da lista de pendências, que apareceu nos testes do item 18. O plano foi aprovado com os padrões propostos:
+  - as mensagens do usuário ficam fora da fila;
+  - a folga é de 1,5 s;
+  - a resposta não ganha nota sobre a espera.
+- **O defeito, confirmado com o Claude real:**
+  - um voo pediu ao Claude uma lista longa terminando em PRIMEIRO-OK; no meio desse turno, outro voo pediu "responda só SEGUNDO-OK";
+  - os dois pedidos voltaram com PRIMEIRO-OK;
+  - o Claude guardou a segunda mensagem e respondeu SEGUNDO-OK num turno separado, que ninguém recebeu.
+  - **Causa:** a Torre entregava na hora e esperava o "próximo fim de turno", que era o do turno em andamento.
+- **Servidor (`internal/agentbus/queue.go`, novo):**
+  - **Quando entra:** um pedido para um agente (Claude, Devin, Codex, Gemini) só entra quando o voo:
+    - não está trabalhando nem pedindo o usuário;
+    - está parado há 1,5 s (`Limits.Settle`), porque uma mensagem que o usuário digitou com ele trabalhando começa logo depois do turno;
+    - e não tem outro pedido entregue sem resposta.
+  - **A fila:** senão, o pedido espera na fila do voo, por ordem de chegada (`takeTurn`), e sai o evento `request.queued` com quantos estão na frente.
+  - **O que substituiu:** a espera que já existia para quem estava pedindo o usuário (`holdWhileAsking`) virou parte da fila.
+  - **Limite:** a espera conta para o limite de 30 min; passou disso, o pedido volta dizendo que a mensagem não foi entregue.
+  - **O que não entra na fila:**
+    - shells e comandos próprios (um shell rodando um servidor nunca parece livre);
+    - a pergunta de volta;
+    - a mensagem para quem está em `torre wait` esperando quem mandou (conferido a cada volta da fila);
+    - as mensagens do usuário (Transmitir).
+  - **Laços:** a fila podia criar um impasse novo. Por exemplo, o Revisor pergunta ao Implementador ocupado, e o Implementador, no mesmo turno, pergunta ao Revisor.
+    - **A regra (`handOverLocked`):** quando um voo ocupado pergunta, ou espera com `torre wait`, e há na fila dele um pedido de quem ele chama (ou de alguém que, pela cadeia, espera por ele), ele recebe esse pedido na hora, como resultado do comando, com a instrução de responder (`torre reply`) e mandar a mensagem dele de novo depois.
+    - **Pedido na fila ainda não foi visto pelo voo:** não conta como pergunta de volta nem para o limite de saltos.
+  - **Monitor:** `Idle` diz há quanto tempo o voo saiu do turno.
+  - **Rádio:** a linha do pedido guarda `queued` enquanto ele espera.
+- **Interface:**
+  - o fio mostra a pílula "NA FILA" com o tempo e o número do pedido;
+  - a faixa de quem perguntou diz "Na fila de IMP";
+  - a faixa do destino diz "1 na fila" (ou, sem pedido em andamento, "Pedido … na fila · entra quando este turno acabar");
+  - o Rádio diz "Na fila · Implementador termina o turno";
+  - o Sinóptico diz "Na fila de IMP".
+- **Textos:** a skill e o `ask` do MCP dizem que um agente no meio de um turno recebe a mensagem quando o turno acaba.
+- **Correção de passagem, monitor:**
+  - **Sintoma:** depois de `Monitor.Stop`, a amostra em andamento ainda disparava fins de turno, e o serviço dos cartões gravava o `cards.json` com o app já fechado (o teste novo de agente só de tela falhava 2 em 3 na limpeza da pasta).
+  - **Correção:** agora o `Stop` espera a amostra terminar.
+- **Decisões sem consulta:**
+  - **Livre é "sem trabalhar", não "turno aberto":** se você interromper o Claude com Esc, ele não manda o fim do turno, e com "turno aberto" a fila esperaria para sempre. Com "trabalhando", ela espera até 60 s de silêncio.
+  - **A fila confere o voo a cada 100 ms.**
+  - **Comandos próprios não entram na fila,** mesmo que rodem um agente.
+- **Testado aqui:**
+  - **Agentes falsos** (`internal/app/queue_test.go`):
+    - três voos perguntam ao mesmo voo ocupado, como Claude e como Devin, e cada um recebe a própria resposta, na ordem de chegada, com o Rádio mostrando a fila;
+    - o laço pelo `ask` e pelo `wait`;
+    - cancelar na fila;
+    - o limite;
+    - um voo só de tela (Gemini falso);
+    - um shell ocupado recebe na hora.
+    - **Contraprova:** com a fila desligada, os testes falham.
+  - **Os testes de antes** (pergunta de volta, laço, `wait`, PRIORIDADE) continuam passando.
+  - **Claude real** (`TestRealClaudeQueue`, novo): o mesmo cenário do defeito, e cada pedido recebe a própria resposta. `TestRealClaudePermission` e `TestRealClaudeFloorPermissions` também passam.
+  - **Na tela:** o fio "NA FILA", as faixas e o Rádio, com um Implementador falso do tipo `claude`.
+  - **Validação:** `make check` com o navegador, `tsc` e o build.
+- **Não testado:**
+  - **Devin real:** a conta está deslogada. Os hooks do Devin têm o mesmo formato dos do Claude, e o teste com o Devin falso passa.
+  - **Codex e Gemini reais:** não instalados aqui. O Gemini falso, só de tela, passa.
+  - **Windows.**
+
 ## 2026-10-18, Permissões nos níveis
 
 - **Pedido:** o item 18 da lista de pendências. O que você libera com SEMPRE num nível de voo não pode se perder no pouso, e o nível deve começar com o que a pista já libera. O plano foi aprovado com a caixa de levar as regras desmarcada.
