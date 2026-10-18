@@ -4,7 +4,7 @@ A torre de controle dos seus agentes de código. Antes se chamava **Squad** (vej
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
-> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você), o Sinóptico, foco e encaixe, planos de voo e a pilha de NOTAMs. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você, com resposta pela Torre no Claude e no Devin, e som), o Sinóptico, foco e encaixe, planos de voo e a pilha de NOTAMs. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -147,7 +147,16 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - **Resumos:** quem escreve os resumos e os boletins, como antes;
 - **Papéis…** abre o painel de papéis;
 - **Atalhos:** a lista;
-- **Avisos**, quando um voo pede você: o número no título da janela, uma notificação do sistema (quando a janela não está na frente; o navegador pede licença) e um som curto. Valem por navegador.
+- **Avisos**, quando um voo pede você, neste ou em outro workspace:
+  - o número no título da janela;
+  - uma notificação do sistema, quando a janela não está na frente (o navegador pede licença);
+  - um som curto, ligado por padrão;
+  - **Repetir enquanto esperar** (desligado por padrão): o som de novo a cada 2 minutos, até 3 vezes, enquanto o pedido continuar sem resposta.
+  - As escolhas valem por navegador.
+  - **Quando o som começa a valer:**
+    - **na janela de app** que o `torre serve` abre, desde o começo;
+    - **numa aba comum do navegador**, depois do primeiro clique ou tecla na página (antes disso, o navegador não deixa tocar);
+    - com a janela atrás de outras ou minimizada, ele continua tocando.
 
 | Rota | O que faz |
 |---|---|
@@ -160,7 +169,11 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 
 **PRIORIDADE (o voo pede você):** um agente parado num pedido de permissão (rodar um comando, editar um arquivo, usar uma ferramenta MCP) ou numa pergunta com opções deixa de aparecer como "No ar":
 - **no voo:** contorno âmbar com halo, a faixa de estado âmbar piscando, "PEDE VOCÊ 0:24" no lugar do estado e, em cima da tela, a frase do pedido com o que está em jogo ("QUER EXECUTAR UM COMANDO · npm run e2e");
-- **RESPONDER**, embaixo do voo: **Autorizar** (1), **Sempre** (2), **Negar** (3) e **Abrir tela**. Com o voo selecionado, as teclas 1, 2 e 3 respondem. "Sempre" só aparece quando a opção do agente é "não perguntar de novo" (nunca uma que troque o modo de permissão);
+- **RESPONDER**, embaixo do voo: **Autorizar** (1), **Sempre** (2), **Negar** (3) e **Abrir tela**. Com o voo selecionado, as teclas 1, 2 e 3 respondem.
+  - **Sempre** só aparece quando a opção do agente é "não perguntar de novo" para aquilo que ele pediu. Nunca é uma opção que troque o modo de permissão, que valha para todos os projetos ou para todas as ferramentas de um servidor MCP.
+  - Passando o mouse em cada botão, aparece o texto do próprio agente; no Rádio e no Sinóptico, o do Sempre fica escrito ("Sempre = Yes, always allow `npm test` commands in `app`").
+  - As ferramentas da Torre que pedem a sua aprovação a cada uso (`keys`, `new_shell`, `portal_eval`, `floor_land`) nunca ganham Sempre.
+  - **Negar** encerra o turno do voo: quem pediu algo a ele recebe a tela logo, sem esperar um minuto;
 - **fora da tela:** a faixa "PRIORIDADE · TST em FL1 quer executar um comando · IR ATÉ ELE ⌥⏎" no topo do canvas, um ponto âmbar piscando na aba do nível, o número no título da janela ("(1) squad · Torre") e, em outro workspace, o ponto do botão de workspaces fica âmbar e o seletor diz "1 pede você";
 - **⌥⏎** vai para o voo que pede há mais tempo: abre o nível, centra o voo e dá a ele o teclado;
 - **no Rádio:** o pedido fica preso no topo ("TST → VOCÊ · Pede você · 0:24"), com os mesmos botões e "Ver no espaço", e o filtro **Pedem você**. Depois de respondido, fica a linha "Pediu você · respondido em 0:46";
@@ -170,7 +183,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 | Agente | Como a Torre sabe | Responder pela Torre |
 |---|---|---|
 | Claude Code | hook `PermissionRequest` (a ferramenta e o comando) e a pergunta na tela | sim: a tecla da opção, conferida com o Claude Code 2.1.302 |
-| Devin | hook `PermissionRequest` e a tela | ainda não: só **Abrir tela** (as teclas do Devin precisam ser conferidas com uma conta) |
+| Devin | hook `PermissionRequest` (comando, edição, busca na web, MCP) e a tela; a pergunta com opções do Devin, só pela tela | sim: a tecla da opção, conferida com o Devin 3000.11.92. **Sempre** num comando vale para aquele comando neste projeto (o Devin grava em `.devin/config.local.json`, fora do git); numa busca na web, para aquele endereço (grava na configuração que a Torre passa ao Devin) |
 | Codex, Gemini | a pergunta na tela (opções numeradas com o cursor) | ainda não: só **Abrir tela** |
 | Shell, comando próprio | não se aplica | — |
 

@@ -62,7 +62,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Torre F5b Foco, encaixe, ocultar, Tab | `feat/torre-f5b-foco` → `feat/torre` | concluído |
 | Torre F5c @ELEMENTOS no portal | `feat/torre-f5c-elementos` → `feat/torre` | concluído |
 | Torre F5d Planos de voo | `feat/torre-f5d-planos` → `feat/torre` | concluído |
-| Pilha de NOTAMs | `feat/pilha-notams` | concluído (PR) |
+| Pilha de NOTAMs | `feat/pilha-notams` | concluído |
+| Responder ao Devin pela Torre, e o som dos avisos | `feat/devin-prioridade` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -245,7 +246,8 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **"✓ testes · ✓ revisão" na fila de pouso** (item 6): não existem; poderiam vir de um agente marcando o nível (`torre floor ready --check testes`).
 - **Modelo no boletim** ("por claude -p · haiku", quadro 08): o resumo só sabe a CLI que usou, não o modelo.
 - **Autor dos commits por indicativo** (quadro 14): no git o autor é a pessoa; seria preciso marcar os commits de cada voo.
-- **Responder pela Torre no Devin, no Codex e no Gemini** (F3, `internal/attention`, `verified`): hoje eles entram em PRIORIDADE (o Devin pelo hook, os outros pela tela) e mostram só "Abrir tela". Para liberar AUTORIZAR/SEMPRE/NEGAR em cada um, conferir com a CLI real (o Devin com conta) que tecla escolhe a opção e se confirma sozinha, e pôr o agente em `verified`.
+- **Responder pela Torre no Codex e no Gemini** (F3, `internal/attention`, `verified`; o Devin foi feito em `feat/devin-prioridade`): hoje eles entram em PRIORIDADE pela tela e mostram só "Abrir tela". Para liberar AUTORIZAR/SEMPRE/NEGAR em cada um, conferir com a CLI real que tecla escolhe a opção e se confirma sozinha, guardar as telas como casos de teste e pôr o agente em `verified`.
+- **Aprovar o plano e responder às perguntas com opções do Devin** pela Torre: entram em PRIORIDADE, mas as opções não são autorizar/negar (seriam botões com as opções do próprio agente).
 - **Pergunta de "Notification" sem permissão** (F3): o hook `Notification` do Claude também avisa quando ele está ocioso há 60 s esperando uma mensagem; isso não virou PRIORIDADE (todo voo que termina um turno pediria você). Se quiser, pode virar uma opção em Configurações → Avisos.
 - **Cartão "ESPERA GERAL · LAÇO"** (`TELAS.md`, quadro 21): mostraria a cadeia de um laço de pedidos (A → B → A). O barramento já solta a espera de um ciclo (`agentbus/ask.go`), mas não guarda nem publica a cadeia; precisa de um evento novo.
 - **Mais erros com `code`** (F2, `internal/apierr`): os da interface que mais aparecem já têm (pasta, nomes, siglas, níveis, sessões, cópia, git, resumos). Os que só os agentes veem (CLI e MCP) continuam em inglês de propósito; os raros da interface que faltam (portal, NOTAM travada, cores) mostram a mensagem em inglês.
@@ -269,4 +271,13 @@ Pedido do usuário em 2026-10-18, depois da Torre (estava em "Para depois"; quad
 - **Interface:** arrastar uma NOTAM sobre outra, a confirmação, a faixa com as abas, o aviso de edição de um agente, "Tirar da pilha" e "Desfazer a pilha".
 - **Fora:** agentes empilhando (pela CLI ou pelo MCP), reordenar as abas e trocar a base.
 
-**Status:** pronto no PR `feat/pilha-notams` → `main`.
+**Status:** mesclado na `main` pelo PR #27.
+
+## Responder ao Devin pela Torre, e o som dos avisos
+
+Pedido do usuário em 2026-10-18 (item "Responder pela Torre no Devin…" do "Para depois"), com ênfase no Devin; o Codex e o Gemini ficam para depois. Junto, o som quando um voo pede você.
+
+- **Devin:** AUTORIZAR, SEMPRE e NEGAR pela Torre, com as teclas conferidas no Devin real (conta gratuita do usuário, modelo SWE-1.6 Slow), a pergunta com opções do Devin entrando em PRIORIDADE, e o texto do agente em cada botão.
+- **Som:** ligado por padrão, também para outro workspace, liberado desde o começo na janela de app, e a opção de repetir enquanto o pedido espera.
+
+**Status:** pronto no PR `feat/devin-prioridade` → `main`.

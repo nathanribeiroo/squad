@@ -2,6 +2,79 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Responder ao Devin pela Torre, e o som dos avisos
+
+- **Pedido:**
+  - o item "Responder pela Torre no Devin…" do "Para depois", com ênfase no Devin (o Codex e o Gemini ficam para depois);
+  - junto, um som quando um voo pede você, para todos os agentes.
+- **Devin real:**
+  - **Instalação e login:** o Devin foi instalado numa pasta isolada e logado com a conta gratuita do usuário, pelo login manual (`devin auth login --force-manual-token-flow`). Eu mandei o link, ele abriu no navegador dele e me passou o código, que vale uma vez só.
+  - **Modelo e gasto:** todo Devin de teste rodou com `--model swe-1-6-slow`, como ele pediu. Foram 10 pedidos curtos: 5 no levantamento, 3 no teste automático e 2 na tela. A cota estava em 95% depois do levantamento.
+  - **No fim:** `devin auth logout` e a pasta apagada.
+- **O que o levantamento mostrou (Devin 3000.11.92):**
+  - **A tela de escolha** numera as opções sem ponto ("❭ 1 Yes  (Approve once)") e usa a seta ❭. Por isso a Torre não lia a pergunta do Devin.
+  - **Pergunta com "?":** não há. Em cima das opções fica o cabeçalho da ferramenta ("⏺ Running command", "⏺ Editing ./README.md", "⏺ Fetching https://example.com", "⏺ mcp__torre__keys(…)").
+  - **As teclas:** o número escolhe e confirma na hora, sem Enter. Testado com 1 (aprovar uma vez), 3 (sempre neste projeto), 7 e 8 ("No").
+  - **O que o hook manda:** `exec` (`command`), `edit` (`file_path`), `webfetch` (`url`) e `mcp__torre__…` (os argumentos), com os mesmos campos do Claude Code.
+  - **Fim do turno depois de "No":** nem o Devin nem o Claude Code mandam o hook de fim de turno.
+  - **Os "sempre" de um comando:**
+    - "Yes, allow `touch` commands" vale para esta sessão;
+    - "always … in `proj`" grava `Exec(touch)` em `<projeto>/.devin/config.local.json` (e o Devin põe o arquivo no `.git/info/exclude`);
+    - "always … in all projects" grava na configuração global.
+  - **O "sempre" de uma busca na web** (`Fetch(domain:example.com)`) vai para a configuração global. Dentro da Torre, ela é a cópia que a Torre passa com `--config`.
+  - **A pergunta com opções do Devin** (a ferramenta `ask_user_question`) não dispara o hook de permissão, só o `PreToolUse`. Na tela, ela tem a linha "? Not ready to answer, help me out!" embaixo. A Torre mostrava esse Devin como "trabalhando", e não "pede você".
+- **Servidor (`internal/attention`):**
+  - **Ler a tela:** a seta ❭ e o número sem ponto.
+  - **O cabeçalho ⏺ como pergunta,** quando ele está mais perto das opções do que uma linha com "?". O texto que você digitou pode terminar em "?".
+  - **O rodapé "help me out".**
+  - **O Devin entra em `verified`.**
+  - **Nunca viram SEMPRE:** as opções que valem para mais do que foi pedido ("in all projects", "all web fetches", "calling tools on" o servidor inteiro) e as que valem só para a sessão.
+  - **Só há botões quando existe uma opção de autorizar.** Antes, o "No, exit" da pergunta de confiança na pasta, sozinho, virava um NEGAR (no Claude também).
+- **Servidor (o que vai para a interface):**
+  - **`labels`:** o texto do agente em cada opção.
+  - **`AskEveryUse`:** o hook marca as ferramentas `mcp__torre__…` fora das seguras (`keys`, `new_shell`, `portal_eval`, `floor_land`). Elas nunca ganham SEMPRE, no Claude e no Devin, e a rota de resposta recusa o que a interface não ofereceu.
+- **NEGAR encerra o turno:** como nenhum dos dois manda o hook de fim depois de "No", o turno terminava só depois de 60 s de silêncio, e quem pediu algo ao voo esperava um minuto à toa. Agora, depois de um NEGAR dado pela interface, o turno termina no silêncio normal, com o motivo `denied`, que conta como final para quem espera.
+- **Decisão sem consulta, o que é SEMPRE no Devin:**
+  - **Num comando:** "always … in `<projeto>`". A regra fica no projeto, fora do git, e vale dentro e fora da Torre. "In all projects" iria para a cópia da configuração e não valeria fora da Torre.
+  - **Numa busca na web:** aquele endereço.
+  - **Numa ferramenta MCP:** aquela ferramenta.
+- **Interface:**
+  - os botões mostram o texto do agente ao passar o mouse; no Rádio e no Sinóptico aparece "Sempre = …";
+  - os nomes das ferramentas do Devin viraram as frases do cartão ("Quer executar um comando").
+- **Som (Configurações → Avisos):**
+  - **Ligado por padrão.** As escolhas passam a ser salvas uma a uma, então uma opção que você nunca mexeu segue o padrão. Quem salvou Avisos antes (qualquer opção) ficou com o som desligado e precisa ligar lá.
+  - **Outro workspace:** toca quando um voo de outro workspace passa a pedir você, com a notificação do sistema, se ligada.
+  - **Um áudio só para a página,** preparado no primeiro clique ou tecla. Antes disso, numa aba comum, o navegador não deixa tocar.
+  - **A janela de app** abre o Chromium com `--autoplay-policy=no-user-gesture-required` e toca desde o começo.
+  - **"Repetir enquanto esperar"** (desligado por padrão): a cada 2 minutos, até 3 vezes, enquanto o pedido estiver sem resposta.
+- **Testado aqui:**
+  - **Telas reais do Devin como casos de teste** (`TestParseDevin`, `TestSetPrompt`): comando, edição, busca, MCP, a pergunta, a confiança na pasta e o prompt com texto digitado.
+  - **Agente falso no modo Devin** (`TestDevinAskAndRespond`):
+    - SEMPRE com o texto do Devin;
+    - `keys` sem SEMPRE (a rota recusa);
+    - NEGAR encerrando o turno em segundos;
+    - a pergunta com opções em PRIORIDADE.
+  - **Devin real** (`TestRealDevinPermission`, novo, `-tags e2e`; pula sem login):
+    - AUTORIZAR criou o arquivo;
+    - NEGAR não criou;
+    - SEMPRE criou e gravou `Exec(touch)` no projeto.
+  - **Claude real:** `TestRealClaude` e `TestRealClaudePermission` passam.
+  - **Devin real, configuração:** `TestRealDevinConfig` passa.
+  - **Validação:** `make check` com o navegador, `tsc` e o build.
+  - **Na tela, com o Devin real:** o cartão com os três botões, o Rádio com "Sempre = …", AUTORIZAR pela tela e o som tocando uma vez.
+  - **Na tela, com agentes falsos e dois workspaces** (o som contado no navegador):
+    - numa aba sem clique, o áudio fica suspenso;
+    - na janela de app, toca;
+    - depois de um clique, o pedido no outro workspace toca;
+    - a repetição toca de novo aos 2 minutos.
+- **Não testado:**
+  - **Ouvir o som de verdade** (aqui não há saída de áudio), no Mac e no Windows.
+  - **O app do Dock no Mac** (o Safari): pode pedir um clique antes do primeiro som.
+  - **Responder pela Torre no Windows**, com o Devin e com o Claude.
+  - **Codex e Gemini** continuam só com "Abrir tela".
+  - **A aprovação de plano do Devin** ("Yes, implement plan") e **a pergunta com opções:** entram em PRIORIDADE, sem botões.
+  - **Um SEMPRE dado num nível de voo** fica no `.devin/config.local.json` da pasta do nível e some ao pousar. O arquivo não está na lista de cópia dos níveis.
+
 ## 2026-10-18, Pilha de NOTAMs
 
 - **Pedido:** a pilha que estava em "Para depois" (quadro 09 de `docs/torre/TELAS.md`), com três decisões suas:
