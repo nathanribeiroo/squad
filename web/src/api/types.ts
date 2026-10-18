@@ -144,6 +144,33 @@ export interface FloorChanges {
 }
 
 /** An agent's last turn (internal/summary): its final message, and a summary on demand. */
+/** A line of the Rádio, kept by the server (internal/radio): data the interface words. */
+export interface RadioItem {
+  key: string;
+  time: string;
+  outcome: 'pending' | 'replied' | 'cancelled' | 'delivered' | 'held' | 'note' | 'turn' | 'answered';
+  id?: string;
+  from?: string;
+  to?: string;
+  fromName?: string;
+  toName?: string;
+  text?: string;
+  elapsedMs?: number;
+  source?: string;
+  /** held: the general hold, the per-minute limit, or a loop (text: the loop). */
+  hold?: 'paused' | 'rate' | 'loop';
+  /** "user", or "external" (a note edited outside Torre). */
+  by?: 'user' | 'external';
+  images?: number;
+  /** An ask the user answered: what it was, and the interface's answer. */
+  kind?: 'permission' | 'question';
+  tool?: string;
+  detail?: string;
+  choice?: AttentionChoice;
+  /** The reply's text is kept (GET /api/requests/{id}). */
+  hasReply?: boolean;
+}
+
 export interface TurnCard {
   terminal: string;
   start?: string;

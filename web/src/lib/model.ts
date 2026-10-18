@@ -37,6 +37,13 @@ export function clock(t: string | number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+/** The time, with the day when it isn't today ("17/10 14:32"): the Rádio keeps days of history. */
+export function clockDay(t: string | number): string {
+  const d = new Date(t);
+  if (d.toDateString() === new Date().toDateString()) return clock(t);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${clock(t)}`;
+}
+
 export const AGENTS: { value: string; label: string }[] = [
   { value: 'claude', label: 'Claude Code' },
   { value: 'codex', label: 'Codex' },

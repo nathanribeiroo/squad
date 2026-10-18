@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { CHOICES, askPhrase, choiceTitle, respond } from '../lib/attention';
 import type { IconName } from '../lib/icons';
-import { callsign, clock, elapsed } from '../lib/model';
+import { callsign, clock, clockDay, elapsed } from '../lib/model';
 import { useNodeRoleColor } from '../lib/roles';
 import { toast } from '../lib/toast';
 import { useNow } from '../lib/useNow';
 import { useSquad, type ActivityItem } from '../state/store';
+import { confirmDialog } from './ConfirmDialog';
 import { Icon } from './Icon';
 import './ActivityDrawer.css';
 
@@ -16,11 +17,32 @@ const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: n
   replied: { label: (a) => `Respondido em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`, icon: 'reply', style: 'done' },
   delivered: { label: () => 'Entregue', icon: 'check', style: 'done' },
   cancelled: { label: () => 'Cancelado', icon: 'block', style: 'err' },
-  held: { label: (a) => (a.text.startsWith('Retido: limite') ? 'Retido · limite por minuto' : 'Retido · espera geral'), icon: 'all_inclusive', style: 'wait dashed' },
+  held: { label: (a) => (a.hold === 'rate' ? 'Retido · limite por minuto' : 'Retido · espera geral'), icon: 'all_inclusive', style: 'wait dashed' },
   note: { label: () => 'NOTAM editado', icon: 'description', style: 'idle' },
   turn: { label: () => 'Em solo', icon: 'flight_land', style: 'done' },
-  answered: { label: (a) => `Pediu você · respondido em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`, icon: 'front_hand', style: 'done' },
+  answered: {
+    label: (a) => `Pediu você · ${a.choice ? ANSWERED[a.choice] : 'respondido'} em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`,
+    icon: 'front_hand',
+    style: 'done',
+  },
 };
+
+// How an ask was answered from the interface (none: in the terminal).
+const ANSWERED = { allow: 'autorizado', always: 'sempre', deny: 'negado' } as const;
+
+/** Asks before clearing the session's Rádio. */
+async function clearRadio(session?: string) {
+  const ok = await confirmDialog({
+    title: 'Limpar o Rádio?',
+    icon: 'delete',
+    tone: 'danger',
+    text: `Some o histórico do Rádio ${session ? `da sessão ${session}` : 'desta sessão'}, também depois de recarregar.`,
+    lose: ['Os pedidos, as respostas, as mensagens e os pedidos de permissão já registrados'],
+    keep: ['Os pedidos ainda sem resposta e os voos que pedem você', 'Os boletins de fim de turno nos voos'],
+    action: 'Limpar o Rádio',
+  });
+  if (ok) api.clearRadio().catch((e: Error) => toast(e.message, 'err'));
+}
 
 type Filter = { kind: 'all' } | { kind: 'pending' } | { kind: 'ask' } | { kind: 'node'; id: string };
 
@@ -29,6 +51,7 @@ export function ActivityDrawer() {
   const open = useSquad((s) => s.drawerOpen);
   const setDrawer = useSquad((s) => s.setDrawer);
   const items = useSquad((s) => s.activity);
+  const more = useSquad((s) => s.radioMore);
   const ws = useSquad((s) => s.workspace);
   const extra = useSquad((s) => s.extra);
   const sendTimes = useSquad((s) => s.sendTimes);
@@ -90,6 +113,11 @@ export function ActivityDrawer() {
           <button className="btn ad-overview" onClick={() => useSquad.getState().setSummaryDialog('overview')} title="Briefing: uma visão geral do que os voos estão fazendo">
             <Icon name="summarize" size={15} />
             Briefing
+          </button>
+        )}
+        {items.length > 0 && (
+          <button className="icon-btn" onClick={() => void clearRadio(session)} title="Limpar o Rádio" aria-label="Limpar o Rádio">
+            <Icon name="delete" size={17} />
           </button>
         )}
         <button className="icon-btn" onClick={() => setDrawer(false)} aria-label="Fechar">
@@ -158,7 +186,7 @@ export function ActivityDrawer() {
           return (
             <div key={a.key} className={`ad-item${open ? ' pinned' : ''}`}>
               <div className="ad-line mono">
-                <span className="ad-time">{clock(a.time)}</span>
+                <span className="ad-time">{clockDay(a.time)}</span>
                 <b style={{ color: color(a.from) }}>{who(a.from, a.fromName)}</b>
                 {a.outcome === 'turn' ? (
                   <span className="ad-turn">fim do turno</span>
@@ -193,6 +221,12 @@ export function ActivityDrawer() {
             </div>
           );
         })}
+        {more && (
+          <button className="btn ad-older" onClick={() => useSquad.getState().loadOlderRadio()}>
+            <Icon name="history" size={15} />
+            Mais antigos
+          </button>
+        )}
       </div>
       <footer className="ad-foot mono">
         <Icon name="swap_horiz" size={15} />
@@ -208,30 +242,40 @@ export function ActivityDrawer() {
   );
 }
 
-/** A message in the Rádio: four lines, and the whole request on demand. */
+/** A message in the Rádio: four lines, and the whole request and its reply on demand. */
 function Message({ item }: { item: ActivityItem }) {
-  const [full, setFull] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [texts, setTexts] = useState<{ text: string; reply?: string } | null>(null);
+  const [open, setOpen] = useState<'request' | 'reply' | null>(null);
   // Requests arrive as a preview cut at 140 characters ("…").
   const cut = !!item.id && item.key.startsWith('req-') && item.text.endsWith('…');
-  const toggle = () => {
-    if (open) return setOpen(false);
-    if (full !== null) return setOpen(true);
+  const show = (what: 'request' | 'reply') => {
+    if (open === what) return setOpen(null);
+    if (texts) return setOpen(what);
     api
       .requestText(item.id!)
       .then((r) => {
-        setFull(r.text);
-        setOpen(true);
+        setTexts(r);
+        setOpen(what);
       })
       .catch((e: Error) => toast(e.message, 'err'));
   };
   return (
     <>
-      <div className={`ad-msg${open ? ' full' : ''}`}>{open && full !== null ? full : item.text}</div>
-      {cut && (
-        <button className="ad-more" onClick={toggle}>
-          {open ? 'Mostrar menos' : 'Ver o pedido inteiro'}
-        </button>
+      <div className={`ad-msg${open === 'request' ? ' full' : ''}`}>{open === 'request' && texts ? texts.text : item.text}</div>
+      {open === 'reply' && texts?.reply && <div className="ad-msg full ad-reply">{texts.reply}</div>}
+      {(cut || item.hasReply) && (
+        <div className="ad-mores">
+          {cut && (
+            <button className="ad-more" onClick={() => show('request')}>
+              {open === 'request' ? 'Mostrar menos' : 'Ver o pedido inteiro'}
+            </button>
+          )}
+          {item.hasReply && (
+            <button className="ad-more" onClick={() => show('reply')}>
+              {open === 'reply' ? 'Esconder a resposta' : 'Ver a resposta'}
+            </button>
+          )}
+        </div>
       )}
     </>
   );

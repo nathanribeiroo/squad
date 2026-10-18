@@ -14,6 +14,7 @@ import type {
   LimitsView,
   Plan,
   PlanResult,
+  RadioItem,
   RoleDef,
   SessionList,
   ShellOption,
@@ -99,7 +100,10 @@ export const api = {
   send: (id: string, body: { text: string; mentions: string[]; images: { name: string; data: string }[] }) =>
     req<{ ok: boolean }>('POST', wsPath(`/api/nodes/${id}/send`), body),
   /** A recent request's full message (the Rádio shows a preview). */
-  requestText: (id: string) => req<{ id: string; text: string }>('GET', wsPath(`/api/requests/${id}`)),
+  requestText: (id: string) => req<{ id: string; text: string; reply?: string }>('GET', wsPath(`/api/requests/${id}`)),
+  radio: (before?: string) =>
+    req<{ items: RadioItem[]; more: boolean }>('GET', wsPath(`/api/radio${before ? `?before=${encodeURIComponent(before)}` : ''}`)),
+  clearRadio: () => req<void>('DELETE', wsPath('/api/radio')),
   /** Ends a request for the user: the agent that asked gets its answer now. */
   cancelRequest: (id: string) => req<void>('POST', wsPath(`/api/requests/${id}/cancel`)),
   pause: () => req<StateExtra>('POST', wsPath('/api/conversations/pause')),
