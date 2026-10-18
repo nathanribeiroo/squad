@@ -264,12 +264,16 @@ func screenBody(p *Pending, snapshot string) string {
 func (b *Bus) Reply(caller, id, msg string) Result {
 	b.mu.Lock()
 	p := b.pending[id]
+	delivered := p != nil && p.delivered
 	b.mu.Unlock()
 	if p == nil {
 		return Result{Code: 404, Body: "torre: no pending request " + quote(id) + " (it may have been answered, cancelled or timed out)"}
 	}
 	if p.To != caller {
 		return Result{Code: 403, Body: "torre: request " + quote(id) + " is not addressed to you"}
+	}
+	if !delivered {
+		return Result{Code: 409, Body: "torre: request " + quote(id) + " hasn't reached you yet: it waits in your line, and you get it when your turn ends"}
 	}
 	b.events.Publish(events.ReplySent, map[string]any{"id": id, "from": caller, "to": p.From, "fromName": p.ToName, "toName": p.FromName})
 	b.resolve(p, Result{Code: 200, Body: replyBody(p.ToName, id, msg), Source: "reply"})

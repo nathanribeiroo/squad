@@ -184,10 +184,13 @@ type (
 		Floor string `json:"floor,omitempty" jsonschema:"floor name, from floors list (default: yours; ground is the ground floor)"`
 	}
 	floorsInput struct {
-		Action   string `json:"action" jsonschema:"list | create"`
-		Name     string `json:"name,omitempty" jsonschema:"create: the new floor's name"`
+		Action   string `json:"action" jsonschema:"list | create | mark"`
+		Name     string `json:"name,omitempty" jsonschema:"create: the new floor's name; mark: the floor (default: yours)"`
 		Branch   string `json:"branch,omitempty" jsonschema:"create: its branch (default: from the name)"`
 		Existing bool   `json:"existing,omitempty" jsonschema:"create: open an existing branch instead of creating one"`
+		Check    string `json:"check,omitempty" jsonschema:"mark: tests | review"`
+		Result   string `json:"result,omitempty" jsonschema:"mark: pass | fail"`
+		Note     string `json:"note,omitempty" jsonschema:"mark: a short summary (what passed, what failed)"`
 	}
 	landInput struct {
 		Name  string `json:"name" jsonschema:"the floor's name"`
@@ -337,7 +340,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 			return []string{"close", n}, err
 		})
 
-	addTool(s, env, "floors", "Floors: isolated copies of the repository (a git worktree on its own branch), each with its own canvas. list shows them; create (managers) makes one from the last commit, then put agents on it with new's floor. Its agents work and commit in its folder.",
+	addTool(s, env, "floors", "Floors: isolated copies of the repository (a git worktree on its own branch), each with its own canvas. list shows them and their checks; create (managers) makes one from the last commit, then put agents on it with new's floor. Its agents work and commit in its folder. mark records the result of the floor's tests or review on its latest commit, for the landing queue the user sees (a floor's agents and the one that created it; a later commit makes it stale).",
 		false, func(in floorsInput) ([]string, error) {
 			switch in.Action {
 			case "list":
@@ -352,6 +355,19 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 					args = append(args, "--existing")
 				}
 				return args, err
+			case "mark":
+				if in.Check == "" || in.Result == "" {
+					return nil, errors.New("mark needs check (tests or review) and result (pass or fail)")
+				}
+				args := []string{"floor", "mark", in.Check, in.Result, in.Note}
+				if strings.TrimSpace(in.Name) != "" {
+					n, err := name("name", in.Name)
+					if err != nil {
+						return nil, err
+					}
+					args = append(args, "--floor", n)
+				}
+				return args, nil
 			}
 			return nil, fmt.Errorf("unknown action %q (floor_land lands a floor)", in.Action)
 		})

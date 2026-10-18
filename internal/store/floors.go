@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -16,6 +17,26 @@ const (
 	FloorReady     = "ready"
 	FloorFailed    = "failed"
 )
+
+// What an agent can mark about a floor's work, and the results.
+const (
+	CheckTests  = "tests"
+	CheckReview = "review"
+	CheckPass   = "pass"
+	CheckFail   = "fail"
+)
+
+// FloorCheck is what an agent marked about a floor's work (its tests, its
+// review), on the floor's commit at the time: a later commit makes it stale.
+type FloorCheck struct {
+	Result   string    `json:"result"` // CheckPass or CheckFail
+	Note     string    `json:"note,omitempty"`
+	Commit   string    `json:"commit"` // the floor's HEAD when marked
+	By       string    `json:"by"`     // the terminal that marked it
+	ByName   string    `json:"byName"`
+	Callsign string    `json:"callsign,omitempty"`
+	At       time.Time `json:"at"`
+}
 
 // Floor is an isolated copy of the workspace's repository (a git worktree on
 // its own branch) with its own canvas: the nodes whose Floor is its id.
@@ -45,6 +66,8 @@ type Floor struct {
 	Error     string    `json:"error,omitempty"`
 	CreatedBy string    `json:"createdBy,omitempty"` // terminal whose agent created it
 	CreatedAt time.Time `json:"createdAt"`
+	// Checks are what its agents marked, by kind (CheckTests, CheckReview).
+	Checks map[string]FloorCheck `json:"checks,omitempty"`
 }
 
 // FloorConfig is how new floors of a workspace are seeded, beyond the
@@ -63,6 +86,7 @@ func DefaultFloorConfig() FloorConfig { return FloorConfig{Copy: []string{".env*
 
 func cloneFloor(f Floor) Floor {
 	f.Copied = slices.Clone(f.Copied)
+	f.Checks = maps.Clone(f.Checks)
 	return f
 }
 
