@@ -63,6 +63,9 @@ type Item struct {
 	Tool   string `json:"tool,omitempty"`
 	Detail string `json:"detail,omitempty"`
 	Choice string `json:"choice,omitempty"`
+	// Answer is what was picked on a question or a plan: the agent's
+	// options ("Azul · Submit answers"), or the user's own text.
+	Answer string `json:"answer,omitempty"`
 	// HasReply tells that the reply's text is kept (Texts).
 	HasReply bool `json:"hasReply,omitempty"`
 	// Queued: a pending request waiting for its target's turn to end.
@@ -321,11 +324,12 @@ func (s *Service) noteEdited(at time.Time, id, file, author string) {
 }
 
 // Answered records an ask of terminal id that ended at at: answered with
-// choice from the interface, or in the terminal (choice empty).
-func (s *Service) Answered(id string, a attention.Attention, choice string, at time.Time) {
+// choice from the interface, or in the terminal (choice empty); answer is
+// the agent's options picked from the interface, or the user's own text.
+func (s *Service) Answered(id string, a attention.Attention, choice, answer string, at time.Time) {
 	s.put(&record{Item: Item{Key: "ask-" + id + "-" + stamp(a.Since), Time: a.Since, Outcome: "answered", From: id,
 		FromName: s.o.Name(id), Kind: a.Kind, Tool: a.Tool, Detail: a.Detail, Text: a.Text, Choice: choice,
-		ElapsedMs: at.Sub(a.Since).Milliseconds()}})
+		Answer: answer, ElapsedMs: at.Sub(a.Since).Milliseconds()}})
 }
 
 // put adds a line, or replaces the one with its key.

@@ -10,7 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
+	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/store"
 	"github.com/nathanribeiroo/squad/internal/terminal"
 )
@@ -384,5 +386,26 @@ func TestConversationLines(t *testing.T) {
 	gemini = false // an older Gemini CLI
 	if line, conv, resumed := prepare("gemini", "", "g-1"); line != `gemini -i "$TORRE_ROLE"` || conv != "" || resumed {
 		t.Fatalf("older gemini: %s %q", line, conv)
+	}
+}
+
+// Claude Code 2.1.302's question and plan, as its permission hook sends them:
+// the question's text (the screen gives the rest), the plan whole.
+func TestParseHookQuestionAndPlan(t *testing.T) {
+	ev, ok := ParseHook("claude-permission", []byte(`{"hook_event_name":"PermissionRequest","tool_name":"AskUserQuestion",
+		"tool_input":{"questions":[{"question":"Qual cor?","header":"Cor","options":[{"label":"Azul","description":"Blue color"}],"multiSelect":false}]}}`))
+	if a := ev.Attention; !ok || a == nil || a.Kind != attention.Question || a.Text != "Qual cor?" || a.Detail != "" {
+		t.Fatalf("question: %+v %v", ev.Attention, ok)
+	}
+	plan := "# Plan: create hello.txt\n\n## Steps\n1. Create it.\n"
+	b, _ := json.Marshal(map[string]any{"tool_name": "ExitPlanMode", "tool_input": map[string]any{"plan": plan, "planFilePath": "/root/.claude/plans/x.md"}})
+	ev, ok = ParseHook("claude-permission", b)
+	if a := ev.Attention; !ok || a == nil || a.Kind != attention.Plan || a.PlanText != plan || a.Detail != "Plan: create hello.txt" {
+		t.Fatalf("plan: %+v %v", ev.Attention, ok)
+	}
+	long := strings.Repeat("ç", 20<<10)
+	b, _ = json.Marshal(map[string]any{"tool_name": "ExitPlanMode", "tool_input": map[string]any{"plan": long}})
+	if ev, _ := ParseHook("claude-permission", b); len(ev.Attention.PlanText) > 33<<10 || !utf8.ValidString(ev.Attention.PlanText) {
+		t.Fatalf("long plan: %d bytes", len(ev.Attention.PlanText))
 	}
 }

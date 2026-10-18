@@ -110,6 +110,10 @@ type Bus struct {
 	texts     map[string]string
 	replies   map[string]string
 	textOrder []string
+	// answered marks the terminals that got a request in their current
+	// turn: the end of that turn isn't the user's.
+	answered   map[string]bool
+	onYourTurn func(id string)
 }
 
 // keptTexts is how many request messages the bus remembers in full.
@@ -124,7 +128,7 @@ func New(st *store.Store, terms *terminal.Manager, ev *events.Bus, log *slog.Log
 	return &Bus{limits: limits, store: st, terms: terms, events: ev, log: log,
 		hasHooks: func(string) bool { return false },
 		pending:  map[string]*Pending{}, waiters: map[*waiter]bool{}, last: map[string]activity.TurnEnd{},
-		resume: make(chan struct{}), texts: map[string]string{}, replies: map[string]string{}}
+		resume: make(chan struct{}), texts: map[string]string{}, replies: map[string]string{}, answered: map[string]bool{}}
 }
 
 // SetMonitor attaches the activity monitor (before it starts).
@@ -335,6 +339,9 @@ func (b *Bus) resolve(p *Pending, r Result) bool {
 	}
 	p.resolved = true
 	delete(b.pending, p.ID)
+	if p.delivered {
+		b.answered[p.To] = true
+	}
 	if _, kept := b.texts[p.ID]; kept && r.Source != "cancelled" {
 		b.replies[p.ID] = r.Body
 	}

@@ -1,13 +1,16 @@
 // Package attention is an agent waiting for the user (the PRIORIDADE state,
-// docs/torre/NOVIDADES-E-BACKEND.md item 1): a permission prompt or a
-// question with numbered choices on its screen. It reads those prompts and
-// maps the user's answer (allow, always, deny) to the key that picks it.
+// docs/torre/NOVIDADES-E-BACKEND.md item 1): a permission prompt, a question
+// with numbered choices or a plan to approve, on its screen. It reads those
+// prompts and maps the user's answer (allow, always, deny on a permission;
+// one of the agent's own options on a question or a plan) to the keys that
+// pick it.
 package attention
 
 import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Choice is an answer the interface offers.
@@ -17,12 +20,15 @@ const (
 	Allow  Choice = "allow"  // yes, this once
 	Always Choice = "always" // yes, and don't ask again for this
 	Deny   Choice = "deny"   // no
+	// Picked is one of the agent's own options, on a question or a plan.
+	Picked Choice = "option"
 )
 
 // Kinds of attention.
 const (
 	Permission = "permission" // a tool waits for the user's permission
 	Question   = "question"   // the agent asks something with choices
+	Plan       = "plan"       // the agent wrote a plan and waits for its approval
 )
 
 // Attention is what an agent waits for. It is sent to the interface in the
@@ -40,6 +46,12 @@ type Attention struct {
 	// Labels are the agent's own words for each choice ("Yes, always allow
 	// `npm test` commands in `app`"): what "always" saves, and where.
 	Labels map[Choice]string `json:"labels,omitempty"`
+	// Options are the agent's own options the interface can pick, on a
+	// question or a plan (permissions have Choices instead).
+	Options []Option `json:"options,omitempty"`
+	// PlanText is the plan the agent asks to approve (Claude Code sends it
+	// in the hook), whole.
+	PlanText string `json:"plan,omitempty"`
 	// AskEveryUse marks a tool Torre has the user approve at every use
 	// (its torre MCP tools outside the safe ones): never answered "always".
 	AskEveryUse bool `json:"-"`
@@ -50,9 +62,14 @@ type Attention struct {
 // SetPrompt records the prompt read on agent's screen and what the
 // interface may answer it with: the choices (none for agents whose keys
 // aren't verified, no "always" for a tool that asks at every use) and the
-// agent's words for each.
+// agent's words for each; or, on a question or a plan, the options it may
+// pick.
 func (a *Attention) SetPrompt(agent string, p *Prompt) {
-	a.Prompt, a.Choices, a.Labels = p, nil, nil
+	a.Prompt, a.Choices, a.Labels, a.Options = p, nil, nil, nil
+	if p != nil && a.Kind != Permission {
+		a.Text = p.Question
+	}
+	a.Options = Pickable(agent, p)
 	for _, c := range Answerable(agent, p) {
 		if c == Always && a.AskEveryUse {
 			continue
@@ -67,9 +84,16 @@ func (a *Attention) SetPrompt(agent string, p *Prompt) {
 
 // Option is one numbered choice of a prompt.
 type Option struct {
-	Key    string // what picks it: "1"
-	Label  string // "Yes, and always allow access to … from this project"
-	Choice Choice // which answer it is; "" for the others (switching mode…)
+	Key   string `json:"key"`  // what picks it: "1"
+	Label string `json:"-"`    // "Yes, and always allow access to … from this project"
+	Text  string `json:"text"` // its first line: "Azul"
+	// Detail is the lines under it: an option's description ("Blue color"),
+	// or the rest of a long label.
+	Detail string `json:"detail,omitempty"`
+	Choice Choice `json:"-"` // which answer it is; "" for the others (switching mode…)
+	// Input marks the option that is a text field: the user's own answer
+	// ("Type something.", "Tell Claude what to change").
+	Input bool `json:"input,omitempty"`
 }
 
 // Prompt is a question on screen with numbered choices, one of them under
@@ -77,11 +101,13 @@ type Option struct {
 type Prompt struct {
 	Question string
 	Options  []Option
+	// Multi: the options are checkboxes ("[ ] Maçã"), several at once.
+	Multi bool
 }
 
 // Same reports whether two prompts are the same question with the same choices.
 func (p Prompt) Same(o Prompt) bool {
-	if p.Question != o.Question || len(p.Options) != len(o.Options) {
+	if p.Question != o.Question || len(p.Options) != len(o.Options) || p.Multi != o.Multi {
 		return false
 	}
 	for i := range p.Options {
@@ -123,6 +149,8 @@ var (
 	// dot: "❭ 1 Yes  (Approve once)".
 	optionLine = regexp.MustCompile(`^\s*([❯›▶●>❭]\s*)?(\d)(?:[.)]\s+|\s+)(\S.*)$`)
 	cursorLine = regexp.MustCompile(`^\s*[❯›▶●>❭]\s*\d(?:[.)]\s|\s)`)
+	// A checkbox in front of an option: "[ ] Maçã", "[✔] Uva".
+	checkbox = regexp.MustCompile(`^\[[ xX✔✓×]\]\s*`)
 )
 
 // window is how many lines at the bottom of the screen a prompt may use.
@@ -159,7 +187,7 @@ func Parse(screen string) (Prompt, bool) {
 		for j := start - 1; j >= 0; j-- {
 			t := strings.TrimSpace(lines[j])
 			if strings.HasSuffix(t, "?") && j >= start-10 {
-				q = t
+				q = joinWrapped(lines, j, width(lines))
 				break
 			}
 			if h, ok := strings.CutPrefix(t, "⏺ "); ok {
@@ -174,12 +202,23 @@ func Parse(screen string) (Prompt, bool) {
 		end := start
 		for ; end < len(lines); end++ {
 			if m := optionLine.FindStringSubmatch(lines[end]); m != nil {
-				p.Options = append(p.Options, Option{Key: m[2], Label: strings.TrimSpace(m[3])})
+				text := strings.TrimSpace(m[3])
+				if c := checkbox.FindString(text); c != "" {
+					p.Multi, text = true, strings.TrimPrefix(text, c)
+				}
+				p.Options = append(p.Options, Option{Key: m[2], Label: text, Text: text})
 				continue
 			}
 			if len(p.Options) > 0 && continuation(lines[end]) {
 				o := &p.Options[len(p.Options)-1]
-				o.Label += " " + strings.TrimSpace(lines[end])
+				more := strings.TrimSpace(lines[end])
+				o.Label += " " + more
+				o.Detail = strings.TrimSpace(o.Detail + " " + more)
+				continue
+			}
+			// Claude Code's questions go on below a rule: "4. Chat about this".
+			if next := nextOption(lines, end, len(p.Options)); next > 0 {
+				end = next - 1
 				continue
 			}
 			break
@@ -191,10 +230,45 @@ func Parse(screen string) (Prompt, bool) {
 		}
 		for k := range p.Options {
 			p.Options[k].Choice = classify(p.Options[k].Label)
+			p.Options[k].Input = input(p.Options[k].Text)
 		}
 		return p, true
 	}
 	return Prompt{}, false
+}
+
+// joinWrapped is line j with the lines above it that are the same sentence
+// wrapped on a narrow screen: long lines (two thirds of the screen's width or
+// more) that don't end one.
+func joinWrapped(lines []string, j, w int) string {
+	q := strings.TrimSpace(lines[j])
+	for k := j - 1; k >= 0 && k >= j-3; k-- {
+		t := strings.TrimSpace(lines[k])
+		if t == "" || utf8.RuneCountInString(lines[k]) < w*2/3 || optionLine.MatchString(lines[k]) || strings.ContainsAny(t[len(t)-1:], "?:.!") || rule(t) {
+			break
+		}
+		q = t + " " + q
+	}
+	return q
+}
+
+// rule reports whether a line draws a rule or a frame ("──", "╌╌").
+func rule(l string) bool {
+	for _, r := range []string{"──", "╌╌", "━━", "══", "▔▔"} {
+		if strings.Contains(l, r) {
+			return true
+		}
+	}
+	return false
+}
+
+// width is the width of the longest line.
+func width(lines []string) int {
+	w := 0
+	for _, l := range lines {
+		w = max(w, utf8.RuneCountInString(l))
+	}
+	return w
 }
 
 // unbox drops the frame some CLIs draw around a prompt ("│ ● 1. Yes │"),
@@ -213,9 +287,25 @@ func unbox(l string) string {
 	return t
 }
 
+// nextOption is where the options of a prompt go on after blank lines or a
+// rule (line i on): the line of option n+1, or 0.
+func nextOption(lines []string, i, n int) int {
+	for ; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "" {
+			continue
+		}
+		if m := optionLine.FindStringSubmatch(lines[i]); m != nil && m[2] == string(rune('1'+n)) && n < 9 {
+			return i
+		}
+		return 0
+	}
+	return 0
+}
+
 // onlyFooter reports whether the lines below a prompt are blank or the
 // keys it takes ("Esc to cancel · Tab to amend"; Devin's questions add "?
-// Not ready to answer, help me out!").
+// Not ready to answer, help me out!"; Claude Code's plan, "ctrl+g to edit
+// in Vim · ~/.claude/plans/….md").
 func onlyFooter(lines []string) bool {
 	n := 0
 	for _, l := range lines {
@@ -223,11 +313,18 @@ func onlyFooter(lines []string) bool {
 		if t == "" {
 			continue
 		}
-		if n++; n > 2 || !(strings.Contains(t, "esc") || strings.Contains(t, "enter") || strings.Contains(t, "cancel") || strings.Contains(t, "↑") || strings.Contains(t, "help me out")) {
+		if n++; n > 2 || !(strings.Contains(t, "esc") || strings.Contains(t, "enter") || strings.Contains(t, "cancel") || strings.Contains(t, "↑") || strings.Contains(t, "help me out") || strings.Contains(t, "ctrl+g")) {
 			return false
 		}
 	}
 	return true
+}
+
+// input reports whether an option is the text field of a question or a
+// plan, where the user writes their own answer.
+func input(text string) bool {
+	t := strings.ToLower(text)
+	return strings.HasPrefix(t, "type something") || strings.HasPrefix(t, "tell claude what to change")
 }
 
 // continuation is the wrapped rest of an option's label: indented text that
@@ -274,6 +371,12 @@ func classify(label string) Choice {
 // confirms it. Others get the state and "open the terminal", never keys.
 var verified = map[string]bool{"claude": true, "devin": true}
 
+// verifiedOptions are the agents whose questions and plans were checked
+// against the real CLI (Claude Code 2.1.302): a digit picks an option and
+// confirms it; on the text field it moves there, the text goes in and Enter
+// sends it.
+var verifiedOptions = map[string]bool{"claude": true}
+
 // Keys returns what to type to answer c on agent's prompt p, false when the
 // agent's keys aren't verified or p has no option for c.
 func Keys(agent string, p Prompt, c Choice) (string, bool) {
@@ -293,4 +396,53 @@ func Answerable(agent string, p *Prompt) []Choice {
 		return nil
 	}
 	return p.Choices()
+}
+
+// KindOf tells what a prompt read on screen asks: a permission (it has a way
+// to allow), the approval of a plan, or a question.
+func KindOf(p Prompt) string {
+	if _, ok := p.Option(Allow); ok {
+		return Permission
+	}
+	if strings.Contains(strings.ToLower(p.Question), "plan") {
+		return Plan
+	}
+	return Question
+}
+
+// Pickable returns the options the interface may pick on agent's prompt p,
+// a question or a plan: none on a permission (it has Choices), on
+// checkboxes, on a question about trusting a folder, or for agents whose
+// keys aren't verified; never an option that turns every permission off.
+func Pickable(agent string, p *Prompt) []Option {
+	if p == nil || !verifiedOptions[agent] || p.Multi || len(p.Choices()) > 0 || strings.Contains(strings.ToLower(p.Question), "trust") {
+		return nil
+	}
+	var out []Option
+	for _, o := range p.Options {
+		if l := strings.ToLower(o.Label); strings.Contains(l, "bypass") || strings.Contains(l, "dangerously") {
+			continue
+		}
+		out = append(out, o)
+	}
+	return out
+}
+
+// OptionKeys returns what to type, in order, to pick option key on agent's
+// prompt p with text, the user's own answer on the text field (empty for
+// the others); false when the option can't be picked from the interface.
+func OptionKeys(agent string, p Prompt, key, text string) ([]string, bool) {
+	for _, o := range Pickable(agent, &p) {
+		if o.Key != key {
+			continue
+		}
+		if !o.Input {
+			return []string{o.Key}, text == ""
+		}
+		if text == "" {
+			return nil, false
+		}
+		return []string{o.Key, text, "\r"}, true
+	}
+	return nil, false
 }

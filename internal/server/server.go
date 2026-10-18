@@ -62,6 +62,9 @@ type Server struct {
 	// asked to continue, until its session start says whether it did.
 	interrupted map[string]bool
 	resuming    map[string]string
+	// yourTurn: terminals whose last turn was the user's and ended (the
+	// flight waits for them).
+	yourTurn map[string]bool
 
 	// cliHandler and hookHandler are installed by later stages (agent bus,
 	// adapters); until then the endpoints answer 501.
@@ -74,7 +77,7 @@ type Server struct {
 	stateExtra   func() map[string]any
 	activityOf   func(id string) (string, time.Time)
 	attentionOf  func(id string) *attention.Attention
-	onAnswer     func(id string, c attention.Choice)
+	onAnswer     func(id string, c attention.Choice, answer string)
 	extraRoutes  []route
 	prepareNode  func(*store.Node) error
 	roleAbbr     func(role string) string
@@ -116,8 +119,25 @@ func (s *Server) SetActivity(fn func(id string) (string, time.Time)) { s.activit
 func (s *Server) SetAttention(fn func(id string) *attention.Attention) { s.attentionOf = fn }
 
 // SetOnAnswer installs the function called after the interface answered a
-// terminal's prompt with c.
-func (s *Server) SetOnAnswer(fn func(id string, c attention.Choice)) { s.onAnswer = fn }
+// terminal's prompt with c (attention.Picked: the agent's option whose text,
+// or the user's own, is answer).
+func (s *Server) SetOnAnswer(fn func(id string, c attention.Choice, answer string)) { s.onAnswer = fn }
+
+// SetYourTurn marks that a flight's turn, the user's, ended (on) or that it
+// moved on (off), and tells the interface when it changes.
+func (s *Server) SetYourTurn(id string, on bool) {
+	s.mu.Lock()
+	was := s.yourTurn[id]
+	if on {
+		s.yourTurn[id] = true
+	} else {
+		delete(s.yourTurn, id)
+	}
+	s.mu.Unlock()
+	if was != on {
+		s.PublishTerminalState(id)
+	}
+}
 
 // PublishTerminalState emits terminal.state for id with its current runtime.
 func (s *Server) PublishTerminalState(id string) {
@@ -135,7 +155,7 @@ func New(opts Options) (*Server, error) {
 	s := &Server{
 		opts: opts, log: opts.Logger, store: opts.Store, bus: events.NewBus(),
 		termTokens: map[string]string{}, titles: map[string]string{},
-		interrupted: map[string]bool{}, resuming: map[string]string{},
+		interrupted: map[string]bool{}, resuming: map[string]string{}, yourTurn: map[string]bool{},
 	}
 	cliDir := ""
 	if opts.CLIPath != "" {

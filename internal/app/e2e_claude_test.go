@@ -75,6 +75,75 @@ func TestRealClaudePermission(t *testing.T) {
 	}
 }
 
+// A real Claude's question (AskUserQuestion) is answered from the interface
+// with the user's own text, on its text field.
+func TestRealClaudeQuestion(t *testing.T) {
+	var answered bool
+	r, screen := askRealClaude(t, "", "Use the AskUserQuestion tool to ask me exactly one question: 'Qual cor?' (header 'Cor'), options 'Azul' and 'Verde', single select. Then reply with only my answer.", func(e *env, id string) {
+		a := e.waitAttention(id, func(a *attention.Attention) bool { return a != nil && len(a.Options) > 0 }, 2*time.Minute)
+		field := slices.IndexFunc(a.Options, func(o attention.Option) bool { return o.Input })
+		if a.Kind != attention.Question || a.Text != "Qual cor?" || a.Options[0].Text != "Azul" || field < 0 {
+			t.Errorf("attention: %+v", a)
+			return
+		}
+		if code, body := e.respondOption(id, a.Options[field].Key, "Roxo"); code != 204 {
+			t.Errorf("respond: %d %s", code, body)
+		}
+		answered = true
+	})
+	if !answered || r.Code != 200 || !strings.Contains(r.Body, "Roxo") {
+		t.Fatalf("reply: code=%d source=%s\n%s\n--- screen ---\n%s", r.Code, r.Source, r.Body, screen)
+	}
+}
+
+// A real Claude in plan mode: its plan comes whole in the hook, an option
+// approves it from the interface, and the edit it then asks for is allowed
+// from there too.
+func TestRealClaudePlan(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "plano.txt")
+	var approved, allowed bool
+	r, screen := askRealClaude(t, "", "Plan how to create the file "+file+" containing the word oi. Keep the plan to two short steps and ask me to approve it.", func(e *env, id string) {
+		a := e.waitAttention(id, func(a *attention.Attention) bool { return a != nil && a.Kind == attention.Plan && len(a.Options) > 0 }, 3*time.Minute)
+		manual := slices.IndexFunc(a.Options, func(o attention.Option) bool { return strings.Contains(o.Text, "manually approve") })
+		if !strings.Contains(a.PlanText, "plano.txt") || a.Detail == "" || manual < 0 {
+			t.Errorf("plan: %+v", a)
+			return
+		}
+		if code, body := e.respondOption(id, a.Options[manual].Key, ""); code != 204 {
+			t.Errorf("approve: %d %s", code, body)
+			return
+		}
+		approved = true
+		// Then the edits it asks for (and a check it may run), until it rests.
+		var last, quiet time.Time
+		for deadline := time.Now().Add(3 * time.Minute); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
+			a := e.app.Monitor.Attention(id)
+			if a == nil || a.Kind != attention.Permission || len(a.Choices) == 0 || a.Since.Equal(last) {
+				if _, err := os.Stat(file); err == nil && allowed && a == nil {
+					if quiet.IsZero() {
+						quiet = time.Now()
+					} else if time.Since(quiet) > 5*time.Second {
+						return
+					}
+				}
+				continue
+			}
+			quiet, last = time.Time{}, a.Since
+			if code, body := e.respond(id, "allow"); code != 204 {
+				t.Errorf("allow %s: %d %s", a.Tool, code, body)
+				return
+			}
+			allowed = true
+		}
+	}, "--permission-mode", "plan")
+	if !approved || !allowed || r.Code != 200 {
+		t.Fatalf("reply: code=%d source=%s\n%s\n--- screen ---\n%s", r.Code, r.Source, r.Body, screen)
+	}
+	if b, err := os.ReadFile(file); err != nil || !strings.Contains(string(b), "oi") {
+		t.Fatalf("the file: %q %v\n%s", b, err, screen)
+	}
+}
+
 // A Claude wired only to the base of a stack of notes reads another note of
 // the stack, by its own name.
 func TestRealClaudeStack(t *testing.T) {

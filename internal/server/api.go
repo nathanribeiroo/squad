@@ -31,6 +31,9 @@ type TerminalRuntime struct {
 	Interrupted bool `json:"interrupted"`
 	// Attention: what the flight asks the user (activity "ask").
 	Attention *attention.Attention `json:"attention,omitempty"`
+	// YourTurn: the flight's last turn was the user's and it ended; the
+	// flight waits for them (shown while "done").
+	YourTurn bool `json:"yourTurn,omitempty"`
 }
 
 // StateResponse is GET /api/state.
@@ -49,6 +52,7 @@ func (s *Server) runtimeOf(id string) TerminalRuntime {
 	s.mu.Lock()
 	rt.Title = s.titles[id]
 	rt.Interrupted = s.interrupted[id]
+	rt.YourTurn = s.yourTurn[id]
 	s.mu.Unlock()
 	if s.activityOf != nil {
 		rt.Activity, rt.ActivitySince = s.activityOf(id)

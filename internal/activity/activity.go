@@ -548,11 +548,7 @@ func (m *Monitor) watchPrompt(tr *track, agent, snap string, now time.Time) bool
 			return true
 		}
 	case found && now.Sub(tr.lastChange) >= m.opts.PromptAfter:
-		kind := attention.Question
-		if _, ok := p.Option(attention.Allow); ok {
-			kind = attention.Permission
-		}
-		tr.attn = &attention.Attention{Kind: kind, Text: p.Question, Source: "screen", Since: now}
+		tr.attn = &attention.Attention{Kind: attention.KindOf(p), Text: p.Question, Source: "screen", Since: now}
 		tr.attn.SetPrompt(agent, &p)
 		tr.attnSeen, tr.attnMissed = true, 0
 		return true

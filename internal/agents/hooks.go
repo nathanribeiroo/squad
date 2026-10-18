@@ -80,16 +80,28 @@ func ParseHook(name string, body []byte) (HookEvent, bool) {
 		if json.Unmarshal(body, &p) != nil || p.ToolName == "" {
 			return HookEvent{}, false
 		}
-		kind := attention.Permission
-		if p.ToolName == "AskUserQuestion" || p.ToolName == "ask_user_question" {
-			kind = attention.Question
-		}
 		// Torre's own tools that need the user's approval (keys, new_shell…)
 		// keep asking: the interface never answers them "always".
 		tool, torre := strings.CutPrefix(p.ToolName, "mcp__torre__")
-		return HookEvent{Conversation: common.SessionID,
-			Attention: &attention.Attention{Kind: kind, Tool: p.ToolName, Detail: toolDetail(p.ToolInput),
-				AskEveryUse: torre && !slices.Contains(SafeMCPTools, tool)}}, true
+		a := &attention.Attention{Kind: attention.Permission, Tool: p.ToolName, Detail: toolDetail(p.ToolInput),
+			AskEveryUse: torre && !slices.Contains(SafeMCPTools, tool)}
+		switch p.ToolName {
+		case "AskUserQuestion", "ask_user_question":
+			// The questions are read on screen, one at a time.
+			a.Kind, a.Detail = attention.Question, ""
+			if qs, ok := p.ToolInput["questions"].([]any); ok && len(qs) > 0 {
+				if q, ok := qs[0].(map[string]any); ok {
+					a.Text, _ = q["question"].(string)
+				}
+			}
+		case "ExitPlanMode":
+			// Claude Code's plan, whole, for the interface to show.
+			a.Kind = attention.Plan
+			a.PlanText, _ = p.ToolInput["plan"].(string)
+			a.PlanText = clipPlan(a.PlanText)
+			a.Detail = planTitle(a.PlanText)
+		}
+		return HookEvent{Conversation: common.SessionID, Attention: a}, true
 	case "codex-notify":
 		var p struct {
 			Type                 string `json:"type"`
@@ -182,6 +194,32 @@ func toolDetail(in map[string]any) string {
 	}
 	b, _ := json.Marshal(in)
 	return clip(string(b))
+}
+
+// maxPlan is how much of a plan the interface gets.
+const maxPlan = 32 << 10
+
+// clipPlan cuts a plan at maxPlan bytes, on a rune boundary.
+func clipPlan(s string) string {
+	if len(s) <= maxPlan {
+		return s
+	}
+	s = s[:maxPlan]
+	for !utf8.ValidString(s) {
+		s = s[:len(s)-1]
+	}
+	return s + "\n…"
+}
+
+// planTitle is a plan's first line, without its heading marks: "Plan: create
+// hello.txt".
+func planTitle(plan string) string {
+	for _, l := range strings.Split(plan, "\n") {
+		if t := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(l), "#")); t != "" {
+			return clip(t)
+		}
+	}
+	return ""
 }
 
 // clip shortens s to 300 characters.

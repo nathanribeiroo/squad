@@ -17,6 +17,14 @@
 //	                      tool name (mcp__torre__keys: 1–6 go on, 7 denies)
 //	ASKQ:<question>       asks a question with two options like Devin's
 //	                      question tool (no hook) and reads one key
+//	ASKCQ:<question>      asks a question like Claude Code's AskUserQuestion
+//	                      (its permission hook, then the screen), with two
+//	                      options ("question|one|two"; Azul, Verde): 1, 2 or 4
+//	                      pick an option, 3 opens the text field (the text up
+//	                      to CR is the answer), Esc declines
+//	PLAN:<title>          asks to approve a plan like Claude Code's
+//	                      ExitPlanMode: 1 or 2 approve, 3 then text and CR
+//	                      sends feedback, Esc declines
 //
 // $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
 // $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Torre's hooks:
@@ -186,6 +194,31 @@ func turn(msg string, work float64) {
 			"──────────────────────────────────────────\n↑↓ navigate · ↵ select · ? help me out · esc cancel\n? Not ready to answer, help me out!\n")
 		readChoice(0x1b, '2') // 1 or 2 answers, Esc cancels
 	}
+	if q, ok := strings.CutPrefix(lastLine(msg), "ASKCQ:"); ok {
+		// "question|option one|option two" (Azul and Verde by default).
+		parts := strings.Split(q, "|")
+		q = parts[0]
+		o1, o2 := "Azul", "Verde"
+		if len(parts) == 3 {
+			o1, o2 = parts[1], parts[2]
+		}
+		input, _ := json.Marshal(map[string]any{"questions": []any{map[string]any{"question": q, "header": "Cor", "multiSelect": false,
+			"options": []any{map[string]any{"label": o1, "description": "The first"}, map[string]any{"label": o2, "description": "The second"}}}}})
+		hook("permission", `{"hook_event_name":"PermissionRequest","session_id":"`+sessionID+`","tool_name":"AskUserQuestion","tool_input":`+string(input)+`}`)
+		out("────────────────────────────────────────\n ☐ Cor\n\n" + q + "\n\n❯ 1. " + o1 + "\n     The first\n  2. " + o2 + "\n     The second\n  3. Type something.\n" +
+			"────────────────────────────────────────\n  4. Chat about this\n\nEnter to select · ↑/↓ to navigate · Esc to cancel\n")
+		readOption('4', '3')
+	}
+	if title, ok := strings.CutPrefix(lastLine(msg), "PLAN:"); ok {
+		plan := "# " + title + "\n\n1. Create hello.txt\n2. Read it back\n"
+		input, _ := json.Marshal(map[string]any{"plan": plan, "planFilePath": "/tmp/plan.md"})
+		hook("permission", `{"hook_event_name":"PermissionRequest","session_id":"`+sessionID+`","tool_name":"ExitPlanMode","tool_input":`+string(input)+`}`)
+		out("   Here is Claude's plan:\n   " + title + "\n  ────────────────────────────────────────\n" +
+			"   Claude has written up a plan and is ready to execute. Would you like to proceed?\n\n" +
+			"   ❯ 1. Yes, and use auto mode\n     2. Yes, manually approve edits\n     3. Tell Claude what to change\n" +
+			"        shift+tab to approve with this feedback\n\n   ctrl+g to edit in Vim · ~/.claude/plans/plan.md\n")
+		readOption('2', '3')
+	}
 	if rest, ok := strings.CutPrefix(lastLine(msg), "SLEEP:"); ok {
 		if s, err := strconv.ParseFloat(rest, 64); err == nil {
 			time.Sleep(time.Duration(s * float64(time.Second)))
@@ -264,6 +297,53 @@ func askDevin(cmdline string) bool {
 		"  3 Yes, always allow `" + word + "` commands in `proj`\n  4 Yes, always allow `" + word + "` commands in all projects\n" +
 		"  5 Yes, switch to bypass mode\n  6 Edit command\n  7 Describe change to command\n  8 No\n↑↓ select · ↵ confirm · esc cancel\n")
 	return readChoice('8', '7')
+}
+
+// readOption reads the answer to a question or a plan: a key from 1 up to
+// last picks an option, text opens the text field (its answer is what comes
+// before CR), Esc declines. Ctrl-C exits.
+func readOption(last, text byte) {
+	key := make([]byte, 64)
+	for {
+		n, err := os.Stdin.Read(key)
+		if err != nil {
+			return
+		}
+		logf("ASK-KEY %x", key[:n])
+		switch c := key[0]; {
+		case c == 0x03:
+			logf("CTRL-C")
+			os.Exit(130)
+		case c == 0x1b:
+			out("\x1b[2J\x1b[H")
+			logf("ASK-DECLINED")
+			return
+		case c == text:
+			var typed []byte
+			for rest := key[1:n]; ; {
+				if i := bytes.IndexByte(rest, '\r'); i >= 0 {
+					typed = append(typed, rest[:i]...)
+					break
+				}
+				typed = append(typed, rest...)
+				m, err := os.Stdin.Read(key)
+				if err != nil {
+					return
+				}
+				logf("ASK-KEY %x", key[:m])
+				rest = key[:m]
+			}
+			out("\x1b[2J\x1b[H")
+			logf("ASK-TEXT %q", typed)
+			out(fmt.Sprintf("answered %s\n", typed))
+			return
+		case c >= '1' && c <= last:
+			out("\x1b[2J\x1b[H")
+			logf("ASK-CHOSE %c", c)
+			out(fmt.Sprintf("chose %c\n", c))
+			return
+		}
+	}
 }
 
 // readChoice reads the key that answers a prompt: deny or Esc deny (false),

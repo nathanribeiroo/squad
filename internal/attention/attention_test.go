@@ -355,3 +355,215 @@ Would you like to run the following command?
 		t.Fatalf("codex: %+v %v", p, ok)
 	}
 }
+
+// Claude Code 2.1.302, its AskUserQuestion tool: options with a description
+// under each, the text field ("Type something."), and one more option below
+// a rule.
+const claudeQuestion = `
+────────────────────────────────────────────────────────────────────────────────
+ ☐ Cor
+
+Qual cor?
+
+❯ 1. Azul
+     Blue color
+  2. Verde
+     Green color
+  3. Type something.
+────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel
+`
+
+// Two questions in one call: the second, with the user's text typed in the
+// field, and then the review.
+const claudeTyped = `
+────────────────────────────────────────────────────────────────────────────────
+←  ☒ Cor  ☐ Fruta  ✔ Submit  →
+
+Qual fruta?
+
+  1. Maçã
+     Apple
+  2. Uva
+     Grape
+❯ 3. Banana
+────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · ctrl+g to edit in Vim · Esc to cancel
+`
+
+const claudeReview = `
+────────────────────────────────────────────────────────────────────────────────
+←  ☒ Cor  ☒ Fruta  ✔ Submit  →
+
+Review your answers
+
+ ● Qual cor?
+   → Azul
+ ● Qual fruta?
+   → Banana
+
+Ready to submit your answers?
+
+❯ 1. Submit answers
+  2. Cancel
+`
+
+// Several at once: checkboxes.
+const claudeMulti = `
+────────────────────────────────────────────────────────────────────────────────
+←  ☐ Frutas  ✔ Submit  →
+
+Quais frutas?
+
+❯ 1. [ ] Maçã
+         Apple
+  2. [ ] Uva
+         Grape
+  3. [ ] Pera
+         Pear
+  4. [ ] Type something
+     Submit
+────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel
+`
+
+// Its plan, at the end of plan mode (ExitPlanMode).
+const claudePlan = `
+   Here is Claude's plan:
+  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+   Plan: create hello.txt
+
+   Steps
+
+   1. Create hello.txt in the working directory with the content oi.
+   2. Verify by reading the file back and confirming it contains oi.
+  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+
+
+
+  ────────────────────────────────────────────────────────────────────────────────
+   Claude has written up a plan and is ready to execute. Would you like to proceed?
+
+   ❯ 1. Yes, and use auto mode
+     2. Yes, manually approve edits
+     3. Tell Claude what to change
+        shift+tab to approve with this feedback
+
+   ctrl+g to edit in Vim · ~/.claude/plans/reply-only-ok-scalable-waterfall.md
+`
+
+func TestParseClaudeQuestion(t *testing.T) {
+	q, ok := Parse(claudeQuestion)
+	if !ok || q.Question != "Qual cor?" || len(q.Options) != 4 || q.Multi {
+		t.Fatalf("question: %+v %v", q, ok)
+	}
+	if o := q.Options[0]; o.Text != "Azul" || o.Detail != "Blue color" || o.Input {
+		t.Fatalf("option 1: %+v", o)
+	}
+	if o := q.Options[2]; !o.Input || o.Text != "Type something." {
+		t.Fatalf("text field: %+v", o)
+	}
+	if q.Options[3].Text != "Chat about this" || q.Choices() != nil || Answerable("claude", &q) != nil {
+		t.Fatalf("question read as a permission: %+v", q)
+	}
+	if got := Pickable("claude", &q); len(got) != 4 {
+		t.Fatalf("pickable: %+v", got)
+	}
+	if k, ok := OptionKeys("claude", q, "2", ""); !ok || !reflect.DeepEqual(k, []string{"2"}) {
+		t.Fatalf("keys 2: %q %v", k, ok)
+	}
+	if k, ok := OptionKeys("claude", q, "3", "Roxo"); !ok || !reflect.DeepEqual(k, []string{"3", "Roxo", "\r"}) {
+		t.Fatalf("keys 3: %q %v", k, ok)
+	}
+	for _, c := range []struct{ key, text string }{{"3", ""}, {"2", "Roxo"}, {"9", ""}} {
+		if _, ok := OptionKeys("claude", q, c.key, c.text); ok {
+			t.Fatalf("keys for %+v", c)
+		}
+	}
+	// The other agents' questions aren't verified yet.
+	for _, agent := range []string{"devin", "codex", "gemini", "custom"} {
+		if Pickable(agent, &q) != nil {
+			t.Fatalf("%s pickable", agent)
+		}
+	}
+
+	typed, ok := Parse(claudeTyped)
+	if !ok || typed.Question != "Qual fruta?" || typed.Options[2].Text != "Banana" || typed.Same(q) {
+		t.Fatalf("typed: %+v %v", typed, ok)
+	}
+	r, ok := Parse(claudeReview)
+	if !ok || r.Question != "Ready to submit your answers?" || len(Pickable("claude", &r)) != 2 || r.Options[0].Text != "Submit answers" {
+		t.Fatalf("review: %+v %v", r, ok)
+	}
+
+	m, ok := Parse(claudeMulti)
+	if !ok || !m.Multi || m.Options[0].Text != "Maçã" || len(m.Options) != 5 || Pickable("claude", &m) != nil {
+		t.Fatalf("checkboxes: %+v %v", m, ok)
+	}
+}
+
+func TestParseClaudePlan(t *testing.T) {
+	p, ok := Parse(claudePlan)
+	if !ok || !strings.HasSuffix(p.Question, "Would you like to proceed?") || len(p.Options) != 3 {
+		t.Fatalf("plan: %+v %v", p, ok)
+	}
+	if KindOf(p) != Plan || p.Choices() != nil {
+		t.Fatalf("kind %s, choices %v", KindOf(p), p.Choices())
+	}
+	if o := p.Options[2]; !o.Input || o.Detail != "shift+tab to approve with this feedback" {
+		t.Fatalf("feedback field: %+v", o)
+	}
+	if got := Pickable("claude", &p); len(got) != 3 || got[0].Text != "Yes, and use auto mode" {
+		t.Fatalf("pickable: %+v", got)
+	}
+	// An option that turns every permission off stays in the terminal.
+	b := strings.Replace(claudePlan, "Yes, and use auto mode", "Yes, and bypass permissions", 1)
+	bp, _ := Parse(b)
+	if got := Pickable("claude", &bp); len(got) != 2 || got[0].Key != "2" {
+		t.Fatalf("bypass offered: %+v", got)
+	}
+	if bash, _ := Parse(claudeBash); KindOf(bash) != Permission || Pickable("claude", &bash) != nil {
+		t.Fatalf("permission: %s", KindOf(bash))
+	}
+	if q, _ := Parse(claudeQuestion); KindOf(q) != Question {
+		t.Fatalf("question: %s", KindOf(q))
+	}
+}
+
+func TestSetPromptOptions(t *testing.T) {
+	q, _ := Parse(claudeQuestion)
+	a := Attention{Kind: Question, Text: "from the hook"}
+	a.SetPrompt("claude", &q)
+	if a.Text != "Qual cor?" || len(a.Options) != 4 || a.Choices != nil {
+		t.Fatalf("question: %+v", a)
+	}
+	// A permission keeps its choices and no options.
+	b, _ := Parse(claudeBash)
+	p := Attention{Kind: Permission}
+	p.SetPrompt("claude", &b)
+	if p.Options != nil || len(p.Choices) != 3 || p.Text != "" {
+		t.Fatalf("permission: %+v", p)
+	}
+}
+
+// On a narrow screen the plan's question wraps: it is read whole.
+func TestParseWrappedQuestion(t *testing.T) {
+	narrow := strings.Replace(claudePlan, "   Claude has written up a plan and is ready to execute. Would you like to proceed?",
+		"   Claude has written up a plan and is ready to execute. Would you like to\n   proceed?", 1)
+	p, ok := Parse(narrow)
+	if !ok || p.Question != "Claude has written up a plan and is ready to execute. Would you like to proceed?" {
+		t.Fatalf("wrapped: %q %v", p.Question, ok)
+	}
+	// The terminal itself cut the line (no word wrap).
+	cut := strings.Replace(claudePlan, "   Claude has written up a plan and is ready to execute. Would you like to proceed?",
+		"   Claude has written up a plan and is ready to execute. Would you like to proce\ned?", 1)
+	if p, _ := Parse(cut); p.Question != "Claude has written up a plan and is ready to execute. Would you like to proce ed?" {
+		t.Fatalf("cut: %q", p.Question)
+	}
+}
