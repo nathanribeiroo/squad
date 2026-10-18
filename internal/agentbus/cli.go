@@ -229,18 +229,25 @@ func (b *Bus) List(caller string) Result {
 	}
 	if len(notes) > 0 {
 		sb.WriteString("\nConnected notes (use torre note read/write/edit):\n")
-		for _, n := range notes {
-			fmt.Fprintf(&sb, "  - name: %s", quote(n.Note.Title))
-			if n.Note.File != "" {
-				fmt.Fprintf(&sb, ", file: %s", n.Note.File)
+		for _, nb := range notes {
+			// A wire to a stack reaches every note in it.
+			stack := b.store.StackMembers(nb.ID)
+			for _, n := range stack {
+				fmt.Fprintf(&sb, "  - name: %s", quote(n.Note.Title))
+				if n.Note.File != "" {
+					fmt.Fprintf(&sb, ", file: %s", n.Note.File)
+				}
+				if len(n.Note.Aliases) > 0 {
+					fmt.Fprintf(&sb, ", formerly: %s", quote(strings.Join(n.Note.Aliases, `", "`)))
+				}
+				if n.Note.Locked {
+					sb.WriteString(", locked: true")
+				}
+				if len(stack) > 1 {
+					fmt.Fprintf(&sb, ", stack: %s", quote(stack[0].Note.Title))
+				}
+				sb.WriteString("\n")
 			}
-			if len(n.Note.Aliases) > 0 {
-				fmt.Fprintf(&sb, ", formerly: %s", quote(strings.Join(n.Note.Aliases, `", "`)))
-			}
-			if n.Note.Locked {
-				sb.WriteString(", locked: true")
-			}
-			sb.WriteString("\n")
 		}
 	}
 	if len(portals) > 0 {

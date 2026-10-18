@@ -448,8 +448,9 @@ func (s *Service) finalizeConnected(ctx context.Context) {
 	}
 }
 
-// accessible returns the notes reachable from a terminal: connected notes
-// and notes chained to them (note ↔ note), not through other terminals.
+// accessible returns the notes reachable from a terminal: connected notes,
+// the notes stacked with them, and notes chained to those (note ↔ note),
+// not through other terminals.
 func (s *Service) accessible(caller string) []store.Node {
 	seen := map[string]bool{caller: true}
 	var out []store.Node
@@ -457,18 +458,24 @@ func (s *Service) accessible(caller string) []store.Node {
 	for len(queue) > 0 {
 		cur := queue[0]
 		queue = queue[1:]
-		for _, n := range s.store.Neighbors(cur) {
-			if n.Kind != store.KindNote || seen[n.ID] {
+		for _, nb := range s.store.Neighbors(cur) {
+			if nb.Kind != store.KindNote || seen[nb.ID] {
 				continue
 			}
-			seen[n.ID] = true
-			if n.Note.Draft { // connected before the watcher saw it
-				if f, err := s.Finalize(n.ID); err == nil {
-					n = f
+			// A wire to a stack reaches every note in it (the base holds it).
+			for _, n := range s.store.StackMembers(nb.ID) {
+				if seen[n.ID] {
+					continue
 				}
+				seen[n.ID] = true
+				if n.Note.Draft { // connected before the watcher saw it
+					if f, err := s.Finalize(n.ID); err == nil {
+						n = f
+					}
+				}
+				out = append(out, n)
+				queue = append(queue, n.ID)
 			}
-			out = append(out, n)
-			queue = append(queue, n.ID)
 		}
 	}
 	return out
@@ -489,18 +496,27 @@ func (s *Service) find(caller, name string) (n store.Node, renamed bool, r agent
 	return store.Node{}, false, agentbus.Result{Code: 404, Body: fmt.Sprintf("torre: no connected note named %q (run `torre note list`)", name)}, false
 }
 
+// stackName names a note's stack after the note at its base.
+func (s *Service) stackName(n store.Node) string {
+	if base, ok := s.store.Node(n.Note.Stack); ok && base.Note != nil {
+		return base.Note.Title
+	}
+	return n.Note.Title
+}
+
 // renamedNote is the line that tells an agent a note's current name.
 func renamedNote(n store.Node) string {
 	return fmt.Sprintf("(this note is now named %q; use that name from now on)\n", n.Note.Title)
 }
 
 const noteUsage = `Usage:
-  torre note list                         notes connected to you (chained notes included)
+  torre note list                         notes connected to you (chained and stacked notes included)
   torre note read "Name" [from] [count]   read with line numbers
   torre note write "Name" "content"       replace the content (use - to read stdin)
   torre note edit "Name" "old" "new"      replace text that appears exactly once
   torre note create "Name" ["content"]    create a note connected to you
 
+A wire to a stack of notes reaches every note in it (list shows "stack:").
 A note's name is unique in the workspace and permanent: choose a clear one
 when you create it. Names ignore case, and a note the user renamed still
 answers to its former names.`
@@ -532,6 +548,9 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 			}
 			if n.Note.Locked {
 				sb.WriteString(", locked: true")
+			}
+			if n.Note.Stack != "" {
+				fmt.Fprintf(&sb, ", stack: %q", s.stackName(n))
 			}
 			sb.WriteString("\n")
 		}

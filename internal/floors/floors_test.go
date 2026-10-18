@@ -397,3 +397,32 @@ func TestRenameAndCleanPrecheck(t *testing.T) {
 		t.Fatalf("changes: %+v %v", ch, err)
 	}
 }
+
+// A stack of notes goes down to the ground floor as one when its level lands.
+func TestLandKeepsStacks(t *testing.T) {
+	_, svc, st := newRepo(t)
+	ctx := context.Background()
+	f, err := svc.Create(ctx, CreateRequest{Name: "docs"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	add := func(title string, x float64) store.Node {
+		n, err := st.AddNode(store.Node{Kind: store.KindNote, Floor: f.ID, X: x, W: 400, H: 350, Note: &store.NoteData{Title: title, File: title + ".md"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	a, b := add("A", 0), add("B", 500)
+	if _, err := st.Stack(b.ID, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Land(ctx, f.ID, LandRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	na, _ := st.Node(a.ID)
+	nb, _ := st.Node(b.ID)
+	if na.Floor != "" || nb.Floor != "" || nb.Note.Stack != a.ID || nb.X != na.X || nb.Y != na.Y {
+		t.Fatalf("landed: %+v %+v / %+v %+v", na, na.Note, nb, nb.Note)
+	}
+}

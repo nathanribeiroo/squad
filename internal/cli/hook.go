@@ -117,6 +117,9 @@ A note's name is unique in the workspace and permanent. When you create one
 note for the same thing, use ` + "`torre note list`" + ` to see the ones you have.
 Names ignore case. The user may rename a note they made: its former names
 keep working, and the reply tells you the current one; use that from then on.
+The user can stack notes: a wire to a stack reaches every note in it, and
+` + "`torre list`" + ` / ` + "`torre note list`" + ` show them with ` + "`stack: \"Name\"`" + `. Read and
+write each one by its own name.
 
 ## Portals
 

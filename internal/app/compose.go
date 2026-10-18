@@ -64,6 +64,11 @@ func (a *App) Send(id string, req ComposeRequest) error {
 	linked := map[string]store.Node{}
 	for _, nb := range st.Neighbors(id) {
 		linked[nb.ID] = nb
+		if nb.Note != nil && nb.Note.Stack != "" { // the notes stacked with it too
+			for _, m := range st.StackMembers(nb.ID) {
+				linked[m.ID] = m
+			}
+		}
 	}
 	var refs []string
 	for _, mid := range req.Mentions {

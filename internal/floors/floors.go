@@ -662,13 +662,18 @@ func (s *Service) remove(ctx context.Context, root string, f store.Floor, delete
 	ground := store.OnFloor(nodes, "")
 	for _, n := range store.OnFloor(nodes, f.ID) {
 		if n.Kind == store.KindNote {
+			if n.Note.Stack != "" && n.Note.Stack != n.ID {
+				continue // a stack goes down with its base
+			}
 			x, y := store.FreeSpot(ground, n, n.W, n.H)
 			m, err := st.MoveNode(n.ID, "", x, y)
 			if err != nil {
 				return err
 			}
 			ground = append(ground, m)
-			s.o.Canvas.Bus().Publish(events.NodeUpdated, m)
+			for _, sn := range st.StackMembers(n.ID) {
+				s.o.Canvas.Bus().Publish(events.NodeUpdated, sn)
+			}
 			continue
 		}
 		if err := s.o.Canvas.RemoveNode(n.ID); err != nil && !errors.Is(err, store.ErrNotFound) {
