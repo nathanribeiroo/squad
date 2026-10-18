@@ -64,7 +64,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Torre F5d Planos de voo | `feat/torre-f5d-planos` → `feat/torre` | concluído |
 | Pilha de NOTAMs | `feat/pilha-notams` | concluído |
 | Responder ao Devin pela Torre, e o som dos avisos | `feat/devin-prioridade` | concluído |
-| Histórico do Rádio | `feat/radio-historico` | concluído (PR) |
+| Histórico do Rádio | `feat/radio-historico` | concluído |
+| Permissões nos níveis | `feat/permissoes-niveis` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -290,4 +291,18 @@ Pedido do usuário em 2026-10-18 (item 12 de `docs/torre/NOVIDADES-E-BACKEND.md`
 - **Interface:** o Rádio carrega o histórico do servidor, com "Mais antigos", "Ver a resposta", "Limpar o Rádio" e a data nas linhas de outro dia.
 - **Fora:** os agentes lerem o histórico (`torre radio`), busca no Rádio, exportar.
 
-**Status:** pronto no PR `feat/radio-historico` → `main`.
+**Status:** mesclado na `main` pelo PR #29.
+
+## Permissões nos níveis
+
+Pedido do usuário em 2026-10-18 (item 18 da lista de pendências): o que ele libera com SEMPRE num nível de voo não pode se perder no pouso. Os agentes guardam essas regras fora do git, num arquivo da pasta do projeto: o Claude em `.claude/settings.local.json`, o Devin em `.devin/config.local.json`. O plano foi aprovado com a caixa de levar as regras desmarcada.
+
+- **Criar um nível (ou a cópia da sessão):** os dois arquivos vêm da pista, como o `.env`, e entram em `copied`.
+- **Um Claude ou Devin decola no nível:** ganha as regras que a pista ganhou desde então. Só soma, nunca tira.
+- **Pousar (e "Pedir pouso" da sessão em cópia):** o diálogo lista as regras novas do nível e a caixa "Levar essas permissões para a pista" (para a cópia, "para a pasta do projeto"). Ela vem desmarcada, porque um voo também pode escrever esses arquivos. Descartar o nível joga as regras fora; o pouso pela CLI e pelo MCP nunca as leva.
+- **Esses arquivos nunca são alteração:** não bloqueiam o pouso. Um branch que os commita continua recusado, como o `.env`.
+- **SEMPRE do Claude:** algumas telas do Claude escrevem "don’t ask again" com apóstrofo tipográfico, e o SEMPRE não aparecia nelas. Corrigido.
+- **Achado no Claude real (2.1.302):** num worktree, ele lê os dois arquivos (o da pasta principal e o do worktree) e grava o SEMPRE no da pasta principal. Então o SEMPRE do Claude num nível já vale na pista na hora, e o pouso não tem o que levar dele. A cópia e a soma ficam para versões que gravem no worktree e para regras escritas à mão.
+- **Fora:** o Codex e o Gemini; levar para os níveis as regras apagadas na pista.
+
+**Status:** pronto no PR `feat/permissoes-niveis` → `main`.

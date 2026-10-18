@@ -2,6 +2,56 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-18, Permissões nos níveis
+
+- **Pedido:** o item 18 da lista de pendências. O que você libera com SEMPRE num nível de voo não pode se perder no pouso, e o nível deve começar com o que a pista já libera. O plano foi aprovado com a caixa de levar as regras desmarcada.
+- **Onde os agentes guardam o SEMPRE:**
+  - **Claude:** em `.claude/settings.local.json` (`permissions.allow`, `ask`, `deny`);
+  - **Devin:** em `.devin/config.local.json`, no mesmo formato.
+  - Os dois ficam fora do git, na pasta do projeto. Um nível é outra pasta (um git worktree), então eles não iam junto.
+- **Servidor (`internal/floors/permissions.go`, novo):**
+  - **Criar:** ao criar um nível ou a cópia da sessão, os dois arquivos vêm da pista, como o `.env`, e entram em `copied`.
+  - **Decolar:** quando um Claude ou um Devin decola no nível (ou na cópia), o gancho de lançamento soma ao arquivo do nível as regras que a pista ganhou desde então. Só soma, nunca tira; as outras chaves do arquivo ficam como estão.
+  - **Ver:** `GET /api/floors/{id}/changes` e `GET /api/copy/changes` devolvem `rules`, as regras que o nível tem e a pista não.
+  - **Levar:** `POST /api/floors/{id}/land` e `POST /api/copy/merge` aceitam `permissions: true` e somam essas regras aos arquivos da pista. A resposta diz quantas (`permissions`). O pouso pela CLI e pelo MCP não monta esse campo, então um agente nunca as leva.
+  - **Não é alteração:** os dois arquivos nunca contam como alteração não commitada, nem no pouso nem na contagem do nível. Um branch que os commita continua recusado no merge, como um `.env` copiado.
+  - **Falhas:** se levar as regras falhar depois do merge, o pouso para com o nível no lugar e diz que o merge foi feito.
+- **Interface:** no "Autorizar pouso" do nível e no da sessão em cópia, a seção "N permissões novas" lista cada regra (permitir, perguntar, negar; Claude ou Devin) e traz a caixa "Levar essas permissões para a pista" (na cópia, "para a pasta do projeto"). O aviso do pouso termina com "· N permissões levadas".
+- **Correção de passagem, SEMPRE do Claude:** algumas telas do Claude escrevem "Yes, and don’t ask again for: git tag \*" com apóstrofo tipográfico. A Torre não reconhecia essa opção, e o botão SEMPRE não aparecia nessas perguntas. Agora o apóstrofo é normalizado.
+- **Achado no Claude real (2.1.302):** num nível, o Claude grava o SEMPRE no arquivo da **pasta principal**, não no do worktree, e lê os dois.
+  - **Conferido em três rodadas de `claude -p`:** com a regra só na pasta principal, ele roda o comando; só no worktree, também roda; sem a regra, pede permissão.
+  - **Consequência:** o SEMPRE do Claude num nível já vale na pista na hora, e o pouso não tem o que levar dele.
+  - **Ele também põe** `**/.claude/settings.local.json` no ignore global do git.
+- **Decisões sem consulta:**
+  - **O arquivo do Claude fica no mecanismo** mesmo assim: não atrapalha e cobre versões que gravem no worktree e regras escritas à mão.
+  - **A soma ao decolar espera** uma criação ou um pouso de nível em andamento (os dois usam a mesma trava). Isso leva segundos, e o servidor não segura nenhuma outra trava nesse caminho.
+- **Correção de passagem, terminal:** escrever num terminal já fechado (`Raw`) podia esperar para sempre. A fila tinha espaço, mas ninguém mais a lia. Apareceu na limpeza do teste do Claude real depois do pouso, que fecha o voo. Agora devolve erro.
+- **Testado aqui:**
+  - **`internal/floors`:**
+    - a cópia na criação;
+    - a soma ao decolar;
+    - as regras novas;
+    - não ser alteração;
+    - levar e não levar;
+    - o branch que commita o arquivo;
+    - um arquivo que não é JSON;
+    - a sessão em cópia.
+  - **`internal/attention`:** a pergunta do Claude com "don’t".
+  - **`internal/terminal`:** `Raw` depois de fechar. Falhava sem a correção.
+  - **Claude real** (`TestRealClaudeFloorPermissions`, novo): um nível com o arquivo da pista, uma regra nova na pista antes de o Claude decolar, o SEMPRE pela Torre num `git tag`, a regra no arquivo da pista, nada a levar e o pouso. `TestRealClaudePermission` também passa.
+  - **Na tela:** um nível com três regras novas do Devin, o diálogo com a caixa desmarcada, marcar, pousar, o aviso "· 3 permissões levadas" e as regras no arquivo da pista.
+  - **Validação:** `make check` com o navegador, `tsc` e o build. Uma rodada do `go test ./...` falhou uma vez em `TestFramesHaveViewportSize` (portal, depende de tempo); a seguinte passou.
+- **Correção de passagem, teste do Devin:**
+  - **Sintoma:** `TestDevinAskAndRespond` (de `feat/devin-prioridade`) falhava no `make check`, mas não rodando sozinho.
+  - **Causa:** o teste mandava a segunda pergunta sem esperar o fim do turno da primeira, e a segunda ficava com o fim desse turno.
+  - **Correção:** agora o teste espera a primeira resposta.
+  - **O comportamento do barramento é antigo:** uma pergunta entregue a um voo que ainda está no turno fica com o fim desse turno. Ficou como sugestão à parte.
+- **Não testado:**
+  - **Devin real:** sem login, não conferi onde o Devin grava o SEMPRE num worktree nem se ele lê o arquivo copiado. O formato do arquivo é o que vimos no Devin real em `feat/devin-prioridade`. Se ele gravar na pasta principal, como o Claude, a regra já vale na pista; se gravar no worktree, o pouso oferece levá-la.
+  - **O diálogo da sessão em cópia:** só o do nível foi visto na tela. O caminho do servidor tem teste, e o componente é o mesmo.
+  - **Windows.**
+  - **Codex e Gemini:** ficaram de fora, como combinado.
+
 ## 2026-10-18, Histórico do Rádio
 
 - **Pedido:** o item 12 do handoff ("Histórico do Rádio guardado"), que estava em "Para depois". Os quatro padrões propostos foram aceitos:
