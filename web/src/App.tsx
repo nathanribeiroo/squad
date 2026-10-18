@@ -25,7 +25,7 @@ import { SummaryDialogs } from './components/SummaryDialogs';
 import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
 import { goToNextAsk, respond } from './lib/attention';
-import { noticePrefs } from './lib/notify';
+import { noticePrefs, remindAsks, unlockAudio } from './lib/notify';
 import { dockAt, nextNode, toggleFocus } from './lib/screens';
 import { termSession } from './term/session';
 import { Toast, toast } from './lib/toast';
@@ -50,6 +50,18 @@ export function App() {
     const name = wsName ? `${wsName} · Torre` : 'Torre';
     document.title = asks > 0 && noticePrefs().title ? `(${asks}) ${name}` : name;
   }, [wsName, asks, settingsOpen]);
+  // The sound, prepared at the first click; again while asks wait (Avisos).
+  useEffect(() => {
+    unlockAudio();
+    const t = setInterval(() => {
+      const s = useSquad.getState();
+      remindAsks([
+        ...s.askingIds.map((id) => `${id}@${s.runtime[id]?.attention?.since ?? ''}`),
+        ...s.workspaces.filter((w) => w.id !== s.activeWs && (w.attention ?? 0) > 0).map((w) => `ws:${w.id}`),
+      ]);
+    }, 10_000);
+    return () => clearInterval(t);
+  }, []);
   // "Sistema" follows the system's theme as it changes.
   const themePref = useSquad((s) => s.themePref);
   useEffect(() => {

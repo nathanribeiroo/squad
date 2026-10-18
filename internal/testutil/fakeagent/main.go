@@ -10,7 +10,13 @@
 //	ASKPERM:<command>     asks permission to run the command like Claude Code
 //	                      2.1.302 (the permission hook, then the numbered
 //	                      prompt) and reads one key: 1, 2 or 3 go on, 4 or Esc
-//	                      interrupt the turn without its end hook
+//	                      interrupt the turn without its end hook. With
+//	                      $FAKEAGENT_HOOK=devin, like Devin CLI 3000.11.92:
+//	                      its "exec" hook and prompt (1–7 go on, 8 or Esc
+//	                      deny), or its MCP prompt for a command that is a
+//	                      tool name (mcp__torre__keys: 1–6 go on, 7 denies)
+//	ASKQ:<question>       asks a question with two options like Devin's
+//	                      question tool (no hook) and reads one key
 //
 // $FAKEAGENT_WIDTH sets the width of progress lines (default 60).
 // $FAKEAGENT_HOOK=claude makes it behave like Claude Code with Torre's hooks:
@@ -175,6 +181,11 @@ func turn(msg string, work float64) {
 	if cmdline, ok := strings.CutPrefix(lastLine(msg), "ASKPERM:"); ok && !askPermission(cmdline) {
 		return
 	}
+	if q, ok := strings.CutPrefix(lastLine(msg), "ASKQ:"); ok {
+		out("── Pergunta ──────────────────────────────\n  " + q + "\n  ❭ 1 Azul\n      Blue color\n    2 Verde\n      Green color\n" +
+			"──────────────────────────────────────────\n↑↓ navigate · ↵ select · ? help me out · esc cancel\n? Not ready to answer, help me out!\n")
+		readChoice(0x1b, '2') // 1 or 2 answers, Esc cancels
+	}
 	if rest, ok := strings.CutPrefix(lastLine(msg), "SLEEP:"); ok {
 		if s, err := strconv.ParseFloat(rest, 64); err == nil {
 			time.Sleep(time.Duration(s * float64(time.Second)))
@@ -218,14 +229,46 @@ func lastLine(msg string) string {
 	return msg
 }
 
-// askPermission shows Claude Code's permission prompt for a Bash command and
-// reads the answer; false when it was denied (the turn is interrupted).
+// askPermission shows Claude Code's permission prompt for a Bash command (or
+// Devin's, as Devin) and reads the answer; false when it was denied (the
+// turn is interrupted).
 func askPermission(cmdline string) bool {
+	if os.Getenv("FAKEAGENT_HOOK") == "devin" {
+		return askDevin(cmdline)
+	}
 	payload, _ := json.Marshal(map[string]any{"hook_event_name": "PermissionRequest", "session_id": sessionID,
 		"tool_name": "Bash", "tool_input": map[string]any{"command": cmdline, "description": "Run it"}})
 	hook("permission", string(payload))
 	out(" Bash command\n │ " + cmdline + "\n Do you want to proceed?\n ❯ 1. Yes\n   2. Yes, and always allow access to\n      /tmp from this project\n" +
 		"   3. Yes, and switch to auto mode\n   4. No\n\n Esc to cancel · Tab to amend\n")
+	return readChoice('4', '3')
+}
+
+// askDevin is Devin CLI's permission prompt: for a command, or for an MCP
+// tool when cmdline is a tool name.
+func askDevin(cmdline string) bool {
+	tool, input := "exec", map[string]any{"command": cmdline}
+	if strings.HasPrefix(cmdline, "mcp__") {
+		tool, input = cmdline, map[string]any{"name": "Sh", "keys": "x"}
+	}
+	payload, _ := json.Marshal(map[string]any{"hook_event_name": "PermissionRequest", "session_id": sessionID, "tool_name": tool, "tool_input": input})
+	hook("permission", string(payload))
+	if tool != "exec" {
+		out(" ⏺ " + tool + "(name=\"Sh\", keys=\"x\")\n\n❭ 1 Yes  (Approve once)\n  2 Yes, allow calling keys on the torre MCP server\n" +
+			"  3 Yes, always allow calling keys on the torre MCP server\n  4 Yes, allow calling all tools on the torre MCP server\n" +
+			"  5 Yes, always allow calling tools on the torre MCP server\n  6 Yes, switch to bypass mode\n  7 No\n↑↓ select · ↵ confirm · esc cancel\n")
+		return readChoice('7', '6')
+	}
+	word, _, _ := strings.Cut(cmdline, " ")
+	out(" ⏺ Running command\n └ $ " + cmdline + "\n\n❭ 1 Yes  (Approve once)\n  2 Yes, allow `" + word + "` commands\n" +
+		"  3 Yes, always allow `" + word + "` commands in `proj`\n  4 Yes, always allow `" + word + "` commands in all projects\n" +
+		"  5 Yes, switch to bypass mode\n  6 Edit command\n  7 Describe change to command\n  8 No\n↑↓ select · ↵ confirm · esc cancel\n")
+	return readChoice('8', '7')
+}
+
+// readChoice reads the key that answers a prompt: deny or Esc deny (false),
+// 1 up to last go on; Ctrl-C exits.
+func readChoice(deny, last byte) bool {
 	key := make([]byte, 16)
 	for {
 		n, err := os.Stdin.Read(key)
@@ -238,9 +281,9 @@ func askPermission(cmdline string) bool {
 			logf("CTRL-C")
 			os.Exit(130)
 		}
-		if c >= '1' && c <= '4' || c == 0x1b {
+		if c >= '1' && c <= last || c == deny || c == 0x1b {
 			out("\x1b[2J\x1b[H")
-			if c == '4' || c == 0x1b {
+			if c == deny || c == 0x1b {
 				out("Interrupted · What should Claude do instead?\n> ")
 				logf("ASK-DENIED")
 				return false

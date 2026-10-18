@@ -57,9 +57,12 @@ func openUI(mode, url, home string) string {
 }
 
 // appWindow opens url as an app: no tabs or address bar, and a profile apart
-// from the user's own browser (no extensions; it remembers the window).
+// from the user's own browser (no extensions; it remembers the window). Its
+// sound plays before the first click, so a flight asking the user right
+// after the window opens is heard (Avisos).
 func appWindow(exe, url, profile string) *exec.Cmd {
-	args := []string{"--app=" + url, "--user-data-dir=" + profile, "--no-first-run", "--no-default-browser-check"}
+	args := []string{"--app=" + url, "--user-data-dir=" + profile, "--no-first-run", "--no-default-browser-check",
+		"--autoplay-policy=no-user-gesture-required"}
 	if _, err := os.Stat(profile); errors.Is(err, os.ErrNotExist) {
 		args = append(args, "--window-size=1440,900") // first time; then it remembers
 	}

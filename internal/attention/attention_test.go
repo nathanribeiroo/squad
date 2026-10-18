@@ -2,6 +2,7 @@ package attention
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -114,7 +115,7 @@ func TestParseNotAPrompt(t *testing.T) {
 
 func TestKeysOnlyForVerifiedAgents(t *testing.T) {
 	p, _ := Parse(claudeBash)
-	for _, agent := range []string{"devin", "codex", "gemini", "shell", "custom"} {
+	for _, agent := range []string{"codex", "gemini", "shell", "custom"} {
 		if _, ok := Keys(agent, p, Allow); ok {
 			t.Fatalf("%s got keys", agent)
 		}
@@ -139,24 +140,163 @@ func TestSame(t *testing.T) {
 	}
 }
 
-// Devin CLI's labels (3000.11.92), read from its binary: classified, but
-// never answered from the interface until its keys are checked.
-func TestClassifyDevinLabels(t *testing.T) {
-	for label, want := range map[string]Choice{
-		"Yes, allow `npm test`":                      Allow,
-		"Yes, always allow `npm test`":               Always,
-		"Yes, always allow all web fetches":          Always,
-		"Yes, allow calling all tools on the torre":  "",
-		"Yes, switch to bypass mode":                 "",
-		"Yes, implement plan and bypass permissions": "",
-		"No, deny": Deny,
-		"Reject":   Deny,
-		"Allow":    Allow,
-		"Yes, and switch to auto mode · auto mode …": "",
+// Devin CLI 3000.11.92, from a real session: a command, an edit, a web
+// fetch and a torre MCP tool, each with Devin's tool header for a question.
+const devinExec = `
+❭ Run exactly this shell command and nothing else, then stop: touch criado.txt
+
+ ⏺ Running command
+ └ $ touch criado.txt
+
+❭ 1 Yes  (Approve once)
+  2 Yes, allow ` + "`touch`" + ` commands
+  3 Yes, always allow ` + "`touch`" + ` commands in ` + "`proj`" + `
+  4 Yes, always allow ` + "`touch`" + ` commands in all projects
+  5 Yes, switch to bypass mode
+  6 Edit command
+  7 Describe change to command
+  8 No
+↑↓ select · ↵ confirm · esc cancel
+`
+
+const devinEdit = `
+ ⏺ Read ./README.md
+ └ 1 lines
+
+ ⏺ Editing ./README.md
+ │ 1 -  # proj
+ └ 1 +  # projeto
+
+❭ 1 Yes  (Approve once)
+  2 Yes, switch to accept edits mode
+  3 Yes, switch to bypass mode
+  4 No
+↑↓ select · ↵ confirm · esc cancel
+`
+
+const devinFetch = `
+ ⏺ Fetching https://example.com
+
+❭ 1 Yes  (Approve once)
+  2 Yes, allow fetches to example.com/*
+  3 Yes, always allow fetches to example.com/*
+  4 Yes, always allow all web fetches
+  5 Yes, switch to bypass mode
+  6 No
+↑↓ select · ↵ confirm · esc cancel
+`
+
+const devinMCP = `
+ ⏺ mcp__torre__keys(name="Sh", keys="x")
+
+❭ 1 Yes  (Approve once)
+  2 Yes, allow calling keys on the torre MCP server
+  3 Yes, always allow calling keys on the torre MCP server
+  4 Yes, allow calling all tools on the torre MCP server
+  5 Yes, always allow calling tools on the torre MCP server
+  6 Yes, switch to bypass mode
+  7 No
+↑↓ select · ↵ confirm · esc cancel
+`
+
+// Its question tool (no permission hook for it) and the folder trust.
+const devinQuestion = `
+── Cor ─────────────────────────────────────────────────────────────────────
+  Qual cor?
+  ❭ 1 Azul
+      Blue color
+    2 Verde
+      Green color
+      Other (type your own)
+────────────────────────────────────────────────────────────────────────────
+↑↓ navigate · ↵ select · ? help me out · esc cancel
+? Not ready to answer, help me out!
+`
+
+const devinTrust = `
+ ✱ Do you trust the authors of this directory?
+   For security, devin should not be run in directories with untrusted content.
+
+ /tmp/x/proj
+
+ ❭ 1 Yes, trust
+   2 No, exit
+
+ ↓↑ to select · ↵ to choose · esc to quit
+`
+
+func TestParseDevin(t *testing.T) {
+	for _, c := range []struct {
+		name, screen, question string
+		choices                []Choice
+		keys                   string // allow, always, deny
+	}{
+		// "Always" is this command in this project, never every project
+		// nor this session only.
+		{"exec", devinExec, "Running command", []Choice{Allow, Always, Deny}, "138"},
+		{"edit", devinEdit, "Editing ./README.md", []Choice{Allow, Deny}, "1-4"},
+		// This address, never every fetch; this tool, never all of them.
+		{"fetch", devinFetch, "Fetching https://example.com", []Choice{Allow, Always, Deny}, "136"},
+		{"mcp", devinMCP, `mcp__torre__keys(name="Sh", keys="x")`, []Choice{Allow, Always, Deny}, "137"},
 	} {
-		if got := classify(label); got != want {
-			t.Errorf("%q: %q, want %q", label, got, want)
+		p, ok := Parse(c.screen)
+		if !ok || p.Question != c.question {
+			t.Fatalf("%s: %+v %v", c.name, p, ok)
 		}
+		if got := Answerable("devin", &p); !reflect.DeepEqual(got, c.choices) {
+			t.Fatalf("%s choices: %v (%+v)", c.name, got, p.Options)
+		}
+		for i, ch := range []Choice{Allow, Always, Deny} {
+			k, ok := Keys("devin", p, ch)
+			if want := c.keys[i : i+1]; (want == "-") == ok || (ok && k != want) {
+				t.Fatalf("%s %s: %q %v, want %q", c.name, ch, k, ok, want)
+			}
+		}
+	}
+
+	// The prompt the user typed may end in "?": the tool's header, closer
+	// to the options, is the question.
+	asked := strings.Replace(devinExec, "then stop: touch criado.txt", "can you touch criado.txt?", 1)
+	if p, ok := Parse(asked); !ok || p.Question != "Running command" {
+		t.Fatalf("header: %+v %v", p, ok)
+	}
+
+	// A question: read (the flight asks you), nothing to answer from here.
+	q, ok := Parse(devinQuestion)
+	if !ok || q.Question != "Qual cor?" || len(q.Options) != 2 || Answerable("devin", &q) != nil {
+		t.Fatalf("question: %+v %v", q, ok)
+	}
+	// Trusting the folder: "No, exit" alone is no permission to deny.
+	tr, ok := Parse(devinTrust)
+	if !ok || tr.Options[1].Choice != Deny || Answerable("devin", &tr) != nil {
+		t.Fatalf("trust: %+v %v", tr, ok)
+	}
+
+	// Devin's prompt line with something typed in it is no prompt.
+	typed := "──────────\n❭ 2 bugs to fix in the parser?\n──────────\nSWE-1.6 Slow           Context: 13k / 200k tokens (6%)\n"
+	if p, ok := Parse(typed); ok {
+		t.Fatalf("typed prompt read: %+v", p)
+	}
+}
+
+// The choices sent to the interface carry the agent's words, and a tool
+// that asks at every use (keys, new_shell…) is never answered "always".
+func TestSetPrompt(t *testing.T) {
+	p, _ := Parse(devinExec)
+	a := &Attention{Kind: Permission}
+	a.SetPrompt("devin", &p)
+	if !reflect.DeepEqual(a.Choices, []Choice{Allow, Always, Deny}) || a.Labels[Always] != "Yes, always allow `touch` commands in `proj`" || a.Labels[Allow] != "Yes  (Approve once)" {
+		t.Fatalf("%v %v", a.Choices, a.Labels)
+	}
+	m, _ := Parse(devinMCP)
+	a = &Attention{Kind: Permission, Tool: "mcp__torre__keys", AskEveryUse: true}
+	a.SetPrompt("devin", &m)
+	if !reflect.DeepEqual(a.Choices, []Choice{Allow, Deny}) || a.Labels[Always] != "" {
+		t.Fatalf("every use: %v %v", a.Choices, a.Labels)
+	}
+	a.SetPrompt("gemini", &m)
+	if a.Choices != nil || a.Labels != nil {
+		t.Fatalf("unverified: %v %v", a.Choices, a.Labels)
 	}
 }
 

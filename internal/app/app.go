@@ -13,6 +13,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/activity"
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 	"github.com/nathanribeiroo/squad/internal/agents"
+	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/browser"
 	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/notes"
@@ -78,6 +79,11 @@ func New(o Options) (*App, error) {
 		return n.Terminal.Agent, true
 	})
 	srv.SetAttention(mon.Attention)
+	srv.SetOnAnswer(func(id string, c attention.Choice) {
+		if c == attention.Deny {
+			mon.Denied(id)
+		}
+	})
 	srv.SetStateExtra(bus.StateExtra)
 	srv.OnEdgeRemoved(bus.EdgeRemoved)
 	var launcher *agents.Launcher

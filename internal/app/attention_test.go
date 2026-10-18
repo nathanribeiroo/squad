@@ -108,6 +108,78 @@ func TestPermissionAskAndRespond(t *testing.T) {
 	}
 }
 
+// A Devin at a permission prompt: its hook and its own prompt (no dot after
+// the numbers, the tool's header for a question), answered with its keys.
+// "Always" is this command in this project, in Devin's words; a torre tool
+// that asks at every use is never answered "always". Its question tool has
+// no hook: the screen raises it, with nothing to answer from here.
+func TestDevinAskAndRespond(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	plan := e.agent("Plano")
+	d := e.agentOfType("Devin", "devin", "FAKEAGENT_HOOK=devin")
+	e.connect(plan, d)
+
+	go e.run(plan, "ask", "Devin", "ASKPERM:make test")
+	a := e.waitAttention(d.ID, func(a *attention.Attention) bool { return a != nil && len(a.Choices) == 3 }, 10*time.Second)
+	if a.Kind != attention.Permission || a.Tool != "exec" || a.Detail != "make test" || a.Text != "Running command" {
+		t.Fatalf("attention: %+v", a)
+	}
+	if a.Labels[attention.Always] != "Yes, always allow `make` commands in `proj`" {
+		t.Fatalf("labels: %v", a.Labels)
+	}
+	if code, body := e.respond(d.ID, "always"); code != 204 {
+		t.Fatalf("respond: %d %s", code, body)
+	}
+	for deadline := time.Now().Add(3 * time.Second); !strings.Contains(e.log("Devin"), "ASK-CHOSE 3"); time.Sleep(50 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("key not typed:\n%s", e.log("Devin"))
+		}
+	}
+	e.waitAttention(d.ID, func(a *attention.Attention) bool { return a == nil }, 5*time.Second)
+
+	denied := make(chan agentbus.Result, 1)
+	go func() { denied <- e.run(plan, "ask", "Devin", "ASKPERM:mcp__torre__keys") }()
+	a = e.waitAttention(d.ID, func(a *attention.Attention) bool { return a != nil && a.Prompt != nil }, 10*time.Second)
+	if !a.AskEveryUse || !reflect.DeepEqual(a.Choices, []attention.Choice{attention.Allow, attention.Deny}) {
+		t.Fatalf("every use: %+v", a)
+	}
+	if code, body := e.respond(d.ID, "always"); code != 400 || !strings.Contains(body, "attention.no_keys") {
+		t.Fatalf("always for keys: %d %s", code, body)
+	}
+	if code, body := e.respond(d.ID, "deny"); code != 204 {
+		t.Fatalf("deny: %d %s", code, body)
+	}
+	for deadline := time.Now().Add(3 * time.Second); !strings.Contains(e.log("Devin"), "ASK-KEY 37"); time.Sleep(50 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("deny not typed:\n%s", e.log("Devin"))
+		}
+	}
+	e.waitAttention(d.ID, func(a *attention.Attention) bool { return a == nil }, 5*time.Second)
+	// Denied, the agent stops without the hook that ends a turn: the turn
+	// ends with the quiet, not a minute later.
+	select {
+	case r := <-denied:
+		if r.Code != 200 || r.Source != "denied" {
+			t.Fatalf("denied ask: %+v", r)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the denied turn didn't end")
+	}
+
+	go e.run(plan, "ask", "Devin", "ASKQ:Qual cor?")
+	a = e.waitAttention(d.ID, func(a *attention.Attention) bool { return a != nil }, 10*time.Second)
+	if a.Kind != attention.Question || a.Source != "screen" || a.Text != "Qual cor?" || len(a.Choices) != 0 {
+		t.Fatalf("question: %+v", a)
+	}
+	if st, _ := e.app.Monitor.State(d.ID); st != activity.Ask {
+		t.Fatalf("state: %s", st)
+	}
+	if err := e.app.Server.Terminals().Get(d.ID).Input([]byte("1")); err != nil {
+		t.Fatal(err)
+	}
+	e.waitAttention(d.ID, func(a *attention.Attention) bool { return a == nil }, 5*time.Second)
+}
+
 // Agents whose keys aren't verified get the state from their screen, and
 // only "open the terminal"; answering in the terminal clears it. Shells and
 // own commands are never read.

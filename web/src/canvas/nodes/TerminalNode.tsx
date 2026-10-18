@@ -4,7 +4,7 @@ import { api } from '../../api/client';
 import type { TerminalData, TerminalRuntime, UIState, WNode } from '../../api/types';
 import { confirmDialog } from '../../components/ConfirmDialog';
 import { HiddenScreen } from '../../components/HiddenScreen';
-import { CHOICES, askPhrase, respond } from '../../lib/attention';
+import { CHOICES, askPhrase, choiceTitle, respond } from '../../lib/attention';
 import { Icon } from '../../components/Icon';
 import { STATE_META, callsign, elapsed, stateLabel } from '../../lib/model';
 import { ROLE_AGENTS, changeRole, isManager, roleColor, roleIcon, useCreator, useRole, useRoleLookup } from '../../lib/roles';
@@ -177,7 +177,7 @@ export function RespondBar({ id, rt, focused }: { id: string; rt?: TerminalRunti
     <div className="tn-respond nodrag nopan" onPointerDown={(e) => e.stopPropagation()}>
       <span className="tn-respond-label">Responder</span>
       {choices.map((c) => (
-        <button key={c.choice} className={`tn-respond-btn ${c.choice}`} onClick={() => respond(id, c.choice)}>
+        <button key={c.choice} className={`tn-respond-btn ${c.choice}`} title={choiceTitle(rt?.attention, c)} onClick={() => respond(id, c.choice)}>
           {c.label}
           <span className="kbd">{c.key}</span>
         </button>

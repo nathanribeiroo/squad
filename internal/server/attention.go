@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 
 	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/attention"
@@ -14,7 +15,8 @@ import (
 // choice (the RESPONDER bar). It is an interface route: agents reach /cli
 // and MCP, never this. It types only into agents (never a shell or an own
 // command), only while the prompt the interface showed is still on the
-// screen, and only the keys verified for that agent.
+// screen, only the keys verified for that agent, and only an answer the
+// interface offered.
 func (s *Server) handleRespond(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req struct {
@@ -55,14 +57,19 @@ func (s *Server) handleRespond(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusConflict, apierr.With(errors.New("the prompt on screen changed: open the terminal"), "attention.changed"))
 		return
 	}
+	// Only what the interface offered: never "always" for a tool that asks
+	// at every use.
 	keys, ok := attention.Keys(n.Terminal.Agent, now, req.Choice)
-	if !ok {
+	if !ok || !slices.Contains(a.Choices, req.Choice) {
 		writeErr(w, http.StatusBadRequest, apierr.With(errors.New("this answer can't be sent to this agent: open the terminal"), "attention.no_keys"))
 		return
 	}
 	if err := t.Input([]byte(keys)); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if s.onAnswer != nil {
+		s.onAnswer(id, req.Choice)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

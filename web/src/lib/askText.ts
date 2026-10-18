@@ -6,11 +6,12 @@ export function askPhrase(a?: Attention): string {
   if (!a) return 'Pede você';
   if (a.kind === 'question') return 'Fez uma pergunta';
   const tool = a.tool ?? '';
-  if (tool === 'Bash' || tool === 'BashOutput') return 'Quer executar um comando';
-  if (['Edit', 'MultiEdit', 'Write', 'NotebookEdit'].includes(tool)) return 'Quer editar um arquivo';
-  if (tool === 'Read') return 'Quer ler um arquivo';
-  if (tool === 'WebFetch') return 'Quer abrir uma página';
-  if (tool === 'WebSearch') return 'Quer pesquisar na web';
+  // Claude Code's names, then Devin's.
+  if (['Bash', 'BashOutput', 'exec'].includes(tool)) return 'Quer executar um comando';
+  if (['Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'edit', 'write'].includes(tool)) return 'Quer editar um arquivo';
+  if (tool === 'Read' || tool === 'read') return 'Quer ler um arquivo';
+  if (tool === 'WebFetch' || tool === 'webfetch') return 'Quer abrir uma página';
+  if (tool === 'WebSearch' || tool === 'websearch') return 'Quer pesquisar na web';
   if (tool === 'ExitPlanMode') return 'Quer seguir o plano';
   const mcp = /^mcp__(.+?)__(.+)$/.exec(tool);
   if (mcp) return `Quer usar ${mcp[2]} (${mcp[1]})`;

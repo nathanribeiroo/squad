@@ -37,8 +37,32 @@ type Attention struct {
 	// Choices are the answers the interface can send (empty: only opening
 	// the terminal helps, for agents whose keys aren't verified).
 	Choices []Choice `json:"choices,omitempty"`
+	// Labels are the agent's own words for each choice ("Yes, always allow
+	// `npm test` commands in `app`"): what "always" saves, and where.
+	Labels map[Choice]string `json:"labels,omitempty"`
+	// AskEveryUse marks a tool Torre has the user approve at every use
+	// (its torre MCP tools outside the safe ones): never answered "always".
+	AskEveryUse bool `json:"-"`
 	// Prompt is the prompt last read on screen (nil until it shows).
 	Prompt *Prompt `json:"-"`
+}
+
+// SetPrompt records the prompt read on agent's screen and what the
+// interface may answer it with: the choices (none for agents whose keys
+// aren't verified, no "always" for a tool that asks at every use) and the
+// agent's words for each.
+func (a *Attention) SetPrompt(agent string, p *Prompt) {
+	a.Prompt, a.Choices, a.Labels = p, nil, nil
+	for _, c := range Answerable(agent, p) {
+		if c == Always && a.AskEveryUse {
+			continue
+		}
+		o, _ := p.Option(c)
+		if a.Labels == nil {
+			a.Labels = map[Choice]string{}
+		}
+		a.Choices, a.Labels[c] = append(a.Choices, c), o.Label
+	}
 }
 
 // Option is one numbered choice of a prompt.
@@ -78,8 +102,13 @@ func (p Prompt) Option(c Choice) (Option, bool) {
 	return Option{}, false
 }
 
-// Choices are the answers p offers, in the order allow, always, deny.
+// Choices are the answers p offers, in the order allow, always, deny. A
+// prompt with no way to allow isn't a permission ("No, exit" alone, on a
+// question about trusting a folder): it offers none.
 func (p Prompt) Choices() []Choice {
+	if _, ok := p.Option(Allow); !ok {
+		return nil
+	}
 	var out []Choice
 	for _, c := range []Choice{Allow, Always, Deny} {
 		if _, ok := p.Option(c); ok {
@@ -90,9 +119,10 @@ func (p Prompt) Choices() []Choice {
 }
 
 var (
-	// "❯ 1. Yes", "  2. No" (the cursor marks one of them).
-	optionLine = regexp.MustCompile(`^\s*([❯›▶●>]\s*)?(\d)[.)]\s+(\S.*)$`)
-	cursorLine = regexp.MustCompile(`^\s*[❯›▶●>]\s*\d[.)]\s`)
+	// "❯ 1. Yes", "  2. No" (the cursor marks one of them); Devin's have no
+	// dot: "❭ 1 Yes  (Approve once)".
+	optionLine = regexp.MustCompile(`^\s*([❯›▶●>❭]\s*)?(\d)(?:[.)]\s+|\s+)(\S.*)$`)
+	cursorLine = regexp.MustCompile(`^\s*[❯›▶●>❭]\s*\d(?:[.)]\s|\s)`)
 )
 
 // window is how many lines at the bottom of the screen a prompt may use.
@@ -123,10 +153,17 @@ func Parse(screen string) (Prompt, bool) {
 		}
 		q := ""
 		// The question, above the options (and above what is at stake, a
-		// command or a diff, in some CLIs).
-		for j := start - 1; j >= 0 && j >= start-10; j-- {
-			if t := strings.TrimSpace(lines[j]); strings.HasSuffix(t, "?") {
+		// command or a diff, in some CLIs). Devin asks no question: the
+		// tool's header stands for it ("⏺ Running command"), above the
+		// command or the diff.
+		for j := start - 1; j >= 0; j-- {
+			t := strings.TrimSpace(lines[j])
+			if strings.HasSuffix(t, "?") && j >= start-10 {
 				q = t
+				break
+			}
+			if h, ok := strings.CutPrefix(t, "⏺ "); ok {
+				q = strings.TrimSpace(h)
 				break
 			}
 		}
@@ -177,7 +214,8 @@ func unbox(l string) string {
 }
 
 // onlyFooter reports whether the lines below a prompt are blank or the
-// keys it takes ("Esc to cancel · Tab to amend").
+// keys it takes ("Esc to cancel · Tab to amend"; Devin's questions add "?
+// Not ready to answer, help me out!").
 func onlyFooter(lines []string) bool {
 	n := 0
 	for _, l := range lines {
@@ -185,7 +223,7 @@ func onlyFooter(lines []string) bool {
 		if t == "" {
 			continue
 		}
-		if n++; n > 2 || !(strings.Contains(t, "esc") || strings.Contains(t, "enter") || strings.Contains(t, "cancel") || strings.Contains(t, "↑")) {
+		if n++; n > 2 || !(strings.Contains(t, "esc") || strings.Contains(t, "enter") || strings.Contains(t, "cancel") || strings.Contains(t, "↑") || strings.Contains(t, "help me out")) {
 			return false
 		}
 	}
@@ -200,7 +238,10 @@ func continuation(l string) bool {
 
 // classify tells which answer an option's label is. Options that switch the
 // agent's mode ("switch to auto mode", "allow all edits during this
-// session") are none: the interface never sends those.
+// session"), that reach past what was asked ("in all projects", "all web
+// fetches", every tool of an MCP server) or that last only this session
+// (Devin's "Yes, allow `touch` commands") are none: the interface never
+// sends those.
 func classify(label string) Choice {
 	l := strings.ToLower(label)
 	switch {
@@ -212,24 +253,25 @@ func classify(label string) Choice {
 		return ""
 	case strings.Contains(l, "mode") || strings.Contains(l, "all edits") || strings.Contains(l, "shift+tab"):
 		return ""
+	case strings.Contains(l, " all ") || strings.Contains(l, "calling tools on"):
+		return ""
 	case strings.Contains(l, "always allow") || strings.Contains(l, "don't ask again") || strings.Contains(l, "do not ask again"):
 		return Always
 	}
 	rest := strings.TrimSpace(strings.TrimPrefix(l, "yes"))
 	rest = strings.TrimSpace(strings.TrimPrefix(rest, ","))
 	switch {
-	case rest == "", strings.HasPrefix(rest, "proceed"), strings.HasPrefix(rest, "(y)"), strings.HasPrefix(rest, "allow once"):
+	case rest == "", strings.HasPrefix(rest, "proceed"), strings.HasPrefix(rest, "(y)"), strings.HasPrefix(rest, "allow once"),
+		strings.HasPrefix(rest, "(approve once)"): // Devin: "Yes  (Approve once)"
 		return Allow
-	case strings.HasPrefix(rest, "allow ") && !strings.Contains(rest, " all "):
-		return Allow // Devin: "Yes, allow `npm test`"
 	}
 	return ""
 }
 
-// verified are the agents whose prompts were checked against the real CLI:
-// a digit picks the option and confirms it. Others get the state and
-// "open the terminal", never keys.
-var verified = map[string]bool{"claude": true}
+// verified are the agents whose prompts were checked against the real CLI
+// (Claude Code 2.1.302, Devin 3000.11.92): a digit picks the option and
+// confirms it. Others get the state and "open the terminal", never keys.
+var verified = map[string]bool{"claude": true, "devin": true}
 
 // Keys returns what to type to answer c on agent's prompt p, false when the
 // agent's keys aren't verified or p has no option for c.

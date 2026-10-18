@@ -11,7 +11,7 @@ import (
 func TestAppWindow(t *testing.T) {
 	profile := filepath.Join(t.TempDir(), "window")
 	cmd := appWindow("/opt/chrome", "http://127.0.0.1:7420/?token=t&ws=w", profile)
-	want := []string{"--app=http://127.0.0.1:7420/?token=t&ws=w", "--user-data-dir=" + profile, "--no-first-run", "--window-size=1440,900"}
+	want := []string{"--app=http://127.0.0.1:7420/?token=t&ws=w", "--user-data-dir=" + profile, "--no-first-run", "--window-size=1440,900", "--autoplay-policy=no-user-gesture-required"}
 	for _, w := range want {
 		if !slices.Contains(cmd.Args, w) {
 			t.Fatalf("args %q lack %q", cmd.Args, w)

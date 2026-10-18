@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Floor, TerminalRuntime, UIState, WNode } from '../../api/types';
-import { CHOICES, askPhrase, respond } from '../../lib/attention';
+import { CHOICES, askPhrase, choiceTitle, respond } from '../../lib/attention';
 import { flightLevel, gitSummary } from '../../lib/floors';
 import { STATE_META, callsign, clock, elapsed } from '../../lib/model';
 import { useNodeRoleColor } from '../../lib/roles';
@@ -382,13 +382,14 @@ function PriorityCard({ flights, floors, runtime }: { flights: WNode[]; floors: 
       </div>
       <div className="syn-prio-actions">
         {CHOICES.filter((c) => a?.choices?.includes(c.choice)).map((c) => (
-          <button key={c.choice} className={`tn-respond-btn ${c.choice}`} onClick={() => respond(n.id, c.choice)}>
+          <button key={c.choice} className={`tn-respond-btn ${c.choice}`} title={choiceTitle(a, c)} onClick={() => respond(n.id, c.choice)}>
             {c.label}
             <span className="kbd">{c.key}</span>
           </button>
         ))}
         {!a?.choices?.length && <span className="syn-prio-note">Responda na tela do voo, abaixo.</span>}
       </div>
+      {a?.choices?.includes('always') && a.labels?.always && <div className="syn-prio-text mono">Sempre = {a.labels.always}</div>}
     </div>
   );
 }

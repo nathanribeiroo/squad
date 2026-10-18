@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { api } from '../api/client';
-import { CHOICES, askPhrase, respond } from '../lib/attention';
+import { CHOICES, askPhrase, choiceTitle, respond } from '../lib/attention';
 import type { IconName } from '../lib/icons';
 import { callsign, clock, elapsed } from '../lib/model';
 import { useNodeRoleColor } from '../lib/roles';
@@ -139,7 +139,7 @@ export function ActivityDrawer() {
               </div>
               <div className="ad-actions">
                 {CHOICES.filter((c) => a?.choices?.includes(c.choice)).map((c) => (
-                  <button key={c.choice} className={`btn${c.choice === 'allow' ? ' filled ask' : ''}`} onClick={() => respond(id, c.choice)}>
+                  <button key={c.choice} className={`btn${c.choice === 'allow' ? ' filled ask' : ''}`} title={choiceTitle(a, c)} onClick={() => respond(id, c.choice)}>
                     {c.label}
                   </button>
                 ))}
@@ -147,6 +147,7 @@ export function ActivityDrawer() {
                   Ver no espaço
                 </button>
               </div>
+              {a?.choices?.includes('always') && a.labels?.always && <div className="ad-always mono">Sempre = {a.labels.always}</div>}
             </div>
           );
         })}

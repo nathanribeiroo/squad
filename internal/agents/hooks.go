@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -80,11 +81,15 @@ func ParseHook(name string, body []byte) (HookEvent, bool) {
 			return HookEvent{}, false
 		}
 		kind := attention.Permission
-		if p.ToolName == "AskUserQuestion" {
+		if p.ToolName == "AskUserQuestion" || p.ToolName == "ask_user_question" {
 			kind = attention.Question
 		}
+		// Torre's own tools that need the user's approval (keys, new_shell…)
+		// keep asking: the interface never answers them "always".
+		tool, torre := strings.CutPrefix(p.ToolName, "mcp__torre__")
 		return HookEvent{Conversation: common.SessionID,
-			Attention: &attention.Attention{Kind: kind, Tool: p.ToolName, Detail: toolDetail(p.ToolInput)}}, true
+			Attention: &attention.Attention{Kind: kind, Tool: p.ToolName, Detail: toolDetail(p.ToolInput),
+				AskEveryUse: torre && !slices.Contains(SafeMCPTools, tool)}}, true
 	case "codex-notify":
 		var p struct {
 			Type                 string `json:"type"`

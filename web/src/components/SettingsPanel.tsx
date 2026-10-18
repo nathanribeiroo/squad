@@ -348,9 +348,8 @@ function Notices() {
   const [p, setP] = useState<NoticePrefs>(noticePrefs);
   const [perm, setPerm] = useState(typeof Notification === 'function' ? Notification.permission : 'denied');
   const set = (patch: Partial<NoticePrefs>) => {
-    const next = { ...p, ...patch };
-    setP(next);
-    setNoticePrefs(next);
+    setP({ ...p, ...patch });
+    setNoticePrefs(patch);
   };
   const askSystem = async (on: boolean) => {
     if (on && typeof Notification === 'function' && Notification.permission === 'default') {
@@ -361,7 +360,7 @@ function Notices() {
   return (
     <>
       <h2>Avisos</h2>
-      <p className="st-lead">Quando um voo pede você (PRIORIDADE). Valem neste navegador.</p>
+      <p className="st-lead">Quando um voo pede você (PRIORIDADE), em qualquer workspace. Valem neste navegador.</p>
       <label className="st-check">
         <input type="checkbox" checked={p.title} onChange={(e) => set({ title: e.target.checked })} />
         <span>
@@ -389,6 +388,13 @@ function Notices() {
               Ouvir
             </button>
           </span>
+        </span>
+      </label>
+      <label className="st-check">
+        <input type="checkbox" checked={p.repeat} disabled={!p.sound} onChange={(e) => set({ repeat: e.target.checked })} />
+        <span>
+          <b>Repetir enquanto esperar</b>
+          <span>O som de novo a cada 2 minutos, até 3 vezes, enquanto o voo continuar pedindo você.</span>
         </span>
       </label>
     </>
