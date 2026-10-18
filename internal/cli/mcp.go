@@ -221,7 +221,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 	addTool(s, env, "roles", "The roles agents can have (id, name, whether it's a manager, what it does): Planejador, Arquiteto, Implementador, Revisor, Testador and the user's own. Managers give one to a new terminal with new.",
 		false, func(noInput) ([]string, error) { return []string{"roles"}, nil })
 
-	addTool(s, env, "ask", "Send a message to a connected agent and wait for its reply (its final answer for that turn; it can take minutes). Agents only: for a shell, use keys. If it times out while the agent is still in its turn, don't resend: use wait.",
+	addTool(s, env, "ask", "Send a message to a connected agent and wait for its reply (its final answer for that turn; it can take minutes). An agent in the middle of a turn gets the message when that turn ends. Agents only: for a shell, use keys. If it times out while the agent is still in its turn, don't resend: use wait.",
 		true, func(in askInput) ([]string, error) {
 			n, err := name("name", in.Name)
 			if err != nil {

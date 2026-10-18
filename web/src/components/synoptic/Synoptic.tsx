@@ -202,13 +202,14 @@ function Radar({ flights, floors, runtime, selected }: { flights: WNode[]; floor
 }
 
 /** What a flight is doing, in a few words, for its strip. */
-function doing(n: WNode, rt: TerminalRuntime | undefined, nodes: WNode[], pending: { from: string; to: string }[], card?: { message: string }): string {
+function doing(n: WNode, rt: TerminalRuntime | undefined, nodes: WNode[], pending: { from: string; to: string; queued?: boolean }[], card?: { message: string }): string {
   const st = rt?.activity ?? 'off';
   if (st === 'ask') return askPhrase(rt?.attention);
   if (st === 'wait') {
     const p = pending.find((x) => x.from === n.id);
     const t = p && nodes.find((x) => x.id === p.to)?.terminal;
-    return t ? `Aguarda ${callsign(t)}` : 'Aguarda outro voo';
+    if (!t) return 'Aguarda outro voo';
+    return p.queued ? `Na fila de ${callsign(t)}` : `Aguarda ${callsign(t)}`;
   }
   if (st === 'work') return rt?.title?.replace(/^[⠀-⣿✳◐◓◑◒⏳*·\s]+/, '') || 'No ar';
   if (card?.message) return card.message.split('\n')[0];

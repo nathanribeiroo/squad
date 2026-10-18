@@ -73,6 +73,7 @@
   pointer-events: all;
 }
 .wire-pill.wait { color: var(--stt-wait); cursor: pointer; }
+.wire-pill.queued { border-style: dashed; text-transform: uppercase; letter-spacing: 0.04em; }
 .wire-pill.done { background: var(--pill-done-bg); border-color: var(--st-done); color: var(--stt-done); }
 .wire-pill.err { background: var(--pill-err-bg); border-color: var(--st-err); color: var(--stt-err); }
 .wire-pill.fade { animation: wire-fade 4000ms ease-in forwards; }

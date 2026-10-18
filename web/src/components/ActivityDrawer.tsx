@@ -13,7 +13,11 @@ import './ActivityDrawer.css';
 
 // Outcome pills (docs/torre/TELAS.md, quadro 07): style is the pill's look.
 const OUTCOME: Record<ActivityItem['outcome'], { label: (a: ActivityItem, now: number) => string; icon: IconName; style: string }> = {
-  pending: { label: (a, now) => `Pendente · ${elapsed(a.time, now)}`, icon: 'hourglass_top', style: 'wait dashed' },
+  pending: {
+    label: (a, now) => (a.queued ? `Na fila · ${a.toName || 'o voo'} termina o turno · ${elapsed(a.time, now)}` : `Pendente · ${elapsed(a.time, now)}`),
+    icon: 'hourglass_top',
+    style: 'wait dashed',
+  },
   replied: { label: (a) => `Respondido em ${elapsed(Date.now() - (a.elapsedMs ?? 0), Date.now())}`, icon: 'reply', style: 'done' },
   delivered: { label: () => 'Entregue', icon: 'check', style: 'done' },
   cancelled: { label: () => 'Cancelado', icon: 'block', style: 'err' },

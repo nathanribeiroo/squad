@@ -64,6 +64,8 @@ type Item struct {
 	Choice string `json:"choice,omitempty"`
 	// HasReply tells that the reply's text is kept (Texts).
 	HasReply bool `json:"hasReply,omitempty"`
+	// Queued: a pending request waiting for its target's turn to end.
+	Queued bool `json:"queued,omitempty"`
 }
 
 // record is a line of the file: the item and a request's whole texts.
@@ -178,14 +180,30 @@ func (s *Service) handle(ev events.Event) {
 			return
 		}
 		_, reply := s.o.Texts(d.ID)
-		s.update("req-"+d.ID, func(r *record) {
-			r.Outcome, r.Source, r.ElapsedMs = "replied", d.Source, d.ElapsedMs
+		s.update("req-"+d.ID, func(r *record) bool {
+			r.Outcome, r.Source, r.ElapsedMs, r.Queued = "replied", d.Source, d.ElapsedMs, false
 			if ev.Type == events.RequestCancelled {
 				r.Outcome = "cancelled"
 			}
 			if reply != "" {
 				r.Reply, r.HasReply = clip(TrimReply(reply)), true
 			}
+			return true
+		})
+	case events.RequestQueued, events.RequestDelivered:
+		var d struct {
+			ID string `json:"id"`
+		}
+		if !decode(ev.Data, &d) || d.ID == "" {
+			return
+		}
+		queued := ev.Type == events.RequestQueued
+		s.update("req-"+d.ID, func(r *record) bool {
+			if r.Queued == queued || r.Outcome != "pending" {
+				return false
+			}
+			r.Queued = queued
+			return true
 		})
 	case events.RequestHeld:
 		var d struct {
@@ -305,7 +323,7 @@ func (s *Service) put(r *record) {
 }
 
 // update changes the line with key, when there is one.
-func (s *Service) update(key string, fn func(*record)) {
+func (s *Service) update(key string, fn func(*record) bool) {
 	s.mu.Lock()
 	i := s.indexLocked(key)
 	if i < 0 {
@@ -313,7 +331,10 @@ func (s *Service) update(key string, fn func(*record)) {
 		return
 	}
 	r := *s.items[i]
-	fn(&r)
+	if !fn(&r) { // nothing changed
+		s.mu.Unlock()
+		return
+	}
 	s.items[i] = &r
 	s.mu.Unlock()
 	s.saved(&r)

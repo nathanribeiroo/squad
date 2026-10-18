@@ -178,6 +178,8 @@ export interface RadioItem {
   choice?: AttentionChoice;
   /** The reply's text is kept (GET /api/requests/{id}). */
   hasReply?: boolean;
+  /** A pending request waiting for its target's turn to end. */
+  queued?: boolean;
 }
 
 export interface TurnCard {
@@ -269,6 +271,8 @@ export interface PendingRequest {
   preview: string;
   hop: number;
   sentAt: string;
+  /** It waits in the target's line for the target's turn to end. */
+  queued?: boolean;
 }
 
 export interface StateExtra {

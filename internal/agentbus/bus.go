@@ -30,6 +30,7 @@ type Limits struct {
 	Stable       time.Duration // screen unchanged this long → reply by screen (5 s)
 	ActiveWindow time.Duration // output within this → extend the timeout (10 s)
 	RawDelay     time.Duration // wait before reading the screen after --raw (300 ms)
+	Settle       time.Duration // a flight out of its turn this long takes the next request (1.5 s)
 	MaxTeam      int           // terminals one manager may create (6; torre new)
 }
 
@@ -52,6 +53,7 @@ func (l *Limits) defaults() {
 	set(&l.Stable, 5*time.Second)
 	set(&l.ActiveWindow, 10*time.Second)
 	set(&l.RawDelay, 300*time.Millisecond)
+	set(&l.Settle, 1500*time.Millisecond)
 }
 
 // Result is what a waiting ask receives.
@@ -71,9 +73,12 @@ type Pending struct {
 	Preview  string    `json:"preview"`
 	Hop      int       `json:"hop"`
 	SentAt   time.Time `json:"sentAt"`
+	// Queued: it waits in the target's line for the target's turn to end.
+	Queued bool `json:"queued,omitempty"`
 
-	done     chan Result
-	resolved bool
+	done      chan Result
+	resolved  bool
+	delivered bool // the target has it (pasted, or handed to its wait or ask)
 }
 
 // Bus coordinates requests between terminals.
@@ -354,11 +359,11 @@ func (b *Bus) resolve(p *Pending, r Result) bool {
 }
 
 // incomingHopLocked returns the hop count of the request that caller is
-// currently handling (0 if none).
+// currently handling (0 if none); one still in its line isn't handled yet.
 func (b *Bus) incomingHopLocked(caller string) int {
 	hop := 0
 	for _, p := range b.pending {
-		if p.To == caller && !p.resolved && p.Hop > hop {
+		if p.To == caller && p.delivered && !p.resolved && p.Hop > hop {
 			hop = p.Hop
 		}
 	}

@@ -26,6 +26,7 @@ function rectOf(n: InternalNode): Rect {
 type Visual =
   | { kind: 'out'; f: Flight } // envelope travelling origin → destination
   | { kind: 'pending'; f: Flight }
+  | { kind: 'queued'; f: Flight } // waiting in the destination's line
   | { kind: 'back'; f: Flight } // reply travelling destination → origin
   | { kind: 'done'; f: Flight }
   | { kind: 'cancelled'; f: Flight };
@@ -35,6 +36,8 @@ function visualOf(f: Flight, now: number): Visual | null {
   switch (f.phase) {
     case 'sending':
       return now - f.startedAt < TRAVEL_MS ? { kind: 'out', f } : { kind: 'pending', f };
+    case 'queued':
+      return now - f.startedAt < TRAVEL_MS ? { kind: 'out', f } : { kind: 'queued', f };
     case 'pending':
     case 'replying':
       return { kind: 'pending', f };
@@ -71,7 +74,7 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
   const oriented = (from: string): Wire => (from === source ? w : wire(rb, ra, [...rope].reverse()));
 
   const visuals = flights.map((f) => visualOf(f, now)).filter((v): v is Visual => v !== null);
-  const pending = visuals.find((v) => v.kind === 'pending' || v.kind === 'out');
+  const pending = visuals.find((v) => v.kind === 'pending' || v.kind === 'queued' || v.kind === 'out');
   const originIsSource = pending ? pending.f.from === source : true;
 
   const unlink = () => {
@@ -81,8 +84,9 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
       .catch((e: Error) => toast(e.message, 'err'));
   };
 
-  const wireClass = `wire${selected ? ' selected' : ''}${pending?.kind === 'pending' ? ' pending' : ''}${paused && !pending ? ' held' : ''}`;
-  const endClass = (isOrigin: boolean) => (pending?.kind === 'pending' ? (isOrigin ? ' origin' : ' dest') : '');
+  const waiting = pending?.kind === 'pending' || pending?.kind === 'queued';
+  const wireClass = `wire${selected ? ' selected' : ''}${waiting ? ' pending' : ''}${paused && !pending ? ' held' : ''}`;
+  const endClass = (isOrigin: boolean) => (waiting ? (isOrigin ? ' origin' : ' dest') : '');
 
   return (
     <>
@@ -146,6 +150,21 @@ export function WireEdge({ id, source, target, selected, data }: EdgeProps<WireF
                   onClick={() => useSquad.getState().setDrawer(true)}
                 >
                   <Icon name="hourglass_top" size={14} />
+                  <span className="mono wire-time">{elapsed(v.f.startedAt, now)}</span>
+                  <span className="mono wire-id">{v.f.id}</span>
+                </div>
+              );
+            case 'queued':
+              return (
+                <div
+                  key={`${v.f.id}-pill`}
+                  className="wire-pill wait queued nodrag nopan"
+                  style={at}
+                  title={`Pedido ${v.f.id} na fila: ${v.f.to === source ? aName : bName} recebe quando terminar o turno · clique para ver no Rádio`}
+                  onClick={() => useSquad.getState().setDrawer(true)}
+                >
+                  <Icon name="hourglass_top" size={14} />
+                  na fila
                   <span className="mono wire-time">{elapsed(v.f.startedAt, now)}</span>
                   <span className="mono wire-id">{v.f.id}</span>
                 </div>

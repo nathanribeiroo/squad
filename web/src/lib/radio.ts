@@ -27,6 +27,7 @@ export function toActivity(r: RadioItem): ActivityItem {
     hold: r.hold,
     choice: r.choice,
     hasReply: r.hasReply,
+    queued: r.queued,
   };
   switch (r.outcome) {
     case 'held':

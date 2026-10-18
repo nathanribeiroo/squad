@@ -65,7 +65,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Pilha de NOTAMs | `feat/pilha-notams` | concluído |
 | Responder ao Devin pela Torre, e o som dos avisos | `feat/devin-prioridade` | concluído |
 | Histórico do Rádio | `feat/radio-historico` | concluído |
-| Permissões nos níveis | `feat/permissoes-niveis` | concluído (PR) |
+| Permissões nos níveis | `feat/permissoes-niveis` | concluído |
+| Fila de pedidos por voo | `feat/fila-pedidos` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -305,4 +306,16 @@ Pedido do usuário em 2026-10-18 (item 18 da lista de pendências): o que ele li
 - **Achado no Claude real (2.1.302):** num worktree, ele lê os dois arquivos (o da pasta principal e o do worktree) e grava o SEMPRE no da pasta principal. Então o SEMPRE do Claude num nível já vale na pista na hora, e o pouso não tem o que levar dele. A cópia e a soma ficam para versões que gravem no worktree e para regras escritas à mão.
 - **Fora:** o Codex e o Gemini; levar para os níveis as regras apagadas na pista.
 
-**Status:** pronto no PR `feat/permissoes-niveis` → `main`.
+**Status:** mesclado na `main` pelo PR #30.
+
+## Fila de pedidos por voo
+
+Pedido do usuário em 2026-10-18 (item 19 da lista de pendências, que apareceu nos testes do item 18): uma pergunta entregue a um voo no meio do turno ficava com o fim desse turno, e quem perguntou recebia a resposta de outro pedido. Confirmado com o Claude real. O plano foi aprovado com os padrões propostos: as mensagens do usuário fora da fila, folga de 1,5 s e nenhuma nota na resposta.
+
+- **A fila:** um pedido para um agente só entra quando o voo está livre: sem trabalhar, sem pedir o usuário, parado há 1,5 s e sem outro pedido entregue e sem resposta. Senão, espera na fila do voo, por ordem de chegada. A espera conta para o limite de 30 min.
+- **Fora da fila:** shells e comandos próprios, a pergunta de volta, a mensagem para quem está em `torre wait` esperando quem mandou e as mensagens do usuário.
+- **Laços:** um voo ocupado que pergunta (ou espera) e tem na fila um pedido da mesma cadeia recebe esse pedido na hora, como resultado do comando. Pedido na fila não conta como pergunta de volta nem para o limite de saltos.
+- **Interface:** o fio mostra "NA FILA"; as faixas dos voos e o Rádio dizem quem espera quem.
+- **Fora:** um botão para furar a fila; mostrar a fila no `torre list`.
+
+**Status:** pronto no PR `feat/fila-pedidos` → `main`.
