@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -93,6 +94,94 @@ func TestRealClaudeStack(t *testing.T) {
 	}
 }
 
+// A Claude on a floor gets the ground floor's permissions (when the floor is
+// made and as it starts), "always" from the interface works there (Claude's
+// "don’t ask again", with its typographic apostrophe) and what it saves is
+// the ground floor's at once; the floor's copy of the file blocks nothing.
+func TestRealClaudeFloorPermissions(t *testing.T) {
+	if _, err := exec.LookPath("claude"); err != nil {
+		t.Skip("claude CLI not installed")
+	}
+	e := newEnv(t, agentbus.Limits{Timeout: 3 * time.Minute})
+	repo := e.gitRepo()
+	const file = ".claude/settings.local.json"
+	write := func(dir, text string) {
+		path := filepath.Join(dir, file)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func(dir string) string {
+		b, _ := os.ReadFile(filepath.Join(dir, file))
+		return string(b)
+	}
+	write(repo, `{"permissions": {"allow": ["Bash(npm test *)"]}}`)
+	code, f := e.api("POST", "/api/floors", `{"name":"Regras"}`)
+	if code != 201 {
+		t.Fatalf("floor: %d %v", code, f)
+	}
+	id, cwd := f["id"].(string), f["cwd"].(string)
+	write(repo, `{"permissions": {"allow": ["Bash(npm test *)", "Bash(ls *)"]}}`)
+
+	st := e.app.Server.Store()
+	shell, err := st.AddNode(store.Node{Kind: store.KindTerminal, Terminal: &store.TerminalData{Name: "Shell", Agent: "shell", Shell: "/bin/sh"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claude, err := st.AddNode(store.Node{Kind: store.KindTerminal, Floor: id,
+		Terminal: &store.TerminalData{Name: "Claude", Agent: "claude", Command: "claude --permission-mode default", Cols: 120, Rows: 36}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.connect(shell, claude)
+	for _, n := range []store.Node{shell, claude} {
+		if err := e.app.Server.StartTerminal(n.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	waitRealClaude(t, e, claude.ID)
+	if got := read(cwd); !strings.Contains(got, "Bash(npm test *)") || !strings.Contains(got, "Bash(ls *)") {
+		t.Fatalf("the floor's file: %s", got)
+	}
+
+	done := make(chan agentbus.Result, 1)
+	go func() {
+		done <- e.run(shell, "ask", "Claude", "Use the Bash tool to run exactly this command, nothing else: git tag teste-torre")
+	}()
+	a := e.waitAttention(claude.ID, func(a *attention.Attention) bool { return a != nil && slices.Contains(a.Choices, attention.Always) }, 2*time.Minute)
+	t.Logf("always: %q", a.Labels[attention.Always])
+	if code, body := e.respond(claude.ID, "always"); code != 204 {
+		t.Fatalf("respond: %d %s", code, body)
+	}
+	screen := e.app.Server.Terminals().Get(claude.ID).Snapshot
+	if r := <-done; r.Code != 200 || r.Source != "claude-stop" {
+		t.Fatalf("reply: %+v\n%s", r, screen())
+	}
+	// Claude Code (2.1.302) saves it in the main repository's file even in a
+	// worktree, and reads both: it is already the ground floor's.
+	got := read(repo)
+	t.Logf("ground floor's file:\n%s", got)
+	if !strings.Contains(got, "Bash(git tag *)") || !strings.Contains(got, "Bash(ls *)") || !strings.Contains(got, "Bash(npm test *)") {
+		t.Fatalf("ground floor's file: %s\nfloor's: %s\n%s", got, read(cwd), screen())
+	}
+
+	// So landing has nothing of Claude's to take, and the floor's copy of
+	// the file doesn't block it.
+	code, ch := e.api("GET", "/api/floors/"+id+"/changes", "")
+	if rules, _ := ch["rules"].([]any); code != 200 || len(ch["files"].([]any)) != 0 || len(rules) != 0 {
+		t.Fatalf("changes: %d %v", code, ch)
+	}
+	if code, res := e.api("POST", "/api/floors/"+id+"/land", `{"permissions":true}`); code != 200 || res["permissions"] != nil {
+		t.Fatalf("land: %d %v", code, res)
+	}
+	if got2 := read(repo); got2 != got {
+		t.Fatalf("ground floor's file changed on landing: %s", got2)
+	}
+}
+
 // askRealClaude starts a Claude Code terminal (with a role, when prompt isn't
 // empty, and extra arguments) and asks it msg from a shell; during, when
 // set, runs while the ask waits.
@@ -153,11 +242,17 @@ func startRealClaude(t *testing.T, rolePrompt string, args ...string) (e *env, s
 			t.Fatal(err)
 		}
 	}
-	term := e.app.Server.Terminals().Get(claude.ID)
-	t.Cleanup(func() { _ = term.Raw([]byte("/exit\r")) }) // before the env closes
+	waitRealClaude(t, e, claude.ID)
+	return e, shell, claude
+}
 
-	// Wait for Claude Code's prompt, past its first-run notes on a new machine
-	// and its question about trusting the folder (the repository itself).
+// waitRealClaude waits for Claude Code's prompt on terminal id, past its
+// first-run notes on a new machine and its question about trusting the
+// folder.
+func waitRealClaude(t *testing.T, e *env, id string) {
+	t.Helper()
+	term := e.app.Server.Terminals().Get(id)
+	t.Cleanup(func() { _ = term.Raw([]byte("/exit\r")) }) // before the env closes
 	deadline := time.Now().Add(60 * time.Second)
 	for screen := term.Snapshot(); !strings.Contains(screen, "❯") || strings.Contains(screen, "Enter to confirm"); screen = term.Snapshot() {
 		if time.Now().After(deadline) {
@@ -176,5 +271,4 @@ func startRealClaude(t *testing.T, rolePrompt string, args ...string) (e *env, s
 		time.Sleep(500 * time.Millisecond)
 	}
 	time.Sleep(2 * time.Second)
-	return e, shell, claude
 }

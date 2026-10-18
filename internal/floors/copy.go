@@ -96,6 +96,8 @@ func NewCopy(ctx context.Context, req CopyRequest) (store.Floor, error) {
 		cwd = path
 	}
 	copied, copyErr := copyUntracked(req.Cwd, cwd, path, req.Config.Copy)
+	perms, permErr := copyUntracked(req.Cwd, cwd, path, agentPermissions)
+	copied, copyErr = append(copied, perms...), errors.Join(copyErr, permErr)
 	f := store.Floor{
 		ID: "copy", Name: branch, Branch: branch, Base: from, BaseCommit: baseCommit,
 		Path: path, Cwd: cwd, NewBranch: true, Copied: copied,
@@ -141,7 +143,7 @@ func Uncommitted(ctx context.Context, f store.Floor) ([]string, error) {
 		return nil, err
 	}
 	var out []string
-	for _, c := range withoutCopied(files, f.Copied) {
+	for _, c := range withoutCopied(files, localFiles(f.Path, f.Cwd, f.Copied)) {
 		out = append(out, c.Path)
 	}
 	return out, nil
@@ -192,7 +194,7 @@ func (s *Service) CopyChanges(ctx context.Context) (Changes, error) {
 	if !ok {
 		return Changes{}, errNoCopy
 	}
-	return changes(ctx, c)
+	return changes(ctx, c, s.o.Canvas.Store().Snapshot().Cwd)
 }
 
 // MergeCopy merges the session's branch into another one (by default the
@@ -227,7 +229,7 @@ func (s *Service) MergeCopy(ctx context.Context, req LandRequest) (LandResult, e
 	if err != nil {
 		return LandResult{}, err
 	}
-	if files = withoutCopied(files, f.Copied); len(files) > 0 {
+	if files = withoutCopied(files, localFiles(f.Path, f.Cwd, f.Copied)); len(files) > 0 {
 		return LandResult{}, dirty("the session's copy", files)
 	}
 	into := strings.TrimSpace(req.Into)
@@ -248,6 +250,14 @@ func (s *Service) MergeCopy(ctx context.Context, req LandRequest) (LandResult, e
 	if err != nil {
 		return LandResult{}, err
 	}
+	res := LandResult{Floor: f.Name, Branch: f.Branch, Merged: !upToDate, UpToDate: upToDate, Into: into, Commit: commit}
+	if req.Permissions {
+		n, err := takeRules(s.o.Canvas.Store().Snapshot().Cwd, f.Cwd)
+		if err != nil {
+			return res, fmt.Errorf("merged, but the permissions didn't go to the workspace folder: %w", err)
+		}
+		res.Permissions = n
+	}
 	s.publish()
-	return LandResult{Floor: f.Name, Branch: f.Branch, Merged: !upToDate, UpToDate: upToDate, Into: into, Commit: commit}, nil
+	return res, nil
 }

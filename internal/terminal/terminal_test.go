@@ -223,6 +223,22 @@ func TestStopRestartAndEvents(t *testing.T) {
 	}
 }
 
+// Writing to a terminal that was removed fails instead of waiting forever.
+func TestRawAfterRemove(t *testing.T) {
+	m, term := newTerm(t, Spec{Name: "sh"})
+	m.Remove(term.ID())
+	done := make(chan error, 1)
+	go func() { done <- term.Raw([]byte("/exit\r")) }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("no error")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Raw hangs")
+	}
+}
+
 func TestBuildEnvStripsMarkersAndSetsTerm(t *testing.T) {
 	env := BuildEnv([]string{"PATH=/usr/bin", "CLAUDECODE=1", "CLAUDE_CODE_SESSION_ID=x", "CLAUDE_CODE_USE_BEDROCK=1", "TERM=dumb"},
 		map[string]string{"SQUAD_TERMINAL_ID": "abc"}, "/opt/torre")

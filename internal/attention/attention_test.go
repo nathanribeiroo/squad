@@ -49,6 +49,20 @@ const claudeMCP = `
    3. No, and tell Claude what to do differently (esc)
 `
 
+// A command that changes something, where "always" is a pattern (Claude
+// Code writes "don’t" with a typographic apostrophe here).
+const claudePattern = `
+ Bash command
+ git tag teste-torre
+ This command requires approval
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and don’t ask again for: git tag *
+   3. Yes, and switch to auto mode · auto mode handles these prompts for you
+   4. No
+ Esc to cancel · Tab to amend
+`
+
 // The agent's answer with a numbered list: no cursor, not a prompt.
 const prose = `
 ● Duas opções:
@@ -92,6 +106,11 @@ func TestParseClaude(t *testing.T) {
 	// Accepting all edits switches the mode: never offered as "always".
 	if !reflect.DeepEqual(e.Choices(), []Choice{Allow, Deny}) {
 		t.Fatalf("edit choices: %+v", e.Options)
+	}
+
+	g, ok := Parse(claudePattern)
+	if !ok || !reflect.DeepEqual(Answerable("claude", &g), []Choice{Allow, Always, Deny}) || g.Options[1].Choice != Always {
+		t.Fatalf("pattern: %+v %v", g, ok)
 	}
 
 	m, ok := Parse(claudeMCP)

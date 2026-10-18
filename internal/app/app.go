@@ -26,6 +26,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/store"
 	"github.com/nathanribeiroo/squad/internal/summary"
 	"github.com/nathanribeiroo/squad/internal/team"
+	"github.com/nathanribeiroo/squad/internal/terminal"
 )
 
 // Options configure the application.
@@ -252,7 +253,14 @@ func New(o Options) (*App, error) {
 		}
 		launcher.Role = roleOf
 		launcher.InCopy = func() bool { _, ok := srv.Store().Copy(); return ok }
-		srv.SetLaunchHook(launcher.Prepare)
+		srv.SetLaunchHook(func(n *store.Node, spec *terminal.Spec) (bool, error) {
+			// What the user allowed "always" on the ground floor reaches the
+			// floor (or the session's copy) the flight works in.
+			if n.Terminal != nil && (n.Terminal.Agent == "claude" || n.Terminal.Agent == "devin") {
+				floorsSvc.SyncRules(n.Floor)
+			}
+			return launcher.Prepare(n, spec)
+		})
 	}
 	srv.SetHookHandler(agents.HookHandler(agents.HookOptions{
 		Monitor:  mon,
