@@ -99,8 +99,10 @@ type Bus struct {
 	resume  chan struct{}
 	sends   []time.Time
 	// texts keeps the full messages of the last requests (the Rádio shows a
-	// preview and asks for the rest); order is oldest first.
+	// preview and asks for the rest), and replies what came back; order is
+	// oldest first.
 	texts     map[string]string
+	replies   map[string]string
 	textOrder []string
 }
 
@@ -116,7 +118,7 @@ func New(st *store.Store, terms *terminal.Manager, ev *events.Bus, log *slog.Log
 	return &Bus{limits: limits, store: st, terms: terms, events: ev, log: log,
 		hasHooks: func(string) bool { return false },
 		pending:  map[string]*Pending{}, waiters: map[*waiter]bool{}, last: map[string]activity.TurnEnd{},
-		resume: make(chan struct{}), texts: map[string]string{}}
+		resume: make(chan struct{}), texts: map[string]string{}, replies: map[string]string{}}
 }
 
 // SetMonitor attaches the activity monitor (before it starts).
@@ -190,6 +192,7 @@ func (b *Bus) rememberLocked(id, msg string) {
 	b.texts[id] = msg
 	for len(b.textOrder) > keptTexts {
 		delete(b.texts, b.textOrder[0])
+		delete(b.replies, b.textOrder[0])
 		b.textOrder = b.textOrder[1:]
 	}
 }
@@ -199,6 +202,15 @@ func (b *Bus) RequestText(id string) (string, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	t, ok := b.texts[id]
+	return t, ok
+}
+
+// ReplyText returns what came back for a recent request (the agent's final
+// message, or its screen), once it was answered.
+func (b *Bus) ReplyText(id string) (string, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	t, ok := b.replies[id]
 	return t, ok
 }
 
@@ -323,6 +335,9 @@ func (b *Bus) resolve(p *Pending, r Result) bool {
 	}
 	p.resolved = true
 	delete(b.pending, p.ID)
+	if _, kept := b.texts[p.ID]; kept && r.Source != "cancelled" {
+		b.replies[p.ID] = r.Body
+	}
 	b.mu.Unlock()
 	p.done <- r
 	data := map[string]any{"id": p.ID, "from": p.From, "to": p.To, "fromName": p.FromName,

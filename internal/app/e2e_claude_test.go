@@ -17,6 +17,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/agentbus"
 	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/config"
+	"github.com/nathanribeiroo/squad/internal/radio"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/store"
 )
@@ -25,6 +26,19 @@ func TestRealClaude(t *testing.T) {
 	r, screen := askRealClaude(t, "", "Responda apenas com a palavra: pong", nil)
 	if r.Code != 200 || r.Source != "claude-stop" || !strings.Contains(strings.ToLower(r.Body), "pong") {
 		t.Fatalf("unexpected reply: code=%d source=%s\n%s\n--- screen ---\n%s", r.Code, r.Source, r.Body, screen)
+	}
+}
+
+// The Rádio keeps a real Claude's reply with the request, after the turn.
+func TestRealClaudeRadio(t *testing.T) {
+	e, shell, _ := startRealClaude(t, "")
+	r := e.run(shell, "ask", "Claude", "Responda apenas com a palavra: pong")
+	if r.Code != 200 {
+		t.Fatalf("ask: %+v", r)
+	}
+	line := e.radioLine(func(it radio.Item) bool { return it.Outcome == "replied" && it.HasReply })
+	if _, reply, _ := e.app.Radio.Texts(line.ID); !strings.Contains(strings.ToLower(reply), "pong") || strings.HasPrefix(reply, "[reply from") {
+		t.Fatalf("reply kept: %q", reply)
 	}
 }
 
