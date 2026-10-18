@@ -293,7 +293,13 @@ func (t *Terminal) enqueue(fn func(*pty.Process) error, wait bool) error {
 	if !wait {
 		return nil
 	}
-	return <-job.done
+	// The queue has room after close too: nobody would run the job then.
+	select {
+	case err := <-job.done:
+		return err
+	case <-t.quit:
+		return errors.New("terminal closed")
+	}
 }
 
 // Input sends keyboard input (from an attached client) in queue order.

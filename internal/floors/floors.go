@@ -294,6 +294,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (store.Floor, e
 	}
 	cfg := st.FloorConfig()
 	copied, copyErr := copyUntracked(cwd, floorCwd, path, cfg.Copy)
+	// What the user allowed "always" here goes to the floor too.
+	perms, permErr := copyUntracked(cwd, floorCwd, path, agentPermissions)
+	copied, copyErr = append(copied, perms...), errors.Join(copyErr, permErr)
 	f := store.Floor{
 		ID: id, Name: name, Branch: branch, Base: base, BaseCommit: baseCommit,
 		Path: path, Cwd: floorCwd, NewBranch: !exists, Copied: copied,
@@ -335,6 +338,9 @@ type Changes struct {
 	// empty when it would merge cleanly, null when git couldn't tell
 	// (older than 2.38).
 	Conflicts []string `json:"conflicts"`
+	// Rules are the permissions the agents gained here that the ground
+	// floor hasn't (landing may take them back: LandRequest.Permissions).
+	Rules []Rule `json:"rules"`
 }
 
 // Commit is one line of git log.
@@ -392,13 +398,13 @@ func (s *Service) Changes(ctx context.Context, id string) (Changes, error) {
 	if !ok {
 		return Changes{}, ErrNotFound
 	}
-	return changes(ctx, f)
+	return changes(ctx, f, s.o.Canvas.Store().Workdir())
 }
 
 // changes reports what a worktree (a floor, or a session's copy) has that
-// its base doesn't.
-func changes(ctx context.Context, f store.Floor) (Changes, error) {
-	out := Changes{Files: []change{}, Commits: []Commit{}}
+// its base doesn't; ground is the folder it was made from.
+func changes(ctx context.Context, f store.Floor, ground string) (Changes, error) {
+	out := Changes{Files: []change{}, Commits: []Commit{}, Rules: []Rule{}}
 	if !isDir(f.Path) {
 		out.Missing = true
 		return out, nil
@@ -407,7 +413,10 @@ func changes(ctx context.Context, f store.Floor) (Changes, error) {
 	if err != nil {
 		return Changes{}, err
 	}
-	out.Files = append(out.Files, withoutCopied(files, f.Copied)...)
+	out.Files = append(out.Files, withoutCopied(files, localFiles(f.Path, f.Cwd, f.Copied))...)
+	if rules, _ := newRules(ground, f.Cwd); rules != nil { // a file that isn't JSON offers nothing
+		out.Rules = rules
+	}
 	base := f.BaseCommit
 	if f.Base != "" && hasRef(ctx, f.Path, "refs/heads/"+f.Base) {
 		base = "refs/heads/" + f.Base
@@ -430,10 +439,12 @@ func changes(ctx context.Context, f store.Floor) (Changes, error) {
 	return out, nil
 }
 
-// LandRequest says whether landing merges the floor's branch, and where.
+// LandRequest says whether landing merges the floor's branch, and where,
+// and whether it takes the permissions the floor gained to the ground floor.
 type LandRequest struct {
-	Merge bool   `json:"merge,omitempty"` // into Into, or the branch the floor started from
-	Into  string `json:"into,omitempty"`  // implies Merge
+	Merge       bool   `json:"merge,omitempty"`       // into Into, or the branch the floor started from
+	Into        string `json:"into,omitempty"`        // implies Merge
+	Permissions bool   `json:"permissions,omitempty"` // Changes.Rules
 }
 
 // LandResult tells what landing did.
@@ -444,6 +455,8 @@ type LandResult struct {
 	Into     string `json:"into,omitempty"`
 	Commit   string `json:"commit,omitempty"`   // the merge commit
 	UpToDate bool   `json:"upToDate,omitempty"` // the target already had every commit
+	// Permissions is how many rules went to the ground floor.
+	Permissions int `json:"permissions,omitempty"`
 }
 
 // Land removes a floor (its terminals and its folder), keeping its branch,
@@ -477,7 +490,7 @@ func (s *Service) Land(ctx context.Context, id string, req LandRequest) (LandRes
 		if err != nil {
 			return LandResult{}, err
 		}
-		if files = withoutCopied(files, f.Copied); len(files) > 0 {
+		if files = withoutCopied(files, localFiles(f.Path, f.Cwd, f.Copied)); len(files) > 0 {
 			return LandResult{}, dirty("the floor", files)
 		}
 	}
@@ -498,6 +511,16 @@ func (s *Service) Land(ctx context.Context, id string, req LandRequest) (LandRes
 			return LandResult{}, err
 		}
 		res.Merged, res.UpToDate, res.Into, res.Commit = !upToDate, upToDate, into, commit
+	}
+	if req.Permissions && isDir(f.Path) {
+		n, err := takeRules(st.Workdir(), f.Cwd)
+		if err != nil {
+			if res.Merged {
+				return res, fmt.Errorf("merged into %s, but the permissions didn't go to the ground floor (the floor stays): %w", res.Into, err)
+			}
+			return res, fmt.Errorf("the permissions didn't go to the ground floor (the floor stays): %w", err)
+		}
+		res.Permissions = n
 	}
 	if err := s.remove(ctx, root, f, false); err != nil {
 		if res.Merged {
@@ -1092,7 +1115,7 @@ func worktreeStatus(ctx context.Context, f store.Floor) FloorStatus {
 		fs.Branch = b
 	}
 	if files, err := status(ctx, f.Path, untrackedAll); err == nil {
-		fs.Changes = len(withoutCopied(files, f.Copied))
+		fs.Changes = len(withoutCopied(files, localFiles(f.Path, f.Cwd, f.Copied)))
 	}
 	base := f.BaseCommit
 	if f.Base != "" && hasRef(ctx, f.Path, "refs/heads/"+f.Base) {

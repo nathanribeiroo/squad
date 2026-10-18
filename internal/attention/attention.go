@@ -243,7 +243,8 @@ func continuation(l string) bool {
 // (Devin's "Yes, allow `touch` commands") are none: the interface never
 // sends those.
 func classify(label string) Choice {
-	l := strings.ToLower(label)
+	// Claude Code writes "don’t" with a typographic apostrophe in some prompts.
+	l := strings.ReplaceAll(strings.ToLower(label), "’", "'")
 	switch {
 	case strings.HasPrefix(l, "no") || strings.HasPrefix(l, "deny") || strings.HasPrefix(l, "reject"):
 		return Deny

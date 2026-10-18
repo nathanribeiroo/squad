@@ -119,7 +119,8 @@ func TestDevinAskAndRespond(t *testing.T) {
 	d := e.agentOfType("Devin", "devin", "FAKEAGENT_HOOK=devin")
 	e.connect(plan, d)
 
-	go e.run(plan, "ask", "Devin", "ASKPERM:make test")
+	allowed := make(chan agentbus.Result, 1)
+	go func() { allowed <- e.run(plan, "ask", "Devin", "ASKPERM:make test") }()
 	a := e.waitAttention(d.ID, func(a *attention.Attention) bool { return a != nil && len(a.Choices) == 3 }, 10*time.Second)
 	if a.Kind != attention.Permission || a.Tool != "exec" || a.Detail != "make test" || a.Text != "Running command" {
 		t.Fatalf("attention: %+v", a)
@@ -136,6 +137,16 @@ func TestDevinAskAndRespond(t *testing.T) {
 		}
 	}
 	e.waitAttention(d.ID, func(a *attention.Attention) bool { return a == nil }, 5*time.Second)
+	// The turn goes on after the answer: the next ask waits for its end (one
+	// delivered meanwhile would take that end as its own).
+	select {
+	case r := <-allowed:
+		if r.Code != 200 || r.Source != "devin-stop" {
+			t.Fatalf("allowed ask: %+v", r)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the allowed turn didn't end")
+	}
 
 	denied := make(chan agentbus.Result, 1)
 	go func() { denied <- e.run(plan, "ask", "Devin", "ASKPERM:mcp__torre__keys") }()
