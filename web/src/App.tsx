@@ -14,6 +14,7 @@ import { FloorDialogs } from './components/FloorDialogs';
 import { FirstRun } from './components/FirstRun';
 import { FloorEmpty } from './components/FloorEmpty';
 import { InterruptedBar } from './components/InterruptedBar';
+import { LoopCard } from './components/LoopCard';
 import { NoLink } from './components/NoLink';
 import { PlansDialogs } from './components/PlansDialogs';
 import { PriorityBanner } from './components/PriorityBanner';
@@ -235,8 +236,11 @@ function Stage() {
             <Canvas />
             <FloorEmpty />
             <AirspaceEmpty onNote={() => create('note')} />
-            <InterruptedBar />
-            <PriorityBanner />
+            <div className="bands">
+              <InterruptedBar />
+              <LoopCard />
+              <PriorityBanner />
+            </div>
             <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
             <ComposerPill />
           </div>

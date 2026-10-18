@@ -24,6 +24,7 @@
 .syn-link { stroke-width: 1.5; }
 .syn-link.pending { stroke: var(--st-wait); stroke-dasharray: 5 4; }
 .syn-link.reply { stroke: var(--st-done); }
+.syn-link.loop { stroke: var(--st-wait); stroke-width: 2.5; }
 .syn-flight { cursor: pointer; }
 .syn-sym { font-size: 16px; fill: var(--stt-idle); }
 .syn-flight.st-work .syn-sym, .syn-flight.st-boot .syn-sym { fill: #a9c8ff; }
@@ -78,6 +79,7 @@
 .syn-freqs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
 .syn-freq { font-size: 11px; padding: 2px 6px; border: 1px solid var(--line-3); color: var(--text-3); }
 .syn-freq.pending { border-color: var(--st-wait); color: var(--stt-wait); border-style: dashed; }
+.syn-freq.loop { border-color: var(--st-wait); background: var(--st-wait); color: var(--stb-wait); font-weight: 700; }
 .syn-freq.reply { border-color: var(--st-done); color: var(--stt-done); }
 .syn-freq-foot { padding: 6px 10px 8px; font-size: 10.5px; color: var(--text-3); border-top: 1px solid var(--line); }
 

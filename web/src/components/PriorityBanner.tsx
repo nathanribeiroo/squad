@@ -21,7 +21,6 @@ export function PriorityBanner() {
   const [tx, ty, zoom] = useStore((s) => s.transform);
   const width = useStore((s) => s.width);
   const height = useStore((s) => s.height);
-  const interrupted = useSquad((s) => Object.values(s.runtime).some((r) => r.interrupted));
 
   const onScreen = (n: WNode) => {
     if ((n.floor ?? '') !== activeFloor) return false;
@@ -35,7 +34,7 @@ export function PriorityBanner() {
   const phrase = askPhrase(runtime[off.id]?.attention);
   const level = off.floor ? ` em ${flightLevel(floors?.find((f) => f.id === off.floor))}` : '';
   return (
-    <div className={`pb${interrupted ? ' below' : ''}`} role="alert">
+    <div className="pb" role="alert">
       <Icon name="front_hand" size={17} />
       <b className="pb-tag">Prioridade</b>
       <span className="pb-text">

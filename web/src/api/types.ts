@@ -297,8 +297,26 @@ export interface PendingRequest {
   queued?: boolean;
 }
 
+/** A flight of a loop's chain (agentbus.LoopStop). */
+export interface LoopStop {
+  id: string;
+  name: string;
+  callsign?: string;
+}
+
+/** Why conversations are on hold: the user's Espera geral, or a loop past the hop limit. */
+export interface Pause {
+  by: 'user' | 'loop';
+  /** The loop: the first asker first, the refused request's target last. */
+  chain?: LoopStop[];
+  hops?: number;
+  limit?: number;
+  at: string;
+}
+
 export interface StateExtra {
   paused: boolean;
+  pause?: Pause | null;
   limits: { maxHops: number; perMinute: number };
   rate: number;
   pending: PendingRequest[];

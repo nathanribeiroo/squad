@@ -1,2 +1,9 @@
 .app { height: 100%; display: flex; flex-direction: column; }
 .stage { flex: 1; min-height: 0; position: relative; }
+/* The bands atop the canvas, one under the other: ARREMETIDA, the loop, PRIORIDADE. */
+.bands {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 16;
+  width: 860px; max-width: calc(100% - 32px);
+  display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+}
+.bands > * { pointer-events: auto; }

@@ -1,0 +1,49 @@
+/* ESPERA GERAL · LAÇO (docs/torre/TELAS.md, quadro 21): amber card with the
+   chain; in the bands atop the canvas, or at the top of the Sinóptico. */
+.lc {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--stb-wait);
+  border: 1.5px solid var(--st-wait);
+  color: var(--text);
+  box-shadow: var(--shadow-pop);
+}
+.lc.in-syn { box-shadow: none; flex: none; }
+.lc-head { display: flex; align-items: center; gap: 8px; color: var(--stt-wait); }
+.lc-head b { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.lc-text { margin: 0; font-size: 12.5px; line-height: 1.5; }
+.lc-arrow { color: var(--stt-wait); }
+.lc-cs {
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--stt-wait);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.lc-cs:hover:not(:disabled) { text-decoration-style: solid; }
+.lc-cs:disabled { color: var(--text-3); cursor: default; text-decoration: none; }
+.lc-actions { display: flex; gap: 8px; margin-top: 2px; }
+.lc-release {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 10px;
+  border: 0;
+  background: var(--stt-wait);
+  color: var(--stb-wait);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.lc-release .kbd { color: inherit; border-color: currentColor; }
+.lc-release:disabled { opacity: 0.6; cursor: default; }
+.lc-limits { height: 28px; }
