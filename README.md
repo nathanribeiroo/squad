@@ -251,8 +251,21 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 
 **Rádio (`⌥A`):** os pedidos entre os voos, em indicativos ("14:32 PLN → IMP · c8d0").
 - Filtros: Todos, Pendentes e um chip por voo. Os pedidos ainda abertos ficam no topo, com **Ver no espaço**, que leva ao voo, e **Cancelar pedido**: quem pediu recebe "cancelado" na hora, e o outro voo não é interrompido (se continuar trabalhando, `torre wait` pega a resposta).
-- Um pedido longo aparece cortado; **Ver o pedido inteiro** mostra o texto todo (a Torre guarda os 200 últimos). Os pedidos que já estavam abertos quando a página abriu também aparecem.
-- Cada linha termina no desfecho: Pendente, Respondido em…, Entregue, Cancelado, Retido (espera geral ou limite por minuto), NOTAM editado ou Em solo (fim de turno).
+- Um pedido longo aparece cortado; **Ver o pedido inteiro** mostra o texto todo, e **Ver a resposta** mostra o que voltou (a mensagem final do agente, ou a tela dele).
+- Cada linha termina no desfecho: Pendente, Respondido em…, Entregue, Cancelado, Retido (espera geral ou limite por minuto), NOTAM editado, Em solo (fim de turno) ou "Pediu você · autorizado em 0:04" (ou sempre, negado; "respondido" quando foi na tela do voo).
+- Edições seguidas da mesma NOTAM pelo mesmo autor, em até 2 minutos, viram uma linha só.
+- **O histórico fica guardado**, por sessão, em `radio.jsonl`, na pasta da sessão (`~/.torre/workspaces/<id>/sessions/<sessão>/`):
+  - ele volta ao recarregar a página, ao reiniciar o `torre serve` e ao reabrir a sessão; uma sessão nova começa com o Rádio vazio;
+  - ficam as últimas 500 linhas; o texto de cada pedido e de cada resposta, até 16 KB;
+  - aparecem 200 por vez, e **Mais antigos**, no fim da lista, traz as anteriores;
+  - linhas de outro dia mostram a data ("17/10 14:32");
+  - **Limpar o Rádio** (a lixeira no cabeçalho, com confirmação) apaga o histórico da sessão.
+
+| Rota (só da interface) | O que faz |
+|---|---|
+| `GET /w/<id>/api/radio?before=<hora>&limit=<n>` | as linhas do Rádio da sessão aberta, da mais nova para a mais antiga (200 por padrão), e `more` quando há mais antigas |
+| `DELETE /w/<id>/api/radio` | limpa o Rádio da sessão |
+| `GET /w/<id>/api/requests/<pedido>` | o texto inteiro de um pedido e a resposta (`reply`), quando guardada |
 - O rodapé mostra quantas mensagens passaram no último minuto, o limite e o máximo de saltos.
 
 **Workspaces:**
