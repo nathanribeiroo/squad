@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NodeResizer, type Node, type NodeProps, type ResizeParams } from '@xyflow/react';
 import { ApiError, api } from '../../api/client';
 import type { NoteData, WNode } from '../../api/types';
@@ -6,7 +6,9 @@ import { confirmDialog } from '../../components/ConfirmDialog';
 import { Icon } from '../../components/Icon';
 import { roleColor, useCreator, useRoleLookup } from '../../lib/roles';
 import { Markdown, changedLines, type MarkdownHighlight } from '../../lib/markdown';
+import { callsign } from '../../lib/model';
 import { toast } from '../../lib/toast';
+import { stackOf } from '../../lib/stacks';
 import { useNow } from '../../lib/useNow';
 import { useSquad } from '../../state/store';
 import { NodeHandles, connectClass, useConnectTarget } from './NodeHandles';
@@ -17,12 +19,97 @@ export type NoteFlowNode = Node<{ node: WNode }, 'note'>;
 /** How long an agent's edit stays highlighted (handoff §3). */
 const HIGHLIGHT_MS = 30_000;
 
+const NO_NODES: WNode[] = [];
+
+/**
+ * A NOTAM on the canvas, or a stack of them (the node is the base's): the
+ * stack shows one note at a time, with its tabs, and its wires are the
+ * base's (internal/store/stacks.go).
+ */
 export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
-  const note = data.node.note!;
+  const nodes = useSquad((s) => s.workspace?.nodes) ?? NO_NODES;
+  const members = useMemo(() => stackOf(nodes, data.node), [nodes, data.node]);
+  const stacked = members.length > 1;
+  const [pick, setPick] = useState(id);
+  const shown = members.find((m) => m.id === pick) ?? members[0];
+  const target = useConnectTarget(id);
+
+  const onResizeEnd = (_: unknown, p: ResizeParams) => {
+    useSquad.getState().moveNodeLocal(id, Math.round(p.x), Math.round(p.y));
+    api
+      .updateNode(id, { x: Math.round(p.x), y: Math.round(p.y), w: Math.round(p.width), h: Math.round(p.height) })
+      .catch((e: Error) => toast(e.message, 'err'));
+  };
+
+  return (
+    <div className={`nnode${selected ? ' selected' : ''}${shown.note!.locked ? ' locked' : ''}${stacked ? ' stacked' : ''}${connectClass(target)}`}>
+      <NodeResizer isVisible={selected} minWidth={280} minHeight={200} onResizeEnd={onResizeEnd} />
+      <NodeHandles id={id} />
+      {stacked && <StackStrip members={members} shown={shown.id} onPick={setPick} />}
+      <NoteCard key={shown.id} node={shown} stacked={stacked} />
+    </div>
+  );
+}
+
+/**
+ * PILHA · 3 NOTAMs, a tab per note and ‹ 1/3 ›. A note an agent just wrote
+ * while another one is shown gets a dot, and a line to go to it.
+ */
+function StackStrip({ members, shown, onPick }: { members: WNode[]; shown: string; onPick: (id: string) => void }) {
+  const edits = useSquad((s) => s.noteEdits);
+  const nodes = useSquad((s) => s.workspace?.nodes);
+  const now = useNow(1000);
+  // Who wrote, by callsign (IMP), as everywhere else.
+  const who = (name: string) => {
+    const t = nodes?.find((n) => n.terminal?.name === name)?.terminal;
+    return t ? callsign(t) : name;
+  };
+  const at = members.findIndex((m) => m.id === shown);
+  const fresh = members.filter((m) => m.id !== shown && edits[m.id] && edits[m.id].author !== 'Você' && now - edits[m.id].at < HIGHLIGHT_MS);
+  const go = (step: number) => onPick(members[(at + step + members.length) % members.length].id);
+  return (
+    <div className="nn-stack node-drag">
+      <span className="nn-stack-tag">Pilha · {members.length} NOTAMs</span>
+      <span className="nn-stack-tabs nodrag" role="tablist" aria-label="NOTAMs da pilha">
+        {members.map((m, k) => (
+          <button
+            key={m.id}
+            role="tab"
+            aria-selected={m.id === shown}
+            className={`nn-stack-tab${m.id === shown ? ' on' : ''}${fresh.includes(m) ? ' fresh' : ''}`}
+            title={m.note!.title}
+            onClick={() => onPick(m.id)}
+          >
+            {k + 1}
+          </button>
+        ))}
+      </span>
+      {fresh[0] && (
+        <button className="nn-stack-fresh nodrag" onClick={() => onPick(fresh[0].id)} title="Ver a NOTAM">
+          {who(edits[fresh[0].id].author)} escreveu em {fresh[0].note!.title}
+        </button>
+      )}
+      <span className="tn-spacer" />
+      <button className="icon-btn nodrag" onClick={() => go(-1)} aria-label="NOTAM anterior">
+        <Icon name="chevron_left" size={16} />
+      </button>
+      <span className="nn-stack-pos mono">
+        {at + 1}/{members.length}
+      </span>
+      <button className="icon-btn nodrag" onClick={() => go(1)} aria-label="Próxima NOTAM">
+        <Icon name="chevron_right" size={16} />
+      </button>
+    </div>
+  );
+}
+
+/** One NOTAM: header, preview or editor. In a stack, the one on top. */
+function NoteCard({ node, stacked }: { node: WNode; stacked: boolean }) {
+  const id = node.id;
+  const note = node.note!;
   const edit = useSquad((s) => s.noteEdits[id]);
   const nodes = useSquad((s) => s.workspace?.nodes);
   const roleOf = useRoleLookup();
-  const target = useConnectTarget(id);
   const [content, setContent] = useState<string | null>(null);
   const [mode, setMode] = useState<'preview' | 'edit'>('preview');
   const [draft, setDraft] = useState('');
@@ -32,9 +119,9 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
   const saveTimer = useRef<number | undefined>(undefined);
   const now = useNow(1000, !!mark);
   const [renaming, setRenaming] = useState(false);
-  const creator = useCreator(data.node.createdBy);
+  const creator = useCreator(node.createdBy);
   // Notes agents make keep the name they gave them.
-  const canRename = !data.node.createdBy;
+  const canRename = !node.createdBy;
 
   // Load, and reload when someone else edits the file.
   useEffect(() => {
@@ -113,17 +200,14 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
     ? { from: mark.from, to: mark.to, role: authorRole(mark.author), label: `${mark.author} escreveu ${ago(now - mark.at)}` }
     : null;
 
-  const onResizeEnd = (_: unknown, p: ResizeParams) => {
-    useSquad.getState().moveNodeLocal(id, Math.round(p.x), Math.round(p.y));
+  const unstack = (all: boolean) =>
     api
-      .updateNode(id, { x: Math.round(p.x), y: Math.round(p.y), w: Math.round(p.width), h: Math.round(p.height) })
+      .unstackNote(id, all)
+      .then(() => toast(all ? 'Pilha desfeita: cada NOTAM ficou com as frequências da pilha' : `${note.title} saiu da pilha, com as frequências dela`))
       .catch((e: Error) => toast(e.message, 'err'));
-  };
 
   return (
-    <div className={`nnode${selected ? ' selected' : ''}${note.locked ? ' locked' : ''}${connectClass(target)}`}>
-      <NodeResizer isVisible={selected} minWidth={280} minHeight={200} onResizeEnd={onResizeEnd} />
-      <NodeHandles id={id} />
+    <>
       <header className="nn-head node-drag">
         <span className="nn-tag">NOTAM</span>
         {note.draft || renaming ? (
@@ -159,6 +243,12 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
         <NodeMenu
           items={[
             ...(canRename ? [{ icon: 'edit' as const, label: 'Renomear', action: () => setRenaming(true) }] : []),
+            ...(stacked
+              ? [
+                  { icon: 'call_split' as const, label: 'Tirar da pilha', action: () => unstack(false) },
+                  { icon: 'layers_clear' as const, label: 'Desfazer a pilha', action: () => unstack(true) },
+                ]
+              : []),
             { icon: 'delete', label: 'Remover do canvas', action: remove, danger: true },
           ]}
         />
@@ -213,7 +303,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

@@ -59,6 +59,9 @@ export interface NoteData {
   draft?: boolean;
   /** Former names: agents that knew one still find the note. */
   aliases?: string[];
+  /** The note at the base of its stack (its own id on the base), and its place in it. */
+  stack?: string;
+  stackPos?: number;
 }
 
 export interface PortalData {

@@ -17,7 +17,10 @@ import {
 } from '@xyflow/react';
 import { api } from '../api/client';
 import type { WNode } from '../api/types';
+import { confirmDialog } from '../components/ConfirmDialog';
 import { MiniMapAndZoom } from '../components/ZoomControls';
+import { callsign } from '../lib/model';
+import { hiddenInStack, stackGains, stackOf } from '../lib/stacks';
 import { toast } from '../lib/toast';
 import { useSquad } from '../state/store';
 import { pruneSessions } from '../term/session';
@@ -79,7 +82,8 @@ export function Canvas() {
   // The server is the source of truth; local state only adds React Flow's
   // own fields (selection, measured size, drag). The canvas shows the floor
   // on screen; each floor (a git worktree) has its own nodes.
-  const onScreen = useCallback((n: WNode) => (n.floor ?? '') === floor, [floor]);
+  // A note stacked on another is drawn inside the stack (its base's node).
+  const onScreen = useCallback((n: WNode) => (n.floor ?? '') === floor && !hiddenInStack(n), [floor]);
   useEffect(() => {
     setNodes((prev) => {
       const byId = new Map(prev.map((n) => [n.id, n]));
@@ -135,8 +139,19 @@ export function Canvas() {
     }
   }, []);
 
+  // Where the dragged nodes were, to go back if stacking is cancelled.
+  const dragFrom = useRef<Record<string, { x: number; y: number }>>({});
+  const onNodeDragStart = useCallback((_: unknown, _node: Node, moved: Node[]) => {
+    dragFrom.current = Object.fromEntries(moved.map((n) => [n.id, { ...n.position }]));
+  }, []);
   const onNodeDragStop = useCallback((_: unknown, _node: Node, moved: Node[]) => {
     const st = useSquad.getState();
+    // A note dropped on another note (its center inside it) stacks on it.
+    const onto = moved.length === 1 && moved[0].type === 'note' ? noteUnder(moved[0]) : null;
+    if (onto) {
+      void stackOnto(moved[0].id, onto, dragFrom.current[moved[0].id]);
+      return;
+    }
     for (const n of moved) {
       const x = Math.round(n.position.x);
       const y = Math.round(n.position.y);
@@ -230,6 +245,7 @@ export function Canvas() {
       onEdgesDelete={onEdgesDelete}
       onEdgeDoubleClick={onEdgeDoubleClick}
       zoomOnDoubleClick={false}
+      onNodeDragStart={onNodeDragStart}
       onNodeDragStop={onNodeDragStop}
       onSelectionChange={({ nodes: sel }) => {
         setSelected(sel.length === 1 ? sel[0].id : null);
@@ -257,4 +273,53 @@ export function Canvas() {
       <MiniMapAndZoom />
     </ReactFlow>
   );
+}
+
+/** The note whose box holds the center of a dragged note, on its level. */
+function noteUnder(dragged: Node): string | null {
+  const ws = useSquad.getState().workspace;
+  const me = ws?.nodes.find((n) => n.id === dragged.id);
+  if (!ws || !me) return null;
+  const cx = dragged.position.x + me.w / 2;
+  const cy = dragged.position.y + me.h / 2;
+  const hit = ws.nodes.find(
+    (n) => n.id !== me.id && n.kind === 'note' && !hiddenInStack(n) && (n.floor ?? '') === (me.floor ?? '') && cx >= n.x && cx <= n.x + n.w && cy >= n.y && cy <= n.y + n.h,
+  );
+  return hit?.id ?? null;
+}
+
+/**
+ * Stacks a note (or a stack) on another. When flights wired to one side
+ * would see the notes of the other, the user confirms it first; cancelling
+ * puts the note back where it was.
+ */
+async function stackOnto(id: string, onto: string, from?: { x: number; y: number }) {
+  const st = useSquad.getState();
+  const ws = st.workspace;
+  if (!ws) return;
+  const back = () => from && st.moveNodeLocal(id, Math.round(from.x), Math.round(from.y));
+  const title = (x: string) => ws.nodes.find((n) => n.id === x)?.note?.title ?? '';
+  const gains = stackGains(ws.nodes, ws.edges, id, onto);
+  if (gains.length > 0) {
+    const count = stackOf(ws.nodes, ws.nodes.find((n) => n.id === onto)!).length + stackOf(ws.nodes, ws.nodes.find((n) => n.id === id)!).length;
+    const who = gains.map((g) => callsign(g.terminal!));
+    const names = who.length > 1 ? `${who.slice(0, -1).join(', ')} e ${who[who.length - 1]}` : who[0];
+    const ok = await confirmDialog({
+      title: `Empilhar ${title(id)} sobre ${title(onto)}?`,
+      icon: 'layers',
+      tone: 'info',
+      text: (
+        <>
+          {names} {who.length > 1 ? 'passam' : 'passa'} a ler e escrever as {count} NOTAMs da pilha: um fio ligado à pilha vale para todas.
+        </>
+      ),
+      keep: ['Cada NOTAM continua com o seu arquivo e o seu cadeado', 'Tirar da pilha devolve a NOTAM com as frequências da pilha'],
+      action: 'Empilhar',
+    });
+    if (!ok) return back();
+  }
+  api.stackNote(id, onto).catch((e: Error) => {
+    back();
+    toast(e.message, 'err');
+  });
 }

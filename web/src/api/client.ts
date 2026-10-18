@@ -108,6 +108,10 @@ export const api = {
   saveNote: (id: string, content: string) => req<{ ok: boolean }>('PUT', wsPath(`/api/notes/${id}`), { content }),
   /** Names a note the user made (a draft gets its file); the old name stays valid for agents. */
   renameNote: (id: string, title: string) => req<WNode>('PATCH', wsPath(`/api/notes/${id}`), { title }),
+  /** Puts note id (or its stack) on top of onto's stack; returns the stack's notes. */
+  stackNote: (id: string, onto: string) => req<WNode[]>('POST', wsPath(`/api/notes/${id}/stack`), { onto }),
+  /** Takes note id out of its stack (every note with all); the notes keep the stack's wires. */
+  unstackNote: (id: string, all = false) => req<WNode[]>('POST', wsPath(`/api/notes/${id}/unstack`), { all }),
   /** Folder suggestions, relative to the workspace folder or to a floor's copy of it. */
   dirs: (path: string, floor?: string) =>
     req<{ suggestions: string[] }>('GET', wsPath(`/api/dirs?path=${encodeURIComponent(path)}${floor ? `&floor=${encodeURIComponent(floor)}` : ''}`)),

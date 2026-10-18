@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { UIState, WNode } from '../api/types';
 import { flightLevel } from '../lib/floors';
+import { withStacks } from '../lib/stacks';
 import { STATE_META, callsign } from '../lib/model';
 import { roleColor, useRole, useRoleLookup } from '../lib/roles';
 import { toast } from '../lib/toast';
@@ -158,7 +159,11 @@ function ComposerPanel() {
       const prev: string[] = common ?? [...nb];
       common = prev.filter((x) => nb.has(x));
     }
-    const ok = (common ?? []).filter((id) => !targets.includes(id)).map((id) => byId.get(id)!).filter(Boolean);
+    // A wire to a stack of notes reaches every note in it.
+    const ok = withStacks(nodes, common ?? [])
+      .filter((id) => !targets.includes(id))
+      .map((id) => byId.get(id)!)
+      .filter(Boolean);
     const rest = nodes.filter((n) => !targets.includes(n.id) && !ok.includes(n));
     return { linked: ok, unlinked: rest };
   }, [edges, targets, nodes, byId]);
