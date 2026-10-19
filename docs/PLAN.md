@@ -79,7 +79,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fluidez da interface (e fios com 15% de folga) | `feat/fluidez` | concluído |
 | Fios com 8% de folga | `feat/folga-fio` | concluído |
 | Fio que não se enrola, e 5% de folga | `feat/fio-sem-enrolar` | concluído |
-| Fios com 3% de folga | `feat/folga-3` | concluído (PR) |
+| Fios com 3% de folga | `feat/folga-3` | concluído |
+| Fios do nó selecionado em destaque | `feat/fios-do-selecionado` | concluído (PR) |
 
 ## B0, esqueleto
 

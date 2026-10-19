@@ -2,6 +2,22 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, Fios do nó selecionado em destaque
+
+- **Pedido:** ao selecionar um elemento (um voo, uma NOTAM), os fios ligados a ele mudam de cor, de leve, para ver como ele está ligado. A mudança é discreta, mas tem de ser visível.
+- **O que muda:**
+  - **o destaque:** um fio com uma das pontas selecionada ganha a classe `linked` (`WireEdge.tsx`) e passa de `--wire` para `--wire-linked`, um tom mais forte na própria paleta: `#7fa892` no tema escuro e `#6b6450` no claro, os mesmos do `--text-3`. A troca de cor leva 120 ms;
+  - **as bolinhas das pontas** acompanham;
+  - **o que continua com a cor própria:** o pedido pendente (âmbar), o laço e o fio que está ele mesmo selecionado;
+  - **vale para mais de um nó selecionado,** e para o cartão de um grupo recolhido: os fios desenhados até o cartão;
+  - **o seletor** (`selectedIds`, da store) devolve só um booleano por fio, então um fio só é redesenhado quando entra ou sai do destaque.
+- **Testes:**
+  - `npx tsc -b`, `npm run build` e `go build ./...`;
+  - no Chromium, numa cena com três voos, duas NOTAMs e cinco fios, nos temas escuro e claro:
+    - o Implementador selecionado destaca os 3 fios dele;
+    - o Planejador selecionado destaca os 2 dele;
+    - os outros fios não mudam.
+
 ## 2026-10-19, Fios com 3% de folga
 
 - **Pedido:** a folga de 5% para 3%.
