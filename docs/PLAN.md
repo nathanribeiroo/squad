@@ -78,7 +78,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fios como corrente | `feat/fios-corrente` | concluído |
 | Fluidez da interface (e fios com 15% de folga) | `feat/fluidez` | concluído |
 | Fios com 8% de folga | `feat/folga-fio` | concluído |
-| Fio que não se enrola, e 5% de folga | `feat/fio-sem-enrolar` | concluído (PR) |
+| Fio que não se enrola, e 5% de folga | `feat/fio-sem-enrolar` | concluído |
+| Fios com 3% de folga | `feat/folga-3` | concluído (PR) |
 
 ## B0, esqueleto
 
