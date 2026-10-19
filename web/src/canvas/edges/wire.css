@@ -7,7 +7,10 @@
   stroke-dasharray: 6 5;
   stroke-linecap: round;
   fill: none;
+  transition: stroke 120ms;
 }
+/* Wired to the selected node: a step stronger, so its frequencies show. */
+.react-flow__edge-path.wire.linked { stroke: var(--wire-linked); }
 .react-flow__edge-path.wire.selected { stroke: var(--text); }
 /* Pending request: amber dashes sliding from who asked. */
 /* The dashes march a pixel at a time: each step repaints the page, so 11
@@ -20,6 +23,7 @@
 .react-flow__edge-path.wire.loop { stroke: var(--wire-wait); stroke-width: 2.5; stroke-dasharray: none; animation: none; }
 
 .wire-end { fill: var(--wire); stroke: none; }
+.wire-end.linked { fill: var(--wire-linked); }
 .wire-end.origin { fill: var(--st-wait); }
 .wire-end.dest { fill: var(--canvas); stroke: var(--st-wait); stroke-width: 2; }
 .wire-rope { fill: var(--text); stroke: none; cursor: grab; pointer-events: all; }
