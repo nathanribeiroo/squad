@@ -1,15 +1,16 @@
 // A wire hangs like a chain: Verlet particles under gravity, held at its
-// ends and at the user's bend points, with 8% more length than the straight
+// ends and at the user's bend points, with 5% more length than the straight
 // line between them. The nodes in the way are solid: their tops are a floor
 // and their sides walls, so a wire drapes over a node instead of passing
-// behind it.
+// behind it. It can't be wound round a node: going round the long way, it
+// jumps to the short side.
 import type { Pt, Rect } from './geometry';
 
 /** A node the chain can't pass through; own: one of the wire's ends. */
 export type Solid = Rect & { own?: boolean };
 
 /** Length of each span over the straight distance between its pins. */
-const SLACK = 1.08;
+const SLACK = 1.05;
 /** Target length of a link (canvas px); a span keeps it between half and double. */
 const LINK = 18;
 const GRAVITY = 0.45;
@@ -32,7 +33,14 @@ const TAUT_STEPS = 12;
  * STRETCH × links / passes (the solver can't fully undo gravity each step).
  * Its links start that much shorter, so it hangs with the slack asked for.
  */
-const STRETCH = 0.018;
+const STRETCH = 0.024;
+
+/**
+ * A span going round more than half of a node (its center inside the loop
+ * the span makes with its chord) jumps to the other side; within this share
+ * of the node's half-width across the chord, either side is as short.
+ */
+const UNWIND_MARGIN = 0.1;
 
 /** Constraint passes a step makes: long chains need more, or their links stay stretched. */
 const passesFor = (count: number) => Math.max(ITERATIONS, Math.ceil(count / 4));
@@ -56,6 +64,54 @@ function resample(pts: Pt[], count: number): Pt[] {
 
 function inside(p: Pt, r: Rect): boolean {
   return p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h;
+}
+
+function pathLength(pts: Pt[]): number {
+  let n = 0;
+  for (let i = 1; i < pts.length; i++) n += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  return n;
+}
+
+/** How many times the closed polygon winds round a point (0: outside). */
+function winding(px: number, py: number, xs: number[], ys: number[], from: number, to: number): number {
+  let w = 0;
+  for (let i = from; i <= to; i++) {
+    const j = i === to ? from : i + 1;
+    const cross = (xs[j] - xs[i]) * (py - ys[i]) - (px - xs[i]) * (ys[j] - ys[i]);
+    if (ys[i] <= py) {
+      if (ys[j] > py && cross > 0) w++;
+    } else if (ys[j] <= py && cross < 0) w--;
+  }
+  return w;
+}
+
+/**
+ * The way from p to q round r on the short side: when more than half of r
+ * lies between a span and its chord, the span went round the long way. Null
+ * when it didn't, or when it's too close to call.
+ */
+function shortWay(p: Pt, q: Pt, r: Rect, xs: number[], ys: number[], from: number, to: number): Pt[] | null {
+  const ux = q.x - p.x;
+  const uy = q.y - p.y;
+  const d = Math.hypot(ux, uy);
+  if (d < 1) return null;
+  const nx = -uy / d;
+  const ny = ux / d;
+  const cx = r.x + r.w / 2;
+  const cy = r.y + r.h / 2;
+  const across = (cx - p.x) * nx + (cy - p.y) * ny;
+  const half = (Math.abs(nx) * r.w + Math.abs(ny) * r.h) / 2;
+  if (Math.abs(across) < UNWIND_MARGIN * half || winding(cx, cy, xs, ys, from, to) === 0) return null;
+  // Round the corners on the other side of the chord, in order along it.
+  const g = 4;
+  const corners = [
+    { x: r.x - g, y: r.y - g },
+    { x: r.x + r.w + g, y: r.y - g },
+    { x: r.x + r.w + g, y: r.y + r.h + g },
+    { x: r.x - g, y: r.y + r.h + g },
+  ].filter((c) => Math.sign((c.x - p.x) * nx + (c.y - p.y) * ny) === -Math.sign(across));
+  corners.sort((a, b) => (a.x - p.x) * ux + (a.y - p.y) * uy - ((b.x - p.x) * ux + (b.y - p.y) * uy));
+  return [p, ...corners, q];
 }
 
 const grown = (r: Solid): Solid => ({ x: r.x - MARGIN, y: r.y - MARGIN, w: r.w + 2 * MARGIN, h: r.h + 2 * MARGIN, own: r.own });
@@ -100,7 +156,7 @@ export class Chain {
    * hanging curve, or along the straight line when that curve would run into
    * a node (the chain then falls onto it, as if let go from up there).
    */
-  private layout(pins: Pt[], obstacles: Solid[], old: Chain | null) {
+  private layout(pins: Pt[], obstacles: Solid[], old: Chain | null, ways?: Map<number, Pt[]>) {
     const x: number[] = [];
     const y: number[] = [];
     const pinned: boolean[] = [];
@@ -110,12 +166,16 @@ export class Chain {
     for (let i = 0; i < pins.length - 1; i++) {
       const p = pins[i];
       const q = pins[i + 1];
-      const extra = old?.spans[i]?.extra ?? 1;
+      const way = ways?.get(i);
+      // A span sent the short way round a node fits that way, with no chain paid out before.
+      const extra = way ? Math.min(MAX_EXTRA, Math.max(1, pathLength(way) / Chain.base(p, q))) : (old?.spans[i]?.extra ?? 1);
       const len = Chain.base(p, q) * extra;
       const n = Math.min(80, Math.max(3, Math.round(len / LINK)));
       let pts: Pt[];
       const was = old?.spans[i];
-      if (old && was) {
+      if (way) {
+        pts = resample(way, n);
+      } else if (old && was) {
         const prev: Pt[] = [];
         for (let k = was.first; k <= was.first + was.n; k++) prev.push({ x: old.x[k], y: old.y[k] });
         prev[0] = p; // the pins have moved
@@ -212,6 +272,8 @@ export class Chain {
     const pad = LINK * 2;
     const solid = obstacles.map(grown).filter((r) => r.x < x1 + pad && r.x + r.w > x0 - pad && r.y < y1 + pad && r.y + r.h > y0 - pad);
     const passes = passesFor(count);
+    // The node each particle last touched (an index in solid), to unwind.
+    const hit: number[] = new Array(count).fill(-1);
     for (let it = 0; it < passes; it++) {
       // Links only pull: a chain doesn't push back when it bunches up.
       for (let j = 0; j < count - 1; j++) {
@@ -230,8 +292,10 @@ export class Chain {
       // Out of the nodes, by the nearest side: the top is the floor, the sides the walls.
       for (let i = 0; i < count; i++) {
         if (pinned[i]) continue;
-        for (const r of solid) {
+        for (let h = 0; h < solid.length; h++) {
+          const r = solid[h];
           if (x[i] <= r.x || x[i] >= r.x + r.w || y[i] <= r.y || y[i] >= r.y + r.h) continue;
+          hit[i] = h;
           const left = x[i] - r.x;
           const right = r.x + r.w - x[i];
           const top = y[i] - r.y;
@@ -274,6 +338,25 @@ export class Chain {
       if (extra === s.extra) continue;
       for (let k = s.first; k < s.first + s.n; k++) rest[k] *= extra / s.extra;
       s.extra = extra;
+    }
+    // A span wound round a node the long way jumps to the short side.
+    let ways: Map<number, Pt[]> | undefined;
+    this.spans.forEach((s, i) => {
+      const seen = new Set<number>();
+      for (let k = s.first + 1; k < s.first + s.n; k++) {
+        const h = hit[k];
+        if (h < 0 || seen.has(h)) continue;
+        seen.add(h);
+        const way = shortWay(this.pins[i], this.pins[i + 1], solid[h], x, y, s.first, s.first + s.n);
+        if (way) {
+          (ways ??= new Map()).set(i, way);
+          break;
+        }
+      }
+    });
+    if (ways) {
+      this.layout(this.pins, [], this, ways);
+      return 1; // it moved: keep it awake
     }
     return count > 2 ? motion / (count - 2) : 0;
   }
