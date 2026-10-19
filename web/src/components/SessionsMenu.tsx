@@ -5,6 +5,7 @@ import { slugify } from '../lib/floors';
 import { shortPath } from '../lib/paths';
 import { callsign } from '../lib/model';
 import { ago, busyOf, busyText, contents, newBranchName, pendingWork, when, type Busy } from '../lib/sessions';
+import { toast } from '../lib/toast';
 import { useNow } from '../lib/useNow';
 import { useSquad } from '../state/store';
 import { confirmDialog, confirmOpen, type ConfirmOptions } from './ConfirmDialog';
@@ -110,6 +111,7 @@ export function SessionsMenu({ onClose }: { onClose: () => void }) {
                 key={s.id}
                 ws={ws}
                 s={s}
+                only={list?.sessions.length === 1}
                 now={now}
                 disabled={leave.running}
                 onOpen={() => open(s)}
@@ -137,6 +139,7 @@ export function SessionsMenu({ onClose }: { onClose: () => void }) {
 function SessionRow({
   ws,
   s,
+  only,
   now,
   disabled,
   onOpen,
@@ -145,6 +148,8 @@ function SessionRow({
 }: {
   ws: string;
   s: SessionSummary;
+  /** The workspace's only session. */
+  only: boolean;
   now: number;
   disabled: boolean;
   onOpen: () => void;
@@ -200,7 +205,16 @@ function SessionRow({
       if (ok) remove(true);
     });
   };
+  // Why it can't be removed (the server refuses the same).
+  const blocked = only
+    ? 'É a única sessão do workspace: para tirar tudo, remova o workspace.'
+    : s.current
+      ? 'A sessão aberta não pode ser removida: abra outra antes.'
+      : s.floors > 0
+        ? 'A sessão tem níveis de voo: abra-a e pouse ou descarte os níveis antes.'
+        : '';
   const askRemove = async () => {
+    if (blocked) return toast(blocked, 'wait');
     const ok = await confirmDialog({
       title: `Remover a sessão ${s.name}?`,
       tone: 'danger',
@@ -278,17 +292,14 @@ function SessionRow({
               Pedir pouso…
             </button>
           )}
-          {!s.current && (
-            <button
-              className="icon-btn ses-hover ses-danger"
-              onClick={askRemove}
-              disabled={s.floors > 0}
-              aria-label={`Remover ${s.name}`}
-              title={s.floors > 0 ? 'Tem níveis de voo: abra a sessão e pouse ou descarte os níveis antes' : 'Remover'}
-            >
-              <Icon name="delete" size={16} />
-            </button>
-          )}
+          <button
+            className={`icon-btn ses-hover ses-danger${blocked ? ' blocked' : ''}`}
+            onClick={() => void askRemove()}
+            aria-label={`Remover ${s.name}`}
+            title={blocked || 'Remover'}
+          >
+            <Icon name="delete" size={16} />
+          </button>
           {!s.current && (
             <button className="btn ses-open" onClick={onOpen} disabled={disabled}>
               Abrir

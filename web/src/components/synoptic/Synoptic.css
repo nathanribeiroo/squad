@@ -2,7 +2,8 @@
    frequencies · priority and terminal · radio and Transmitir. */
 .syn {
   position: absolute; inset: 0; display: grid; gap: 10px; padding: 10px 44px 10px 10px; /* the Rádio tab on the right */
-  grid-template-columns: minmax(380px, 620px) minmax(300px, 330px) minmax(360px, 1fr);
+  /* The design's 620 · 330 · 432 at 1440, kept in proportion on wider screens. */
+  grid-template-columns: minmax(380px, 620fr) minmax(300px, 330fr) minmax(360px, 432fr);
   grid-template-rows: minmax(0, 1fr) 100px;
   grid-template-areas: 'radar mid right' 'foot foot foot';
   background: var(--canvas);
@@ -14,7 +15,12 @@
 
 /* Radar */
 .syn-counters { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-.syn-scope { width: 100%; max-width: 600px; flex: 1; min-height: 0; }
+.syn-scope {
+  width: 100%; flex: 1; min-height: 0;
+  /* The scope is dark in both themes: its labels and symbols keep the dark theme's colors. */
+  --text: #cfeedd; --text-3: #7fa892; --focus: #cfeedd;
+  --stt-idle: #9fb5a8; --stt-wait: #ffd27a; --stt-done: #8fe8b4; --stt-off: #7fa892; --stt-err: #ff9a8f;
+}
 .syn-bgc { stroke: #163020; stroke-width: 1.5; }
 .syn-ring { fill: none; stroke: #163020; stroke-width: 1; }
 .syn-cross { stroke: #122818; stroke-width: 1; }

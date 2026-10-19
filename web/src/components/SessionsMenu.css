@@ -24,9 +24,10 @@
   border: 1px solid var(--line-3); padding: 0 5px;
 }
 .ses-row-actions { display: flex; align-items: center; gap: 2px; flex: none; }
-.ses-hover { opacity: 0; }
+.ses-hover { opacity: 0.45; }
 .ses-row:hover .ses-hover, .ses-hover:focus-visible { opacity: 1; }
-.ses-danger:not(:disabled):hover { color: var(--stt-err); background: var(--stb-err); }
+.ses-danger:not(.blocked):hover { color: var(--stt-err); background: var(--stb-err); }
+.ses-row .ses-hover.blocked { opacity: 0.3; cursor: help; }
 .icon-btn:disabled { opacity: 0.35; cursor: default; }
 .ses-row:hover .icon-btn.ses-hover:disabled { opacity: 0.35; }
 .ses-open { height: 28px; padding: 0 10px; margin-left: 2px; }

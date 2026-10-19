@@ -14,6 +14,8 @@
 }
 /* Nothing wraps: the levels scroll and the session name shrinks first. */
 .topbar > * { flex: none; }
+/* Its menus and forms do (a long label would widen them past their box). */
+.topbar .popover { white-space: normal; }
 .tb-anchor { position: relative; display: flex; }
 .tb-anchor.tb-shrink { flex: 0 1 auto; min-width: 0; }
 .tb-logo { display: flex; align-items: center; gap: 8px; padding-right: 6px; }

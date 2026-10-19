@@ -3,6 +3,7 @@ import { hub } from '../api/client';
 import type { SessionSummary, WorkspaceSummary } from '../api/types';
 import { shortPath, trimDir } from '../lib/paths';
 import { ago, contents } from '../lib/sessions';
+import { toast, toastError } from '../lib/toast';
 import { useNow } from '../lib/useNow';
 import { WS_COLORS, wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
@@ -28,6 +29,38 @@ export function wsActivity(w: WorkspaceSummary): string {
 }
 
 type Mode = { kind: 'list' } | { kind: 'new' } | { kind: 'edit'; ws: WorkspaceSummary };
+
+/** Asks, then removes a workspace; the one on screen gives way to another.
+ * False when the user changed their mind. */
+async function removeWorkspace(ws: WorkspaceSummary): Promise<boolean> {
+  if (useSquad.getState().workspaces.length < 2) {
+    toast('O último workspace não pode ser removido: crie outro antes.', 'wait');
+    return false;
+  }
+  const ok = await confirmDialog({
+    title: `Remover o workspace ${ws.name}?`,
+    tone: 'danger',
+    lose: [
+      ws.terminals ? `${ws.terminals === 1 ? 'O voo dele é encerrado' : `Os ${ws.terminals} voos dele são encerrados`}` : '',
+      `${ws.sessions === 1 ? 'A sessão sai' : `As ${ws.sessions} sessões saem`} da lista: o canvas e as NOTAMs vão para a lixeira da Torre (~/.torre/trash)`,
+    ],
+    keep: [
+      <>
+        A pasta do projeto, <span className="mono">{shortPath(ws.cwd)}</span>, como está
+      </>,
+      'As conversas, guardadas nos agentes',
+    ],
+    action: 'Remover workspace',
+  });
+  if (!ok) return false;
+  await hub.remove(ws.id);
+  const st = useSquad.getState();
+  if (st.activeWs === ws.id) {
+    const next = st.workspaces.find((w) => w.id !== ws.id);
+    if (next) st.switchWorkspace(next.id);
+  }
+  return true;
+}
 
 /** The workspace selector under the top bar button (⌥1–9 switch directly). */
 export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
@@ -101,6 +134,14 @@ export function WorkspaceMenu({ onClose }: { onClose: () => void }) {
                 </button>
                 <button className="icon-btn ws-row-edit" onClick={() => setMode({ kind: 'edit', ws: w })} aria-label={`Editar ${w.name}`} title="Editar">
                   <Icon name="edit" size={16} />
+                </button>
+                <button
+                  className="icon-btn ws-row-edit ws-row-remove"
+                  onClick={() => removeWorkspace(w).then((done) => done && onClose(), toastError)}
+                  aria-label={`Remover ${w.name}`}
+                  title={list.length < 2 ? 'O último workspace não pode ser removido' : 'Remover'}
+                >
+                  <Icon name="delete" size={16} />
                 </button>
                 <button
                   className="icon-btn ws-row-sessions"
@@ -219,32 +260,10 @@ function WorkspaceForm({ ws, last, onBack, onDone }: { ws?: WorkspaceSummary; la
     });
   };
 
-  const remove = async () => {
+  const remove = () => {
     if (!ws) return;
-    const ok = await confirmDialog({
-      title: `Remover o workspace ${ws.name}?`,
-      tone: 'danger',
-      lose: [
-        ws.terminals ? `${ws.terminals === 1 ? 'O voo dele é encerrado' : `Os ${ws.terminals} voos dele são encerrados`}` : '',
-        `${ws.sessions === 1 ? 'A sessão sai' : `As ${ws.sessions} sessões saem`} da lista: o canvas e as NOTAMs vão para a lixeira da Torre (~/.torre/trash)`,
-      ],
-      keep: [
-        <>
-          A pasta do projeto, <span className="mono">{shortPath(ws.cwd)}</span>, como está
-        </>,
-        'As conversas, guardadas nos agentes',
-      ],
-      action: 'Remover workspace',
-    });
-    if (!ok) return;
     void run(async () => {
-      await hub.remove(ws.id);
-      const st = useSquad.getState();
-      if (st.activeWs === ws.id) {
-        const next = st.workspaces.find((w) => w.id !== ws.id);
-        if (next) st.switchWorkspace(next.id);
-      }
-      onDone();
+      if (await removeWorkspace(ws)) onDone();
     });
   };
 
