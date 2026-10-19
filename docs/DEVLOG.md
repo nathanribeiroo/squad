@@ -2,6 +2,36 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, Fios com 8% de folga
+
+- **Pedido:** 15% de folga ainda deixava o fio solto demais; o usuário pediu uns 8%.
+- **O que muda (`web/src/canvas/rope.ts`):**
+  - `SLACK` passou de 1,15 para 1,08;
+  - **os 8% de verdade na tela:**
+    - medindo, um fio pendurado ficava 4% a 5% mais longo que o pedido. O peso estica os elos além do comprimento de repouso, porque o solver não desfaz toda a gravidade a cada passo. Era por isso que os "15%" apareciam como 17% a 20%;
+    - o esticamento cresce com o número de elos e cai com o número de passadas, perto de 0,018 × elos ÷ passadas;
+    - os elos agora nascem mais curtos nessa medida (`STRETCH`);
+    - a regra que solta corrente quando o fio fica esticado contra um nó passou a comparar com o comprimento pedido, e não com o dos elos encurtados. Sem isso, um fio longo apoiado num nó pareceria esticado e soltaria corrente sem precisar.
+  - **Medido** (fio livre, depois de assentar):
+
+    | Distância | Antes | Depois |
+    |---|---|---|
+    | 200 px | 1,098× | 1,078× |
+    | 640 px | 1,136× | 1,082× |
+    | 1500 px | 1,132× | 1,078× |
+
+- **Alternativas testadas:**
+  - mais iterações: 30 por passo chegam a 1,10×, mas custam 2,5× mais;
+  - passadas indo e voltando: não mudou nada.
+- **Testes:**
+  - `npx tsc -b`, `npm run build` e `go build ./...`;
+  - o roteiro em Node do `rope.ts`:
+    - as seis cenas, sem nenhum ponto dentro de um nó;
+    - a caixa alta ainda faz a corrente soltar e passar por cima;
+    - fios de 640 a 1000 px apoiados num nó estreito ou largo não soltam corrente;
+    - a NOTAM levada longe e trazida de volta termina com 1,09× a distância;
+  - na interface, um voo e a NOTAM dele a 200 px: o fio tem 236 px na `main` e 218 px nesta branch.
+
 ## 2026-10-19, Fluidez da interface
 
 - **Pedido:** a interface parecia engasgada, mais no Windows e também no Mac. Depois da análise, o usuário aprovou os itens 1 a 3 (o 4, terminais em WebGL, fica para depois, se precisar). Junto vieram:
