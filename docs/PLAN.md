@@ -73,6 +73,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Desenho e Grupo | `feat/desenho-grupo` | concluído |
 | Consumo | `feat/consumo` | concluído |
 | Consumo em contas de empresa | — | para discutir |
+| Ajustes da interface (telas largas, remover, nova sessão) | `feat/ajustes-interface` | concluído (PR) |
 
 ## B0, esqueleto
 

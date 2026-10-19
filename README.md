@@ -300,7 +300,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - o botão no topo, à esquerda, abre o seletor: a cor, o nome com o atalho (`⌥1`…), a pasta e o que está acontecendo ("2 no ar · 1 pendente"). Um ponto no botão indica atividade em outro workspace;
 - `⌥1`–`⌥9` trocam de workspace, e a URL guarda o workspace aberto (`?ws=<id>`), então dá para abrir dois em abas diferentes;
 - "Novo workspace" pede a pasta (com sugestões), um nome opcional e a cor. O lápis de cada linha edita esses campos; mudar a pasta vale para voos novos ou reiniciados;
-- "Remover workspace" encerra os voos dele e move o canvas e as NOTAMs para `~/.torre/trash/`. O último workspace não pode ser removido;
+- **Remover** (a lixeira de cada linha, ou "Remover workspace" no lápis) encerra os voos dele e move o canvas e as NOTAMs para `~/.torre/trash/`. O último workspace não pode ser removido: a lixeira avisa;
 - `torre ask`, `list` e `check` só enxergam voos do mesmo workspace.
 
 **Portal (`P`):** mostra um site ao vivo, como uma aba de navegador dentro do canvas.
@@ -431,7 +431,7 @@ Cada workspace tem sessões, e cada sessão é um canvas inteiro: voos, NOTAMs, 
 - **No topo:** depois do workspace aparece a sessão aberta (ex.: "torre › Login novo ▾"). Clicando nela, abre o painel de sessões.
 - **Painel de sessões:**
   - cada sessão mostra o nome, quando foi criada e aberta pela última vez, quantos voos, NOTAMs, portais e níveis tem, e os agentes dela; a aberta tem a marca "ATUAL";
-  - **Abrir**, **Renomear** (o lápis; Enter salva, Esc desiste) e **Remover** (a lixeira; não aparece na sessão aberta e fica desligada numa sessão com níveis);
+  - **Abrir**, **Renomear** (o lápis; Enter salva, Esc desiste) e **Remover** (a lixeira). A lixeira fica apagada, e o clique diz o motivo, na sessão aberta (abra outra antes), na única sessão do workspace (remova o workspace) e numa sessão com níveis;
   - **Nova sessão:** nome opcional e a caixa "Começar com os mesmos voos, sem as conversas". **Criar e abrir** guarda a sessão atual e abre a nova.
 - **Voos no ar:** abrir outra sessão (ou criar uma) com agentes no meio de um turno mostra quem está no ar, com **Cancelar** ou **Trocar mesmo assim**. Trocando, o trabalho para no meio, e o voo volta em arremetida, com "Continuar", quando você reabrir a sessão.
 - **Seletor de workspaces:** passe o mouse num workspace (ou clique na seta com o número de sessões) para ver as sessões dele ao lado; clicar numa delas abre a sessão e mostra aquele workspace.
