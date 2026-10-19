@@ -137,7 +137,12 @@ func NewLauncher(cliPath string) (*Launcher, error) {
 		// A permission prompt: the flight asks the user (PRIORIDADE). The
 		// hook only reports it; Torre never answers it.
 		"PermissionRequest": "claude-permission",
-	}, map[string]any{"permissions": map[string]any{"allow": allow}}); err != nil {
+	}, map[string]any{"permissions": map[string]any{"allow": allow},
+		// The status line brings each session's tokens, context and plan
+		// limits (Consumo); the user's own status line still shows
+		// (`torre hook claude-statusline` runs it).
+		"statusLine": map[string]any{"type": "command", "command": l.hookCommand("claude-statusline")},
+	}); err != nil {
 		return nil, err
 	}
 	if err := writeJSON(l.ClaudeMCP, map[string]any{"mcpServers": servers}); err != nil {

@@ -78,6 +78,13 @@ func TestPrepareLaunchLines(t *testing.T) {
 	if err != nil || !strings.Contains(string(settings), `\"/opt/torre/bin/torre\" hook claude-stop`) {
 		t.Fatalf("settings file: %v\n%s", err, settings)
 	}
+	// The status line brings each session's usage (Consumo).
+	var doc struct {
+		StatusLine struct{ Type, Command string } `json:"statusLine"`
+	}
+	if json.Unmarshal(settings, &doc) != nil || doc.StatusLine.Type != "command" || doc.StatusLine.Command != `"/opt/torre/bin/torre" hook claude-statusline` {
+		t.Fatalf("status line: %+v", doc.StatusLine)
+	}
 	spec := terminal.Spec{Agent: "claude", Shell: "/bin/sh"}
 	if _, err := l.Prepare(&store.Node{}, &spec); err != nil {
 		t.Fatal(err)

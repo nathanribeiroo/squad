@@ -1,0 +1,58 @@
+/* Consumo: the chip in the top bar and the box it opens (what each flight
+   used, the agents' plan limits). */
+.usage-chip-val { font-size: 11px; letter-spacing: 0; color: var(--text-2); }
+.usage-chip-val.warn { color: var(--stt-wait); }
+.usage-chip-val.crit { color: var(--stt-err); }
+@media (max-width: 1500px) {
+  .usage-chip-label { display: none; }
+}
+
+.usage-menu { right: 0; top: 36px; width: 620px; padding: 0; white-space: normal; max-height: calc(100vh - 70px); overflow-y: auto; }
+.usage-title {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--text-3); padding: 14px 16px 10px; border-bottom: 1px solid var(--line);
+}
+
+/* An agent account: its plan windows. */
+.usage-account { padding: 12px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.usage-account-head { display: flex; align-items: baseline; gap: 10px; }
+.usage-agent { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+.usage-seen { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.usage-window { display: grid; grid-template-columns: 110px 1fr 44px 150px; align-items: center; gap: 10px; font-size: 12px; }
+.usage-window.old { color: var(--text-3); }
+.usage-window-label { color: var(--text-2); }
+.usage-window-val { font-size: 12px; font-weight: 700; text-align: right; }
+.usage-window-val.warn { color: var(--stt-wait); }
+.usage-window-val.crit { color: var(--stt-err); }
+.usage-window-reset { font-size: 11px; color: var(--text-3); }
+.usage-window-total { grid-column: 2 / -1; font-size: 12px; font-weight: 700; }
+.usage-bar { height: 6px; background: var(--surface-3); position: relative; overflow: hidden; }
+.usage-bar i { position: absolute; inset: 0 auto 0 0; background: var(--text-2); }
+.usage-bar i.warn { background: var(--st-wait); }
+.usage-bar i.crit { background: var(--st-err); }
+.usage-window.old .usage-bar i { background: var(--line-3); }
+.usage-account-empty { font-size: 12px; color: var(--text-3); }
+
+/* The flights: one row each, a total below. */
+.usage-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.usage-table th {
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3);
+  text-align: right; padding: 10px 8px 6px; white-space: nowrap; border-bottom: 1px solid var(--line);
+}
+.usage-table th:first-child, .usage-table td:first-child { text-align: left; padding-left: 16px; }
+.usage-table th:last-child, .usage-table td:last-child { padding-right: 16px; }
+.usage-table td { text-align: right; padding: 7px 8px; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.usage-table tbody tr { cursor: pointer; }
+.usage-table tbody tr:hover { background: var(--surface-2); }
+.usage-table td .warn { color: var(--stt-wait); font-weight: 700; }
+.usage-table td .crit { color: var(--stt-err); font-weight: 700; }
+.usage-flight { display: flex; align-items: baseline; gap: 7px; max-width: 210px; }
+.usage-flight b { font-size: 12px; }
+.usage-flight-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; color: var(--text-2); }
+.usage-flight-agent { font-size: 10.5px; color: var(--text-3); flex: none; }
+.usage-table tr.none td { color: var(--text-3); }
+.usage-none { text-align: left !important; font-size: 11.5px; }
+.usage-table tfoot td { font-weight: 700; border-bottom: 0; }
+.usage-table tfoot td:first-child { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); }
+.usage-empty { padding: 14px 16px; font-size: 12px; color: var(--text-3); border-bottom: 1px solid var(--line); }
+.usage-foot { padding: 10px 16px 12px; font-size: 11px; line-height: 1.45; color: var(--text-3); border-top: 1px solid var(--line); }

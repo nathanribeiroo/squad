@@ -76,9 +76,10 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `torre portal` |
 | `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |
 | `internal/radio` | o Rádio de cada sessão: as linhas montadas dos eventos, em `radio.jsonl` na pasta da sessão, com o texto dos pedidos e das respostas |
+| `internal/usage` | Consumo: o que cada voo gastou e os limites da conta de cada agente, lidos dos arquivos dos agentes; a status line do Claude (`claude.go`, e `internal/cli/statusline.go`, que roda a do usuário), o `sessions.db` e a tela do `/usage` do Devin (`devin.go`), o Codex e o Gemini; as contas, as mesmas em todos os workspaces (`usage.go`) |
 | `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `torre floor`, `/api/floors`; a cópia em que uma sessão trabalha, e mesclar sem fechar (`copy.go`); as permissões do SEMPRE do Claude e do Devin que seguem os níveis e voltam no pouso (`permissions.go`); as marcas de testes e revisão dos voos, `torre floor mark` (`checks.go`) |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
-| `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` (o Desenho em `DrawLayer.tsx`; grupos e desenhos em `src/lib/visual.ts`), sessões em `src/components/SessionsMenu.tsx` |
+| `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` (o Desenho em `DrawLayer.tsx`; grupos e desenhos em `src/lib/visual.ts`), sessões em `src/components/SessionsMenu.tsx`, o Consumo em `src/components/UsageMenu.tsx` |
 
 ## Segurança (já decidido)
 

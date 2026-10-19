@@ -87,6 +87,8 @@ type Monitor struct {
 	// agentOf gives a terminal's agent ("claude"…), false for shells and
 	// own commands, whose screens are never read for prompts.
 	agentOf func(id string) (string, bool)
+	// onScreen gets an agent's screen when it changed (SetOnScreen).
+	onScreen func(id, agent, snap string)
 
 	mu sync.Mutex
 	st map[string]*track
@@ -146,6 +148,10 @@ func New(terms *terminal.Manager, opts Options, isWaiting func(string) bool, onS
 // SetAgentOf installs the lookup of a terminal's agent (before Start): only
 // agents' screens are read for prompts.
 func (m *Monitor) SetAgentOf(fn func(id string) (string, bool)) { m.agentOf = fn }
+
+// SetOnScreen installs a reader of agents' screens (before Start): fn gets
+// an agent's screen each time it changed.
+func (m *Monitor) SetOnScreen(fn func(id, agent, snap string)) { m.onScreen = fn }
 
 // Start begins sampling.
 func (m *Monitor) Start() {
@@ -210,6 +216,8 @@ func (m *Monitor) Poll() {
 		since time.Time
 	}
 	var changes []change
+	type screen struct{ id, agent, snap string }
+	var screens []screen
 
 	live := map[string]bool{}
 	for _, t := range m.terms.List() {
@@ -244,6 +252,9 @@ func (m *Monitor) Poll() {
 		}
 		if hashChanged {
 			tr.lastChange = now
+			if snap != "" && m.onScreen != nil {
+				screens = append(screens, screen{id, agent, snap})
+			}
 		}
 		active := (delta >= m.opts.ByteThresh && hashChanged) || titleSpin
 		if active {
@@ -308,6 +319,9 @@ func (m *Monitor) Poll() {
 	}
 	for _, c := range changes {
 		m.onState(c.id, c.state, c.since)
+	}
+	for _, sc := range screens {
+		m.onScreen(sc.id, sc.agent, sc.snap)
 	}
 }
 

@@ -39,6 +39,7 @@ export const ICONS = [
   'contrast',
   'dark_mode',
   'data_object',
+  'data_usage',
   'database',
   'delete',
   'description',

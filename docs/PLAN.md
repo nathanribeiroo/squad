@@ -70,7 +70,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Testes e revisão no pouso, e ocupação no `torre list` | `feat/checagens-pouso` | concluído |
 | Cartão do laço | `feat/laco` | concluído |
 | Perguntas e planos pela Torre, e SUA VEZ | `feat/perguntas-e-sua-vez` | concluído |
-| Desenho e Grupo | `feat/desenho-grupo` | concluído (PR) |
+| Desenho e Grupo | `feat/desenho-grupo` | concluído |
+| Consumo | `feat/consumo` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -394,4 +395,25 @@ Pedido do usuário em 2026-10-18 (estava em "Para depois"; quadro 02 de `docs/to
   - molduras e desenhos ficam atrás dos voos e só pegam o clique nas próprias linhas.
 - **Fora:** borracha parcial, camadas, desenho no Sinóptico e o grupo com sentido para os agentes.
 
-**Status:** pronto no PR `feat/desenho-grupo` → `main`.
+**Status:** mesclado na `main` pelo PR #35.
+
+## Consumo
+
+Pedido do usuário em 2026-10-18: ver quanto os agentes estão gastando, sem ocupar espaço fixo na tela. Para o Claude: tokens de entrada e de saída, o cache, a sessão de 5 h e a semana. Para o Devin: os tokens, o cache e os ACUs; a conta pessoal mostra os limites diário e semanal, e a de empresa só os ACUs. Com Claude e Devin no mesmo workspace, os dois aparecem. Tem de funcionar no Mac, no Windows e no Linux. O plano foi aprovado com os padrões propostos:
+- a cota do Devin é lida da tela quando o usuário abre `/usage` no voo (ela só existe no servidor do Devin);
+- o Codex e o Gemini entram agora, testados com arquivos de exemplo (as CLIs não estão instaladas aqui);
+- nada vai para a rede e nenhuma credencial é lida (ficaram de fora a rota de uso da conta do Claude e a API do Devin).
+
+- **Servidor (`internal/usage`):**
+  - **Claude:** a status line nas configurações que a Torre passa ao Claude (`torre hook claude-statusline`) traz o contexto, o custo estimado e as janelas de 5 h e de 7 dias; os tokens vêm da transcrição (cada resposta contada uma vez). A status line do usuário continua: a Torre roda a dele e imprime o que ela imprimir;
+  - **Devin:** o `sessions.db` do Devin, só para leitura, com um SQLite em Go puro (sem compilador C no Windows); o tamanho do contexto vem do rodapé da tela, e a cota do `/usage`;
+  - **Codex** e **Gemini:** os arquivos de conversa deles;
+  - as contas valem para todos os workspaces e ficam em `~/.torre/usage-accounts.json`; `GET /api/usage`, eventos `usage.flight` e `usage.account`.
+- **Interface:** o botão CONSUMO no topo, entre RÁDIO e ENLACE, com a janela mais cheia; a caixa com as contas de cada agente e uma linha por voo.
+- **Fora:**
+  - a conta de empresa do Devin não foi vista (o formato dos ACUs no `/usage` veio do texto do binário);
+  - o Codex e o Gemini reais;
+  - o custo em dinheiro do Devin, do Codex e do Gemini (eles não informam);
+  - histórico do consumo por dia.
+
+**Status:** pronto no PR `feat/consumo` → `main`.

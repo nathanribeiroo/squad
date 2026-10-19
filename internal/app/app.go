@@ -16,6 +16,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/agents"
 	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/browser"
+	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/notes"
 	"github.com/nathanribeiroo/squad/internal/plans"
@@ -27,6 +28,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/summary"
 	"github.com/nathanribeiroo/squad/internal/team"
 	"github.com/nathanribeiroo/squad/internal/terminal"
+	"github.com/nathanribeiroo/squad/internal/usage"
 )
 
 // Options configure the application.
@@ -38,6 +40,7 @@ type Options struct {
 	Browser    *browser.Manager     // shared by the portals of every workspace; nil disables them
 	Roles      *roles.Library       // shared by every workspace; nil: roles are only labels
 	Plans      *plans.Library       // flight plans, shared by every workspace; nil: none
+	Usage      *usage.Accounts      // the agents' plan limits, shared by every workspace; nil: kept in memory
 }
 
 // App is a wired Torre instance.
@@ -51,9 +54,11 @@ type App struct {
 	Summary *summary.Service
 	Team    *team.Service
 	Radio   *radio.Service
+	Usage   *usage.Tracker // what each flight used (Consumo)
 
 	exts     []agentbus.Extension
 	cancel   context.CancelFunc
+	unsubUse func()
 	plans    *plans.Library
 	roles    *roles.Library
 	defaults store.Limits // the server's limits, before the workspace's
@@ -117,6 +122,7 @@ func New(o Options) (*App, error) {
 	srv.OnEdgeRemoved(bus.EdgeRemoved)
 	var launcher *agents.Launcher
 	var summaries *summary.Service
+	var tracker *usage.Tracker
 	srv.OnNodeRemoved(func(n store.Node) {
 		bus.NodeRemoved(n)
 		if launcher != nil {
@@ -124,6 +130,9 @@ func New(o Options) (*App, error) {
 		}
 		if summaries != nil {
 			summaries.Forget(n.ID)
+		}
+		if tracker != nil {
+			tracker.Forget(n.ID)
 		}
 	})
 	// roleOf is the instructions a terminal's agent receives for its role.
@@ -266,6 +275,33 @@ func New(o Options) (*App, error) {
 			return launcher.Prepare(n, spec)
 		})
 	}
+	// Consumo: what each flight's conversation used, read from the agents'
+	// own files; the accounts' plan limits are the same in every workspace.
+	accounts := o.Usage
+	if accounts == nil {
+		accounts = usage.OpenAccounts("")
+	}
+	tracker = usage.NewTracker(usage.Options{
+		Accounts: accounts,
+		Terminal: func(id string) (usage.Terminal, bool) {
+			n, ok := srv.Store().Node(id)
+			if !ok || n.Terminal == nil {
+				return usage.Terminal{}, false
+			}
+			return usage.Terminal{Agent: n.Terminal.Agent, Conversation: n.Terminal.Conversation}, true
+		},
+		Publish: srv.Bus().Publish,
+	})
+	mon.OnAnyTurnEnd(func(te activity.TurnEnd) { go tracker.Refresh(te.ID) })
+	// Devin tells its context's size and the account's quota on its screen.
+	mon.SetOnScreen(func(id, agent, snap string) {
+		if agent == "devin" {
+			tracker.DevinScreen(id, snap)
+		}
+	})
+	srv.HandleSession("GET /api/usage", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{"flights": tracker.Flights(), "accounts": accounts.All()})
+	}))
 	srv.SetHookHandler(agents.HookHandler(agents.HookOptions{
 		Monitor:  mon,
 		CallerOf: server.CallerID,
@@ -281,7 +317,8 @@ func New(o Options) (*App, error) {
 				srv.SetConversation(id, conv, source)
 			}
 		},
-		Busy: srv.SetBusy,
+		Busy:       srv.SetBusy,
+		StatusLine: tracker.StatusLine,
 	}))
 	bus.SetHookedAgents(agents.HasHooks)
 
@@ -342,9 +379,10 @@ func New(o Options) (*App, error) {
 	srv.HandleSession("GET /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	srv.HandleSession("PUT /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	bl := bus.Limits()
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, Radio: radioSvc, exts: exts, plans: o.Plans, roles: o.Roles,
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, Radio: radioSvc, Usage: tracker, exts: exts, plans: o.Plans, roles: o.Roles,
 		defaults: store.Limits{MaxHops: bl.MaxHops, PerMinute: bl.PerMinute, MaxTeam: teamSvc.MaxTeam(), PortalsPerAgent: portal.MaxCreated}}
 	app.applyLimits()
+	app.unsubUse = accounts.Subscribe(func(a usage.Account) { srv.Bus().Publish(events.UsageAccount, a) })
 	return app, nil
 }
 
@@ -363,6 +401,11 @@ func (a *App) Start() {
 	a.Portals.Start()
 	a.Floors.Start()
 	a.Server.StartTerminals()
+	go func() { // what the flights used before Torre (re)started
+		for _, id := range a.Server.Store().TerminalIDs() {
+			a.Usage.Refresh(id)
+		}
+	}()
 }
 
 // Close stops sampling, the notes watcher and every terminal.
@@ -371,6 +414,9 @@ func (a *App) Close() {
 		a.cancel()
 	}
 	a.Monitor.Stop()
+	if a.unsubUse != nil {
+		a.unsubUse()
+	}
 	a.Radio.Close()
 	a.Portals.Close()
 	a.Floors.Close()

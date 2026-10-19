@@ -22,6 +22,8 @@ import type {
   StateResponse,
   SummarySettings,
   TurnCard,
+  UsageAccount,
+  UsageFlight,
   WEdge,
   WNode,
   WorkspaceOverview,
@@ -136,6 +138,8 @@ export const api = {
   /** Another name for a level; its branch and folder stay. */
   renameFloor: (id: string, name: string) => req<Floor>('PATCH', wsPath(`/api/floors/${encodeURIComponent(id)}`), { name }),
   cards: () => req<{ cards: TurnCard[] }>('GET', wsPath('/api/summary')),
+  /** What each flight used, and the agents' plan limits (Consumo). */
+  usage: () => req<{ flights: UsageFlight[]; accounts: UsageAccount[] }>('GET', wsPath('/api/usage')),
   summarize: (id: string) => req<TurnCard>('POST', wsPath(`/api/nodes/${id}/summarize`)),
   overview: () => req<WorkspaceOverview>('POST', wsPath('/api/summary/workspace')),
   summarySettings: () => req<SummarySettings>('GET', wsPath('/api/summary/settings')),

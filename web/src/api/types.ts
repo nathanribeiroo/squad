@@ -260,6 +260,46 @@ export interface TurnCard {
   error?: string;
 }
 
+/** Tokens a conversation used (internal/usage). */
+export interface UsageTokens {
+  /** Without the cache. */
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+/** What one flight's conversation used so far (GET /api/usage, "usage.flight"). */
+export interface UsageFlight {
+  id: string;
+  agent: string;
+  tokens: UsageTokens;
+  /** Claude Code's estimate at API prices (a subscription isn't charged it). */
+  costUsd?: number;
+  /** What Devin charged: Agent Compute Units, or credits. */
+  acus?: number;
+  credits?: number;
+  context?: { used: number; size: number; percent: number };
+  models?: string[];
+  at: string;
+}
+
+/** A plan limit: five_hour and seven_day (Claude, Codex), daily and weekly (Devin). */
+export interface UsageWindow {
+  kind: 'five_hour' | 'seven_day' | 'daily' | 'weekly';
+  /** The share used, 0–100. */
+  used: number;
+  resetsAt?: string;
+}
+
+/** An agent account's plan limits, as last seen; the same in every workspace ("usage.account"). */
+export interface UsageAccount {
+  agent: string;
+  windows?: UsageWindow[];
+  acus?: { used: number; limit?: number };
+  seen: string;
+}
+
 export type SummaryEngine = 'auto' | 'claude' | 'devin' | 'codex' | 'gemini' | 'off';
 
 /** GET /api/summary/settings. */

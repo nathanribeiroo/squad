@@ -6,6 +6,7 @@ import { useSquad } from '../state/store';
 import { FloorBar } from './FloorBar';
 import { Icon } from './Icon';
 import { SessionsMenu } from './SessionsMenu';
+import { UsageChip } from './UsageMenu';
 import { WorkspaceMenu } from './WorkspaceMenu';
 import './TopBar.css';
 
@@ -116,6 +117,7 @@ export function TopBar() {
         Rádio
         {pending > 0 && <span className="tb-count mono">{pending}</span>}
       </button>
+      <UsageChip />
       {connection === 'connected' ? (
         <span className="tb-link ok" title="Enlace com o servidor da Torre">
           <i />
