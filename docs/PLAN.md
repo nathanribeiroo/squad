@@ -75,7 +75,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Consumo em contas de empresa | — | para discutir |
 | Ajustes da interface (telas largas, remover, nova sessão) | `feat/ajustes-interface` | concluído |
 | NOTAM: cabeçalho com nome longo e tamanho | `feat/notam-cabecalho` | concluído |
-| Fios como corrente | `feat/fios-corrente` | concluído (PR) |
+| Fios como corrente | `feat/fios-corrente` | concluído |
+| Fluidez da interface (e fios com 15% de folga) | `feat/fluidez` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -272,6 +273,7 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **Ocultar a tela guardado no nó** (F5b; `NOVIDADES-E-BACKEND.md`, item 17, "Guardar `redacted` no nó é opcional"): hoje fica no navegador. No nó, valeria em todas as janelas e no Sinóptico de outro computador.
 - **Planos de voo pelos agentes** (F5d): hoje só a interface salva e decola planos (decolar inicia processos, então ficou fora do `/cli` e do MCP, como a resposta da PRIORIDADE). Um líder poderia pedir "decole o plano Trio" com aprovação, se fizer falta.
 - **Galeria com planos prontos** (F5d; o mockup do quadro 20 mostra "Trio clássico", "Front-end com teste visual", "Duas frentes em paralelo"): a galeria começa vazia. Planos prontos que venham com a Torre precisariam escolher agentes e papéis que existam na máquina.
+- **Terminais em WebGL** (item 4 da análise de fluidez, DEVLOG de 2026-10-19): o desenho do xterm em HTML ainda é a maior parte do trabalho com muitos agentes escrevendo. O WebGL foi descartado na W2 porque mede o próprio canvas errado sob a escala do canvas da Torre; o caminho seria uma camada sem `transform`, por cima dos nós, com a posição de cada terminal. Só se as correções de `feat/fluidez` não bastarem.
 - **Dois voos encaixados** (F5b): hoje um por vez, numa borda. As duas bordas ao mesmo tempo pediriam um desenho para o canvas espremido no meio.
 
 ## Pilha de NOTAMs
