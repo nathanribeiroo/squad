@@ -19,6 +19,7 @@ import (
 
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/store"
+	"github.com/nathanribeiroo/squad/internal/terminal"
 )
 
 const testToken = "test-session-token"
@@ -313,6 +314,40 @@ func TestPatchPortalKeepsName(t *testing.T) {
 		_ = json.Unmarshal(data, &got)
 		if resp.StatusCode != 200 || got.Portal == nil || *got.Portal != tc.want {
 			t.Fatalf("patch %+v: %d %s", tc.patch, resp.StatusCode, data)
+		}
+	}
+}
+
+func TestTitleSpinnerNotRepublished(t *testing.T) {
+	h := newHarness(t)
+	ch, cancel := h.srv.bus.Subscribe()
+	defer cancel()
+	// A spinner in front of the same text is no news; new text is.
+	for _, title := range []string{"✳ Claude Code", "◐ Mutex em Go", "◑ Mutex em Go", "◐ Mutex em Go", "✳ Mutex em Go", "◐ Canais", "⠋ Canais"} {
+		h.srv.onTerminalEvent(terminal.Event{Kind: terminal.EventTitle, ID: "t1", Title: title})
+	}
+	var got []string
+	for {
+		select {
+		case ev := <-ch:
+			if ev.Type == events.TerminalTitle {
+				got = append(got, ev.Data.(map[string]string)["title"])
+			}
+			continue
+		case <-time.After(200 * time.Millisecond):
+		}
+		break
+	}
+	if want := []string{"✳ Claude Code", "◐ Mutex em Go", "◐ Canais"}; strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("published titles = %q, want %q", got, want)
+	}
+	// The state still reads the latest title.
+	if rt := h.srv.runtimeOf("t1"); rt.Title != "⠋ Canais" {
+		t.Fatalf("runtime title = %q", rt.Title)
+	}
+	for in, want := range map[string]string{"◐ Mutex em Go": "Mutex em Go", "⠙ build": "build", "* 3 files": "3 files", "⏳": "", "zsh": "zsh"} {
+		if got := titleText(in); got != want {
+			t.Errorf("titleText(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

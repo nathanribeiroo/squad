@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/config"
@@ -153,13 +154,25 @@ func (s *Server) StartTerminals() {
 	}
 }
 
+// titleText is a window title without the spinner or the marks in front of
+// it ("◐ Mutex em Go" and "✳ Mutex em Go" are both "Mutex em Go").
+func titleText(t string) string {
+	return strings.TrimLeftFunc(t, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+}
+
 func (s *Server) onTerminalEvent(ev terminal.Event) {
 	switch ev.Kind {
 	case terminal.EventTitle:
 		s.mu.Lock()
+		prev := s.titles[ev.ID]
 		s.titles[ev.ID] = ev.Title
 		s.mu.Unlock()
-		s.bus.Publish(events.TerminalTitle, map[string]string{"id": ev.ID, "title": ev.Title})
+		// Agents animate a spinner in front of the title, a frame or more
+		// a second; only new text is news to the clients (the state reads
+		// the latest title).
+		if titleText(ev.Title) != titleText(prev) || prev == "" {
+			s.bus.Publish(events.TerminalTitle, map[string]string{"id": ev.ID, "title": ev.Title})
+		}
 	case terminal.EventStatus:
 		rt := s.runtimeOf(ev.ID)
 		rt.Status, rt.ExitCode, rt.Error = string(ev.Status), ev.ExitCode, ev.Err

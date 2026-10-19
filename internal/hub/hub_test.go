@@ -19,6 +19,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/roles"
 	"github.com/nathanribeiroo/squad/internal/server"
 	"github.com/nathanribeiroo/squad/internal/store"
@@ -393,5 +394,41 @@ func TestTokenRedirectKeepsWorkspace(t *testing.T) {
 	resp.Body.Close()
 	if loc := resp.Header.Get("Location"); loc != "/?ws=abc" {
 		t.Fatalf("redirect to %q", loc)
+	}
+}
+
+// Events that don't change a workspace's counts (a title, a usage update)
+// don't send the list again; a change does.
+func TestWorkspacesListOnlyWhenChanged(t *testing.T) {
+	h := newHarness(t, "")
+	a := h.create("A")
+	time.Sleep(2 * summaryDelay) // the creation's own list goes out
+	ch, cancel := h.hub.events.Subscribe()
+	defer cancel()
+	count := func(wait time.Duration) (n int, last []Summary) {
+		end := time.After(wait)
+		for {
+			select {
+			case ev := <-ch:
+				if ev.Type == EventWorkspaces {
+					n++
+					last = ev.Data.([]Summary)
+				}
+			case <-end:
+				return n, last
+			}
+		}
+	}
+	bus := h.hub.App(a.ID).Server.Bus()
+	for i := 0; i < 5; i++ {
+		bus.Publish(events.TerminalTitle, map[string]string{"id": "x", "title": fmt.Sprintf("◐ %d", i)})
+		time.Sleep(50 * time.Millisecond)
+	}
+	if n, _ := count(3 * summaryDelay); n != 0 {
+		t.Fatalf("lists sent after no-op events: %d", n)
+	}
+	h.addTerminal(a.ID, "Shell")
+	if n, last := count(3 * summaryDelay); n != 1 || len(last) != 1 || last[0].Terminals != 1 {
+		t.Fatalf("after a new terminal: %d lists, last %+v", n, last)
 	}
 }
