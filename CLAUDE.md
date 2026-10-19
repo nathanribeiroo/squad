@@ -91,4 +91,5 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 ## Pendências
 
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
+- **Consumo em contas de empresa:** a análise e o que falta estão no PLAN, na seção "Consumo em contas de empresa (para discutir)". O usuário vai trazer a tela do `/usage` do Devin da empresa e o tipo de conta do Claude antes do plano.
 - **Próximo passo:** a Torre (F0–F5d, no PLAN) terminou. O que ficou de fora está em "Para depois", na seção Torre do PLAN; o que vem agora é decisão do usuário.
