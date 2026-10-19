@@ -257,18 +257,26 @@
 }
 .nn-tag { height: 18px; padding: 0 5px; background: var(--ink); color: var(--paper); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; display: inline-flex; align-items: center; flex: none; }
 .nn-title, .pn-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.nn-title { flex: 0 0 auto; max-width: 60%; } /* the file name gives way first */
+.nn-title { flex: 0 1 auto; min-width: 40px; } /* shrinks before the buttons; the file name gives way first */
 .nn-name {
   flex: 0 1 220px; min-width: 80px; height: 24px; border: 1px solid var(--ink); outline: none;
   background: var(--surface); color: var(--text); font-size: 13px; font-weight: 700; padding: 0 6px;
 }
-.nn-file { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.nn-file { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1000 auto; }
+.nn-head .pn-creator { flex: 0 1 auto; min-width: 0; overflow: hidden; }
 .nn-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; cursor: text; user-select: text; }
 .nn-empty { color: var(--ink-2); }
 .nn-lock { width: 24px; height: 24px; color: var(--ink-2); }
 .nn-seg { display: flex; height: 22px; border: 1px solid var(--paper-line-2); flex: none; }
 .nn-seg button { border: 0; background: transparent; padding: 0 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); cursor: pointer; }
 .nn-seg button.on { background: var(--ink); color: var(--paper); }
+/* A narrow NOTAM tightens its header so the buttons stay inside it. */
+.nnode { container-type: inline-size; }
+@container (max-width: 360px) {
+  .nn-head { gap: 4px; padding-left: 8px; }
+  .nn-tag { padding: 0 4px; }
+  .nn-seg button { padding: 0 4px; letter-spacing: 0.02em; }
+}
 .nn-seg button:disabled { opacity: 0.4; cursor: default; }
 .nn-editor { flex: 1; min-height: 0; resize: none; border: 0; outline: none; background: transparent; padding: 12px 16px; font-family: var(--font-mono); font-size: 12px; line-height: 18px; color: var(--text); }
 .nn-foot { height: 24px; flex: none; display: flex; align-items: center; padding: 0 12px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--ink-2); }
@@ -395,6 +403,15 @@
 /* Resizer */
 .react-flow__resize-control.handle { width: 10px; height: 10px; border-radius: 0; background: var(--text); border: 0; }
 .react-flow__resize-control.line { border-color: transparent; }
+/* The NOTAM's corner grip: inside the corner, two diagonal strokes. */
+.react-flow__resize-control.handle.nn-grip {
+  width: 16px; height: 16px; background: transparent; transform: translate(-100%, -100%); z-index: 5; opacity: 0.5;
+}
+.react-flow__resize-control.nn-grip span {
+  position: absolute; inset: 0; display: block;
+  background: linear-gradient(135deg, transparent 52%, var(--ink-2) 52% 60%, transparent 60% 70%, var(--ink-2) 70% 78%, transparent 78%);
+}
+.nnode:hover .nn-grip { opacity: 1; }
 .spin { animation: pn-spin 1s linear infinite; }
 @keyframes pn-spin { to { transform: rotate(360deg); } }
 

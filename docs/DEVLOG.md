@@ -2,6 +2,27 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, NOTAM: cabeçalho com nome longo e tamanho
+
+- **Pedido:** numa NOTAM com nome comprido, Prévia, Editar e o ⋯ saíam da NOTAM. E não dava para mudar o tamanho dela.
+- **Cabeçalho:**
+  - **a causa:** o nome não encolhia (`flex: 0 0 auto`, até 60% da largura), e os botões eram empurrados para fora;
+  - **a correção:**
+    - o nome encolhe com "…" antes dos botões (o nome inteiro continua no `title`);
+    - o nome do arquivo e o "por IMP" cedem primeiro;
+    - numa NOTAM estreita (até 360 px, por container query), o cabeçalho aperta os espaços, e tudo cabe até no mínimo de 280 px.
+- **Tamanho:**
+  - **o que existia:** o redimensionar existia desde a F5a, mas só aparecia com a NOTAM selecionada, em quadradinhos de 10 px nos cantos (menores ainda com o zoom afastado). Funcionou no teste aqui, e o problema era achar;
+  - **a correção:** sem estar selecionada, a NOTAM mostra no canto de baixo, à direita, uma alça de duas risquinhas, um pouco apagada até o mouse passar. Arrastar a alça muda o tamanho direto (é um `NodeResizeControl` do React Flow, com o mesmo mínimo e a mesma gravação). Selecionada, valem as bordas e os quatro cantos, como antes.
+- **Testes:**
+  - `npx tsc -b`, `npm run build` e `go build ./...`;
+  - na tela, com o `torre serve`:
+    - duas NOTAMs de nome longo, de 400 e de 280 px, nos temas escuro e claro, com os botões dentro;
+    - a alça arrastada sem selecionar (280 × 220 virou 325 × 296 no servidor);
+    - os cantos com a NOTAM selecionada;
+    - o menu ⋯ abrindo.
+- **Agentes:** só interface; nada muda para nenhum agente.
+
 ## 2026-10-19, Ajustes da interface: Sinóptico em telas largas, remover workspace e sessão, nova sessão
 
 - **Pedido:** o usuário testou no Mac, numa tela mais larga que 1440, e achou três problemas:

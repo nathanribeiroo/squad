@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { NodeResizer, type Node, type NodeProps, type ResizeParams } from '@xyflow/react';
+import { NodeResizeControl, NodeResizer, type Node, type NodeProps, type ResizeParams } from '@xyflow/react';
 import { ApiError, api } from '../../api/client';
 import type { NoteData, WNode } from '../../api/types';
 import { confirmDialog } from '../../components/ConfirmDialog';
@@ -44,6 +44,12 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteFlowNode>) {
   return (
     <div className={`nnode${selected ? ' selected' : ''}${shown.note!.locked ? ' locked' : ''}${stacked ? ' stacked' : ''}${connectClass(target)}`}>
       <NodeResizer isVisible={selected} minWidth={280} minHeight={200} onResizeEnd={onResizeEnd} />
+      {/* Unselected, a grip in the corner resizes it too (selecting first wasn't obvious). */}
+      {!selected && (
+        <NodeResizeControl position="bottom-right" minWidth={280} minHeight={200} onResizeEnd={onResizeEnd} className="nn-grip">
+          <span title="Arraste para mudar o tamanho" />
+        </NodeResizeControl>
+      )}
       <NodeHandles id={id} />
       {stacked && <StackStrip members={members} shown={shown.id} onPick={setPick} />}
       <NoteCard key={shown.id} node={shown} stacked={stacked} />
