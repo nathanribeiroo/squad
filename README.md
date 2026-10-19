@@ -390,7 +390,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
   - um resumo que estava sendo escrito quando a Torre fechou não continua: clique em "Resumir" de novo;
   - o × esconde o boletim só nesta janela: ao recarregar a página, ele volta.
 
-**NOTAMs:** as notas do canvas, em papel. Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a NOTAM para todos. Quando um agente edita a NOTAM, o trecho alterado fica destacado. Selecionada, ela pode ser redimensionada pelas bordas (mínimo 280×200). No modo Editar, ela grava sozinha 0,8 s depois que você para de digitar, e Esc volta à prévia.
+**NOTAMs:** as notas do canvas, em papel. Prévia/Editar no cabeçalho; as tarefas podem ser marcadas com clique; o cadeado trava a NOTAM para todos. Quando um agente edita a NOTAM, o trecho alterado fica destacado. Para mudar o tamanho, arraste o canto de baixo, à direita (as duas risquinhas), ou, com a NOTAM selecionada, as bordas e os cantos (mínimo 280×200). Um nome comprido é cortado com "…" (o nome inteiro aparece ao passar o mouse), e os botões ficam sempre dentro da NOTAM. No modo Editar, ela grava sozinha 0,8 s depois que você para de digitar, e Esc volta à prévia.
 
 **Nome das NOTAMs:**
 - **NOTAM nova** (tecla N ou barra de ferramentas): já abre com o campo de nome selecionado. Enter confirma; Esc fica com o nome provisório ("Nota", "Nota 2"…). O arquivo nasce com o nome que você der ("Plano de testes" → `plano-de-testes.md`) e não muda mais.
