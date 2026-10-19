@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStoreApi, type Edge, type EdgeProps, type InternalNode } from '@xyflow/react';
+import { EdgeLabelRenderer, useInternalNode, useReactFlow, useStoreApi, type Edge, type EdgeProps, type InternalNode } from '@xyflow/react';
 import { api } from '../../api/client';
 import { Icon } from '../../components/Icon';
 import { loopOf, onLoop } from '../../lib/loop';
@@ -8,7 +8,7 @@ import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
 import { useNodeName, useSquad, type Flight } from '../../state/store';
 import { anchors, type Pt, type Rect, type Wire } from '../geometry';
-import { Chain, STILL, lowest, smoothPath } from '../rope';
+import { Chain, STILL, lowest, smoothPath, type Solid } from '../rope';
 import { actionVerb, usePortalAction } from '../nodes/portalAction';
 import './wire.css';
 
@@ -28,15 +28,17 @@ function rectOf(n: InternalNode): Rect {
 }
 
 /** The nodes a wire can't pass through: flights, NOTAMs, portals and
- * collapsed groups (open frames and drawings are only drawn). */
-function solids(lookup: Map<string, InternalNode>, box: Rect): Rect[] {
-  const out: Rect[] = [];
+ * collapsed groups (open frames and drawings are only drawn); own: the
+ * wire's ends. */
+function solids(lookup: Map<string, InternalNode>, box: Rect, own: string[]): Solid[] {
+  const out: Solid[] = [];
   for (const n of lookup.values()) {
     if (n.hidden) continue;
     const collapsed = n.type === 'frame' && (n.data as { node?: { group?: { collapsed?: boolean } } }).node?.group?.collapsed;
     if (n.type !== 'terminal' && n.type !== 'note' && n.type !== 'portal' && !collapsed) continue;
-    const r = rectOf(n);
+    const r: Solid = rectOf(n);
     if (r.w === 0 || r.x > box.x + box.w || r.x + r.w < box.x || r.y > box.y + box.h || r.y + r.h < box.y) continue;
+    if (own.includes(n.id)) r.own = true;
     out.push(r);
   }
   return out;
@@ -56,20 +58,31 @@ const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(pre
 const SWING_MS = 6000;
 /** Young chains (the canvas opening, nodes being measured) settle at once. */
 const QUIET_START_MS = 1500;
+/** While it swings with labels on it, React redraws them every few frames. */
+const LABEL_FRAMES = 4;
 
 /**
  * The wire as a hanging chain through its pins (the ends, then the bend
  * points): it settles at once when it first appears, and swings when an end
- * or a node near it moves, until it is still again.
+ * or a node near it moves, until it is still again. While it swings, draw
+ * gets each frame's points (the path is written straight to the DOM; React
+ * renders again only every few frames, when labels need to follow).
  */
-function useChain(pins: Pt[] | null): Pt[] | null {
+function useChain(pins: Pt[] | null, a: string, b: string, draw: (pts: Pt[]) => void, labels: boolean): Pt[] | null {
   const store = useStoreApi();
   const chain = useRef<Chain | null>(null);
   const born = useRef(0);
   const until = useRef(0);
   const [awake, setAwake] = useState(false);
   const [, setFrame] = useState(0);
-  const obstacles = useCallback(() => (chain.current ? solids(store.getState().nodeLookup, reach(chain.current.x, chain.current.y)) : []), [store]);
+  const drawRef = useRef(draw);
+  drawRef.current = draw;
+  const labelsRef = useRef(labels);
+  labelsRef.current = labels;
+  const obstacles = useCallback(
+    () => (chain.current ? solids(store.getState().nodeLookup, reach(chain.current.x, chain.current.y), [a, b]) : []),
+    [store, a, b],
+  );
   const wake = useCallback(() => {
     const c = chain.current;
     if (!c) return;
@@ -87,7 +100,7 @@ function useChain(pins: Pt[] | null): Pt[] | null {
   }, [obstacles]);
 
   if (pins && !chain.current) {
-    const first = new Chain(pins, solids(store.getState().nodeLookup, reach(pins.map((p) => p.x), pins.map((p) => p.y))));
+    const first = new Chain(pins, solids(store.getState().nodeLookup, reach(pins.map((p) => p.x), pins.map((p) => p.y)), [a, b]));
     chain.current = first;
     born.current = performance.now();
     first.settle(obstacles());
@@ -99,13 +112,14 @@ function useChain(pins: Pt[] | null): Pt[] | null {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, obstacles, wake]);
 
-  // A node moving into (or out of) its way wakes it too.
+  // A node moving into (or out of) its way wakes it too. Panning and zooming
+  // change the store on every frame but move no node: skipped.
   useEffect(() => {
     let last = '';
-    return store.subscribe((st) => {
+    return store.subscribe((st, prev) => {
       const c = chain.current;
-      if (!c) return;
-      const sig = solids(st.nodeLookup, reach(c.x, c.y))
+      if (!c || st.nodes === prev.nodes) return;
+      const sig = solids(st.nodeLookup, reach(c.x, c.y), [])
         .map((r) => `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.w)},${Math.round(r.h)}`)
         .join(' ');
       if (sig !== last) {
@@ -118,12 +132,15 @@ function useChain(pins: Pt[] | null): Pt[] | null {
   useEffect(() => {
     if (!awake) return;
     let raf = 0;
+    let frames = 0;
     const tick = () => {
       const c = chain.current;
       if (!c) return;
       c.quiet = c.step(obstacles()) < STILL ? c.quiet + 1 : 0;
-      setFrame((f) => f + 1);
-      if (c.quiet > 30 || performance.now() > until.current) return setAwake(false);
+      // Still, and not taking back chain it paid out: asleep (React draws the last pose).
+      if ((c.quiet > 30 && !c.retracting) || performance.now() > until.current) return setAwake(false);
+      drawRef.current(c.points());
+      if (labelsRef.current && ++frames % LABEL_FRAMES === 0) setFrame((f) => f + 1);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -185,7 +202,12 @@ export function WireEdge({ id, source: drawnFrom, target: drawnTo, selected, dat
   const [dragRope, setDragRope] = useState<[number, number][] | null>(null);
   const rope = dragRope ?? data?.rope ?? [];
   const ends = a && b ? anchors(rectOf(a), rectOf(b)) : null;
-  const pts = useChain(ends ? [ends[0], ...rope.map(([x, y]) => ({ x, y })), ends[1]] : null);
+  // The wire, drawn straight from the chain while it swings (its click area
+  // follows when it settles: React draws the last pose).
+  const pathRef = useRef<SVGPathElement>(null);
+  const draw = useCallback((p: Pt[]) => pathRef.current?.setAttribute('d', smoothPath(p)), []);
+  const labels = flights.length > 0 || inLoop || !!portalAct || paused || !!selected;
+  const pts = useChain(ends ? [ends[0], ...rope.map(([x, y]) => ({ x, y })), ends[1]] : null, drawnFrom, drawnTo, draw, labels);
   if (!a || !b || !ends || !pts) return null;
 
   const w: Wire = { path: smoothPath(pts), s: ends[0], t: ends[1], low: lowest(pts) };
@@ -209,7 +231,8 @@ export function WireEdge({ id, source: drawnFrom, target: drawnTo, selected, dat
 
   return (
     <>
-      <BaseEdge id={id} path={w.path} className={wireClass} interactionWidth={24} />
+      <path ref={pathRef} id={id} d={w.path} fill="none" className={`react-flow__edge-path ${wireClass}`} />
+      <path d={w.path} fill="none" strokeOpacity={0} strokeWidth={24} className="react-flow__edge-interaction" />
       {visuals.map((v) =>
         v.kind === 'out' || v.kind === 'back' ? (
           <path

@@ -37,6 +37,17 @@ function loadFonts(): Promise<unknown> {
   return fontsReady;
 }
 
+/**
+ * A slot laid out zoom times larger than its node's body and scaled back by
+ * 1/zoom: at that zoom xterm sees no transform at all (text at screen
+ * resolution, mouse cells right; xterm doesn't support scaled ancestors).
+ */
+function styleSlot(slot: HTMLElement, zoom: number) {
+  slot.style.width = `calc((100% - 20px) * ${zoom})`;
+  slot.style.height = `calc((100% - 16px) * ${zoom})`;
+  slot.style.transform = `scale(${1 / zoom})`;
+}
+
 let cell: { w: number; h: number; natural: number } | null = null;
 
 /**
@@ -71,7 +82,10 @@ export class TermSession {
   private disposed = false;
   private retry = 0;
   private timer: number | undefined;
+  /** The zoom the terminal is laid out for (its slot and its type). */
   private zoom = 1;
+  /** The canvas zoom now. */
+  private wantZoom = 1;
   private enc = new TextEncoder();
   private markReady!: () => void;
   /** Resolves once the terminal is open and laid out (cell size known). */
@@ -165,53 +179,102 @@ export class TermSession {
     }
   }
 
-  /** Screen zoom the terminal is rendered for (see XTermView). */
+  /**
+   * The canvas zoom (see XTermView). A terminal laid out for another zoom is
+   * only scaled: its text is drawn by the page, so it stays sharp, and laying
+   * it out again redraws every row. It is laid out for the new zoom when it
+   * is used (fitZoom: xterm maps the mouse to cells as if unscaled), or when
+   * the zoom is far from its own.
+   */
   setZoom(z: number) {
-    if (z === this.zoom) return;
-    this.zoom = z;
-    this.layout();
+    if (z === this.wantZoom) return;
+    this.wantZoom = z;
+    const ratio = z / this.zoom;
+    if (ratio < 0.7 || ratio > 1.4) this.layout();
+  }
+
+  /** Laid out for the canvas zoom now, at once (before a click or the keyboard). */
+  fitZoom() {
+    if (this.opened && this.zoom !== this.wantZoom) {
+      layoutQueue.delete(this);
+      this.layoutNow();
+    }
   }
 
   private layoutGen = 0;
 
-  /**
-   * Type size = 11 × zoom, so text is drawn at screen resolution. xterm
-   * derives the row height from the font's own metrics, so the line height is
-   * corrected from the measured grid until a row is 15 × zoom (handoff 11/15)
-   * and the grid fits its slot; if it is still too wide, the type shrinks.
-   */
+  /** Re-lays the terminal out for its zoom and slot, in its turn (see runLayouts). */
   private layout() {
-    if (!this.opened) return;
-    const gen = ++this.layoutGen;
+    if (this.opened) scheduleLayout(this);
+  }
+
+  /** On screen now: laid out before the others. */
+  onScreen(): boolean {
+    const r = this.host.getBoundingClientRect();
+    return r.width > 0 && r.right > 0 && r.bottom > 0 && r.left < window.innerWidth && r.top < window.innerHeight;
+  }
+
+  /**
+   * Type size = 11 × zoom, so text is drawn at screen resolution, and a row
+   * 15 × zoom (handoff 11/15), both worked out from the font's metrics at the
+   * base size and set at once: each change of type makes xterm measure every
+   * glyph again and redraw every row. One check once it is drawn corrects
+   * what the font rounds differently.
+   */
+  layoutNow() {
     const slot = this.host.parentElement;
+    if (!this.opened || !slot) return;
+    const gen = ++this.layoutGen;
+    this.zoom = this.wantZoom;
+    styleSlot(slot, this.zoom);
+    const { w, natural } = baseCell();
+    const rows = this.term.rows || 1;
     let size = BASE_FONT * this.zoom;
-    this.term.options.fontSize = size;
-    const check = (tries: number) =>
-      requestAnimationFrame(() => {
-        const screen = this.term.element?.querySelector<HTMLElement>('.xterm-screen');
-        if (gen !== this.layoutGen || !screen || !slot || tries <= 0) return;
-        const rows = this.term.rows || 1;
-        if (screen.offsetWidth > slot.clientWidth + 0.5) {
-          size *= (slot.clientWidth / screen.offsetWidth) * 0.995;
-          this.term.options.fontSize = size;
-          return check(tries - 1);
-        }
-        const want = Math.min(LINE_PX * this.zoom, slot.clientHeight / rows);
-        const got = screen.offsetHeight / rows;
-        if (got <= want && got > want - 1) return;
-        const lh = this.term.options.lineHeight ?? 1;
-        const next = (lh * want) / got;
-        if (next < 1) {
-          // Rows can't get shorter than the type; use a smaller type instead.
-          this.term.options.lineHeight = 1;
-          size *= want / got;
-          this.term.options.fontSize = size;
-        } else {
-          this.term.options.lineHeight = next;
-        }
-        check(tries - 1);
-      });
-    check(10);
+    // A node smaller than its grid: smaller type.
+    const wide = ((this.term.cols || 80) * w * size) / BASE_FONT;
+    if (wide > slot.clientWidth) size *= (slot.clientWidth / wide) * 0.995;
+    const want = Math.min(LINE_PX * this.zoom, slot.clientHeight / rows);
+    // xterm rounds the glyph's height up to device pixels, then the row down.
+    const dpr = window.devicePixelRatio || 1;
+    let lh = (want * dpr) / Math.max(1, Math.ceil(((natural * size) / BASE_FONT) * dpr));
+    if (lh < 1) {
+      // Rows can't get shorter than the type; use a smaller type instead.
+      size *= lh;
+      lh = 1;
+    }
+    this.setType(size, lh);
+    requestAnimationFrame(() => this.check(gen, slot, 2));
+  }
+
+  private setType(size: number, lh: number) {
+    const o = this.term.options;
+    if (o.lineHeight !== lh) o.lineHeight = lh;
+    if (o.fontSize !== size) o.fontSize = size;
+  }
+
+  /** Corrects the type from the drawn grid: it must fit the slot, rows 15 × zoom. */
+  private check(gen: number, slot: HTMLElement, tries: number) {
+    const screen = this.term.element?.querySelector<HTMLElement>('.xterm-screen');
+    if (gen !== this.layoutGen || !screen || tries <= 0 || screen.offsetHeight === 0) return;
+    const rows = this.term.rows || 1;
+    let size = this.term.options.fontSize ?? BASE_FONT;
+    let lh = this.term.options.lineHeight ?? 1;
+    if (screen.offsetWidth > slot.clientWidth + 0.5) {
+      size *= (slot.clientWidth / screen.offsetWidth) * 0.995;
+    } else {
+      const want = Math.min(LINE_PX * this.zoom, slot.clientHeight / rows);
+      const got = screen.offsetHeight / rows;
+      if (got <= want && got > want - 1) return;
+      const next = (lh * want) / got;
+      if (next < 1) {
+        lh = 1;
+        size *= want / got;
+      } else {
+        lh = next;
+      }
+    }
+    this.setType(size, lh);
+    requestAnimationFrame(() => this.check(gen, slot, tries - 1));
   }
 
   /** Cell size in world units at the base font (for node resizing). */
@@ -223,9 +286,16 @@ export class TermSession {
 
   private slotObserver: ResizeObserver | null = null;
 
-  /** Places the terminal in a slot (live zoom level). */
-  attach(slot: HTMLElement) {
+  /** Places the terminal in a slot (live zoom level), at the canvas zoom. */
+  attach(slot: HTMLElement, zoom: number) {
+    // An open terminal keeps the type it has until its turn to be laid out
+    // again: its slot matches that type meanwhile.
+    this.wantZoom = zoom;
+    if (!this.opened) this.zoom = zoom;
+    styleSlot(slot, this.zoom);
     slot.appendChild(this.host);
+    // A click lands on the cell under the pointer only at the terminal's own zoom.
+    slot.addEventListener('pointerdown', this.fitOnPointer, true);
     // The slot shrinks when a sender strip appears or the node is resized.
     this.slotObserver?.disconnect();
     let last = '';
@@ -259,13 +329,17 @@ export class TermSession {
     });
   }
 
+  private fitOnPointer = () => this.fitZoom();
+
   detach(slot: HTMLElement) {
+    slot.removeEventListener('pointerdown', this.fitOnPointer, true);
     this.slotObserver?.disconnect();
     this.slotObserver = null;
     if (this.host.parentElement === slot) slot.removeChild(this.host);
   }
 
   focus() {
+    this.fitZoom();
     this.term.focus();
   }
 
@@ -280,6 +354,7 @@ export class TermSession {
 
   dispose() {
     this.disposed = true;
+    layoutQueue.delete(this);
     this.slotObserver?.disconnect();
     window.clearTimeout(this.timer);
     const ws = this.ws;
@@ -288,6 +363,33 @@ export class TermSession {
     this.term.dispose();
     this.host.remove();
   }
+}
+
+// Terminals waiting to be laid out again (after a zoom, a resize, a level
+// change): one per frame, the ones on screen first. Each one measures its
+// glyphs and redraws its rows; all of them in the same frame froze the canvas.
+const layoutQueue = new Set<TermSession>();
+let layoutFrame = 0;
+
+function scheduleLayout(s: TermSession) {
+  layoutQueue.add(s);
+  layoutFrame ||= requestAnimationFrame(runLayouts);
+}
+
+function runLayouts() {
+  layoutFrame = 0;
+  let next: TermSession | undefined;
+  for (const s of layoutQueue) {
+    next ??= s;
+    if (s.onScreen()) {
+      next = s;
+      break;
+    }
+  }
+  if (!next) return;
+  layoutQueue.delete(next);
+  next.layoutNow();
+  if (layoutQueue.size) layoutFrame = requestAnimationFrame(runLayouts);
 }
 
 const sessions = new Map<string, TermSession>();

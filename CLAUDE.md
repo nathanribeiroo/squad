@@ -54,6 +54,7 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 - **Capturas de tela:** use um programa Go pequeno com `chromedp` (já é dependência), com o Chromium em `/opt/pw-browsers/chromium`. Ele abre `http://127.0.0.1:<porta>/?token=…&ws=…`, executa passos (clicar, duplo clique, digitar, teclas, roda com ctrl para zoom, `eval`, esperar) e salva PNGs.
   - Ele não está no repositório: recrie no scratchpad.
   - Em 1440×900, o botão de ajustar à tela fica perto de (1405, 867).
+- **Desempenho:** meça antes de mudar o canvas. No `chromedp`, emule uma CPU mais lenta (`Emulation.setCPUThrottlingRate`, 4×) e leia os quadros (`requestAnimationFrame`), as tarefas longas, o `Performance.getMetrics`, um trace (`Tracing`) e o perfil de JavaScript (`Profiler`). Animação de CSS que não seja `transform` ou `opacity` repinta a página inteira a cada quadro. A carga de um agente real: o Claude anima o título uma vez por segundo e redesenha a tela 2 a 3 vezes por segundo.
 - **Armadilhas:**
   - `pkill -f "<padrão>"` também mata o seu próprio shell quando o padrão aparece na linha de comando. Mate por PID (`ps -eo pid,args | awk …`);
   - `go build ./cmd/torre` na raiz deixa um binário `torre` solto: use `-o` ou apague antes de commitar;
@@ -79,7 +80,7 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | `internal/usage` | Consumo: o que cada voo gastou e os limites da conta de cada agente, lidos dos arquivos dos agentes; a status line do Claude (`claude.go`, e `internal/cli/statusline.go`, que roda a do usuário), o `sessions.db` e a tela do `/usage` do Devin (`devin.go`), o Codex e o Gemini; as contas, as mesmas em todos os workspaces (`usage.go`) |
 | `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `torre floor`, `/api/floors`; a cópia em que uma sessão trabalha, e mesclar sem fechar (`copy.go`); as permissões do SEMPRE do Claude e do Devin que seguem os níveis e voltam no pouso (`permissions.go`); as marcas de testes e revisão dos voos, `torre floor mark` (`checks.go`) |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
-| `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` (o Desenho em `DrawLayer.tsx`; grupos e desenhos em `src/lib/visual.ts`; os fios, uma corrente com gravidade, em `rope.ts`), sessões em `src/components/SessionsMenu.tsx`, o Consumo em `src/components/UsageMenu.tsx` |
+| `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` (o Desenho em `DrawLayer.tsx`; grupos e desenhos em `src/lib/visual.ts`; os fios, uma corrente com gravidade, em `rope.ts`), sessões em `src/components/SessionsMenu.tsx`, o Consumo em `src/components/UsageMenu.tsx`; os terminais (xterm, o zoom e a fila que os reajusta um por quadro) em `src/term/session.ts` |
 
 ## Segurança (já decidido)
 

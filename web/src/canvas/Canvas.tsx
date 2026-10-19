@@ -318,8 +318,13 @@ export function Canvas() {
       onNodeDrag={onNodeDrag}
       onNodeDragStop={onNodeDragStop}
       onSelectionChange={({ nodes: sel }) => {
-        setSelected(sel.length === 1 ? sel[0].id : null);
-        useSquad.getState().setSelectedIds(sel.map((n) => n.id));
+        // React Flow calls this on every frame of a drag (the selected nodes
+        // move); the store changes only when the selection does.
+        const st = useSquad.getState();
+        const one = sel.length === 1 ? sel[0].id : null;
+        if (one === st.selectedNode && sel.length === st.selectedIds.length && sel.every((n, i) => n.id === st.selectedIds[i])) return;
+        setSelected(one);
+        st.setSelectedIds(sel.map((n) => n.id));
       }}
       onPaneClick={() => setFocused(null)}
       onMove={onMove}

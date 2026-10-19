@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"slices"
 	"strings"
@@ -518,8 +519,10 @@ func (h *Hub) markDirty() {
 }
 
 // summaryLoop publishes the list after workspace events, at most once per
-// summaryDelay.
+// summaryDelay, and only when it changed: most events (a title, a usage
+// update, a Rádio line) don't touch the counts.
 func (h *Hub) summaryLoop() {
+	var last []Summary
 	for {
 		select {
 		case <-h.quit:
@@ -535,7 +538,12 @@ func (h *Hub) summaryLoop() {
 		case <-h.dirty:
 		default:
 		}
-		h.events.Publish(EventWorkspaces, h.List())
+		list := h.List()
+		if last != nil && reflect.DeepEqual(list, last) {
+			continue
+		}
+		last = list
+		h.events.Publish(EventWorkspaces, list)
 	}
 }
 

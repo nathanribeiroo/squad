@@ -2,6 +2,77 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, Fluidez da interface
+
+- **Pedido:** a interface parecia engasgada, mais no Windows e também no Mac. Depois da análise, o usuário aprovou os itens 1 a 3 (o 4, terminais em WebGL, fica para depois, se precisar). Junto vieram:
+  - a folga dos fios de 25% para 15%;
+  - o fio que continuava comprido depois de levar uma NOTAM longe e trazê-la de volta.
+- **Como medi:**
+  - Chromium do container, com a CPU 4× mais lenta (emulação do Chrome), para chegar perto de um notebook corporativo;
+  - 6 terminais imitando um agente no ritmo do Claude real. Medi com um Claude de verdade: título animado 1 vez por segundo, tela redesenhada 2 a 3 vezes por segundo, uns 2 KB/s;
+  - quadros por segundo, ocupação da thread principal, traces e perfis de JavaScript;
+  - o programa de medição não está no repositório (como o de capturas); o CLAUDE.md ganhou uma nota de como medir.
+- **O que pesava e o que mudou:**
+  - **Varredura do minimapa:**
+    - a faixa animava `left`, e isso recompõe a página inteira a cada quadro, para sempre. Com o canvas parado, era a maior parte do trabalho, e piora com o número de terminais;
+    - agora anima `transform` numa camada própria, e o compositor faz sozinho.
+  - **Fio pendente:**
+    - o tracejado que anda (`stroke-dashoffset`) também repinta tudo;
+    - agora anda 1 px por passo, em 11 passos por ciclo, e não a cada quadro.
+    - O halo da etiqueta de fio entre níveis pulsa por opacidade.
+  - **Zoom (a maior travada):**
+    - antes, ao fim de cada gesto, todo terminal trocava a fonte do xterm até 10 vezes. A cada troca o xterm redesenha todas as linhas e mede cada caractere de novo, num contêiner sem contenção, o que força o layout do terminal inteiro por medida;
+    - agora o terminal só é escalado quando o zoom muda. O texto do xterm é HTML, então continua nítido;
+    - a fonte é reajustada quando você clica no terminal ou dá foco nele (antes de o xterm ler o clique: ele calcula a célula como se não houvesse escala), quando o zoom passa de 0,7× a 1,4× do dele, ou quando o terminal reaparece ou muda de tamanho;
+    - quando reajusta, é um terminal por quadro (os visíveis primeiro), com a fonte e a altura de linha calculadas de uma vez e uma única conferência;
+    - o contêiner em que o xterm mede os caracteres ganhou `contain: strict`.
+  - **Arrastar:**
+    - o React Flow chama `onSelectionChange` a cada quadro do arraste, e a Torre regravava a seleção na store toda vez. Agora só grava quando a seleção muda;
+    - os fios ficaram mais leves:
+      - elos de 18 px e 10 iterações, com os nós filtrados pela área do fio (2 a 2,7× menos tempo por passo nos fios comuns);
+      - o caminho do fio é escrito direto no SVG a cada quadro. O React só redesenha a cada 4 quadros, e só quando há pílulas no fio;
+      - a assinatura dos nós em volta não é mais calculada a cada quadro de pan.
+  - **Eventos do servidor:**
+    - cada quadro do spinner no título de um agente virava um evento, e qualquer evento fazia o servidor reenviar a lista inteira de workspaces (até 3 vezes por segundo);
+    - agora o título só é enviado quando o texto muda (sem contar o spinner), e a lista só quando os números dela mudam. O título só é usado no Sinóptico, que já tirava o spinner.
+- **Fios:**
+  - **folga de 15%;**
+  - **o fio que não encolhia:**
+    - o fio encosta no nó de onde sai e fica esticado por um instante a cada arraste. A regra de "soltar mais corrente quando esticado contra um nó" contava esse contato, então o fio crescia ao trazer a NOTAM de volta e nunca recolhia;
+    - agora o contato com os próprios nós do fio não conta, a corrente só se solta depois de 12 passos seguidos esticada contra outro nó, e recolhe mais rápido (3% por passo) quando nada mais a segura;
+    - no roteiro em Node, ir e voltar terminava com 2,16× a distância; agora termina com 1,19×. Na interface, o mesmo caso na `main` deixa o fio com 378 px, e nesta branch volta aos 236 px do começo.
+- **Resultados** (mesma cena e mesma janela de tempo, CPU 4× mais lenta, 6 agentes):
+
+  | Cenário | Antes | Depois |
+  |---|---|---|
+  | Parado | 50% da thread principal, pior quadro 133 ms | 34%, 100 ms |
+  | Pan | 49%, 9 quadros acima de 50 ms | 33%, 4 |
+  | Arrastar um terminal | 35 quadros/s | 46 quadros/s |
+  | Zoom pequeno (77% a 80%) | 3,3 quadros/s, travada de 1,9 s | 54 quadros/s, pior quadro 67 ms |
+  | Tudo quieto (sem saída nem eventos) | 25% | 10% |
+  | Dois fios pendentes, quieto | 30% | 14% |
+
+- **Decisões:**
+  - **o terminal escalado no zoom:**
+    - em vez da fonte reajustada a cada gesto, ele é reajustado no uso;
+    - conferido no navegador: depois de dois zooms sem reajuste, uma seleção arrastada da coluna 10 à 30 caiu nas colunas 10 a 30.
+  - **camada própria para o nó arrastado (`will-change`):** testada; sem GPU no container, não mostrou ganho mensurável e ficou de fora;
+  - **um "aquecimento" do cache de larguras do xterm:** ajudou pouco depois da contenção por CSS e dependia de campos internos do xterm, então saiu.
+- **Testes:**
+  - `make check`;
+  - `npx tsc -b` e `npm run build`;
+  - `TestTitleSpinnerNotRepublished` (servidor) e `TestWorkspacesListOnlyWhenChanged` (hub);
+  - o roteiro em Node do `rope.ts`: as seis cenas sem nenhum ponto dentro de um nó, o caso de ida e volta, e o tempo por passo;
+  - no Chromium:
+    - as medições acima;
+    - a seleção depois do zoom;
+    - a NOTAM levada longe e de volta, na `main` e na branch;
+    - o balanço continua animado: o ponto mais baixo oscila e assenta.
+- **Precisa de você:**
+  - no Windows e no Mac, com agentes trabalhando: zoom por pinça e por Ctrl+roda, pan, arrastar;
+  - selecionar texto num terminal logo depois de um zoom (a primeira seleção reajusta o terminal);
+  - ver se a interface parece mais leve. O Chromium do container não tem GPU, então o ganho da composição (a varredura do minimapa) deve ser maior aí do que aqui.
+
 ## 2026-10-19, Fios como corrente
 
 - **Pedido:** os fios do Espaço tracejados, mais finos e soltos, como no Maestri: com gravidade, pendendo como uma corrente, e não em linha direta. Num segundo momento, o usuário acrescentou: um voo ou uma NOTAM no caminho é como um chão e uma parede, e o fio contorna as bordas em vez de passar por trás.
