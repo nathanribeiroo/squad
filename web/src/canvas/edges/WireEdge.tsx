@@ -191,6 +191,8 @@ export function WireEdge({ id, source: drawnFrom, target: drawnTo, selected, dat
     return loop && onLoop(loop, source, target) ? (loop.limit ?? 0) : 0;
   });
   const inLoop = loopLimit > 0;
+  // One of its ends is selected: the wire stands out a little, to see what the node is wired to.
+  const linked = useSquad((s) => s.selectedIds.some((n) => n === drawnFrom || n === drawnTo));
   const flights = useMemo(
     () => Object.values(allFlights).filter((f) => (f.from === source && f.to === target) || (f.from === target && f.to === source)),
     [allFlights, source, target],
@@ -226,8 +228,8 @@ export function WireEdge({ id, source: drawnFrom, target: drawnTo, selected, dat
   };
 
   const waiting = pending?.kind === 'pending' || pending?.kind === 'queued';
-  const wireClass = `wire${selected ? ' selected' : ''}${waiting ? ' pending' : ''}${paused && !pending ? ' held' : ''}${inLoop ? ' loop' : ''}${data?.a ? ' via-group' : ''}`;
-  const endClass = (isOrigin: boolean) => (waiting ? (isOrigin ? ' origin' : ' dest') : '');
+  const wireClass = `wire${linked ? ' linked' : ''}${selected ? ' selected' : ''}${waiting ? ' pending' : ''}${paused && !pending ? ' held' : ''}${inLoop ? ' loop' : ''}${data?.a ? ' via-group' : ''}`;
+  const endClass = (isOrigin: boolean) => (waiting ? (isOrigin ? ' origin' : ' dest') : linked ? ' linked' : '');
 
   return (
     <>
