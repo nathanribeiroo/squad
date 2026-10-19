@@ -2,6 +2,24 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, Fios com 3% de folga
+
+- **Pedido:** a folga de 5% para 3%.
+- **O que muda (`web/src/canvas/rope.ts`):**
+  - `SLACK` passou de 1,05 para 1,03;
+  - **a compensação do esticamento** (`STRETCH`) passou de 0,024 para 0,03. Com menos folga, o fio fica mais tenso e estica mais;
+  - **a folga mínima** dos trechos curtos passou de 8 px para 4 px. Com 8 px, os 3% só valeriam a partir de 267 px, e um fio de 120 px ficaria com 5,6%. Com 4 px, os 3% valem a partir de 133 px.
+- **Medido** (fio livre assentado, sobre a distância entre as pontas): 1,029× (120 px), 1,027× (200 px), 1,030× (400 px), 1,033× (640 px e 1000 px), 1,030× (1500 px).
+- **Testes:**
+  - `npx tsc -b`, `npm run build` e `go build ./...`;
+  - o roteiro em Node do `rope.ts`:
+    - nenhum ponto dentro de um nó;
+    - a caixa alta ainda faz a corrente passar por cima;
+    - fios apoiados não soltam corrente;
+    - o fio não se enrola: depois de meia, três quartos e uma volta, termina desenrolado, com 1,01 a 1,03×; em duas voltas troca de lado 2 vezes;
+    - o nó atravessando o fio troca de lado uma vez em cada sentido;
+  - na interface, um voo e a NOTAM dele a ~202 px: o fio tem 212 px na `main` (5%) e 208 px nesta branch.
+
 ## 2026-10-19, Fio que não se enrola, e 5% de folga
 
 - **Pedido:**

@@ -1,5 +1,5 @@
 // A wire hangs like a chain: Verlet particles under gravity, held at its
-// ends and at the user's bend points, with 5% more length than the straight
+// ends and at the user's bend points, with 3% more length than the straight
 // line between them. The nodes in the way are solid: their tops are a floor
 // and their sides walls, so a wire drapes over a node instead of passing
 // behind it. It can't be wound round a node: going round the long way, it
@@ -10,7 +10,7 @@ import type { Pt, Rect } from './geometry';
 export type Solid = Rect & { own?: boolean };
 
 /** Length of each span over the straight distance between its pins. */
-const SLACK = 1.05;
+const SLACK = 1.03;
 /** Target length of a link (canvas px); a span keeps it between half and double. */
 const LINK = 18;
 const GRAVITY = 0.45;
@@ -33,7 +33,7 @@ const TAUT_STEPS = 12;
  * STRETCH × links / passes (the solver can't fully undo gravity each step).
  * Its links start that much shorter, so it hangs with the slack asked for.
  */
-const STRETCH = 0.024;
+const STRETCH = 0.03;
 
 /**
  * A span going round more than half of a node (its center inside the loop
@@ -143,7 +143,7 @@ export class Chain {
   /** The span's target length for its pins' distance. */
   private static base(p: Pt, q: Pt): number {
     const d = Math.hypot(q.x - p.x, q.y - p.y);
-    return Math.max(d * SLACK, d + 8);
+    return Math.max(d * SLACK, d + 4);
   }
 
   /** Rest length of a link, for a span of this length in n links (see STRETCH). */
