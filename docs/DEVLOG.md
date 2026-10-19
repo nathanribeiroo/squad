@@ -2,6 +2,19 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, Destaque dos fios mais visível
+
+- **Pedido:** o usuário testou o destaque e achou sutil demais, difícil de notar. Pediu mais escuro, "mais negrito" e um pouco mais grosso.
+- **O que muda:**
+  - **a cor** (`--wire-linked`):
+    - tema claro: `#6b6450` → `#2f2c22`, quase a cor do texto;
+    - tema escuro: `#7fa892` → `#b4dcc4`, perto do texto claro;
+  - **a espessura:** o fio destacado passa de 1,5 para 2,25 px. A troca de cor e de espessura leva 120 ms;
+  - **o que continua igual:** o fio que você seleciona diretamente segue com a cor do texto (`--text`), e o pedido pendente e o laço com as cores e espessuras deles.
+- **Testes:**
+  - `npx tsc -b`, `npm run build` e `go build ./...`;
+  - no Chromium, a mesma cena (três voos, duas NOTAMs, cinco fios), com o Implementador selecionado, nos dois temas, comparada com o destaque da `main`.
+
 ## 2026-10-19, Fios do nó selecionado em destaque
 
 - **Pedido:** ao selecionar um elemento (um voo, uma NOTAM), os fios ligados a ele mudam de cor, de leve, para ver como ele está ligado. A mudança é discreta, mas tem de ser visível.
