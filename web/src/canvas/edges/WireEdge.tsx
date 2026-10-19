@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, type Edge, type EdgeProps, type InternalNode } from '@xyflow/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStoreApi, type Edge, type EdgeProps, type InternalNode } from '@xyflow/react';
 import { api } from '../../api/client';
 import { Icon } from '../../components/Icon';
 import { loopOf, onLoop } from '../../lib/loop';
@@ -7,7 +7,8 @@ import { elapsed } from '../../lib/model';
 import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
 import { useNodeName, useSquad, type Flight } from '../../state/store';
-import { wire, type Rect, type Wire } from '../geometry';
+import { anchors, type Pt, type Rect, type Wire } from '../geometry';
+import { Chain, STILL, lowest, smoothPath } from '../rope';
 import { actionVerb, usePortalAction } from '../nodes/portalAction';
 import './wire.css';
 
@@ -24,6 +25,112 @@ const MARKER_MS = 4000;
 function rectOf(n: InternalNode): Rect {
   const p = n.internals.positionAbsolute;
   return { x: p.x, y: p.y, w: n.measured.width ?? n.width ?? 0, h: n.measured.height ?? n.height ?? 0 };
+}
+
+/** The nodes a wire can't pass through: flights, NOTAMs, portals and
+ * collapsed groups (open frames and drawings are only drawn). */
+function solids(lookup: Map<string, InternalNode>, box: Rect): Rect[] {
+  const out: Rect[] = [];
+  for (const n of lookup.values()) {
+    if (n.hidden) continue;
+    const collapsed = n.type === 'frame' && (n.data as { node?: { group?: { collapsed?: boolean } } }).node?.group?.collapsed;
+    if (n.type !== 'terminal' && n.type !== 'note' && n.type !== 'portal' && !collapsed) continue;
+    const r = rectOf(n);
+    if (r.w === 0 || r.x > box.x + box.w || r.x + r.w < box.x || r.y > box.y + box.h || r.y + r.h < box.y) continue;
+    out.push(r);
+  }
+  return out;
+}
+
+/** The area a chain through these points can reach: around them, more below (it falls). */
+function reach(xs: number[], ys: number[]): Rect {
+  const x0 = Math.min(...xs);
+  const x1 = Math.max(...xs);
+  const y0 = Math.min(...ys);
+  const y1 = Math.max(...ys);
+  return { x: x0 - 120, y: y0 - 120, w: x1 - x0 + 240, h: y1 - y0 + 120 + Math.max(240, (x1 - x0) * 0.4) };
+}
+
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** A chain swings for at most this long after something moves. */
+const SWING_MS = 6000;
+/** Young chains (the canvas opening, nodes being measured) settle at once. */
+const QUIET_START_MS = 1500;
+
+/**
+ * The wire as a hanging chain through its pins (the ends, then the bend
+ * points): it settles at once when it first appears, and swings when an end
+ * or a node near it moves, until it is still again.
+ */
+function useChain(pins: Pt[] | null): Pt[] | null {
+  const store = useStoreApi();
+  const chain = useRef<Chain | null>(null);
+  const born = useRef(0);
+  const until = useRef(0);
+  const [awake, setAwake] = useState(false);
+  const [, setFrame] = useState(0);
+  const obstacles = useCallback(() => (chain.current ? solids(store.getState().nodeLookup, reach(chain.current.x, chain.current.y)) : []), [store]);
+  const wake = useCallback(() => {
+    const c = chain.current;
+    if (!c) return;
+    const young = performance.now() - born.current < QUIET_START_MS;
+    if (young || reducedMotion()) {
+      // While the canvas opens (nodes get their sizes), it starts over and falls onto what is in its way.
+      if (young) c.reset(obstacles());
+      c.settle(obstacles());
+      setFrame((f) => f + 1);
+      return;
+    }
+    c.quiet = 0;
+    until.current = performance.now() + SWING_MS;
+    setAwake(true);
+  }, [obstacles]);
+
+  if (pins && !chain.current) {
+    const first = new Chain(pins, solids(store.getState().nodeLookup, reach(pins.map((p) => p.x), pins.map((p) => p.y))));
+    chain.current = first;
+    born.current = performance.now();
+    first.settle(obstacles());
+  }
+  const key = pins ? pins.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(' ') : '';
+  useEffect(() => {
+    if (pins && chain.current?.setPins(pins, obstacles())) wake();
+    // pins is new on every render; key says when it moved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, obstacles, wake]);
+
+  // A node moving into (or out of) its way wakes it too.
+  useEffect(() => {
+    let last = '';
+    return store.subscribe((st) => {
+      const c = chain.current;
+      if (!c) return;
+      const sig = solids(st.nodeLookup, reach(c.x, c.y))
+        .map((r) => `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.w)},${Math.round(r.h)}`)
+        .join(' ');
+      if (sig !== last) {
+        if (last) wake();
+        last = sig;
+      }
+    });
+  }, [store, wake]);
+
+  useEffect(() => {
+    if (!awake) return;
+    let raf = 0;
+    const tick = () => {
+      const c = chain.current;
+      if (!c) return;
+      c.quiet = c.step(obstacles()) < STILL ? c.quiet + 1 : 0;
+      setFrame((f) => f + 1);
+      if (c.quiet > 30 || performance.now() > until.current) return setAwake(false);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [awake, obstacles]);
+
+  return chain.current && pins ? chain.current.points() : null;
 }
 
 type Visual =
@@ -76,14 +183,14 @@ export function WireEdge({ id, source: drawnFrom, target: drawnTo, selected, dat
   const portalActs = [usePortalAction(source), usePortalAction(target)];
   const portalAct = portalActs.find((p) => p && (p.act.by === source || p.act.by === target)) ?? null;
   const [dragRope, setDragRope] = useState<[number, number][] | null>(null);
-  if (!a || !b) return null;
-
   const rope = dragRope ?? data?.rope ?? [];
-  const ra = rectOf(a);
-  const rb = rectOf(b);
-  const w = wire(ra, rb, rope);
-  // The same curve oriented from a flight's origin, for the travelling light.
-  const oriented = (from: string): Wire => (from === source ? w : wire(rb, ra, [...rope].reverse()));
+  const ends = a && b ? anchors(rectOf(a), rectOf(b)) : null;
+  const pts = useChain(ends ? [ends[0], ...rope.map(([x, y]) => ({ x, y })), ends[1]] : null);
+  if (!a || !b || !ends || !pts) return null;
+
+  const w: Wire = { path: smoothPath(pts), s: ends[0], t: ends[1], low: lowest(pts) };
+  // The same chain oriented from a flight's origin, for the travelling light.
+  const oriented = (from: string): Wire => (from === source ? w : { ...w, path: smoothPath([...pts].reverse()), s: ends[1], t: ends[0] });
 
   const visuals = flights.map((f) => visualOf(f, now)).filter((v): v is Visual => v !== null);
   const pending = visuals.find((v) => v.kind === 'pending' || v.kind === 'queued' || v.kind === 'out');
@@ -122,8 +229,8 @@ export function WireEdge({ id, source: drawnFrom, target: drawnTo, selected, dat
           style={{ stroke: `var(--r-${portalAct.role})` }}
         />
       )}
-      <circle className={`wire-end${endClass(originIsSource)}`} cx={w.s.x} cy={w.s.y} r={4} />
-      <circle className={`wire-end${endClass(!originIsSource)}`} cx={w.t.x} cy={w.t.y} r={4} />
+      <circle className={`wire-end${endClass(originIsSource)}`} cx={w.s.x} cy={w.s.y} r={3} />
+      <circle className={`wire-end${endClass(!originIsSource)}`} cx={w.t.x} cy={w.t.y} r={3} />
       {selected && <RopePoints edgeId={id} rope={rope} onDrag={setDragRope} />}
       <EdgeLabelRenderer>
         {visuals.map((v, i) => {
