@@ -71,7 +71,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Cartão do laço | `feat/laco` | concluído |
 | Perguntas e planos pela Torre, e SUA VEZ | `feat/perguntas-e-sua-vez` | concluído |
 | Desenho e Grupo | `feat/desenho-grupo` | concluído |
-| Consumo | `feat/consumo` | concluído (PR) |
+| Consumo | `feat/consumo` | concluído |
+| Consumo em contas de empresa | — | para discutir |
 
 ## B0, esqueleto
 
@@ -248,6 +249,7 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 
 **Para depois (fora destas fases), com a referência no handoff:**
 
+- **Consumo em contas de empresa:** dólares e ACUs no lugar das janelas, totais que não somem com o `/clear` e o gateway do Claude. Veja a seção "Consumo em contas de empresa (para discutir)", mais abaixo.
 - **Grupo com sentido para os agentes** (depois de Desenho e Grupo, que são só visuais). Mexe nas regras de conversa e merece uma etapa própria. Roteiro para quando vier:
   1. **Decidir a regra:** o grupo só informa (o `torre list` diz "você está no grupo Front-end, com IMP e REV") ou também autoriza (falar com quem está no grupo sem fio)? Recomendo só informar: os fios continuam sendo a única autorização.
   2. **Quem está no grupo:** `store.Inside` (em `internal/store/visual.go`) já diz o que está dentro de uma moldura, aberta ou recolhida. Usar a mesma conta no servidor, sem lista fixa.
@@ -416,4 +418,39 @@ Pedido do usuário em 2026-10-18: ver quanto os agentes estão gastando, sem ocu
   - o custo em dinheiro do Devin, do Codex e do Gemini (eles não informam);
   - histórico do consumo por dia.
 
-**Status:** pronto no PR `feat/consumo` → `main`.
+**Status:** mesclado na `main` pelo PR #36.
+
+## Consumo em contas de empresa (para discutir)
+
+Pergunta do usuário em 2026-10-19, depois do merge do Consumo. Nas contas do trabalho, nem o Claude nem o Devin mostram a sessão de 5 h ou a semana: o Devin mostra só ACUs, e no Claude o gasto só aparece pelo valor em dólar. Nesse caso, a ideia é mostrar o valor gasto (dólar no Claude, ACU no Devin, ou dólar se ele mostrar), somado do que cada resposta devolve durante a sessão, e pôr o total de dólares e de ACUs na seção de cada agente, no topo da caixa do Consumo (e no botão). O usuário vai conferir como o Devin da empresa se comporta antes de decidirmos o plano.
+
+- **Como está hoje (PR #36):**
+  - **Claude:** cada voo mostra o custo em US$ (o `cost.total_cost_usd` da status line, ou a linha `cost-state` da transcrição), e a linha TOTAL da tabela soma o workspace;
+  - **Devin:** cada voo mostra os ACUs da sessão (`sessions.metadata.total_acu_cost` no `sessions.db`), mas só vimos esse campo em 0 (conta gratuita, SWE-1.6 Slow);
+  - **sem limites:** a seção do agente no topo da caixa só diz "A conta não informa limites (chave de API ou plano de empresa)", e o botão mostra os tokens do workspace;
+  - **o custo vale para a conversa atual do voo:** um `/clear` no Claude zera o valor (é outra sessão para ele), e fechar o voo tira o número da caixa. Não há total de hoje ou do mês.
+- **O que a pesquisa achou:**
+  - **Claude** (documentação da status line):
+    - `rate_limits` só vem para os assinantes Pro e Max do claude.ai. Team, Enterprise, chave de API, Bedrock e Vertex não recebem as janelas;
+    - `cost.total_cost_usd` vem sempre. É uma estimativa pelo preço de tabela, ou pela tabela `modelPricing`, se a empresa configurar uma, e volta a 0 num `/clear`;
+    - atrás de um gateway da empresa com limite de gasto, vem `rate_limits.spend_limit`, com `used_percentage` e `resets_at`, e, a partir do Claude Code 2.1.284, `used_usd`, `limit_usd` e `period` (`daily`, `weekly` ou `monthly`). A Torre ainda ignora esse campo.
+  - **Devin** (texto do binário 3000.11.92, sem login):
+    - **por resposta:** a mensagem do modelo tem `committed_acu_cost` e `committed_credit_cost` no `metadata`. Na conta gratuita os dois não apareceram (devem ser gravados só quando há custo). Dá para somar resposta a resposta e conferir com o total da sessão;
+    - **status do plano:** o Devin pede ao servidor (`GetUserStatus`) um status do plano com `acu_consumed`, `acu_limit`, `dollars_limit`, `overage_balance_micros`, `daily_quota_remaining_percent`, `weekly_quota_remaining_percent`, as horas de renovação e `hide_weekly_quota`;
+    - **cópia local:** ele parece guardar uma cópia desse status num arquivo, `user_status.bin`. Se der para ler, a Torre teria os ACUs da conta sem o usuário abrir `/usage`. Ressalvas: o formato é binário e não documentado, e o arquivo tem também dados da conta (e-mail, time);
+    - **na tela do `/usage`:** o binário tem os textos " ACUs consumed", "ACU limit ", "Extra usage balance", " of $" e "No ACUs consumed yet in this session.", o que sugere que a conta de empresa mostra ACUs e, às vezes, dólares.
+- **O que falta fazer:**
+  1. **Seção do agente e botão:** mostrar dólares e ACUs quando a conta não tem janelas, no lugar do aviso de "não informa limites" e dos tokens no botão.
+  2. **Totais que não somem:** guardar o custo de cada conversa (por agente e id da conversa, o último valor visto), para o total sobreviver ao `/clear`, ao voo fechado e ao reinício, e somar por período em todos os workspaces (por exemplo, `~/.torre/usage-ledger.json`).
+  3. **Claude atrás de gateway:** ler o `spend_limit` e mostrar "US$ 314 de US$ 500 · mês" como uma janela.
+  4. **Devin de empresa:**
+     - somar o `committed_acu_cost` de cada resposta (conferindo com o `total_acu_cost` da sessão);
+     - ler os ACUs e os dólares do `/usage` com o formato real;
+     - e, se valer o risco, o `user_status.bin`.
+  5. **Testes:** arquivos de exemplo com as telas e os dados reais que o usuário trouxer; o Devin real só com a conta dele.
+- **Para decidir antes do plano:**
+  - **o período do total:** "hoje" e "este mês" (somando todas as conversas e todos os workspaces), ou só os voos abertos agora. A recomendação é hoje e mês;
+  - **como o Claude do trabalho entra:** login do claude.ai (Team/Enterprise), chave de API, Bedrock/Vertex ou gateway da empresa. O `/status` dentro do Claude mostra isso;
+  - **a tela do `/usage` do Devin da empresa:** o usuário vai trazer o texto, sem o e-mail, para confirmar o formato dos ACUs e dos dólares.
+
+**Status:** para discutir; o usuário vai conferir o Devin e o Claude da empresa.
