@@ -26,6 +26,7 @@
 .ws-idle { color: var(--text-3); }
 .ws-row-edit { opacity: 0.6; }
 .ws-row:hover .ws-row-edit, .ws-row-edit:focus-visible { opacity: 1; }
+.ws-row-remove:hover { color: var(--stt-err); background: var(--stb-err); }
 /* Shows the workspace's sessions beside the list (SessionsMenu.css). */
 .ws-row-sessions { width: auto; min-width: 28px; gap: 1px; padding: 0 4px 0 6px; margin-right: 6px; color: var(--text-3); }
 .ws-row-sessions .mono { font-size: 11px; }

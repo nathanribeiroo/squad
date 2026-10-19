@@ -181,6 +181,8 @@ function Radar({ flights, floors, runtime, selected }: { flights: WNode[]; floor
           const p = pos.get(n.id);
           if (!p) return null;
           const st = runtime[n.id]?.activity ?? 'off';
+          // Past the middle of the right half, the data block goes to the left: it would cross the scope's edge.
+          const left = p.x > C + R * 0.35;
           return (
             <g
               key={n.id}
@@ -193,10 +195,10 @@ function Radar({ flights, floors, runtime, selected }: { flights: WNode[]; floor
               <text className="syn-sym" textAnchor="middle" dominantBaseline="central">
                 {SYMBOL[st]}
               </text>
-              <text x="14" y="-4" className="syn-tag">
+              <text x={left ? -14 : 14} y="-4" className="syn-tag" textAnchor={left ? 'end' : 'start'}>
                 {callsign(n.terminal!)}
               </text>
-              <text x="14" y="9" className="syn-tag-sub">
+              <text x={left ? -14 : 14} y="9" className="syn-tag-sub" textAnchor={left ? 'end' : 'start'}>
                 {(n.floor ? levelOf(n, floors) : 'PISTA') + ' · ' + STATE_META[st].label.toUpperCase()}
               </text>
             </g>

@@ -2,6 +2,36 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, Ajustes da interface: Sinóptico em telas largas, remover workspace e sessão, nova sessão
+
+- **Pedido:** o usuário testou no Mac, numa tela mais larga que 1440, e achou três problemas:
+  - o Sinóptico em proporções diferentes das capturas;
+  - nenhum botão para remover o workspace e a sessão;
+  - o formulário de nova sessão com os campos maiores que a caixa.
+- **Formulário de nova sessão (e os outros menus do topo):**
+  - **a causa:** a barra do topo tem `white-space: nowrap`, para nada quebrar linha nela, e os menus que abrem dela herdavam isso. O texto do "Começar com os mesmos voos…" virava uma linha só e alargava o formulário além da caixa;
+  - **a correção:** `.topbar .popover { white-space: normal; }`. O que precisa ficar numa linha (nomes, caminhos, a tabela do Consumo) já diz isso sozinho.
+- **Sinóptico:**
+  - **colunas:** eram 620 · 330 px fixos e o resto para o terminal. Numa tela de 2000 px, o terminal ficava com 1000 px, e o radar e as fichas pequenos. Agora as três colunas seguem a proporção do design (620 : 330 : 432) em qualquer largura, com os mesmos mínimos. Em 1440 nada muda;
+  - **o radar** não tem mais o limite de 600 px e cresce com a coluna;
+  - **tema claro:** o fundo do radar é sempre escuro, mas os nomes dos voos e os símbolos usavam as cores do tema, escuras no claro, e quase sumiam. O radar agora redefine essas cores com as do tema escuro;
+  - **os voos da metade direita** mostram o nome e o estado do lado esquerdo do símbolo; antes, "PÁTIO" passava da borda do círculo.
+- **Remover workspace e sessão:**
+  - **o que existia:** o servidor já removia. O workspace se removia pelo lápis (Editar), e a sessão pela lixeira, que só aparecia com o mouse em cima da linha e não aparecia na sessão aberta;
+  - **workspace:** cada linha do seletor ganhou a lixeira, ao lado do lápis, com a mesma confirmação (a função foi tirada do formulário e é usada pelos dois). No último workspace, ela avisa que não dá ("crie outro antes");
+  - **sessão:** a lixeira aparece em todas as linhas, um pouco apagada até o mouse passar. Quando não dá para remover, ela fica mais apagada e o clique diz o motivo, com as mesmas regras do servidor:
+    - a sessão aberta: "abra outra antes";
+    - a única sessão do workspace: "remova o workspace";
+    - uma sessão com níveis: "pouse ou descarte os níveis antes".
+- **Testes:**
+  - `npx tsc -b` e `npm run build`;
+  - na tela, com o `torre serve` e quatro voos falsos:
+    - o Sinóptico em 2000 × 1168 no tema claro (a largura da captura do usuário) e em 1440 × 900 no escuro;
+    - a nova sessão em 2000 px;
+    - o seletor de workspaces com as lixeiras e a confirmação de remover;
+    - o painel de sessões com duas sessões e o aviso da sessão aberta.
+- **Agentes:** só interface; nada muda para o Claude, o Devin, o Codex ou o Gemini.
+
 ## 2026-10-18, Consumo
 
 - **Pedido:**
