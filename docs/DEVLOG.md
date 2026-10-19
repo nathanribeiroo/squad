@@ -2,6 +2,51 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, Fios como corrente
+
+- **Pedido:** os fios do Espaço tracejados, mais finos e soltos, como no Maestri: com gravidade, pendendo como uma corrente, e não em linha direta. Num segundo momento, o usuário acrescentou: um voo ou uma NOTAM no caminho é como um chão e uma parede, e o fio contorna as bordas em vez de passar por trás.
+- **Decisões do usuário:** o fio balança quando algo se move, e a folga é de 25%.
+- **Pesquisa:** as páginas do Maestri (Product Hunt, Setapp) não descrevem os fios, então o desenho seguiu a descrição do usuário.
+- **A corrente (`web/src/canvas/rope.ts`):**
+  - **o modelo:** partículas de Verlet sob gravidade, a cerca de 14 px uma da outra. Elas ficam presas nas pontas e nos pontos de curva (os "pregos"), e cada trecho entre pregos tem 25% a mais que a distância reta;
+  - **os elos só puxam:** a corrente não empurra quando se junta, como uma corrente de verdade;
+  - **os obstáculos:** voos, NOTAMs, portais e grupos recolhidos (as molduras abertas e os desenhos são só traço), com 6 px de folga da borda;
+    - um ponto que entra num nó volta pelo lado mais perto;
+    - os lados só valem como parede perto da borda (até 28 px). No miolo, o ponto vai para o topo ou para baixo. Sem isso, metade da corrente ia para cada parede, com um elo atravessado por trás do nó;
+  - **o atrito no contato** faz a corrente descansar onde cai;
+  - **soltar e recolher:**
+    - quando um nó grande está no caminho e 25% não basta para dar a volta, o trecho encostado e esticado solta mais corrente, até 3 vezes;
+    - quando volta a pender livre, recolhe;
+    - antes, o resíduo do cálculo nas correntes longas parecia "esticado" e a corrente soltava demais: agora só conta se ela está encostada num nó, e as correntes longas fazem mais passadas;
+  - **a primeira pose:**
+    - a curva pendurada, ou a linha reta quando essa curva esbarraria num nó, para a corrente cair sobre ele como se fosse solta de cima;
+    - antes de aparecer, ela assenta de uma vez, com um amortecimento forte (ninguém vê o balanço). Isso leva uns 3 ms por fio, ou 8 ms num de 1500 px, com o motor aquecido;
+  - **o desenho:** uma curva suave pelas partículas (Catmull-Rom). As pílulas ficam no ponto mais baixo, longe das pontas.
+- **No fio (`WireEdge.tsx`, hook `useChain`):**
+  - **ao aparecer:** a corrente nasce com os obstáculos e já assentada. No primeiro 1,5 s (a tela abrindo, os nós ganhando tamanho), ela recomeça do zero em vez de balançar;
+  - **acordar:** ela acorda quando um prego se move (um nó arrastado, um ponto de curva) ou quando um nó perto dela muda (uma assinatura dos retângulos, lida do store do React Flow);
+  - **o balanço:** um passo por quadro, até ficar parada por 30 quadros, ou no máximo 6 s. Parada, não roda nada;
+  - **reduzir movimento:** com a preferência do sistema ligada, ela assenta de uma vez, sem balançar.
+- **Onde o fio se prende (`geometry.ts`):** nas laterais sempre que os nós não estão um em cima do outro. Antes, um voo na diagonal se prendia no topo do outro, e a corrente precisava subir pela parede.
+- **Traço (`wire.css`):**
+  - parado: 1,5 px, tracejado 6/5, cinza;
+  - pedido: âmbar, 2 px, com o tracejado correndo;
+  - espera geral: pontilhado;
+  - laço: âmbar contínuo de 2,5 px;
+  - a luz que corre e as pontas, mais finas.
+  - Como o tracejado deixou de ser só do pedido, o estado aparece pela cor e pelo movimento.
+- **Testes:**
+  - `npx tsc -b`, `npm run build` e `go build ./...`;
+  - **um roteiro em Node com o `rope.ts`** (seis cenas): fio livre de 640 e de 1500 px, uma caixa abaixo, uma caixa alta atravessada, um ponto de curva e um fio vertical. Nenhum ponto ficou dentro de um nó; a caixa alta fez a corrente soltar de 800 para 997 px e passar por cima;
+  - **na tela, com o `torre serve` e voos falsos:**
+    - a corrente sobre a NOTAM no caminho;
+    - a NOTAM arrastada para longe (a corrente cai, balança e assenta);
+    - a NOTAM alta atravessada, na abertura e ao voltar;
+    - um pedido passando, com a pílula no ponto mais baixo;
+    - os dois temas.
+- **Não muda:** o radar do Sinóptico e os fios entre níveis.
+- **Agentes:** só interface; nada muda para nenhum agente.
+
 ## 2026-10-19, NOTAM: cabeçalho com nome longo e tamanho
 
 - **Pedido:** numa NOTAM com nome comprido, Prévia, Editar e o ⋯ saíam da NOTAM. E não dava para mudar o tamanho dela.

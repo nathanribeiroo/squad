@@ -26,13 +26,13 @@ export interface Wire {
 }
 
 /** Anchor points on the sides of a and b that face each other. */
-function anchors(a: Rect, b: Rect): [Anchor, Anchor] {
+export function anchors(a: Rect, b: Rect): [Anchor, Anchor] {
   const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
   const bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
   const dx = bc.x - ac.x;
   const dy = bc.y - ac.y;
-  // Horizontal sides unless the boxes are stacked (normalised by their sizes).
-  const horizontal = Math.abs(dx) / (a.w + b.w) >= Math.abs(dy) / (a.h + b.h);
+  // The sides, so the wire hangs between them, unless one box is above the other.
+  const horizontal = a.x + a.w < b.x || b.x + b.w < a.x || Math.abs(dx) / (a.w + b.w) >= Math.abs(dy) / (a.h + b.h);
   if (horizontal) {
     const d = dx >= 0 ? 1 : -1;
     return [

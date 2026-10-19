@@ -1,19 +1,21 @@
-/* Frequencies (docs/torre/TELAS.md, quadro 03): a sagging curve, 2.5px at
-   rest; amber while a request is open, green when the reply comes back. */
+/* Frequencies (docs/torre/TELAS.md, quadro 03), hanging like a chain
+   (canvas/rope.ts): thin dashes at rest; amber dashes sliding from who asked
+   while a request is open, green when the reply comes back. */
 .react-flow__edge-path.wire {
   stroke: var(--wire);
-  stroke-width: 2.5;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 5;
   stroke-linecap: round;
   fill: none;
 }
 .react-flow__edge-path.wire.selected { stroke: var(--text); }
 /* Pending request: amber dashes sliding from who asked. */
-.react-flow__edge-path.wire.pending { stroke: var(--wire-wait); stroke-width: 2.5; stroke-dasharray: 7 6; animation: wire-dash var(--dur-pending-dash) linear infinite; }
-@keyframes wire-dash { to { stroke-dashoffset: -13; } }
+.react-flow__edge-path.wire.pending { stroke: var(--wire-wait); stroke-width: 2; stroke-dasharray: 6 5; animation: wire-dash var(--dur-pending-dash) linear infinite; }
+@keyframes wire-dash { to { stroke-dashoffset: -11; } }
 /* Held by the general hold: dotted. */
-.react-flow__edge-path.wire.held { stroke-dasharray: 2 5; stroke-linecap: round; }
-/* A hop of the loop that holds everything: full amber. */
-.react-flow__edge-path.wire.loop { stroke: var(--wire-wait); stroke-width: 3; stroke-dasharray: none; animation: none; }
+.react-flow__edge-path.wire.held { stroke-dasharray: 1.5 5; stroke-linecap: round; }
+/* A hop of the loop that holds everything: solid amber. */
+.react-flow__edge-path.wire.loop { stroke: var(--wire-wait); stroke-width: 2.5; stroke-dasharray: none; animation: none; }
 
 .wire-end { fill: var(--wire); stroke: none; }
 .wire-end.origin { fill: var(--st-wait); }
@@ -23,7 +25,7 @@
 /* Travelling light: pathLength=100, the lit part grows from the origin. */
 .wire-light {
   fill: none;
-  stroke-width: 3;
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-dasharray: 0 200;
   animation: wire-travel var(--dur-envelope) ease-out forwards;

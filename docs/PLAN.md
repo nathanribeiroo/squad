@@ -74,7 +74,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Consumo | `feat/consumo` | concluído |
 | Consumo em contas de empresa | — | para discutir |
 | Ajustes da interface (telas largas, remover, nova sessão) | `feat/ajustes-interface` | concluído |
-| NOTAM: cabeçalho com nome longo e tamanho | `feat/notam-cabecalho` | concluído (PR) |
+| NOTAM: cabeçalho com nome longo e tamanho | `feat/notam-cabecalho` | concluído |
+| Fios como corrente | `feat/fios-corrente` | concluído (PR) |
 
 ## B0, esqueleto
 
