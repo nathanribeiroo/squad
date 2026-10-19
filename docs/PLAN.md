@@ -80,7 +80,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fios com 8% de folga | `feat/folga-fio` | concluído |
 | Fio que não se enrola, e 5% de folga | `feat/fio-sem-enrolar` | concluído |
 | Fios com 3% de folga | `feat/folga-3` | concluído |
-| Fios do nó selecionado em destaque | `feat/fios-do-selecionado` | concluído (PR) |
+| Fios do nó selecionado em destaque | `feat/fios-do-selecionado` | concluído |
+| Destaque dos fios mais visível | `feat/fios-do-selecionado-forte` | concluído (PR) |
 
 ## B0, esqueleto
 

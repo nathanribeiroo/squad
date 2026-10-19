@@ -7,10 +7,10 @@
   stroke-dasharray: 6 5;
   stroke-linecap: round;
   fill: none;
-  transition: stroke 120ms;
+  transition: stroke 120ms, stroke-width 120ms;
 }
-/* Wired to the selected node: a step stronger, so its frequencies show. */
-.react-flow__edge-path.wire.linked { stroke: var(--wire-linked); }
+/* Wired to the selected node: stronger and thicker, so its frequencies show. */
+.react-flow__edge-path.wire.linked { stroke: var(--wire-linked); stroke-width: 2.25; }
 .react-flow__edge-path.wire.selected { stroke: var(--text); }
 /* Pending request: amber dashes sliding from who asked. */
 /* The dashes march a pixel at a time: each step repaints the page, so 11
