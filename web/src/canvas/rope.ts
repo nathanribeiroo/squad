@@ -1,19 +1,22 @@
 // A wire hangs like a chain: Verlet particles under gravity, held at its
-// ends and at the user's bend points, with 25% more length than the straight
+// ends and at the user's bend points, with 15% more length than the straight
 // line between them. The nodes in the way are solid: their tops are a floor
 // and their sides walls, so a wire drapes over a node instead of passing
 // behind it.
 import type { Pt, Rect } from './geometry';
 
+/** A node the chain can't pass through; own: one of the wire's ends. */
+export type Solid = Rect & { own?: boolean };
+
 /** Length of each span over the straight distance between its pins. */
-const SLACK = 1.25;
+const SLACK = 1.15;
 /** Target length of a link (canvas px); a span keeps it between half and double. */
-const LINK = 14;
+const LINK = 18;
 const GRAVITY = 0.45;
 const DAMPING = 0.985;
 /** Settling at once nobody sees the swing: it can stop much sooner. */
 const SETTLE_DAMPING = 0.85;
-const ITERATIONS = 14;
+const ITERATIONS = 10;
 /** Gap kept between a wire and a node's border. */
 export const MARGIN = 6;
 /** Steps run at once for a pose without animation. */
@@ -22,6 +25,8 @@ const SETTLE_STEPS = 260;
 export const STILL = 0.03;
 /** Longest a span pays out when wrapped around nodes, over its slack length. */
 const MAX_EXTRA = 3;
+/** Steps in a row a span must stay taut around a node before it pays out. */
+const TAUT_STEPS = 12;
 
 /** Points evenly spaced along a polyline, by length. */
 function resample(pts: Pt[], count: number): Pt[] {
@@ -44,11 +49,14 @@ function inside(p: Pt, r: Rect): boolean {
   return p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h;
 }
 
+const grown = (r: Solid): Solid => ({ x: r.x - MARGIN, y: r.y - MARGIN, w: r.w + 2 * MARGIN, h: r.h + 2 * MARGIN, own: r.own });
 
 interface Span {
   first: number; // index of its first particle (a pin)
   n: number; // links
   extra: number; // paid-out length over the slack length (wrapped around nodes)
+  taut: number; // steps in a row taut around a node
+  free: boolean; // touching no node but the wire's own ends (last step)
 }
 
 export class Chain {
@@ -63,7 +71,7 @@ export class Chain {
   /** Steps in a row with the chain still. */
   quiet = 0;
 
-  constructor(pins: Pt[], obstacles: Rect[]) {
+  constructor(pins: Pt[], obstacles: Solid[]) {
     this.layout(pins, obstacles, null);
   }
 
@@ -78,7 +86,7 @@ export class Chain {
    * hanging curve, or along the straight line when that curve would run into
    * a node (the chain then falls onto it, as if let go from up there).
    */
-  private layout(pins: Pt[], obstacles: Rect[], old: Chain | null) {
+  private layout(pins: Pt[], obstacles: Solid[], old: Chain | null) {
     const x: number[] = [];
     const y: number[] = [];
     const pinned: boolean[] = [];
@@ -104,10 +112,10 @@ export class Chain {
         const curve = (h: number) =>
           Array.from({ length: n + 1 }, (_, k) => ({ x: p.x + ((q.x - p.x) * k) / n, y: p.y + ((q.y - p.y) * k) / n + (4 * h * k * (n - k)) / (n * n) }));
         pts = curve(Math.sqrt(Math.max(0, (3 * d * (len - d)) / 8)));
-        const solid = obstacles.map((r) => ({ x: r.x - MARGIN, y: r.y - MARGIN, w: r.w + 2 * MARGIN, h: r.h + 2 * MARGIN }));
+        const solid = obstacles.map(grown);
         if (pts.some((pt, k) => k > 0 && k < n && solid.some((r) => inside(pt, r)))) pts = curve(0);
       }
-      spans.push({ first: x.length - (i > 0 ? 1 : 0), n, extra });
+      spans.push({ first: x.length - (i > 0 ? 1 : 0), n, extra, taut: 0, free: true });
       pts.forEach((pt, k) => {
         if (i > 0 && k === 0) return; // shared with the previous span
         x.push(pt.x);
@@ -127,7 +135,7 @@ export class Chain {
   }
 
   /** Moves the pins (the ends, the bend points); false when nothing moved. */
-  setPins(pins: Pt[], obstacles: Rect[]): boolean {
+  setPins(pins: Pt[], obstacles: Solid[]): boolean {
     if (pins.length !== this.pins.length) {
       this.layout(pins, obstacles, null);
       return true;
@@ -155,24 +163,36 @@ export class Chain {
   }
 
   /** One step of the simulation; returns the average motion of the particles. */
-  step(obstacles: Rect[], damping = DAMPING): number {
+  step(obstacles: Solid[], damping = DAMPING): number {
     const { x, y, px, py, pinned, rest } = this;
     const count = x.length;
+    // Touching a node in the way (not one of the wire's own ends).
     const touching: boolean[] = new Array(count).fill(false);
     let motion = 0;
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
     for (let i = 0; i < count; i++) {
-      if (pinned[i]) continue;
-      const vx = (x[i] - px[i]) * damping;
-      const vy = (y[i] - py[i]) * damping;
-      px[i] = x[i];
-      py[i] = y[i];
-      x[i] += vx;
-      y[i] += vy + GRAVITY;
-      motion += Math.abs(vx) + Math.abs(vy);
+      if (!pinned[i]) {
+        const vx = (x[i] - px[i]) * damping;
+        const vy = (y[i] - py[i]) * damping;
+        px[i] = x[i];
+        py[i] = y[i];
+        x[i] += vx;
+        y[i] += vy + GRAVITY;
+        motion += Math.abs(vx) + Math.abs(vy);
+      }
+      x0 = Math.min(x0, x[i]);
+      x1 = Math.max(x1, x[i]);
+      y0 = Math.min(y0, y[i]);
+      y1 = Math.max(y1, y[i]);
     }
-    const solid = obstacles.map((r) => ({ x: r.x - MARGIN, y: r.y - MARGIN, w: r.w + 2 * MARGIN, h: r.h + 2 * MARGIN }));
+    // Only the nodes around the chain (a link reaches a little further).
+    const pad = LINK * 2;
+    const solid = obstacles.map(grown).filter((r) => r.x < x1 + pad && r.x + r.w > x0 - pad && r.y < y1 + pad && r.y + r.h > y0 - pad);
     // Long chains need more passes, or their links stay stretched.
-    const passes = Math.max(ITERATIONS, Math.ceil(count / 3));
+    const passes = Math.max(ITERATIONS, Math.ceil(count / 4));
     for (let it = 0; it < passes; it++) {
       // Links only pull: a chain doesn't push back when it bunches up.
       for (let j = 0; j < count - 1; j++) {
@@ -205,15 +225,17 @@ export class Chain {
           if (side < vertical && side < LINK * 2) x[i] = left < right ? r.x : r.x + r.w;
           else if (top <= bottom) y[i] = r.y;
           else y[i] = r.y + r.h;
-          touching[i] = true;
+          if (!r.own) touching[i] = true;
           // Friction: it rests where it lands instead of sliding off.
           px[i] += (x[i] - px[i]) * 0.5;
           py[i] += (y[i] - py[i]) * 0.5;
         }
       }
     }
-    // A span pulled taut around nodes pays out more chain; it takes it back
-    // when it hangs free again.
+    // A span pulled taut around a node in its way pays out more chain; it
+    // takes it back as soon as nothing but its own ends holds it. Its own
+    // ends don't count: a wire always rests against the node it leaves, and
+    // it is stretched for a moment whenever that node is dragged.
     for (const s of this.spans) {
       let actual = 0;
       let target = 0;
@@ -223,7 +245,9 @@ export class Chain {
         target += rest[k];
         touch ||= touching[k];
       }
-      const grow = touch && actual / target > 1.06 ? 1.01 : !touch && s.extra > 1 ? 0.99 : 1;
+      s.free = !touch;
+      s.taut = touch && actual / target > 1.06 ? s.taut + 1 : 0;
+      const grow = s.taut >= TAUT_STEPS ? 1.01 : !touch && s.extra > 1 ? 0.97 : 1;
       if (grow === 1) continue;
       const extra = Math.min(MAX_EXTRA, Math.max(1, s.extra * grow));
       if (extra === s.extra) continue;
@@ -233,15 +257,20 @@ export class Chain {
     return count > 2 ? motion / (count - 2) : 0;
   }
 
+  /** A span is still taking back chain it paid out: keep it moving. */
+  get retracting(): boolean {
+    return this.spans.some((s) => s.free && s.extra > 1);
+  }
+
   /** Lays the chain again from its pins, as when it first appears. */
-  reset(obstacles: Rect[]) {
+  reset(obstacles: Solid[]) {
     this.layout(this.pins, obstacles, null);
   }
 
   /** Runs until the chain is still, at once (the first pose, reduced motion). */
-  settle(obstacles: Rect[]) {
+  settle(obstacles: Solid[]) {
     for (let i = 0; i < SETTLE_STEPS; i++) {
-      if (this.step(obstacles, SETTLE_DAMPING) < STILL && i > 20) break;
+      if (this.step(obstacles, SETTLE_DAMPING) < STILL && i > 20 && !this.retracting) break;
     }
     this.quiet = Infinity;
   }

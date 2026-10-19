@@ -153,8 +153,14 @@
 .xfloor-icon { color: var(--text-3); }
 .xfloor-name { font-weight: 700; color: var(--text); }
 .xfloor-floor { color: var(--text-3); }
-.xfloor-tag.busy { border-color: var(--st-wait); border-style: solid; color: var(--stt-wait); animation: xfloor-pulse var(--dur-pending-dash) ease-in-out infinite; }
-@keyframes xfloor-pulse { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--st-wait) 30%, transparent); } }
+/* The halo pulses by opacity (the compositor runs it), not by box-shadow. */
+.xfloor-tag.busy { position: relative; border-color: var(--st-wait); border-style: solid; color: var(--stt-wait); }
+.xfloor-tag.busy::after {
+  content: ''; position: absolute; inset: -1px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--st-wait) 30%, transparent);
+  animation: xfloor-pulse var(--dur-pending-dash) ease-in-out infinite;
+}
+@keyframes xfloor-pulse { 50% { opacity: 1; } }
 /* A NOTAM is paper in both themes: its contents use the ink colors. */
 .nnode {
   background: var(--paper);
@@ -217,6 +223,13 @@
 .xterm-slot { position: absolute; left: 10px; top: 8px; transform-origin: 0 0; overflow: hidden; }
 .xterm-host, .xterm-host .xterm { width: 100%; height: 100%; }
 .xterm-host .xterm-viewport { background-color: transparent !important; }
+/* xterm measures each glyph's width in this box, once per type size (a zoom
+   changes it). Contained, a measure lays out the box alone instead of the
+   whole terminal around it. */
+.xterm-host .xterm-width-cache-measure-container {
+  position: absolute; left: 0; top: 0; width: 4000px; height: 200px;
+  contain: strict; visibility: hidden; pointer-events: none;
+}
 /* PANE (striped red, opaque) or HANGAR over a stopped process, with INICIAR. */
 .tn-stopped {
   position: absolute; left: 0; right: 0; bottom: 0; min-height: 44px; padding: 8px 10px 8px 12px;

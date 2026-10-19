@@ -10,7 +10,9 @@
 }
 .react-flow__edge-path.wire.selected { stroke: var(--text); }
 /* Pending request: amber dashes sliding from who asked. */
-.react-flow__edge-path.wire.pending { stroke: var(--wire-wait); stroke-width: 2; stroke-dasharray: 6 5; animation: wire-dash var(--dur-pending-dash) linear infinite; }
+/* The dashes march a pixel at a time: each step repaints the page, so 11
+   steps a cycle instead of one every frame. */
+.react-flow__edge-path.wire.pending { stroke: var(--wire-wait); stroke-width: 2; stroke-dasharray: 6 5; animation: wire-dash var(--dur-pending-dash) steps(11) infinite; }
 @keyframes wire-dash { to { stroke-dashoffset: -11; } }
 /* Held by the general hold: dotted. */
 .react-flow__edge-path.wire.held { stroke-dasharray: 1.5 5; stroke-linecap: round; }

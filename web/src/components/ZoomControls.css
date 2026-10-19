@@ -17,6 +17,9 @@
   pointer-events: none;
   overflow: hidden;
 }
+/* The line moves by transform, in a layer of its own: the compositor runs it
+   without the page's thread (animating left repainted the whole page every
+   frame). */
 .torre-scope-sweep::after {
   content: '';
   position: absolute;
@@ -26,8 +29,9 @@
   left: -40px;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brand-glass) 14%, transparent));
   animation: scope-sweep 8s linear infinite;
+  will-change: transform;
 }
-@keyframes scope-sweep { to { left: 230px; } }
+@keyframes scope-sweep { to { transform: translateX(270px); } }
 @media (prefers-reduced-motion: reduce) {
   .torre-scope-sweep::after { display: none; }
 }
