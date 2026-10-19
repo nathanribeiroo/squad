@@ -76,7 +76,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Ajustes da interface (telas largas, remover, nova sessão) | `feat/ajustes-interface` | concluído |
 | NOTAM: cabeçalho com nome longo e tamanho | `feat/notam-cabecalho` | concluído |
 | Fios como corrente | `feat/fios-corrente` | concluído |
-| Fluidez da interface (e fios com 15% de folga) | `feat/fluidez` | concluído (PR) |
+| Fluidez da interface (e fios com 15% de folga) | `feat/fluidez` | concluído |
+| Fios com 8% de folga | `feat/folga-fio` | concluído (PR) |
 
 ## B0, esqueleto
 

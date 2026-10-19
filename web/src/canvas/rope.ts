@@ -1,5 +1,5 @@
 // A wire hangs like a chain: Verlet particles under gravity, held at its
-// ends and at the user's bend points, with 15% more length than the straight
+// ends and at the user's bend points, with 8% more length than the straight
 // line between them. The nodes in the way are solid: their tops are a floor
 // and their sides walls, so a wire drapes over a node instead of passing
 // behind it.
@@ -9,7 +9,7 @@ import type { Pt, Rect } from './geometry';
 export type Solid = Rect & { own?: boolean };
 
 /** Length of each span over the straight distance between its pins. */
-const SLACK = 1.15;
+const SLACK = 1.08;
 /** Target length of a link (canvas px); a span keeps it between half and double. */
 const LINK = 18;
 const GRAVITY = 0.45;
@@ -27,6 +27,15 @@ export const STILL = 0.03;
 const MAX_EXTRA = 3;
 /** Steps in a row a span must stay taut around a node before it pays out. */
 const TAUT_STEPS = 12;
+/**
+ * Under its own weight a chain hangs longer than its links say: by about
+ * STRETCH × links / passes (the solver can't fully undo gravity each step).
+ * Its links start that much shorter, so it hangs with the slack asked for.
+ */
+const STRETCH = 0.018;
+
+/** Constraint passes a step makes: long chains need more, or their links stay stretched. */
+const passesFor = (count: number) => Math.max(ITERATIONS, Math.ceil(count / 4));
 
 /** Points evenly spaced along a polyline, by length. */
 function resample(pts: Pt[], count: number): Pt[] {
@@ -81,6 +90,11 @@ export class Chain {
     return Math.max(d * SLACK, d + 8);
   }
 
+  /** Rest length of a link, for a span of this length in n links (see STRETCH). */
+  private static link(len: number, n: number, passes: number): number {
+    return len / n / (1 + (STRETCH * n) / passes);
+  }
+
   /**
    * Places the particles: along the old chain when there is one, else along a
    * hanging curve, or along the straight line when that curve would run into
@@ -92,6 +106,7 @@ export class Chain {
     const pinned: boolean[] = [];
     const rest: number[] = [];
     const spans: Span[] = [];
+    const lens: number[] = [];
     for (let i = 0; i < pins.length - 1; i++) {
       const p = pins[i];
       const q = pins[i + 1];
@@ -122,8 +137,12 @@ export class Chain {
         y.push(pt.y);
         pinned.push(k === 0 || k === n);
       });
-      for (let k = 0; k < n; k++) rest.push(len / n);
+      lens.push(len);
     }
+    const passes = passesFor(x.length);
+    spans.forEach((s, i) => {
+      for (let k = 0; k < s.n; k++) rest.push(Chain.link(lens[i], s.n, passes));
+    });
     this.x = x;
     this.y = y;
     this.px = x.slice();
@@ -151,8 +170,9 @@ export class Chain {
       return true;
     }
     this.pins = pins.map((p) => ({ ...p }));
+    const passes = passesFor(this.x.length);
     this.spans.forEach((s, i) => {
-      const link = (Chain.base(pins[i], pins[i + 1]) * s.extra) / s.n;
+      const link = Chain.link(Chain.base(pins[i], pins[i + 1]) * s.extra, s.n, passes);
       for (let k = 0; k < s.n; k++) this.rest[s.first + k] = link;
       this.x[s.first] = pins[i].x;
       this.y[s.first] = pins[i].y;
@@ -191,8 +211,7 @@ export class Chain {
     // Only the nodes around the chain (a link reaches a little further).
     const pad = LINK * 2;
     const solid = obstacles.map(grown).filter((r) => r.x < x1 + pad && r.x + r.w > x0 - pad && r.y < y1 + pad && r.y + r.h > y0 - pad);
-    // Long chains need more passes, or their links stay stretched.
-    const passes = Math.max(ITERATIONS, Math.ceil(count / 4));
+    const passes = passesFor(count);
     for (let it = 0; it < passes; it++) {
       // Links only pull: a chain doesn't push back when it bunches up.
       for (let j = 0; j < count - 1; j++) {
@@ -246,7 +265,9 @@ export class Chain {
         touch ||= touching[k];
       }
       s.free = !touch;
-      s.taut = touch && actual / target > 1.06 ? s.taut + 1 : 0;
+      // Against the length asked for, not the links' (they start shorter, see STRETCH).
+      const asked = target * (1 + (STRETCH * s.n) / passes);
+      s.taut = touch && actual / asked > 1.06 ? s.taut + 1 : 0;
       const grow = s.taut >= TAUT_STEPS ? 1.01 : !touch && s.extra > 1 ? 0.97 : 1;
       if (grow === 1) continue;
       const extra = Math.min(MAX_EXTRA, Math.max(1, s.extra * grow));
