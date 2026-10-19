@@ -2,6 +2,29 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-19, Fio que não se enrola, e 5% de folga
+
+- **Pedido:**
+  - a folga de 8% para 5%;
+  - não deixar o fio ser enrolado num objeto (NOTAM, voo…) dando voltas em torno dele. Nas palavras do usuário: "se eu estou cruzando o objeto mais que 50%, prevaleça o lado de menor caminho do fio".
+- **A regra (`shortWay`, em `web/src/canvas/rope.ts`):**
+  - **o laço:** cada trecho do fio, fechado pela linha reta entre as pontas dele, forma um laço;
+  - **quando troca:** se o centro de um nó que o trecho está tocando fica dentro desse laço (pelo número de voltas, então vale também para mais de uma volta), o fio está contornando mais da metade do nó. Ele é refeito pelo outro lado, rente às quinas desse lado e sem a corrente que tinha soltado. Depois cai com a gravidade, como sempre;
+  - **perto dos 50%:** quando o centro do nó está a menos de 10% da metade da largura dele em relação à linha reta, os dois lados são quase iguais e o fio fica onde está. Assim ele não fica pulando de um lado para o outro;
+  - **vale para qualquer nó sólido,** inclusive os dois em que o fio está preso;
+  - **onde roda:** a cada passo da simulação, só para os nós que o trecho tocou.
+- **Folga de 5%:**
+  - com menos folga, o fio fica mais tenso e estica mais sob o próprio peso;
+  - a compensação (`STRETCH`) passou de 0,018 para 0,024, para o fio assentado ficar em 1,047–1,051× a distância a partir de 200 px. Abaixo de 160 px vale o mínimo de 8 px de folga, que já existia.
+- **Testes:**
+  - `npx tsc -b`, `npm run build` e `go build ./...`;
+  - roteiro em Node com o `rope.ts`:
+    - uma NOTAM levada em volta de outro nó (meia, três quartos e uma volta): na `main` o fio terminava enrolado, com 3,4 a 4,6× a distância; agora termina desenrolado, com 1,02 a 1,05×;
+    - em duas voltas, o fio trocou de lado 2 vezes e nunca passou de 1,13× a distância. Parado depois, nenhuma troca;
+    - um nó arrastado de baixo para cima atravessando um fio, e de volta: o fio vai junto até o centro do nó cruzar a linha reta, troca de lado uma vez e fica pendurado;
+    - as cenas de antes (nenhum ponto dentro de um nó; a caixa alta ainda faz a corrente passar por cima; fios apoiados não soltam corrente; ir e voltar com a NOTAM termina em 1,06×);
+  - na interface, a NOTAM ligada a um voo levada em volta de outra NOTAM: na `main` o fio ficou com 2137 px, enrolado; nesta branch, 294 px, pendurado direto.
+
 ## 2026-10-19, Fios com 8% de folga
 
 - **Pedido:** 15% de folga ainda deixava o fio solto demais; o usuário pediu uns 8%.

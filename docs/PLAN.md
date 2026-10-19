@@ -77,7 +77,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | NOTAM: cabeçalho com nome longo e tamanho | `feat/notam-cabecalho` | concluído |
 | Fios como corrente | `feat/fios-corrente` | concluído |
 | Fluidez da interface (e fios com 15% de folga) | `feat/fluidez` | concluído |
-| Fios com 8% de folga | `feat/folga-fio` | concluído (PR) |
+| Fios com 8% de folga | `feat/folga-fio` | concluído |
+| Fio que não se enrola, e 5% de folga | `feat/fio-sem-enrolar` | concluído (PR) |
 
 ## B0, esqueleto
 
