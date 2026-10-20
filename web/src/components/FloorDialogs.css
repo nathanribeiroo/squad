@@ -86,7 +86,7 @@
 /* New level: NÍVEL (automatic) · NOME · BRANCH in a row. */
 .fl-row { display: grid; grid-template-columns: 70px 1fr 1fr; gap: 10px; }
 .fl-level-box { height: 34px; display: flex; align-items: center; justify-content: center; background: var(--surface-3); border: 1px solid var(--line-3); color: var(--text); font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; }
-/* Landing: four checks before the button. */
+/* Landing: four checks before the button, plus the floor's marks (two: three columns; three or four: four). */
 .fl-checks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .fl-checks.six { grid-template-columns: repeat(3, 1fr); }
 .fl-check[title] { cursor: help; }

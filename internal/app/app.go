@@ -182,6 +182,7 @@ func New(o Options) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	notesSvc.OnStack(srv.PublishStack)
 	portals := portal.New(srv.Store(), srv.Bus(), o.Browser, o.Server.Port, o.Server.Logger)
 	srv.SetNodePreparer(func(n *store.Node) error {
 		if err := notesSvc.PrepareNode(n); err != nil {

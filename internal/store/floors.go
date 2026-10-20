@@ -18,12 +18,16 @@ const (
 	FloorFailed    = "failed"
 )
 
-// What an agent can mark about a floor's work, and the results.
+// What an agent can mark about a floor's work, and the results. Tests and
+// review always show in the landing queue; the security and design reviews
+// only once marked.
 const (
-	CheckTests  = "tests"
-	CheckReview = "review"
-	CheckPass   = "pass"
-	CheckFail   = "fail"
+	CheckTests    = "tests"
+	CheckReview   = "review"
+	CheckSecurity = "security"
+	CheckDesign   = "design"
+	CheckPass     = "pass"
+	CheckFail     = "fail"
 )
 
 // FloorCheck is what an agent marked about a floor's work (its tests, its

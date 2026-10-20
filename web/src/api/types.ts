@@ -154,7 +154,7 @@ export interface Floor {
   checks?: Partial<Record<CheckKind, FloorCheck>>;
 }
 
-export type CheckKind = 'tests' | 'review';
+export type CheckKind = 'tests' | 'review' | 'security' | 'design';
 
 /** A floor's tests or review, as an agent marked them on a commit. */
 export interface FloorCheck {
@@ -427,6 +427,8 @@ export interface RoleDef {
   abbr?: string;
   /** The instructions the agent receives. */
   prompt: string;
+  /** When a leader should call a flight with this role (torre roles). */
+  when?: string;
   /** --r-<color> / --rb-<color> */
   color: string;
   icon: string;

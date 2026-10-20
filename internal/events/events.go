@@ -34,7 +34,7 @@ const (
 	ServerStatus        = "server.status"
 	WorkspaceUpdated    = "workspace.updated" // name, folder or color changed
 	FloorsUpdated       = "floors.updated"    // the floors and their config (floors.State)
-	FloorChecked        = "floor.checked"     // an agent marked a floor's tests or review
+	FloorChecked        = "floor.checked"     // an agent marked a floor's tests, review, security or design
 	TurnCard            = "turn.card"         // an agent's last turn, or its summary (summary.Card)
 	SummarySettings     = "summary.settings"  // turn cards and summary engine (summary.Settings)
 	RadioItem           = "radio.item"        // a line of the Rádio, new or changed (radio.Item)

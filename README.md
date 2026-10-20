@@ -4,7 +4,7 @@ A torre de controle dos seus agentes de código. Antes se chamava **Squad** (vej
 
 Ferramenta local para orquestrar agentes de código (Claude Code, Codex, Devin, Gemini) e shells num canvas infinito. Os terminais conversam entre si pelas conexões que você desenha. O servidor é um binário Go que escuta em `127.0.0.1`, e a interface React abre numa janela própria, como um app.
 
-> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas, o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você, com resposta pela Torre no Claude e no Devin, também nas perguntas e nos planos, e som), a marca SUA VEZ, o Sinóptico, foco e encaixe, planos de voo e a pilha de NOTAMs. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
+> Estado: voos (terminais de agente) vivos no canvas, frequências com a conversa entre os agentes animada nos fios, Transmitir com @menções, NOTAMs em Markdown, o Rádio, vários workspaces, portais com a página ao vivo que os agentes também usam (`torre portal`), papéis com instruções e siglas (doze prontos, com o fluxo de especificação: PRD, spec, ADRs e tarefas), o voo líder, MCP, níveis de voo (git worktree), boletins e briefing, e sessões (cada uma um canvas inteiro, que pode trabalhar numa cópia isolada do repositório). O Squad virou Torre, com a interface redesenhada, a PRIORIDADE (o voo pede você, com resposta pela Torre no Claude e no Devin, também nas perguntas e nos planos, e som), a marca SUA VEZ, o Sinóptico, foco e encaixe, planos de voo e a pilha de NOTAMs. Falta a validação completa no Windows. Plano e andamento: [`docs/PLAN.md`](docs/PLAN.md) e [`docs/DEVLOG.md`](docs/DEVLOG.md).
 
 ## Requisitos
 
@@ -238,7 +238,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - cada voo tem um **indicativo** de até 4 letras, único no canvas da sessão. Vem da **sigla** do papel (PLN, IMP; o segundo Implementador é IM2) ou, sem papel, das consoantes do nome (Claude → CLD). Dá para escolher outro em Novo voo ou em Configurar…;
 - o indicativo aparece no cabeçalho do voo, no Rádio, no Transmitir, no briefing, no "criado por" e na barra de quem aguarda resposta. Os agentes podem chamar um voo pelo nome ou pelo indicativo (`torre ask "Bia"` ou `torre ask IMP`), e o `torre list` mostra os dois;
 - trocar o papel de um voo troca o indicativo junto, se ele veio da sigla; um indicativo escolhido por você fica;
-- cada papel tem uma **sigla** de até 3 letras (Papéis → SIGLA). Os prontos são PLN, ARQ, IMP, REV e TST; um papel novo sem sigla ganha as consoantes do nome;
+- cada papel tem uma **sigla** de até 3 letras (Papéis → SIGLA). Os prontos são PLN, PRO, ESP, ARQ, DSG, IMP, FRT, TST, REV, SEG, DEP e DOC; um papel novo sem sigla ganha as consoantes do nome;
 - os **níveis de voo** são numerados por sessão: FL1, FL2… O número não volta a ser usado depois que o nível pousa ou é descartado. A pista é o branch da sessão.
 
 **Voos:**
@@ -343,23 +343,45 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 **Grupos e desenhos nos níveis e nos planos:** ficam no nível em que foram feitos. Pousar ou descartar o nível remove os dele (as NOTAMs continuam descendo para a pista). Os planos de voo guardam e decolam grupos e desenhos; salvar a seleção com um grupo selecionado leva o que está dentro dele.
 
 **Papéis:** instruções que o agente recebe ao decolar (⚙ → Papéis…, ou "Editar papéis…" no menu do voo).
-- O painel lista os papéis com o ícone, o nome, a sigla e "editado". O editor tem **Nome**, **Sigla**, **Cor**, **Ícone**, **Líder** e as **Instruções** (com o contador). O rodapé mostra quem usa o papel neste workspace.
-- Vêm cinco prontos: Planejador (PLN), Arquiteto (ARQ), Implementador (IMP), Revisor (REV) e Testador (TST). As instruções podem ser editadas, e "Restaurar padrão" volta às da Torre. O Testador, por exemplo, testa interfaces web pelo portal.
-- **Arquiteto** (`arch`): desenha a solução técnica e não escreve o código do produto.
-  - Lê o código e a documentação, e registra o desenho numa NOTAM "Arquitetura: …": problema, solução com os módulos e arquivos que mudam, contratos (tipos, rotas, formato dos dados), alternativas descartadas, riscos e as partes que podem andar em paralelo.
-  - O Planejador o chama quando a mudança mexe na estrutura (módulo novo, API, formato de dados, dependência) ou vai ser dividida em frentes; numa tarefa pequena, dispensa.
-  - O Planejador põe a NOTAM na frequência de quem implementa e revisa, e usa as partes para decidir os níveis de voo. O Implementador segue a NOTAM, e o Revisor confere se a mudança segue o desenho. Antes de pousar, o Arquiteto pode fazer uma revisão de arquitetura.
-  - Também dá para usá-lo sem o Planejador: ponha-o na frequência de um Implementador e peça o desenho.
-- **`torre roles`** (ou a ferramenta MCP `roles`, liberada): qualquer agente vê os papéis disponíveis, com o id, se é líder e o que faz, inclusive os que você criar. O `torre new --help` mostra a mesma lista.
-- Se você já tinha criado um papel com o nome de um que passou a vir pronto (por exemplo, "Arquiteto"), o seu continua, com as mesmas instruções, como "Arquiteto (personalizado)".
+- O painel lista os papéis com o ícone, o nome, a sigla e "editado". O editor tem **Nome**, **Sigla**, **Cor**, **Ícone**, **Líder**, **Quando chamar** e as **Instruções** (com o contador). O rodapé mostra quem usa o papel neste workspace.
+- **Quando chamar:** uma linha para o líder (até 200 caracteres), que o `torre roles` mostra. É por ela que o Planejador escolhe quem chamar, e vale também para os papéis que você criar.
+- Vêm doze prontos. As instruções podem ser editadas, e "Restaurar padrão" volta às da Torre (quem editou um papel antes continua com a própria versão):
+
+| Papel | id | Quando chamar | O que entrega |
+|---|---|---|---|
+| Planejador (PLN) | `plan` | coordenar um trabalho com várias etapas ou vários voos | a equipe por fases, a Memória, o pouso e o resumo; é líder |
+| Produto (PRO) | `prod` | pedido vago ou grande; no fim, a aceitação | NOTAM "PRD: …" e as ADRs de produto; a aceitação critério por critério, pelo portal |
+| Especificador (ESP) | `spec` | feature que precisa de spec, ADRs e tarefas antes de ser construída | "Spec: …", "ADR-NNN: …" e a pilha "Tarefas: …", uma NOTAM por tarefa |
+| Arquiteto (ARQ) | `arch` | projeto novo, mudança de estrutura, revisar a spec e o diff | "Arquitetura: <projeto>" (o mapa do sistema) e as ADRs que valem para o projeto todo |
+| Designer (DSG) | `design` | antes de telas novas; depois, a revisão visual | antes, "Design: …" (fluxo, telas, estados, textos, acessibilidade); depois, a revisão pelo portal nos dois temas |
+| Implementador (IMP) | `impl` | tarefas de núcleo, API, dados, CLI | o código, com os testes e a evidência da verificação |
+| Front-end (FRT) | `front` | tarefas de interface | a tela: componentes, estado, tokens, acessibilidade e desempenho, conferida no portal |
+| Testador (TST) | `test` | rodar e escrever testes, testar a interface | o resultado, com os critérios de aceite do PRD como roteiro |
+| Revisor (REV) | `rev` | revisar cada mudança antes do pouso | apontamentos com gravidade e um veredito, contra o PRD e a spec |
+| Segurança (SEG) | `sec` | mudança em API, autenticação, permissões, arquivos, comandos ou dependências | revisão de segurança com gravidade |
+| Depurador (DEP) | `debug` | bug ou falha sem causa clara | a causa, com evidência, e um teste que falha |
+| Documentador (DOC) | `docs` | depois da implementação | README, changelog, documentação da API e o que das NOTAMs precisa ficar no repositório |
+
+- **O fluxo de uma feature grande** (desenvolvimento guiado por especificação; os modelos e as regras vêm da skill compozy, adaptados à Torre):
+  1. **Produto:** lê o código, pergunta a você uma coisa por vez, com opções (no Claude e no Devin, a pergunta chega como PRIORIDADE com botões), propõe 2 ou 3 abordagens, registra a escolhida numa ADR e escreve o PRD, com critérios de aceite (Dado / Quando / Então). Pede uma aprovação só, no fim.
+  2. **Designer**, se houver tela nova: a NOTAM "Design: …".
+  3. **Especificador:** a spec técnica (cada objetivo do PRD aponta para uma parte da solução), as ADRs e a pilha "Tarefas: …". Cada tarefa diz o papel sugerido, a complexidade, as dependências, os arquivos e os testes; tarefas que não dependem uma da outra e não mexem nos mesmos arquivos andam em paralelo, em níveis.
+  4. **Construção:** Implementador e Front-end seguem a tarefa e só marcam as caixas com evidência (o comando de verificação e a saída). Testador, Revisor, Segurança e Designer conferem; o Depurador entra se algo falhar sem causa clara.
+  5. **Fechamento:** o Documentador, e o Produto de volta para a aceitação.
+  Numa tarefa pequena, o Planejador pula o Produto, e o Especificador parte do pedido.
+- **Arquiteto** (`arch`): cuida da arquitetura do projeto como um todo e não escreve o código do produto. Registra o mapa do sistema numa NOTAM "Arquitetura: <projeto>" (módulos, fronteiras, dependências, fluxo dos dados, padrões, pontos frágeis), propõe a estrutura de um projeto novo, registra em ADRs as decisões que valem para o projeto todo e revisa a spec e o diff contra a arquitetura. O desenho de cada feature é do Especificador.
+- **Modelos de NOTAM:** `torre note create "PRD: X" --template prd` cria a NOTAM já com as seções. Há `prd`, `spec`, `adr` (com a data do dia), `tasks` (a tabela de andamento, base da pilha de tarefas), `task`, `design` e `memory`; o `torre note help` lista. As seções vêm em português, como as instruções dos papéis.
+- **`torre roles`** (ou a ferramenta MCP `roles`, liberada): qualquer agente vê os papéis disponíveis, com o id, se é líder, o que faz e quando chamar (`call it:`), inclusive os que você criar. O `torre new --help` mostra a mesma lista.
+- Se você já tinha criado um papel com o nome de um que passou a vir pronto (por exemplo, "Designer"), o seu continua, com as mesmas instruções, como "Designer (personalizado)". Se a sigla dele era a de um papel pronto (DSG), os próximos voos dele ganham outra.
 - Dá para criar papéis com nome, sigla, cor, ícone e instruções. Eles valem para todos os workspaces (`~/.torre/roles.json`). Um papel em uso não pode ser removido. Duas siglas iguais são recusadas.
-- Como cada agente recebe o papel: Claude Code por `--append-system-prompt-file`; Codex por `developer_instructions`; Devin pelo hook `SessionStart`; Gemini como primeira mensagem (`-i`). Shells não têm papel, e comandos próprios mostram o papel só como etiqueta.
+- Como cada agente recebe o papel: Claude Code por `--append-system-prompt-file`; Codex por `developer_instructions`; Devin pelo hook `SessionStart`; Gemini como primeira mensagem (`-i`). Shells não têm papel, e comandos próprios mostram o papel só como etiqueta. O cabeçalho das instruções lembra que os comandos `torre` também são ferramentas MCP, que na maioria não pedem aprovação.
 - Trocar o papel de um agente aberto reinicia o voo, com aviso. Depois de salvar um papel, a faixa verde "Salvo. PLN recebe as instruções novas ao reiniciar" oferece **Reiniciar agora**.
 
 **Líder:** um agente líder monta a própria equipe.
 - O Planejador já vem como líder. A opção fica no papel ("Líder", em Papéis…), e cada voo pode ligá-la ou desligá-la no menu ⋯ → "Líder" (ou em Novo voo → Avançado). O chip "líder" aparece no cabeçalho.
 - `torre new "Bia" --role impl` cria um voo ao lado do líder, já na frequência dele e com o papel. O comando só volta quando o agente está pronto para receber a primeira mensagem.
-- O que um agente criou mostra "criado por PLN". Esses voos não são líderes, e cada líder cria no máximo 6 (`torre serve -max-team N`).
+- O que um agente criou mostra "criado por PLN". Esses voos não são líderes, e cada líder tem no máximo 6 ao mesmo tempo (`torre serve -max-team N`, ou nas Configurações).
+- **Dispensar e chamar de volta:** com a equipe montada por fases, o Planejador dispensa quem terminou a sua parte e não tem trabalho na próxima: pede a passagem de serviço na NOTAM "Memória: …" e roda `torre close "Nome"`, que libera a vaga. **As NOTAMs que o voo criou ficam**, agora na frequência do líder (uma pilha, pela base); a resposta do `close` lista quais. Para chamar de volta, o Planejador cria o voo de novo com o mesmo nome e papel, liga as NOTAMs dele e a Memória e diz no pedido o que ele já fez. A conversa antiga não volta: o contexto vem das NOTAMs.
 - Qualquer agente pode abrir um portal: `torre portal create localhost:5173 "App"` cria o portal na frequência de quem pediu (até 3 por agente).
 - Pelo MCP (abaixo), o líder trabalha sem pedir aprovação a cada passo, no Claude Code e no Devin. Pela CLI, cada comando `torre` pede aprovação como qualquer outro comando.
 
@@ -373,7 +395,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - Os voos do nível abrem na cópia; pastas relativas, e mesmo uma pasta da pista dada por inteiro, apontam para a cópia. Um voo pode estar na frequência de voos de outros níveis: o líder na pista conversa com quem está no nível.
 - **Pousar** fecha os voos e portais do nível e apaga a pasta; as NOTAMs descem para a pista. O branch fica. Com `--merge`, antes mescla o branch no branch de origem (`--into outro` para outro), com commit de merge. Se o branch de destino não estiver aberto em nenhuma pasta, a mescla acontece sem tocar em pasta nenhuma. É recusado se o nível tiver alteração não commitada, se a pasta de destino tiver alteração em arquivo versionado, ou se o branch do nível tiver commitado um arquivo copiado da pista (como o `.env`, que pode ter segredos). Com conflito, nada muda, e a resposta lista os arquivos.
 - **Autorizar pouso · FL2:** o diálogo mostra os commits do nível, as checagens (conflitos, tudo commitado, voos no ar, commits novos na origem), onde mesclar e o que fecha. Os conflitos com o branch de origem são checados antes de tentar (`git merge-tree`, sem tocar em pasta): "✓ sem conflitos" ou "✕ 1 conflito · README.md". Com um git anterior ao 2.38, ou mesclando em outro branch, eles são checados ao pousar, e o diálogo lista os arquivos.
-- **Testes e revisão:** o Testador e o Revisor de um nível registram o resultado deles com `torre floor mark tests pass "12 testes passaram"` ou `torre floor mark review fail "falta tratar o erro"` (pelo MCP, a ferramenta `floors` com `action: mark`, que não pede aprovação).
+- **Testes e revisão:** o Testador e o Revisor de um nível registram o resultado deles com `torre floor mark tests pass "12 testes passaram"` ou `torre floor mark review fail "falta tratar o erro"` (pelo MCP, a ferramenta `floors` com `action: mark`, que não pede aprovação). A Segurança e o Designer têm marcas próprias, `security` e `design`, que aparecem só depois de marcadas, sem apagar a do Revisor.
   - **Quem marca:** os voos do próprio nível e o líder que o criou.
   - **A marca vale para o commit do nível naquele momento:** com um commit novo depois, ela fica "desatualizada" e precisa ser feita de novo. Alterações sem commit na hora não entram nela, e a resposta avisa.
   - **Onde aparece:** na fila de pouso do Sinóptico e no "Autorizar pouso", como ✓ (passou), ✕ (falhou), ⟳ (desatualizada) ou ○ (sem marca); passando o mouse, quem marcou, a nota, quando e o commit. O Rádio ganha uma linha a cada marca.
@@ -423,7 +445,8 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - **Tirar da pilha** (menu ⋯): a NOTAM vai para o lado da pilha e continua com os fios dela (a pilha também). Se sair a base, a próxima NOTAM vira a base. Uma pilha que fica com uma NOTAM só deixa de ser pilha.
 - **Desfazer a pilha** (menu ⋯): solta todas, cada uma com os fios da pilha.
 - **O cadeado continua por NOTAM.** Remover uma NOTAM da pilha tira só ela.
-- **Agentes:** leem e escrevem cada NOTAM pelo próprio nome, pela CLI e pelo MCP. O `torre list` e o `torre note list` mostram `stack: "Plano"` (o nome da base). As @menções do Transmitir também oferecem as NOTAMs da pilha. Só a interface empilha.
+- **Agentes:** leem e escrevem cada NOTAM pelo próprio nome, pela CLI e pelo MCP. O `torre list` e o `torre note list` mostram `stack: "Plano"` (o nome da base). As @menções do Transmitir também oferecem as NOTAMs da pilha. Um agente empilha só ao criar: `torre note create "Tarefa 02: …" --stack "Tarefas: …"` põe a NOTAM nova em cima da pilha de uma NOTAM ligada a ele, no mesmo nível (o Especificador monta assim a pilha de tarefas). Tirar da pilha e juntar pilhas é só pela interface.
+- **Tabelas:** a prévia desenha as tabelas em Markdown (a de andamento das tarefas, a de impacto da spec), rolando para o lado quando não cabem.
 - **Planos de voo e níveis:** um plano guarda as pilhas e decola com elas; pousar um nível desce as pilhas inteiras para a pista.
 
 | Rota (só da interface) | O que faz |
@@ -518,19 +541,19 @@ Dentro de um terminal da Torre, o comando `torre` está no PATH:
 | `torre check "Nome"` | lê a tela de um terminal ligado |
 | `torre wait "Nome"` | espera o turno do agente acabar e devolve a resposta final, sem mandar nada (para depois de um `ask` que voltou por tempo esgotado; se ele já terminou, devolve a última resposta) |
 | `torre reply <id> "…"` | responde o pedido `<id>` |
-| `torre note list\|read\|write\|edit\|create` | notas ligadas a você |
+| `torre note list\|read\|write\|edit\|create` | notas ligadas a você; `create` aceita `--template prd` (e spec, adr, tasks, task, design, memory) e `--stack "Outra"` |
 | `torre portal snapshot` | lê a página de um portal ligado: título, URL e os elementos com referências `@e1`, `@e2`… |
 | `torre portal click @e3` · `fill @e2 "texto"` · `type "texto"` · `key Enter` · `scroll down` | age na página (`click X Y` também vale) |
 | `torre portal goto URL` · `back` · `forward` · `reload` | navega |
 | `torre portal screenshot` · `console` · `eval "js"` | imagem PNG (salva no workspace), console do navegador, JavaScript |
 | `torre portal create URL "Nome"` · `close "Nome"` | abre um portal ligado a você / fecha um que você criou |
-| `torre roles` | os papéis disponíveis (id, nome, o que fazem) |
+| `torre roles` | os papéis disponíveis (id, nome, o que fazem, quando chamar) |
 | `torre new "Nome" --role impl` | líderes: cria um voo ao lado, ligado e já pronto (`--agent`, `--cwd`, `--command`) |
-| `torre connect "A" "B"` · `torre close "Nome"` | líderes: põe dois nós na mesma frequência / remove um voo que criou |
+| `torre connect "A" "B"` · `torre close "Nome"` | líderes: põe dois nós na mesma frequência / remove um voo que criou (as NOTAMs dele passam para o líder) |
 | `torre floor list` | os níveis de voo: número (FL1…), branch, estado, pasta |
 | `torre floor create "Nome"` | líderes: cria um nível a partir do último commit (`--branch B`, `--existing` para abrir um branch que já existe) |
 | `torre new "Bia" --role impl --floor "Nome"` | líderes: cria o voo no nível, trabalhando na cópia (`--floor ground` ou `--floor pista` é a pista) |
-| `torre floor mark tests\|review pass\|fail "nota"` | os voos do nível (e o líder que o criou): registram o resultado dos testes ou da revisão no último commit, para a fila de pouso |
+| `torre floor mark tests\|review\|security\|design pass\|fail "nota"` | os voos do nível (e o líder que o criou): registram o resultado dos testes, da revisão, da segurança ou do design no último commit, para a fila de pouso |
 | `torre floor land "Nome" [--merge \| --into BRANCH]` | líderes: pousa um nível que criou, mesclando o branch antes se pedido |
 
 Com mais de um portal ligado, diga qual: `torre portal "Docs" snapshot`. `torre portal help` mostra tudo.

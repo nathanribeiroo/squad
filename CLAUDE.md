@@ -73,13 +73,13 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | `internal/store` | `workspace.json` (nós, fios, `createdBy`), `FreeSpot`; pilhas de NOTAMs (`stacks.go`: a base guarda os fios e a caixa); grupos e desenhos, só visuais (`visual.go`: o que está dentro de uma moldura, mover vários nós) |
 | `internal/agentbus` | `torre list/ask/check/wait/reply`, limites, pausa, modo `Safe`; a fila de pedidos de cada voo e a entrega a quem está ocupado num laço (`queue.go`); o motivo da espera geral e a cadeia de um laço que passou do limite de saltos (`loop.go`) |
 | `internal/agents` | linhas de lançamento, hooks, papel e MCP de cada agente, `SafeMCPTools`; a conversa de cada terminal, nova ou retomada (`conversation.go`); a cópia da configuração do Devin e o registro do MCP nele (`devin.go`) |
-| `internal/roles`, `internal/team` | biblioteca de papéis; `torre new/connect/close` (gerente) |
+| `internal/roles`, `internal/team` | biblioteca de papéis (os doze prontos, com o "quando chamar", em `defaults.go`); `torre new/connect/close` (gerente; o `close` passa as NOTAMs do voo ao líder) |
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `torre portal` |
 | `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |
 | `internal/radio` | o Rádio de cada sessão: as linhas montadas dos eventos, em `radio.jsonl` na pasta da sessão, com o texto dos pedidos e das respostas |
 | `internal/usage` | Consumo: o que cada voo gastou e os limites da conta de cada agente, lidos dos arquivos dos agentes; a status line do Claude (`claude.go`, e `internal/cli/statusline.go`, que roda a do usuário), o `sessions.db` e a tela do `/usage` do Devin (`devin.go`), o Codex e o Gemini; as contas, as mesmas em todos os workspaces (`usage.go`) |
 | `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `torre floor`, `/api/floors`; a cópia em que uma sessão trabalha, e mesclar sem fechar (`copy.go`); as permissões do SEMPRE do Claude e do Devin que seguem os níveis e voltam no pouso (`permissions.go`); as marcas de testes e revisão dos voos, `torre floor mark` (`checks.go`) |
-| `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas |
+| `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas (os modelos do `--template` em `templates.go`; o `--stack` no `create`) |
 | `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` (o Desenho em `DrawLayer.tsx`; grupos e desenhos em `src/lib/visual.ts`; os fios, uma corrente com gravidade, em `rope.ts`), sessões em `src/components/SessionsMenu.tsx`, o Consumo em `src/components/UsageMenu.tsx`; os terminais (xterm, o zoom e a fila que os reajusta um por quadro) em `src/term/session.ts` |
 
 ## Segurança (já decidido)

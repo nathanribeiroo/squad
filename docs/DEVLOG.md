@@ -2,6 +2,59 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-20, Novos papéis e o fluxo de especificação
+
+- **Pedido:** o usuário escolheu os papéis Produto, Depurador, Segurança, Documentador, Designer (UX e UI, antes e depois) e Front-end. Pediu também um papel para o desenvolvimento guiado por especificação (PRD, spec técnica, ADRs, tarefas), com a skill compozy como referência. O Planejador deve poder dispensar quem terminou e chamar de volta com contexto, sem passar de 6 voos ao mesmo tempo. A análise da skill, a divisão dos papéis e o plano foram aprovados antes (PLAN, "Novos papéis e o fluxo de especificação").
+- **O que veio da skill compozy (e o que não):**
+  - **Veio:**
+    - as perguntas uma por vez, com opções, e a aprovação única no fim;
+    - as seções do PRD e da spec;
+    - a ADR com alternativas;
+    - as regras das tarefas: independentes, sem ciclo, divididas acima de 7 arquivos ou 7 subtarefas, com os testes dentro e testes específicos;
+    - "sem evidência, não terminou";
+    - os critérios de revisão: gravidade, deduplicar, conferir o motivo antes de apontar, poucos e bons, não repetir na segunda rodada;
+    - a memória compartilhada, com as três condições para promover algo a ela.
+  - **Ficou de fora:** a pasta `.compozy/`, os campos YAML e os validadores. Na Torre, os documentos são NOTAMs ligadas aos voos.
+- **A divisão:** Produto (o quê e por quê: PRD e aceitação), Especificador (como fazer esta entrega: spec, ADRs e a pilha de tarefas) e Arquiteto (o projeto inteiro: o mapa do sistema e as ADRs que valem para tudo; antes, ele desenhava cada feature).
+- **Servidor:**
+  - **papéis** (`internal/roles`): os 7 novos e os textos novos do Planejador, Arquiteto, Implementador, Revisor e Testador. O campo novo `when` ("Quando chamar", até 200 caracteres) é o que o `torre roles`, a ferramenta MCP `roles` e o `torre new --help` mostram como `call it:`. Assim o Planejador diz só as regras gerais e cabe no limite de 4.000 caracteres (ficou com 3.331). Há 4 cores (`sky`, `slate`, `sand`, `gold`) e 3 ícones (`flag`, `checklist`, `web`). Os papéis prontos vêm na ordem de um trabalho: planejar, definir, desenhar, construir, conferir, documentar;
+  - **modelos de NOTAM** (`internal/notes/templates.go`): `torre note create "PRD: X" --template prd`, com 7 modelos (`prd`, `spec`, `adr` com a data, `tasks`, `task`, `design`, `memory`) e as seções em português. Modelo e conteúdo juntos são recusados;
+  - **pilha criada por agente:** `--stack "Outra"` põe a NOTAM nova em cima da pilha de uma NOTAM ligada a quem cria, no mesmo nível. A conferência é feita antes de criar, para uma recusa não deixar NOTAM solta. A pilha é anunciada pelo mesmo caminho da interface (`Server.PublishStack`);
+  - **`torre close`:** as NOTAMs que o voo dispensado criou ganham um fio para o líder (numa pilha, para a base). A resposta lista quais;
+  - **marcas no nível:** `security` e `design`, ao lado de `tests` e `review`. Aparecem só depois de marcadas, no `torre floor list` e na fila de pouso;
+  - **MCP:** a ferramenta `note` ganha `template` e `stack`, e a `floors` aceita as marcas novas. As descrições não citam mais só os papéis antigos. As ferramentas liberadas continuam as mesmas;
+  - **skill:** a seção de papéis cita os nomes das NOTAMs (PRD, Spec, ADR, Tarefas, Design, Arquitetura, Memória) e "sem evidência, não terminou". A seção do líder ganhou as fases e o dispensar e chamar de volta; a das notas, os modelos e o `--stack`.
+- **Interface:**
+  - as cores e os ícones novos;
+  - o campo "Quando chamar" no editor de papéis;
+  - as marcas de segurança e design na fila de pouso, no Sinóptico e no Rádio. A grade do "Autorizar pouso" passa a 4 colunas com 3 ou 4 marcas;
+  - **as tabelas em Markdown na prévia das NOTAMs:** os modelos usam tabela, e o renderizador próprio não tinha. Elas rolam para o lado quando não cabem.
+- **O teste real (Claude Code 2.1.304):** num projeto pequeno (uma lista de produtos em HTML e JS), o pedido "quero um filtro por texto na lista de produtos; siga o fluxo completo, e dispense quem terminar". Em uns 20 minutos:
+  - o Planejador criou a Memória e o Produto;
+  - o Produto fez 4 perguntas (PRIORIDADE com botões, respondidas pela rota da interface), escreveu o PRD com 11 critérios de aceite e a ADR-001, e pediu uma aprovação;
+  - o Produto foi dispensado: o PRD e a ADR passaram ao Planejador;
+  - o Especificador fez 3 perguntas, escreveu a Spec e a ADR-002 e montou a pilha "Tarefas" com 3 tarefas (`--stack`). De quebra, apontou que a mensagem com o texto digitado precisa de `textContent`;
+  - o Implementador e o Front-end trabalharam em paralelo (arquivos diferentes), e cada um foi dispensado no fim;
+  - o Revisor achou 2 problemas de acessibilidade, e o Front-end, chamado de volta "com a passagem de serviço na Memória", corrigiu;
+  - o Produto, chamado de volta "para a aceitação", conferiu os 11 critérios pelo portal.
+- **O que o teste real mudou:**
+  - **o Planejador mandou o Produto "decidir sem perguntar".** O texto do Planejador agora diz que o Produto e o Especificador perguntam ao usuário, e o do Produto, que ele pergunta mesmo quando outro voo pediu. Na segunda rodada, os dois perguntaram;
+  - **uma pergunta longa não virava PRIORIDADE.** O Claude a mostra num quadro ("│ Como …? O projeto hoje …"), e nenhuma linha termina em "?". O leitor (`internal/attention`) agora aceita o parágrafo logo acima das opções, se ele tiver um "?". A tela real virou caso de teste;
+  - **os agentes usavam a CLI pelo Bash,** e cada comando pedia aprovação. O cabeçalho das instruções de todos os papéis lembra que os comandos `torre` também são ferramentas MCP;
+  - **o ouro do tema claro** ficava perto do lima do Testador: virou mostarda.
+- **Observado e não mudado:**
+  - o Planejador termina o turno sempre que um voo para numa permissão ou pergunta, e você precisa dizer "pode seguir" depois de responder. É a regra que já existia: só parar quando algo depende de você, e dizer o quê;
+  - o pedido do Planejador a quem estava parado é cancelado quando o turno dele acaba, e o resultado chega pelas NOTAMs e pela Memória.
+- **Devin real (3000.11.92, sem login):** `TestRealDevinConfig` passa com as ferramentas novas.
+- **Decisões tomadas sem consulta (reversíveis):**
+  - os ids dos papéis novos são curtos e em inglês, como os antigos (`prod`, `spec`, `design`, `front`, `debug`, `sec`, `docs`);
+  - o `close` passa as NOTAMs ao líder sozinho, sem depender do agente lembrar;
+  - um papel editado antes do "Quando chamar" recebe o do padrão; um papel do usuário cuja sigla passou a ser de um papel pronto ganha outra sigla para os próximos voos;
+  - o limite continua em 6 voos por líder ao mesmo tempo, e o texto do Planejador não fixa o número (ele muda nas Configurações).
+- **Precisa de você:**
+  - o fluxo com o Devin logado, principalmente as perguntas do Produto pela ferramenta de pergunta do Devin;
+  - o Windows.
+
 ## 2026-10-20, Workspaces inativos fora da tela
 
 - **Pedido:** só o workspace que está na tela deveria ter os agentes carregados. Antes, a Torre subia os terminais de todos os workspaces ao abrir e os mantinha rodando, olhados ou não. Os cenários foram combinados com o usuário antes do plano (PLAN, "Workspaces inativos fora da tela").

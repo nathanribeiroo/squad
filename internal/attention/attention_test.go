@@ -613,3 +613,40 @@ func TestParseWrappedQuestion(t *testing.T) {
 		t.Fatalf("cut: %q", p.Question)
 	}
 }
+
+// Claude Code quotes a long question: the question mark falls in the middle
+// of a line (seen with Claude Code 2.1.304, the third of three questions).
+const claudeQuoted = `  Called torre 3 times (ctrl+o to expand)
+────────────────────────────────────────────────────────────────────────────────
+←  ☒ Campo  ☒ Vazio  ☐ Testes  ✔ Submit  →
+
+│ Como verificar os critérios que dependem da página (DOM)? O projeto hoje não
+│ tem dependências.
+
+❯ 1. Lógica pura + roteiro manual (Recommended)
+     Filtro e texto da mensagem em lib.js testados com node --test; a parte da
+     página verificada por roteiro no navegador (npm run dev). Zero
+     dependências.
+  2. Adicionar jsdom
+     Testes automáticos também da página com jsdom como devDependency. Mais
+     cobertura, ganha a primeira dependência.
+  3. Type something.
+────────────────────────────────────────────────────────────────────────────────
+  4. Chat about this
+
+Enter to select · Tab/Arrow keys to navigate · Esc to cancel
+`
+
+func TestParseQuotedQuestion(t *testing.T) {
+	q, ok := Parse(claudeQuoted)
+	if !ok || q.Question != "Como verificar os critérios que dependem da página (DOM)? O projeto hoje não tem dependências." || len(q.Options) != 4 {
+		t.Fatalf("quoted: %+v %v", q, ok)
+	}
+	if q.Options[0].Text != "Lógica pura + roteiro manual (Recommended)" || len(Pickable("claude", &q)) != 4 {
+		t.Fatalf("options: %+v", q.Options)
+	}
+	// A paragraph with no question mark above a cursor isn't a prompt.
+	if _, ok := Parse(strings.Replace(claudeQuoted, "(DOM)?", "(DOM).", 1)); ok {
+		t.Fatal("a paragraph that asks nothing read as a question")
+	}
+}

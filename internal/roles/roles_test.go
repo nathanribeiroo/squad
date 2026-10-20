@@ -20,34 +20,96 @@ func open(t *testing.T, path string) *Library {
 func TestDefaults(t *testing.T) {
 	l := open(t, filepath.Join(t.TempDir(), "roles.json"))
 	got := l.List()
+	byID := map[string]Role{}
 	var ids []string
+	abbrs := map[string]bool{}
 	for _, r := range got {
 		ids = append(ids, r.ID)
-	}
-	if strings.Join(ids, ",") != "plan,arch,impl,rev,test" || got[4].Name != "Testador" || !got[4].Builtin || got[4].Edited {
-		t.Fatalf("defaults: %+v", got)
-	}
-	if !strings.Contains(got[4].Prompt, "torre portal snapshot") {
-		t.Fatalf("the tester tests web pages through the portal: %q", got[4].Prompt)
-	}
-	if !got[0].Manager || got[1].Manager || got[4].Manager || !strings.Contains(got[0].Prompt, "torre new") || !strings.Contains(got[4].Prompt, "torre portal create") {
-		t.Fatal("the Planejador is a manager that creates its team; the Testador opens portals")
-	}
-	// The Arquiteto designs in a note; the Planejador calls it and shares the
-	// note; the Implementador and the Revisor follow it.
-	arch := got[1]
-	if arch.Name != "Arquiteto" || arch.Color != "indigo" || arch.Icon != "architecture" || !strings.Contains(arch.Prompt, `torre note create "Arquitetura`) {
-		t.Fatalf("arquiteto: %+v", arch)
-	}
-	for i, want := range map[int]string{0: "--role arch", 2: "nota de arquitetura", 3: "nota de arquitetura"} {
-		if !strings.Contains(got[i].Prompt, want) {
-			t.Fatalf("%s should mention %q", got[i].Name, want)
-		}
-	}
-	for _, r := range got {
-		if !contains(Colors, r.Color) || !contains(Icons, r.Icon) || len([]rune(r.Prompt)) > MaxPrompt {
+		byID[r.ID] = r
+		if !contains(Colors, r.Color) || !contains(Icons, r.Icon) || len([]rune(r.Prompt)) > MaxPrompt || len([]rune(r.When)) > MaxWhen {
 			t.Fatalf("default %s is invalid: %+v", r.ID, r)
 		}
+		if !r.Builtin || r.Edited || r.When == "" || len(r.Abbr) != 3 || abbrs[r.Abbr] || len([]rune(Summary(r))) >= 160 {
+			t.Fatalf("default %s: built in, unedited, says when to call it, a free abbreviation, a short first line: %+v", r.ID, r)
+		}
+		abbrs[r.Abbr] = true
+	}
+	if strings.Join(ids, ",") != "plan,prod,spec,arch,design,impl,front,test,rev,sec,debug,docs" {
+		t.Fatalf("defaults, in the order of a piece of work: %v", ids)
+	}
+	for id, r := range byID {
+		if r.Manager != (id == "plan") {
+			t.Fatalf("only the Planejador is a manager: %s", id)
+		}
+	}
+	// Each role says what it delivers and how, with the commands it uses.
+	for id, wants := range map[string][]string{
+		// The Planejador lets the Produto and the Especificador ask the user,
+		// and they ask even when another flight sent the work (a real
+		// Planejador once told the Produto to decide without asking).
+		"plan":   {"torre new", "torre roles", "torre close", "Memória", "--template memory", "torre floor land", "torre wait", "não peça que decidam sem perguntar"},
+		"prod":   {`torre note create "PRD: <tema>" --template prd`, "--template adr", "Dado / Quando / Então", "uma coisa por vez", "Aceitação", "mesmo quando o pedido vier de outro voo"},
+		"spec":   {`--template spec`, "--template adr", `--template task --stack "Tarefas: <tema>"`, "--template tasks", "papel sugerido", "sem ciclos"},
+		"arch":   {`torre note create "Arquitetura: <projeto>"`, "--template adr", "Especificador", "git diff main...<branch>"},
+		"design": {`--template design`, "torre portal screenshot", "torre floor mark design"},
+		"impl":   {"Memória", "cite o comando e o resultado", "apontamentos de revisão"},
+		"front":  {"torre portal console", "cite o comando e o resultado", "Acessibilidade"},
+		"test":   {"torre portal snapshot", `torre portal create`, "critérios de aceite", "Depurador", "torre floor mark tests"},
+		"rev":    {"gravidade", "segunda rodada", "torre floor mark review"},
+		"sec":    {"torre floor mark security", "gravidade"},
+		"debug":  {"git bisect", "teste que falha"},
+		"docs":   {"README", "ADRs"},
+	} {
+		for _, want := range wants {
+			if !strings.Contains(byID[id].Prompt, want) {
+				t.Fatalf("%s should mention %q", byID[id].Name, want)
+			}
+		}
+	}
+}
+
+// What a role says on when to call it is part of the role: edited, saved,
+// restored; a built-in role edited before roles had it gets the default.
+func TestWhen(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "roles.json")
+	l := open(t, path)
+	r, err := l.Create(Role{Name: "Dados", Prompt: "Cuide do banco.", When: "  Migrações\n e consultas. "})
+	if err != nil || r.When != "Migrações e consultas." {
+		t.Fatalf("create: %+v %v", r, err)
+	}
+	if _, err := l.Create(Role{Name: "X", When: strings.Repeat("w", MaxWhen+1)}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("too long: %v", err)
+	}
+	rev, _ := l.Get("rev")
+	rev.When = "Sempre."
+	if r, err := l.Update("rev", rev); err != nil || !r.Edited {
+		t.Fatalf("editing when edits the role: %+v %v", r, err)
+	}
+	if r, _ := open(t, path).Get("rev"); r.When != "Sempre." {
+		t.Fatalf("not saved: %+v", r)
+	}
+	if r, _ := l.Reset("rev"); r.When == "Sempre." || r.When == "" {
+		t.Fatalf("reset: %+v", r)
+	}
+
+	old := filepath.Join(t.TempDir(), "roles.json")
+	_ = os.WriteFile(old, []byte(`{"schemaVersion":1,"roles":[{"id":"test","name":"Testador","abbr":"TST","prompt":"Teste.","color":"test","icon":"science","builtin":true}]}`), 0o600)
+	if r, _ := open(t, old).Get("test"); !r.Edited || r.Prompt != "Teste." || r.When != Defaults()[7].When {
+		t.Fatalf("edited before when existed: %+v", r)
+	}
+}
+
+// A role the user made with an abbreviation a newer built-in role took gets
+// another one for its next flights.
+func TestBuiltinAbbrClash(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "roles.json")
+	_ = os.WriteFile(path, []byte(`{"schemaVersion":1,"roles":[
+		{"id":"meu-design","name":"Meu design","abbr":"DSG","prompt":"Visual.","color":"teal","icon":"palette"}]}`), 0o600)
+	l := open(t, path)
+	mine, _ := l.Get("meu-design")
+	built, _ := l.Get("design")
+	if built.Abbr != "DSG" || mine.Abbr == "DSG" || mine.Abbr == "" {
+		t.Fatalf("abbreviations: built-in %s, mine %s", built.Abbr, mine.Abbr)
 	}
 }
 
@@ -61,7 +123,7 @@ func TestCreateEditResetDelete(t *testing.T) {
 	if err != nil || ux.ID != "revisao-de-ux" || ux.Name != "Revisão de UX" || ux.Prompt != "Olhe a interface.\nSeja breve." || ux.Builtin {
 		t.Fatalf("create: %+v %v", ux, err)
 	}
-	if list := <-changes; len(list) != 6 {
+	if list := <-changes; len(list) != len(Defaults())+1 {
 		t.Fatalf("subscriber got %d roles", len(list))
 	}
 	if r, err := l.Create(Role{Name: "Revisão de UX!"}); err != nil || r.ID != "revisao-de-ux-2" || r.Color == "" || r.Icon != "psychology" {
@@ -93,7 +155,7 @@ func TestCreateEditResetDelete(t *testing.T) {
 	if r, ok := l2.Get("revisao-de-ux"); !ok || r.Color != "teal" {
 		t.Fatalf("new role not saved: %+v", r)
 	}
-	if list := l2.List(); list[4].ID != "test" || list[5].ID != "revisao-de-ux" {
+	if list := l2.List(); list[len(Defaults())-1].ID != "docs" || list[len(Defaults())].ID != "revisao-de-ux" {
 		t.Fatalf("order: built-in first, then new ones: %v", list)
 	}
 
@@ -132,7 +194,8 @@ func TestCreateEditResetDelete(t *testing.T) {
 func TestInstructions(t *testing.T) {
 	r := Role{Name: "Testador", Prompt: "Teste tudo."}
 	got := Instructions(r, "Ana")
-	if !strings.Contains(got, `terminal "Ana"`) || !strings.Contains(got, `papel "Testador"`) || !strings.HasSuffix(got, "Teste tudo.\n") {
+	// The torre commands of a role are MCP tools too, which need no approval.
+	if !strings.Contains(got, `terminal "Ana"`) || !strings.Contains(got, `papel "Testador"`) || !strings.Contains(got, "mcp__torre__note") || !strings.HasSuffix(got, "Teste tudo.\n") {
 		t.Fatalf("instructions: %q", got)
 	}
 }

@@ -87,13 +87,14 @@ const Usage = `Manager commands (terminals in manager mode, e.g. the Planejador)
   torre new "Name" [--role impl] [--agent claude] [--cwd dir] [--floor F] [--command "…"]
         create a terminal next to you, connected to you and started; returns
         once its agent is ready. Defaults: your agent, your folder, your floor,
-        no role. Roles: plan, arch, impl, rev, test or any role name (listed
-        below, and by torre roles). Agents: claude,
+        no role. Roles: an id or a name from the list below (torre roles
+        prints it too, with when to call each). Agents: claude,
         codex, devin, gemini, shell (a plain shell; --command runs in it),
         custom. --floor puts it on a floor (torre floor list), working in the
         floor's copy of the repository; --floor ground is the ground floor.
   torre connect "A" ["B"]   connect A and B (or you and A): terminals, notes, portals
-  torre close "Name"        stop and remove a terminal (or portal) you created`
+  torre close "Name"        stop and remove a terminal (or portal) you created;
+                            the notes it created stay, connected to you`
 
 // Extension handles torre new, connect and close.
 func (s *Service) Extension(ctx context.Context, caller string, args []string) (agentbus.Result, bool) {
@@ -134,7 +135,7 @@ func (s *Service) RolesText() string {
 		return "No role library."
 	}
 	var b strings.Builder
-	b.WriteString(`Roles (a manager gives one with torre new "Name" --role <id>; the id or the name works):`)
+	b.WriteString(`Roles (a manager gives one with torre new "Name" --role <id>; the id or the name works; "call it" says when):`)
 	for _, r := range s.o.Roles.List() {
 		fmt.Fprintf(&b, "\n- %s: %s", r.ID, r.Name)
 		if r.Manager {
@@ -142,6 +143,9 @@ func (s *Service) RolesText() string {
 		}
 		if sum := roles.Summary(r); sum != "" {
 			b.WriteString(" — " + sum)
+		}
+		if r.When != "" {
+			b.WriteString("\n  call it: " + r.When)
 		}
 	}
 	return b.String()
@@ -375,10 +379,32 @@ func (s *Service) close(me store.Node, args []string) agentbus.Result {
 	if n.CreatedBy != me.ID {
 		return res(403, fmt.Sprintf("torre: you can only close what you created; %q was not. Ask the user.", n.Label()))
 	}
+	kept := s.keepNotes(me, n)
 	if err := s.o.Canvas.RemoveNode(n.ID); err != nil {
 		return res(500, "torre: "+err.Error())
 	}
-	return res(200, fmt.Sprintf("Closed %q.", n.Label()))
+	msg := fmt.Sprintf("Closed %q.", n.Label())
+	if len(kept) > 0 {
+		msg += " Its notes stay, now connected to you: " + strings.Join(kept, ", ") + "."
+	}
+	return res(200, msg)
+}
+
+// keepNotes connects to the manager the notes a terminal it closes wrote
+// (a stack by its base), so they outlive the terminal and reach the next
+// one it connects them to. It returns their names, quoted.
+func (s *Service) keepNotes(me, gone store.Node) []string {
+	var names []string
+	for _, n := range s.o.Canvas.Store().Snapshot().Nodes {
+		if n.Kind != store.KindNote || n.Note == nil || n.CreatedBy != gone.ID {
+			continue
+		}
+		if _, err := s.o.Canvas.AddEdge(me.ID, n.ID, nil); err != nil && !errors.Is(err, store.ErrDuplicate) {
+			continue // removed meanwhile
+		}
+		names = append(names, strconv.Quote(n.Note.Title))
+	}
+	return names
 }
 
 // byName finds a node of the workspace by its label (terminal name, portal

@@ -13,8 +13,12 @@ import (
 	"github.com/nathanribeiroo/squad/internal/store"
 )
 
-// checkKinds are what an agent can mark about a floor, in the order shown.
-var checkKinds = []string{store.CheckTests, store.CheckReview}
+// checkKinds are what an agent can mark about a floor, in the order shown;
+// the first two show even when not marked.
+var checkKinds = []string{store.CheckTests, store.CheckReview, store.CheckSecurity, store.CheckDesign}
+
+// optionalCheck reports whether a kind shows only once marked.
+func optionalCheck(kind string) bool { return kind != store.CheckTests && kind != store.CheckReview }
 
 // maxCheckNote is how long a mark's note can be, in characters.
 const maxCheckNote = 300
@@ -25,7 +29,7 @@ const maxCheckNote = 300
 // that created it may mark it.
 func (s *Service) Mark(ctx context.Context, id, kind, result, note string, by store.Node) (store.FloorCheck, int, error) {
 	if !slices.Contains(checkKinds, kind) {
-		return store.FloorCheck{}, 0, fmt.Errorf("%w: what to mark is tests or review, not %q", ErrInvalid, kind)
+		return store.FloorCheck{}, 0, fmt.Errorf("%w: what to mark is tests, review, security or design, not %q", ErrInvalid, kind)
 	}
 	if result != store.CheckPass && result != store.CheckFail {
 		return store.FloorCheck{}, 0, fmt.Errorf("%w: the result is pass or fail, not %q", ErrInvalid, result)
@@ -83,7 +87,9 @@ func checksLine(ctx context.Context, f store.Floor) string {
 	for _, kind := range checkKinds {
 		c, ok := f.Checks[kind]
 		if !ok {
-			parts = append(parts, kind+" not marked")
+			if !optionalCheck(kind) {
+				parts = append(parts, kind+" not marked")
+			}
 			continue
 		}
 		word := "passed"
@@ -107,7 +113,7 @@ func checksLine(ctx context.Context, f store.Floor) string {
 }
 
 func (s *Service) cliMark(ctx context.Context, me store.Node, args []string) agentbus.Result {
-	usage := `Usage: torre floor mark tests|review pass|fail ["note"] [--floor "Name"]`
+	usage := `Usage: torre floor mark tests|review|security|design pass|fail ["note"] [--floor "Name"]`
 	var pos []string
 	floor := ""
 	for i := 0; i < len(args); i++ {

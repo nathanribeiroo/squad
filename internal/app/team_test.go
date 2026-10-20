@@ -93,10 +93,11 @@ func TestManagerBuildsTeam(t *testing.T) {
 	}
 	// Anyone sees the roles; the manager's help lists them too.
 	r = e.run(bia, "roles")
-	if r.Code != 200 || !strings.Contains(r.Body, "- plan: Planejador (manager) — Você planeja") || !strings.Contains(r.Body, "- arch: Arquiteto — Você desenha a solução técnica") {
+	if r.Code != 200 || !strings.Contains(r.Body, "- plan: Planejador (manager) — Você planeja") || !strings.Contains(r.Body, "- spec: Especificador — Você transforma") ||
+		!strings.Contains(r.Body, "\n  call it: Feature que precisa de spec técnica") {
 		t.Fatalf("roles: %d %s", r.Code, r.Body)
 	}
-	if r := e.run(plan, "new", "--help"); !strings.Contains(r.Body, "Roles: plan, arch, impl") || !strings.Contains(r.Body, "- test: Testador") {
+	if r := e.run(plan, "new", "--help"); !strings.Contains(r.Body, "Roles: an id or a name") || !strings.Contains(r.Body, "- docs: Documentador") {
 		t.Fatalf("new --help: %s", r.Body)
 	}
 
@@ -130,6 +131,108 @@ func TestManagerBuildsTeam(t *testing.T) {
 		t.Fatalf("manager mode off: %d %s", r.Code, r.Body)
 	}
 	_ = user
+}
+
+// Roles hand their work over in notes: notes from templates, a stack of
+// tasks an agent makes, and the notes of a dismissed flight staying with its
+// manager, for the flight that comes back.
+func TestSpecNotesAndDismissal(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	plan := e.agent("Plano")
+	e.setRole(plan, "plan")
+	if r := e.run(plan, "new", "Esp", "--role", "spec", "--agent=gemini", "--command", e.fakeCommand("Esp")); r.Code != 200 {
+		t.Fatalf("new: %d %s", r.Code, r.Body)
+	}
+	esp, _ := e.node("Esp")
+	read := func(caller store.Node, name string) string {
+		t.Helper()
+		r := e.run(caller, "note", "read", name)
+		if r.Code != 200 {
+			t.Fatalf("read %s: %d %s", name, r.Code, r.Body)
+		}
+		return r.Body
+	}
+
+	// Notes from templates; an ADR is dated today.
+	if r := e.run(esp, "note", "create", "Spec: Filtro", "--template", "spec"); r.Code != 200 || !strings.Contains(read(esp, "Spec: Filtro"), "## Ordem de construção") {
+		t.Fatalf("spec: %d %s", r.Code, r.Body)
+	}
+	if r := e.run(esp, "note", "create", "ADR-001: Filtro no cliente", "--template=adr"); r.Code != 200 || !strings.Contains(read(esp, "ADR-001: Filtro no cliente"), time.Now().Format("2006-01-02")) {
+		t.Fatalf("adr: %d %s", r.Code, r.Body)
+	}
+	for _, args := range [][]string{
+		{"X", "conteúdo", "--template", "prd"}, // content or a template
+		{"X", "--template", "nope"},
+		{"X", "--template"},
+		{"X", "--outra", "y"},
+	} {
+		if r := e.run(esp, append([]string{"note", "create"}, args...)...); r.Code != 400 {
+			t.Fatalf("%v: %d %s", args, r.Code, r.Body)
+		}
+	}
+	if r := e.run(esp, "note", "create", "X", "--template", "nope"); !strings.Contains(r.Body, "prd, spec, adr, tasks, task, design, memory") {
+		t.Fatalf("the templates: %s", r.Body)
+	}
+
+	// A stack of tasks: any of its notes, in any case, names it.
+	if r := e.run(esp, "note", "create", "Tarefas: Filtro", "--template", "tasks"); r.Code != 200 {
+		t.Fatalf("tasks: %d %s", r.Code, r.Body)
+	}
+	if r := e.run(esp, "note", "create", "Tarefa 01: Campo", "--template", "task", "--stack", "Tarefas: Filtro"); r.Code != 200 || !strings.Contains(r.Body, `on top of the stack "Tarefas: Filtro"`) {
+		t.Fatalf("task 1: %d %s", r.Code, r.Body)
+	}
+	if r := e.run(esp, "note", "create", "Tarefa 02: Lista", "--template", "task", "--stack=tarefa 01: campo"); r.Code != 200 || !strings.Contains(r.Body, `on top of the stack "Tarefas: Filtro"`) {
+		t.Fatalf("task 2: %d %s", r.Code, r.Body)
+	}
+	base, _ := e.node("Tarefas: Filtro")
+	var order []string
+	for _, n := range e.app.Server.Store().StackMembers(base.ID) {
+		order = append(order, n.Note.Title)
+	}
+	if strings.Join(order, " | ") != "Tarefas: Filtro | Tarefa 01: Campo | Tarefa 02: Lista" {
+		t.Fatalf("stack: %v", order)
+	}
+	if task, _ := e.node("Tarefa 02: Lista"); e.app.Server.Store().Connected(esp.ID, task.ID) || !e.app.Server.Store().Connected(esp.ID, base.ID) {
+		t.Fatal("a stack's wires are its base's")
+	}
+	if r := e.run(esp, "note", "list"); strings.Count(r.Body, `stack: "Tarefas: Filtro"`) != 3 {
+		t.Fatalf("note list:\n%s", r.Body)
+	}
+	// Not onto a note that isn't connected: and nothing is left behind.
+	if _, err := e.app.Notes.Create(plan.ID, "Plano geral", "", "Plano"); err != nil {
+		t.Fatal(err)
+	}
+	if r := e.run(esp, "note", "create", "Y", "--stack", "Plano geral"); r.Code != 404 {
+		t.Fatalf("stack onto a note not connected: %d %s", r.Code, r.Body)
+	}
+	if _, ok := e.node("Y"); ok {
+		t.Fatal("a refused stack left a note")
+	}
+
+	// Dismissed: its notes stay, connected to the manager; the stack by its base.
+	r := e.run(plan, "close", "Esp")
+	if r.Code != 200 || !strings.Contains(r.Body, `"Spec: Filtro"`) || !strings.Contains(r.Body, `"Tarefa 02: Lista"`) || strings.Contains(r.Body, "Plano geral") {
+		t.Fatalf("close: %d %s", r.Code, r.Body)
+	}
+	spec, _ := e.node("Spec: Filtro")
+	if !e.app.Server.Store().Connected(plan.ID, spec.ID) || !e.app.Server.Store().Connected(plan.ID, base.ID) {
+		t.Fatal("the dismissed flight's notes are not connected to the manager")
+	}
+	if !strings.Contains(read(plan, "Tarefa 01: Campo"), "## Subtarefas") {
+		t.Fatal("the manager can't read the tasks")
+	}
+
+	// Called back with the same name: the manager connects its notes again.
+	if r := e.run(plan, "new", "Esp", "--role", "spec", "--agent=gemini", "--command", e.fakeCommand("Esp2")); r.Code != 200 {
+		t.Fatalf("new again: %d %s", r.Code, r.Body)
+	}
+	if r := e.run(plan, "connect", "Esp", "Spec: Filtro"); r.Code != 200 {
+		t.Fatalf("connect: %d %s", r.Code, r.Body)
+	}
+	esp2, _ := e.node("Esp")
+	if esp2.ID == esp.ID || !strings.Contains(read(esp2, "spec: filtro"), "## Resumo") {
+		t.Fatal("the flight called back doesn't read its spec")
+	}
 }
 
 func TestAgentsCreatePortals(t *testing.T) {

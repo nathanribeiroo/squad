@@ -122,6 +122,27 @@ func TestRealClaudeQuestion(t *testing.T) {
 	}
 }
 
+// A long question, which Claude Code quotes in a box with the question mark
+// mid-line, still reaches the interface and is answered from there.
+func TestRealClaudeLongQuestion(t *testing.T) {
+	long := "Como verificar os critérios que dependem da página (DOM)? O projeto hoje não tem nenhuma dependência e eu gostaria de manter assim, sem pacote novo, se der."
+	var answered bool
+	r, screen := askRealClaude(t, "", "Use the AskUserQuestion tool to ask me exactly one question, with exactly this text: '"+long+"' (header 'Testes'), options 'Roteiro manual' and 'Adicionar jsdom', single select. Then reply with only my answer.", func(e *env, id string) {
+		a := e.waitAttention(id, func(a *attention.Attention) bool { return a != nil && len(a.Options) > 0 }, 2*time.Minute)
+		if a.Kind != attention.Question || !strings.Contains(a.Text, "(DOM)?") || a.Options[0].Text != "Roteiro manual" {
+			t.Errorf("attention: %+v", a)
+			return
+		}
+		if code, body := e.respondOption(id, a.Options[0].Key, ""); code != 204 {
+			t.Errorf("respond: %d %s", code, body)
+		}
+		answered = true
+	})
+	if !answered || r.Code != 200 || !strings.Contains(r.Body, "Roteiro manual") {
+		t.Fatalf("reply: code=%d source=%s\n%s\n--- screen ---\n%s", r.Code, r.Source, r.Body, screen)
+	}
+}
+
 // A real Claude in plan mode: its plan comes whole in the hook, an option
 // approves it from the interface, and the edit it then asks for is allowed
 // from there too.

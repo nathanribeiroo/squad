@@ -10,7 +10,7 @@ import { callsign } from './model';
 import { toast } from './toast';
 
 /** Same lists as internal/roles (the server refuses others). */
-export const ROLE_COLORS = ['plan', 'impl', 'rev', 'test', 'teal', 'indigo', 'magenta', 'orange'] as const;
+export const ROLE_COLORS = ['plan', 'impl', 'rev', 'test', 'teal', 'indigo', 'magenta', 'orange', 'sky', 'slate', 'sand', 'gold'] as const;
 export const ROLE_ICONS: IconName[] = [
   'account_tree',
   'code',
@@ -25,9 +25,13 @@ export const ROLE_ICONS: IconName[] = [
   'psychology',
   'build',
   'architecture',
+  'flag',
+  'checklist',
+  'web',
 ];
 export const MAX_ROLE_NAME = 40;
 export const MAX_ROLE_PROMPT = 4000;
+export const MAX_ROLE_WHEN = 200;
 
 /** Agent types that receive their role's instructions (the others only show it). */
 export const ROLE_AGENTS = new Set(['claude', 'codex', 'devin', 'gemini']);
