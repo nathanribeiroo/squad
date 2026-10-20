@@ -27,6 +27,7 @@ import type {
   WEdge,
   WNode,
   WorkspaceOverview,
+  WorkspaceSettings,
   WorkspaceSummary,
 } from './types';
 import { errorMessage } from './errors';
@@ -175,8 +176,15 @@ export const hub = {
   list: () => req<WorkspaceSummary[]>('GET', '/api/workspaces'),
   /** session names the workspace's first session. */
   create: (b: { name?: string; cwd: string; color?: string; session?: string }) => req<WorkspaceSummary>('POST', '/api/workspaces', b),
-  update: (id: string, p: { name?: string; cwd?: string; color?: string }) =>
+  update: (id: string, p: { name?: string; cwd?: string; color?: string; keepActive?: boolean }) =>
     req<WorkspaceSummary>('PATCH', `/api/workspaces/${encodeURIComponent(id)}`, p),
+  /** Stops a workspace's agents now (not the one on screen). Refused with
+   * 409 ("working", "pending") while agents work, unless confirm. */
+  sleep: (id: string, confirm?: boolean) => req<WorkspaceSummary>('POST', `/api/workspaces/${encodeURIComponent(id)}/sleep`, { confirm: !!confirm }),
+  /** The flights to start first while the workspace is loading. */
+  wakeOrder: (id: string, ids: string[]) => req<void>('POST', `/api/workspaces/${encodeURIComponent(id)}/wake/order`, { ids }),
+  workspaceSettings: () => req<WorkspaceSettings>('GET', '/api/settings/workspaces'),
+  setWorkspaceSettings: (s: WorkspaceSettings) => req<WorkspaceSettings>('PUT', '/api/settings/workspaces', s),
   remove: (id: string) => req<void>('DELETE', `/api/workspaces/${encodeURIComponent(id)}`),
   sessions: (ws: string) => req<SessionList>('GET', `/api/workspaces/${encodeURIComponent(ws)}/sessions`),
   /** Leaves the open session for a new one, in the workspace folder or in a

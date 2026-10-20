@@ -2,6 +2,45 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-20, Workspaces inativos fora da tela
+
+- **Pedido:** só o workspace que está na tela deveria ter os agentes carregados. Antes, a Torre subia os terminais de todos os workspaces ao abrir e os mantinha rodando, olhados ou não. Os cenários foram combinados com o usuário antes do plano (PLAN, "Workspaces inativos fora da tela").
+- **Medido antes do plano** (container, 4 núcleos, Claude real numa PTY): 1 Claude fica pronto em 0,6 s. Oito juntos levam 2,4 s com a CPU em 99%, e o primeiro só aparece em 1,7 s; em levas de 4, 1,5 s, com o primeiro em 0,7 s. Retomar uma conversa de 11 MB custa 1,3 s (3,2 s com o disco frio).
+- **Servidor:**
+  - **quem está na tela** é quem segura o socket de eventos do workspace (`/w/<id>/ws/events`): o hub conta os sockets. O primeiro acorda o workspace; quando o último fecha (troca de workspace, janela fechada), começa a contar. O F5 cabe na conta;
+  - **a regra** (`internal/hub/sleep.go`), checada a cada 5 s: um workspace ativo, fora da tela, sem "sempre ativo", sem a chave geral, sem nada acontecendo (`app.Work`: agentes num turno, pedindo você ou esperando outro; pedidos pendentes ou na fila; preparos de nível ou da cópia) e parado há o tempo das Configurações para os agentes. Enquanto algo acontece, a contagem recomeça;
+  - **inativar** (`app.Sleep`): cancela os pedidos que ainda esperam (só sobram quando o usuário inativa com voos trabalhando), salva a última tela de cada agente e para o processo. O terminal fica registrado, parado, mostrando a tela. O monitor de atividade esquece o que viu dele (`Monitor.Reset`), para não fechar um turno fantasma depois, e as abas dos portais fecham (reabrem sob demanda);
+  - **a última tela** vai para `screens/<id>.ans`, na pasta da sessão (um `Render` do emulador). Também é salva quando a Torre fecha ou troca de sessão. Ao abrir, os terminais que não rodam aparecem parados com ela (`terminal.Manager.Register`); o próximo início troca o terminal, e o navegador reconecta sozinho;
+  - **acordar:** os shells que nunca rodaram sobem juntos (os outros nunca param); os agentes entram na fila (`internal/hub/launch.go`), uma só para todos os workspaces;
+  - **a fila:** uma vaga por núcleo menos um, de 2 a 6. O agente libera a vaga quando desenhou a tela (mais de 1000 bytes, mais que o prompt e a linha de comando) e ela ficou parada 0,5 s, quando sai, ou depois de 15 s. A janela pede a ordem (o voo em foco ou encaixado, depois os visíveis, do meio para fora); o resto vai de cima para baixo no canvas. Sair do workspace no meio deixa os que faltam esperando a volta; os que já subiam terminam;
+  - **por que não o hook de início de sessão:** com o hook, 8 Claudes reais em 3 vagas subiram em 3,6 s com a CPU em 97% (o hook chega antes do trabalho pesado do Claude). Com a tela parada por 0,5 s, 4,2 s com a CPU em 74%; por 1 s, 5,7 s com 62%; todos juntos, 3 s com 99%. Ficou a tela parada por 0,5 s;
+  - **ao abrir a Torre:** todos os workspaces abrem com os terminais parados; só sobem os que uma janela mostra e os sempre ativos (ou todos, com a chave). Uma janela que reconecta antes do `Start` é atendida por ele;
+  - **troca de sessão:** a sessão nova abre parada e sobe pela fila se o workspace estava ativo;
+  - **interrompidos** no resumo do seletor: num workspace inativo, os agentes com `Busy` (a marca de quem parou no meio de um turno) contam sem subir nada;
+  - **configurações:** `~/.torre/settings.json` (`GET/PUT /api/settings/workspaces`), com a chave e os minutos (1 a 1440, padrão 5); o "sempre ativo" é `keepActive` no workspace, nas partes comuns das sessões;
+  - **rotas novas:** `POST /api/workspaces/<id>/sleep` (409 com `working` e `pending` sem `confirm`; 400 para o que está na tela) e `POST /api/workspaces/<id>/wake/order`.
+- **Interface:**
+  - **o cartão "Carregando o workspace"** cobre o canvas como o "Sem enlace", na cor dos voos no ar, com "3 de 8 voos de volta" e uma barra. A barra do topo continua usável;
+  - **no seletor:** a linha de um workspace inativo fica apagada, com a lua e "inativo"; "carregando 3/8"; "1 interrompido" em âmbar; o alfinete (sempre ativo) ao lado do nome e como botão; a lua como botão (inativar agora), só nos que estão fora da tela e ativos, com o diálogo da Torre quando há voos no ar;
+  - **Configurações → Workspaces:** a chave "Manter todos os workspaces ativos" e "Inativar depois de" (1, 5, 15, 30 min, 1 h), apagado com a chave ligada.
+- **Correção no caminho:** parar um terminal deixava o agente vivo às vezes. A Torre sinalizava só o grupo de processos do shell, e o agente roda num grupo próprio (o job em primeiro plano, pelo controle de jobs do shell). Depois de inativar 8 Claudes reais, alguns ficaram órfãos, parados (estado `T`) para sempre. Agora o encerramento (`internal/pty`) também manda SIGHUP, SIGCONT e SIGTERM ao grupo em primeiro plano do terminal, espera os dois grupos acabarem e mata com SIGKILL o que sobrar depois de 2 s. Um Claude real leva uns 1,8 s para sair; o `app.Sleep` para os agentes em paralelo. Vale também para trocar de sessão, reiniciar um voo, remover um workspace e fechar a Torre, que usam o mesmo caminho.
+- **Decisões tomadas sem consulta (reversíveis):**
+  - o "sempre ativo" de um workspace inativo vale quando ele subir, como a chave geral;
+  - a regra é checada a cada 5 s, então "5 min" é de 5 min a 5 min e 5 s;
+  - preparar um nível segura o workspace ativo, mas "Inativar agora" não pergunta por ele: inativar não para o preparo;
+  - voltar a um workspace ativo não reinicia shells nem agentes que o usuário fechou; só os que esperavam na fila voltam para ela.
+- **Testes:**
+  - `make check` (vet no Linux e no Windows, testes e builds) e `go test -race ./internal/hub/` três vezes;
+  - hub, com agentes falsos (Claude e Devin com hooks, Gemini sem) e tempos curtos: inativar fora da tela (a tela salva, o shell vivo, o Claude e o Devin voltando com `--resume` na mesma conversa); voltar antes do tempo sem reiniciar; turno e PRIORIDADE segurando; sempre ativo e a chave; inativar agora com e sem voos no ar, deixando 1 interrompido; a abertura subindo só o que aparece e o sempre ativo, com a última tela salva; a fila de 2 em 2, na ordem pedida, e o que falta esperando a volta; troca de sessão; `Register` no pacote de terminais;
+  - **Claude real** (`go test -tags e2e -run TestRealClaude ./internal/hub/`): um prompt pequeno, sair da tela, inativo de 3 a 5 s depois (o tempo do teste mais o encerramento), o processo some, e de volta em 1,3 s na mesma conversa, com a resposta na tela; 8 Claudes inativados sem sobrar nenhum processo e voltando em 4,2 s, com a CPU em 77% em média;
+  - **o encerramento** (`internal/pty`): um job do bash interativo que ignora SIGHUP e SIGTERM não sobrevive mais ao terminal;
+  - **interface** (`torre serve` de teste, Chromium com chromedp): três workspaces, um com 4 Claudes reais, dois com agentes falsos e um shell. Capturas do seletor, do carregando, dos voos de volta, do diálogo de inativar agora e da aba de Configurações, nos dois temas;
+  - **a janela durante o carregando**, com a CPU do navegador 4× mais lenta, nos 5 s depois do clique: entrar no workspace já ativo deu 260 e 282 quadros, pior quadro de 367 e 150 ms, tarefas longas somando 542 e 193 ms; entrar nele inativo, com os 4 Claudes subindo, 261 e 270 quadros, 283 e 217 ms, 406 e 241 ms. O carregando não pesa na janela;
+  - **Devin real (sem login):** `TestRealDevinConfig`.
+- **O que aparece por baixo do carregando:** os voos que esperam na fila mostram a última tela; os que já começaram a subir mostram a tela nova, com o shell digitando a linha do agente, até o agente desenhar a dele (como ao abrir a Torre antes).
+- **Visto uma vez, sem causa achada:** numa das rodadas, a tela salva de 3 de 4 Claudes ficou só com a linha de comando, sem a interface do Claude. Repetindo (sem janela, com janela por alguns segundos, parado 5 min), a tela salva veio certa. A suspeita é o redimensionamento: o Claude apaga as linhas da tela anterior contando com o tamanho antigo, e o emulador do servidor reflui o texto de outro jeito que o xterm do navegador. O efeito some quando o voo sobe.
+- **Não testado:** Windows e Mac reais (o tempo de subida e a parada pelo ConPTY); o Devin com login (só o agente falso com os hooks dele); o Codex e o Gemini reais.
+
 ## 2026-10-19, Destaque dos fios mais visível
 
 - **Pedido:** o usuário testou o destaque e achou sutil demais, difícil de notar. Pediu mais escuro, "mais negrito" e um pouco mais grosso.

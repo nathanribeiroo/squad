@@ -34,7 +34,15 @@ type harness struct {
 	root string
 }
 
+// newHarness runs a hub whose workspaces keep their agents running off
+// screen (as before sleep.go); newSleepHarness tests the rule.
 func newHarness(t *testing.T, root string) *harness {
+	t.Helper()
+	return newHarnessWith(t, root, WorkspaceSettings{KeepAll: true, IdleMinutes: DefaultIdleMinutes}, nil)
+}
+
+// newHarnessWith runs a hub with these settings; opt changes its options.
+func newHarnessWith(t *testing.T, root string, ws WorkspaceSettings, opt func(*Options)) *harness {
 	t.Helper()
 	t.Setenv("SQUAD_HOME", t.TempDir()) // agent hook files, attachments
 	ln, port, err := server.ListenLoopback(0)
@@ -44,7 +52,16 @@ func newHarness(t *testing.T, root string) *harness {
 	if root == "" {
 		root = t.TempDir()
 	}
-	h, err := New(Options{Port: port, Token: testToken, Root: root, Trash: filepath.Join(filepath.Dir(root), "trash")})
+	settings := filepath.Join(t.TempDir(), "settings.json")
+	data, _ := json.Marshal(Settings{Workspaces: ws})
+	if err := os.WriteFile(settings, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	o := Options{Port: port, Token: testToken, Root: root, Trash: filepath.Join(filepath.Dir(root), "trash"), Settings: settings}
+	if opt != nil {
+		opt(&o)
+	}
+	h, err := New(o)
 	if err != nil {
 		t.Fatal(err)
 	}

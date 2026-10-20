@@ -81,7 +81,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fio que não se enrola, e 5% de folga | `feat/fio-sem-enrolar` | concluído |
 | Fios com 3% de folga | `feat/folga-3` | concluído |
 | Fios do nó selecionado em destaque | `feat/fios-do-selecionado` | concluído |
-| Destaque dos fios mais visível | `feat/fios-do-selecionado-forte` | concluído (PR) |
+| Destaque dos fios mais visível | `feat/fios-do-selecionado-forte` | concluído |
+| Workspaces inativos fora da tela | `feat/workspaces-inativos` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -464,3 +465,32 @@ Pergunta do usuário em 2026-10-19, depois do merge do Consumo. Nas contas do tr
   - **a tela do `/usage` do Devin da empresa:** o usuário vai trazer o texto, sem o e-mail, para confirmar o formato dos ACUs e dos dólares.
 
 **Status:** para discutir; o usuário vai conferir o Devin e o Claude da empresa.
+
+## Workspaces inativos fora da tela
+
+Pedido do usuário em 2026-10-20: só o workspace que está na tela deveria ter os agentes carregados. Antes, todos os workspaces subiam os terminais quando a Torre abria e continuavam rodando, mesmo sem ninguém olhando. Os cenários foram combinados antes do plano:
+- **ao abrir a Torre:** só o workspace da janela sobe os agentes; os outros carregam a estrutura, com os agentes parados;
+- **ao trocar de workspace:** o novo sobe os agentes com um "carregando" por cima do canvas, no estilo do "Sem enlace", e o que saiu inativa depois de um tempo configurável (5 min por padrão);
+- **trabalhando, não inativa:** um voo no meio de um turno, pedindo você ou esperando outro, um pedido na fila e um nível em preparo seguram o workspace. O tempo conta a partir de quando tudo termina;
+- **shells e comandos próprios** continuam vivos: nada traria de volta o que eles tinham;
+- **interrompidos** (a Torre fechou com um voo trabalhando) aparecem no seletor, sem subir nada;
+- **janela fechada** com o `torre serve` rodando conta como ter saído; duas janelas em workspaces diferentes mantêm os dois;
+- **configuração:** "Manter todos os workspaces ativos" (ligar não sobe ninguém na hora; desligar começa a contar), o tempo, e por workspace "Manter sempre ativo" e "Inativar agora";
+- **sessões** continuam como antes.
+
+Medido antes do plano, no container (4 núcleos): subir 8 Claudes de uma vez não é mais rápido e trava a CPU; em levas do tamanho dos núcleos, o tempo é parecido e sobra CPU para a janela.
+
+- **Servidor:**
+  - **quem está na tela:** o hub conta os sockets de eventos de cada workspace (`/w/<id>/ws/events`); o primeiro acorda o workspace, o último começa a contar (`internal/hub/sleep.go`);
+  - **a regra:** checada a cada 5 s; inativa um workspace fora da tela, sem nada acontecendo (`app.Work`), há o tempo das Configurações;
+  - **inativar** (`app.Sleep`): para só os agentes, salva a última tela (`screens/<id>.ans`, na pasta da sessão) e fecha as abas dos portais. O terminal fica, parado, mostrando a tela;
+  - **acordar:** os shells que nunca rodaram sobem juntos; os agentes entram numa fila (`internal/hub/launch.go`) com uma vaga por núcleo menos um (de 2 a 6). Um agente libera a vaga quando desenhou a tela e ela ficou parada 0,5 s, quando sai ou depois de 15 s. A janela manda a ordem (foco, encaixe, os visíveis); sair no meio deixa os que faltam esperando a volta;
+  - **ao abrir a Torre:** todos os workspaces abrem com os terminais parados mostrando a última tela, e só sobem os que uma janela mostra ou que ficam sempre ativos;
+  - **configurações** em `~/.torre/settings.json`; o "sempre ativo" fica no workspace (`keepActive`, em todas as sessões).
+- **Encerramento:** parar um terminal agora também encerra o job em primeiro plano (o agente, num grupo de processos próprio), que antes às vezes ficava órfão e parado.
+- **Interface:** o cartão "Carregando o workspace · 3 de 8 voos de volta"; no seletor, "inativo", "carregando 3/8", "1 interrompido", o alfinete e a lua (inativar agora, com confirmação quando há voos no ar); a aba Configurações → Workspaces.
+- **Fora:**
+  - decolar um plano de voo grande e o `torre new` continuam subindo cada agente na hora, fora da fila;
+  - as sessões continuam como antes (trocar de sessão para os agentes da que sai).
+
+**Status:** PR aberto, esperando o merge.

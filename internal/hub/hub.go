@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -77,6 +78,8 @@ type Options struct {
 	Roles      *roles.Library       // nil: roles.json next to Root (~/.torre/roles.json)
 	Plans      *plans.Library       // nil: plans/ next to Root (~/.torre/plans)
 	Usage      *usage.Accounts      // the agents' plan limits, shared (nil: usage-accounts.json next to Root)
+	Settings   string               // Torre's settings ("": settings.json next to Root)
+	Sleep      SleepOptions         // when workspaces off screen stop their agents (sleep.go)
 }
 
 // Summary is a workspace as the selector shows it.
@@ -88,6 +91,19 @@ type Summary struct {
 	Attention int     `json:"attention"` // flights asking the user (PRIORIDADE)
 	Session   Session `json:"session"`   // the open session
 	Sessions  int     `json:"sessions"`  // how many it has
+	// State: its agents run (active), are starting (loading) or are
+	// stopped (inactive), sleep.go.
+	State   string    `json:"state"`
+	Loading *Progress `json:"loading,omitempty"` // while loading
+	// Interrupted: agents stopped in the middle of a turn (Torre closed,
+	// or the user stopped the workspace), until they continue.
+	Interrupted int `json:"interrupted"`
+}
+
+// Progress is how many of the agents a workspace is starting are up.
+type Progress struct {
+	Ready int `json:"ready"`
+	Total int `json:"total"`
 }
 
 // workspace is a workspace with its open session's app; opening another
@@ -113,6 +129,13 @@ type Hub struct {
 	ws      map[string]*workspace
 	started bool
 	closed  bool
+
+	// Workspaces off screen (sleep.go): their presence and the settings,
+	// under pmu; the queue that starts agents.
+	pmu      sync.Mutex
+	pres     map[string]*presence
+	settings Settings
+	launches *launcher
 	// firstRun: the hub started with no workspace saved (a new
 	// installation): the interface shows its first steps.
 	firstRun bool
@@ -142,11 +165,20 @@ func New(opts Options) (*Hub, error) {
 	if opts.Usage == nil {
 		opts.Usage = usage.OpenAccounts(filepath.Join(filepath.Dir(opts.Root), "usage-accounts.json"))
 	}
+	if opts.Settings == "" {
+		opts.Settings = filepath.Join(filepath.Dir(opts.Root), "settings.json")
+	}
+	opts.Sleep.defaults()
+	settings, err := loadSettings(opts.Settings)
+	if err != nil {
+		opts.Logger.Warn("settings", "err", err) // the defaults, until saved again
+	}
 	h := &Hub{
 		opts: opts, log: opts.Logger, roles: opts.Roles, events: events.NewBus(),
 		dirty: make(chan struct{}, 1), quit: make(chan struct{}),
-		ws: map[string]*workspace{},
+		ws: map[string]*workspace{}, pres: map[string]*presence{}, settings: settings,
 	}
+	h.launches = newLauncher(opts.Sleep, h.markDirty)
 	h.roles.Subscribe(func(list []roles.Role) { h.events.Publish(EventRoles, list) })
 	entries, err := os.ReadDir(opts.Root)
 	if err != nil {
@@ -229,17 +261,30 @@ func (h *Hub) build(st *store.Store, ss *sessions) (*workspace, error) {
 	return &workspace{app: a, api: a.Server.APIHandler(), term: a.Server.TerminalHandler(), unsub: unsub, s: ss}, nil
 }
 
-// Start starts every workspace (activity, notes watcher, terminals) and the
-// summary updates.
+// Start opens every workspace (activity, notes watcher), with its agents
+// stopped except in those kept active, and starts the summary updates and
+// the rule that stops the agents of workspaces off screen (sleep.go).
 func (h *Hub) Start() {
 	h.mu.Lock()
-	h.started = true
-	all := h.allLocked()
+	all := maps.Clone(h.ws)
 	h.mu.Unlock()
 	for _, w := range all {
-		w.app.Start()
+		w.app.Open()
 	}
+	h.mu.Lock()
+	h.started = true // from here on, a window showing a workspace wakes it
+	h.mu.Unlock()
 	go h.summaryLoop()
+	go h.launches.run(h.quit)
+	go h.sleepLoop()
+	for id, w := range all {
+		h.pmu.Lock()
+		shown := h.presenceOfLocked(id).viewers > 0 // a window that reconnected first
+		h.pmu.Unlock()
+		if shown || h.kept(w) {
+			h.wake(id)
+		}
+	}
 }
 
 // Close stops every workspace.
@@ -253,6 +298,9 @@ func (h *Hub) Close() {
 	all := h.allLocked()
 	h.mu.Unlock()
 	close(h.quit)
+	for _, w := range all {
+		h.launches.forget(w.app)
+	}
 	for _, w := range all {
 		w.unsub()
 		w.app.Close()
@@ -303,7 +351,7 @@ func (h *Hub) List() []Summary {
 	h.mu.RUnlock()
 	out := make([]Summary, 0, len(all))
 	for _, w := range all {
-		out = append(out, summarize(w))
+		out = append(out, h.summarize(w))
 	}
 	slices.SortFunc(out, func(a, b Summary) int {
 		if c := a.CreatedAt.Compare(b.CreatedAt); c != 0 {
@@ -314,10 +362,10 @@ func (h *Hub) List() []Summary {
 	return out
 }
 
-func summarize(w *workspace) Summary {
+func (h *Hub) summarize(w *workspace) Summary {
 	a := w.app
 	st := a.Server.Store()
-	s := Summary{Meta: st.Meta(), Pending: len(a.Bus.Pending()), Session: w.s.current()}
+	s := Summary{Meta: st.Meta(), Pending: len(a.Bus.Pending()), Session: w.s.current(), State: StateInactive}
 	w.s.mu.Lock()
 	s.Sessions = len(w.s.index.Sessions)
 	w.s.mu.Unlock()
@@ -330,6 +378,27 @@ func summarize(w *workspace) Summary {
 			s.Attention++
 		}
 	}
+	h.pmu.Lock()
+	if h.presenceOfLocked(s.ID).awake {
+		s.State = StateActive
+	}
+	h.pmu.Unlock()
+	if r, ok := h.launches.progress(s.ID); ok {
+		s.State, s.Loading = StateLoading, &Progress{Ready: r.ready, Total: r.total}
+	}
+	interrupted := map[string]bool{}
+	for _, id := range a.Server.Interrupted() {
+		interrupted[id] = true
+	}
+	for _, n := range st.Snapshot().Nodes {
+		if n.Terminal == nil || !agentbus.IsAgent(n.Terminal.Agent) {
+			continue
+		}
+		// One that hasn't started since shows the mark it left.
+		if interrupted[n.ID] || (n.Terminal.Busy && !a.Server.Running(n.ID)) {
+			s.Interrupted++
+		}
+	}
 	return s
 }
 
@@ -339,7 +408,7 @@ func (h *Hub) Get(id string) (Summary, error) {
 	if w == nil {
 		return Summary{}, ErrNotFound
 	}
-	return summarize(w), nil
+	return h.summarize(w), nil
 }
 
 // Create adds a workspace for folder dir ("~/…" allowed). An empty name
@@ -388,7 +457,11 @@ func (h *Hub) Create(name, dir, color, session string) (Summary, error) {
 	started := h.started
 	h.mu.RUnlock()
 	if started {
-		h.get(id).app.Start()
+		w := h.get(id)
+		w.app.Open()
+		if h.kept(w) {
+			h.wake(id)
+		}
 	}
 	h.markDirty()
 	return h.Get(id)
@@ -414,6 +487,9 @@ type Patch struct {
 	Name  *string `json:"name"`
 	Cwd   *string `json:"cwd"`
 	Color *string `json:"color"`
+	// KeepActive: its agents never stop off screen (sleep.go). Set on a
+	// workspace whose agents are stopped, it applies once they start.
+	KeepActive *bool `json:"keepActive"`
 }
 
 // Update renames a workspace, moves its folder or recolors it. Running
@@ -447,6 +523,9 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 			}
 			m.Color = *p.Color
 		}
+		if p.KeepActive != nil {
+			m.KeepActive = *p.KeepActive
+		}
 		return nil
 	})
 	if err != nil {
@@ -454,7 +533,7 @@ func (h *Hub) Update(id string, p Patch) (Summary, error) {
 	}
 	w.app.Server.Bus().Publish(events.WorkspaceUpdated, m)
 	h.markDirty()
-	return summarize(w), nil
+	return h.summarize(w), nil
 }
 
 // Remove stops a workspace's terminals and moves its folder (every session:
@@ -476,6 +555,10 @@ func (h *Hub) Remove(id string) error {
 	}
 	delete(h.ws, id)
 	h.mu.Unlock()
+	h.launches.forget(w.app)
+	h.pmu.Lock()
+	delete(h.pres, id)
+	h.pmu.Unlock()
 	w.unsub()
 	w.app.Close()
 	h.markDirty()

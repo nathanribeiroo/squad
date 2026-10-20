@@ -102,6 +102,12 @@ func (s *Service) Close() {
 	if s.unsub != nil {
 		s.unsub()
 	}
+	s.ClosePages()
+}
+
+// ClosePages closes the open tabs; a portal opens its tab again, at its
+// saved address, when someone looks at it or an agent uses it.
+func (s *Service) ClosePages() {
 	s.mu.Lock()
 	ids := make([]string, 0, len(s.pages))
 	for id := range s.pages {

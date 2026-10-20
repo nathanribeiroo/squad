@@ -223,6 +223,46 @@ func TestStopRestartAndEvents(t *testing.T) {
 	}
 }
 
+// A terminal registered without running shows the screen it was given, and
+// a new one with its id replaces it.
+func TestRegisterShowsSavedScreen(t *testing.T) {
+	m, term := newTerm(t, Spec{Name: "sh"})
+	_ = term.Input([]byte("echo saved-$((1+1))\r"))
+	waitFor(t, "echo", 5*time.Second, func() bool { return strings.Contains(term.Snapshot(), "saved-2") })
+	saved := term.Screen().Render()
+	m.Remove(term.ID())
+
+	reg, err := m.Register(Spec{ID: term.ID(), Name: "sh", Cols: 80, Rows: 24}, saved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := reg.State(); st != StatusStopped {
+		t.Fatalf("status %s", st)
+	}
+	if !strings.Contains(reg.Snapshot(), "saved-2") {
+		t.Fatalf("screen: %q", reg.Snapshot())
+	}
+	if initial, _, cancel := reg.Subscribe(); !strings.Contains(initial, "saved-2") {
+		t.Fatalf("a client gets %q", initial)
+	} else {
+		cancel()
+	}
+	if err := reg.Raw([]byte("x")); err == nil {
+		t.Fatal("wrote to a terminal that doesn't run")
+	}
+	if _, err := m.Register(Spec{ID: term.ID()}, ""); err == nil {
+		t.Fatal("registered the same id twice")
+	}
+
+	m.Remove(reg.ID())
+	again, err := m.Create(Spec{ID: term.ID(), Name: "sh", Shell: "/bin/sh", Cwd: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = again.Input([]byte("echo live\r"))
+	waitFor(t, "the new one runs", 5*time.Second, func() bool { return strings.Contains(again.Snapshot(), "live") })
+}
+
 // Writing to a terminal that was removed fails instead of waiting forever.
 func TestRawAfterRemove(t *testing.T) {
 	m, term := newTerm(t, Spec{Name: "sh"})

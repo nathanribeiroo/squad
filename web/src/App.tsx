@@ -16,6 +16,7 @@ import { FloorEmpty } from './components/FloorEmpty';
 import { InterruptedBar } from './components/InterruptedBar';
 import { LoopCard } from './components/LoopCard';
 import { NoLink } from './components/NoLink';
+import { WakeOverlay } from './components/WakeOverlay';
 import { PlansDialogs } from './components/PlansDialogs';
 import { PriorityBanner } from './components/PriorityBanner';
 import { ScreenPane } from './components/ScreenPane';
@@ -262,6 +263,7 @@ function Stage() {
       <FloorDialogs />
       <PlansDialogs />
       <SummaryDialogs />
+      <WakeOverlay />
       <NoLink />
       <ConfirmHost />
       <Toast />

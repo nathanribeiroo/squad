@@ -298,6 +298,7 @@ func (s *Server) RemoveNode(id string) error {
 	}
 	if n.Kind == store.KindTerminal {
 		s.terms.Remove(id)
+		s.forgetScreen(id)
 		s.mu.Lock()
 		delete(s.termTokens, id)
 		delete(s.titles, id)

@@ -454,8 +454,10 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 	s.hookHandler.ServeHTTP(w, r)
 }
 
-// Shutdown stops every terminal and ends the event stream.
+// Shutdown stops every terminal, keeping their screens, and ends the event
+// stream.
 func (s *Server) Shutdown() {
+	s.SaveScreens()
 	s.terms.Shutdown()
 	s.bus.Close() // its event sockets end: the UI reconnects to what replaced it
 }

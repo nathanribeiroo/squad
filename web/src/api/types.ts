@@ -455,6 +455,25 @@ export interface WorkspaceSummary {
   session: Session;
   /** How many sessions the workspace has. */
   sessions: number;
+  /** Its agents run (active), are starting (loading) or are stopped
+   * (inactive): a workspace off screen stops them (internal/hub sleep.go). */
+  state?: WorkspaceState;
+  /** While loading: how many of the agents it is starting are up. */
+  loading?: { ready: number; total: number };
+  /** Agents stopped in the middle of a turn, until they continue. */
+  interrupted?: number;
+  /** Its agents never stop off screen. */
+  keepActive?: boolean;
+}
+
+export type WorkspaceState = 'active' | 'loading' | 'inactive';
+
+/** When workspaces off screen stop their agents (Configurações → Workspaces). */
+export interface WorkspaceSettings {
+  /** Never: every workspace starts its agents with Torre. */
+  keepAll: boolean;
+  /** How long one off screen, with nothing going on, keeps them. */
+  idleMinutes: number;
 }
 
 /** A session: a whole canvas of a workspace; only the open one runs. */

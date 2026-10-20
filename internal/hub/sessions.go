@@ -29,7 +29,8 @@ import (
 // own (terminals, notes, portals, connections, floors, turn cards) in a
 // folder of its own. One is open at a time, and only its processes run:
 // opening another stops them (each agent keeps its conversation) and starts
-// the other's, each terminal continuing its conversation.
+// the other's, each terminal continuing its conversation (its agents only
+// while the workspace's run, sleep.go).
 //
 //	<root>/<ws>/sessions.json                   the sessions and the open one
 //	<root>/<ws>/sessions/<id>/workspace.json     a session's canvas (a store)
@@ -469,7 +470,8 @@ func (h *Hub) OpenSession(id, sid string, confirm bool) (SessionList, error) {
 
 // switchSession replaces the open session with the one prepare makes ready:
 // unless confirmed, not while agents work; then the open session's
-// processes stop, and the other's app starts on its canvas.
+// processes stop, and the other's app opens on its canvas (its agents
+// start through the queue when the workspace's ran).
 func (h *Hub) switchSession(id string, confirm bool, prepare func(*workspace) (string, *store.Store, error)) (SessionList, error) {
 	w := h.get(id)
 	if w == nil {
@@ -490,6 +492,7 @@ func (h *Hub) switchSession(id string, confirm bool, prepare func(*workspace) (s
 		return SessionList{}, err
 	}
 	prev := w.s.current().ID
+	h.launches.forget(w.app)
 	w.unsub()
 	w.app.Close()
 	nw, err := h.build(st, w.s)
@@ -517,7 +520,17 @@ func (h *Hub) switchSession(id string, confirm bool, prepare func(*workspace) (s
 	serr := w.s.saveLocked()
 	w.s.mu.Unlock()
 	if started {
-		nw.app.Start()
+		// The other canvas opens with its agents stopped; they start if the
+		// workspace's were running.
+		nw.app.Open()
+		h.pmu.Lock()
+		p := h.presenceOfLocked(id)
+		awake := p.awake
+		p.awake, p.dropped = false, nil
+		h.pmu.Unlock()
+		if awake {
+			h.wakeLocked(id)
+		}
 	}
 	h.publishSessions(id)
 	if err == nil {

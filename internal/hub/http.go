@@ -24,6 +24,8 @@ import (
 //	/w/<id>/api/…, /w/<id>/ws/…   a workspace's API (see server.APIHandler)
 //	/api/workspaces…, /api/dirs     the workspace list (and folder suggestions)
 //	/api/workspaces/{id}/sessions…  a workspace's sessions: list, new (in a copy, optionally), open, rename, remove
+//	/api/workspaces/{id}/sleep      stop its agents now; …/wake/order: which start first
+//	/api/settings/workspaces        when workspaces off screen stop their agents
 //	/api/roles…                     the role library, shared by every workspace
 //	/api/agents…                    the agents found on this computer, and the command that starts each
 //	/ws/workspaces                  the list and the roles, live
@@ -37,6 +39,10 @@ func (h *Hub) Handler() http.Handler {
 	mux.Handle("POST /api/workspaces/open", sess(h.handleOpen))
 	mux.Handle("PATCH /api/workspaces/{id}", sess(h.handleUpdate))
 	mux.Handle("DELETE /api/workspaces/{id}", sess(h.handleRemove))
+	mux.Handle("POST /api/workspaces/{id}/sleep", sess(h.handleSleep))
+	mux.Handle("POST /api/workspaces/{id}/wake/order", sess(h.handleWakeOrder))
+	mux.Handle("GET /api/settings/workspaces", sess(h.handleWorkspaceSettings))
+	mux.Handle("PUT /api/settings/workspaces", sess(h.handleWorkspaceSettings))
 	mux.Handle("GET /api/workspaces/{id}/sessions", sess(h.handleSessions))
 	mux.Handle("POST /api/workspaces/{id}/sessions", sess(h.handleNewSession))
 	mux.Handle("POST /api/workspaces/{id}/sessions/{sid}/open", sess(h.handleOpenSession))
@@ -77,6 +83,11 @@ func (h *Hub) handleWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 	r2 := r.Clone(r.Context())
 	r2.URL.Path, r2.URL.RawPath = "/"+rest, ""
+	if rest == "ws/events" && r.Method == http.MethodGet {
+		// A window shows the workspace while it holds this socket.
+		leave := h.view(id)
+		defer leave()
+	}
 	ws.api.ServeHTTP(w, r2)
 }
 
