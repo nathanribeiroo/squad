@@ -44,8 +44,11 @@ func TestDefaults(t *testing.T) {
 	}
 	// Each role says what it delivers and how, with the commands it uses.
 	for id, wants := range map[string][]string{
-		"plan":   {"torre new", "torre roles", "torre close", "Memória", "--template memory", "torre floor land", "torre wait"},
-		"prod":   {`torre note create "PRD: <tema>" --template prd`, "--template adr", "Dado / Quando / Então", "uma coisa por vez", "Aceitação"},
+		// The Planejador lets the Produto and the Especificador ask the user,
+		// and they ask even when another flight sent the work (a real
+		// Planejador once told the Produto to decide without asking).
+		"plan":   {"torre new", "torre roles", "torre close", "Memória", "--template memory", "torre floor land", "torre wait", "não peça que decidam sem perguntar"},
+		"prod":   {`torre note create "PRD: <tema>" --template prd`, "--template adr", "Dado / Quando / Então", "uma coisa por vez", "Aceitação", "mesmo quando o pedido vier de outro voo"},
 		"spec":   {`--template spec`, "--template adr", `--template task --stack "Tarefas: <tema>"`, "--template tasks", "papel sugerido", "sem ciclos"},
 		"arch":   {`torre note create "Arquitetura: <projeto>"`, "--template adr", "Especificador", "git diff main...<branch>"},
 		"design": {`--template design`, "torre portal screenshot", "torre floor mark design"},
@@ -191,7 +194,8 @@ func TestCreateEditResetDelete(t *testing.T) {
 func TestInstructions(t *testing.T) {
 	r := Role{Name: "Testador", Prompt: "Teste tudo."}
 	got := Instructions(r, "Ana")
-	if !strings.Contains(got, `terminal "Ana"`) || !strings.Contains(got, `papel "Testador"`) || !strings.HasSuffix(got, "Teste tudo.\n") {
+	// The torre commands of a role are MCP tools too, which need no approval.
+	if !strings.Contains(got, `terminal "Ana"`) || !strings.Contains(got, `papel "Testador"`) || !strings.Contains(got, "mcp__torre__note") || !strings.HasSuffix(got, "Teste tudo.\n") {
 		t.Fatalf("instructions: %q", got)
 	}
 }

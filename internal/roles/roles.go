@@ -409,6 +409,6 @@ func Summary(r Role) string {
 // Instructions is what an agent receives for its role: a header that names
 // the terminal and the role, then the role's prompt.
 func Instructions(r Role, terminal string) string {
-	return fmt.Sprintf("# Papel na Torre: %s\n\nVocê está no terminal %q da Torre, com o papel %q. Siga estas instruções do papel:\n\n%s\n",
+	return fmt.Sprintf("# Papel na Torre: %s\n\nVocê está no terminal %q da Torre, com o papel %q. Os comandos `torre` citados abaixo também são ferramentas MCP (`mcp__torre__note`, `ask`, `new`…): se a sua sessão as tiver, prefira-as, que a maioria não pede aprovação. Siga estas instruções do papel:\n\n%s\n",
 		r.Name, terminal, r.Name, r.Prompt)
 }

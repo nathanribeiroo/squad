@@ -205,6 +205,9 @@ func Parse(screen string) (Prompt, bool) {
 			}
 		}
 		if q == "" {
+			q = quoted(lines, start)
+		}
+		if q == "" {
 			return Prompt{}, false
 		}
 		p := Prompt{Question: q}
@@ -268,6 +271,28 @@ func joinWrapped(lines []string, j, w int) string {
 		q = t + " " + q
 	}
 	return q
+}
+
+// quoted is the paragraph right above the options (line start) when it
+// asks something: Claude Code quotes a long question ("│ Como …? O projeto
+// hoje …"), so none of its lines needs to end in "?".
+func quoted(lines []string, start int) string {
+	k := start - 1
+	for k >= 0 && strings.TrimSpace(lines[k]) == "" {
+		k--
+	}
+	var parts []string
+	for ; k >= 0 && len(parts) < 6; k-- {
+		t := strings.TrimSpace(lines[k])
+		if t == "" || rule(t) || optionLine.MatchString(lines[k]) {
+			break
+		}
+		parts = append([]string{t}, parts...)
+	}
+	if q := strings.Join(parts, " "); strings.Contains(q, "?") {
+		return q
+	}
+	return ""
 }
 
 // rule reports whether a line draws a rule or a frame ("──", "╌╌").
