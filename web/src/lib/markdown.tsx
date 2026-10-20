@@ -1,5 +1,5 @@
 // A small Markdown renderer for notes: headings, lists, task lists, code
-// fences, paragraphs and inline code/bold/italic/links. It builds React
+// fences, tables, paragraphs and inline code/bold/italic/links. It builds React
 // elements (no HTML injection) and keeps source line numbers so task boxes
 // can be toggled and agent edits highlighted.
 import type { ReactNode } from 'react';
@@ -10,6 +10,7 @@ type Block =
   | { kind: 'task'; done: boolean; text: string; line: number; indent: number }
   | { kind: 'li'; text: string; line: number; indent: number; n?: string }
   | { kind: 'code'; text: string; line: number; end: number }
+  | { kind: 'table'; head: string[]; rows: string[][]; line: number; end: number }
   | { kind: 'p'; text: string; line: number; end: number }
   | { kind: 'gap'; line: number };
 
@@ -23,6 +24,16 @@ function parse(src: string): Block[] {
       const body: string[] = [];
       for (i++; i < lines.length && !/^\s*```/.test(lines[i]); i++) body.push(lines[i]);
       out.push({ kind: 'code', text: body.join('\n'), line: start, end: Math.min(i, lines.length - 1) });
+      continue;
+    }
+    // A table: a row of cells, then a rule under it ("|---|:--:|"), then rows.
+    if (/^\s*\|/.test(l) && i + 1 < lines.length && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(lines[i + 1])) {
+      const start = i;
+      const head = cells(l);
+      const rows: string[][] = [];
+      for (i += 2; i < lines.length && /^\s*\|/.test(lines[i]); i++) rows.push(cells(lines[i]));
+      i--;
+      out.push({ kind: 'table', head, rows, line: start, end: i });
       continue;
     }
     let m = l.match(/^(#{1,4})\s+(.*)$/);
@@ -56,6 +67,16 @@ function parse(src: string): Block[] {
     } else out.push({ kind: 'p', text: l.trim(), line: i, end: i });
   }
   return out;
+}
+
+/** The cells of a table row: "| a | b |" → ["a", "b"]. */
+function cells(row: string): string[] {
+  return row
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((c) => c.trim());
 }
 
 const INLINE = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*\s][^*]*\*|_[^_\s][^_]*_)|(\[[^\]]+\]\([^)\s]+\))/g;
@@ -127,6 +148,29 @@ export function Markdown({ text, highlight, onToggleTask }: { text: string; high
           <pre key={key} className="md-code">
             {b.text}
           </pre>
+        );
+      case 'table':
+        return (
+          <div key={key} className="md-table-wrap">
+            <table className="md-table">
+              <thead>
+                <tr>
+                  {b.head.map((c, i) => (
+                    <th key={i}>{inline(c)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {b.rows.map((r, i) => (
+                  <tr key={i}>
+                    {b.head.map((_, j) => (
+                      <td key={j}>{inline(r[j] ?? '')}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         );
       case 'p':
         return (
