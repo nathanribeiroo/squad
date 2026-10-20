@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, hub } from '../api/client';
 import type { RoleDef } from '../api/types';
 import { callsign } from '../lib/model';
-import { MAX_ROLE_NAME, MAX_ROLE_PROMPT, ROLE_AGENTS, ROLE_COLORS, ROLE_ICONS, roleIcon } from '../lib/roles';
+import { MAX_ROLE_NAME, MAX_ROLE_PROMPT, MAX_ROLE_WHEN, ROLE_AGENTS, ROLE_COLORS, ROLE_ICONS, roleIcon } from '../lib/roles';
 import { toast } from '../lib/toast';
 import { useNodes, useSquad } from '../state/store';
 import { confirmDialog, confirmOpen } from './ConfirmDialog';
@@ -11,13 +11,14 @@ import './RolesPanel.css';
 
 type Draft = Omit<RoleDef, 'id'> & { id?: string };
 
-const NEW: Draft = { name: '', abbr: '', prompt: '', color: 'teal', icon: 'psychology' };
+const NEW: Draft = { name: '', abbr: '', prompt: '', when: '', color: 'teal', icon: 'psychology' };
 
 function same(a: Draft, b: Draft): boolean {
   return (
     a.name === b.name &&
     (a.abbr ?? '') === (b.abbr ?? '') &&
     a.prompt === b.prompt &&
+    (a.when ?? '') === (b.when ?? '') &&
     a.color === b.color &&
     a.icon === b.icon &&
     !!a.manager === !!b.manager
@@ -51,7 +52,7 @@ function Panel({ initial }: { initial: string | null }) {
     setDraft(current ?? NEW);
     setSaved(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, current?.name, current?.abbr, current?.prompt, current?.color, current?.icon, current?.manager]);
+  }, [selected, current?.name, current?.abbr, current?.prompt, current?.when, current?.color, current?.icon, current?.manager]);
 
   const leave = (then: () => void) => {
     if (!dirty) return then();
@@ -95,7 +96,7 @@ function Panel({ initial }: { initial: string | null }) {
       title: `Restaurar ${current.name}?`,
       icon: 'undo',
       tone: 'warn',
-      lose: [`As suas mudanças em ${current.name}: nome, sigla, cor, ícone e instruções voltam aos da Torre`],
+      lose: [`As suas mudanças em ${current.name}: nome, sigla, cor, ícone, quando chamar e instruções voltam aos da Torre`],
       keep: ['Os voos com o papel, que recebem as instruções ao reiniciar'],
       action: 'Restaurar padrão',
     });
@@ -245,6 +246,20 @@ function Editor({ draft, setDraft, current }: { draft: Draft; setDraft: (d: Draf
           <b>Líder</b>: o voo pode criar voos na frequência dele e pôr nós na mesma frequência (<span className="mono">torre new</span>,{' '}
           <span className="mono">torre connect</span>). Cada voo pode desligar isso no menu ⋯.
         </span>
+      </label>
+      <label className="field" title="Uma linha para o líder: o torre roles mostra, e o Planejador decide por ela quando chamar este papel.">
+        <span className="field-row">
+          Quando chamar
+          <span className="mono">
+            {(draft.when ?? '').length}/{MAX_ROLE_WHEN}
+          </span>
+        </span>
+        <input
+          value={draft.when ?? ''}
+          maxLength={MAX_ROLE_WHEN}
+          placeholder="Ex.: Tarefas de interface: telas, componentes, estado."
+          onChange={(e) => set({ when: e.target.value })}
+        />
       </label>
       <label className="field roles-prompt">
         <span className="field-row">

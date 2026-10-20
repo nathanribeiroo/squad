@@ -289,7 +289,7 @@ function LandChecks({ changes, base, flying, checks }: { changes: FloorChanges; 
   const clean = changes.files.length === 0;
   const conflicts = changes.conflicts;
   return (
-    <div className={`fl-checks${checks?.length ? ' six' : ''}`}>
+    <div className={`fl-checks${checks?.length === 2 ? ' six' : ''}`}>
       {checks?.map((c) => (
         <div key={c.kind} className={`fl-check ${CHECK_LOOK[c.state]}`} title={c.detail}>
           <b>{c.state === 'none' ? CHECK_NAMES[c.kind] : c.label}</b>
@@ -380,7 +380,7 @@ function taken(r: LandResult): string {
   return r.permissions ? ` · ${plural(r.permissions, 'permissão levada', 'permissões levadas')}` : '';
 }
 
-// How a floor's tests or review look among the land checks.
+// How a floor's marks (tests, review, security, design) look among the land checks.
 const CHECK_LOOK = { pass: 'ok', fail: 'err', stale: 'wait', none: 'idle' } as const;
 
 /** "Mesclar em [branch]": the target, among the branches it can merge into. */

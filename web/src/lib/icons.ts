@@ -28,6 +28,7 @@ export const ICONS = [
   'check_box',
   'check_box_outline_blank',
   'check_circle',
+  'checklist',
   'chevron_left',
   'chevron_right',
   'circle',
@@ -52,6 +53,7 @@ export const ICONS = [
   'error',
   'expand_more',
   'fit_screen',
+  'flag',
   'flight',
   'flight_class',
   'flight_land',
@@ -123,6 +125,7 @@ export const ICONS = [
   'view_timeline',
   'visibility_off',
   'warning',
+  'web',
 ] as const;
 
 export type IconName = (typeof ICONS)[number];

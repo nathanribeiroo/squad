@@ -73,7 +73,7 @@ export function flightLevel(f?: Floor): string {
   return f ? `FL${f.number || '?'}` : 'PISTA';
 }
 
-export const CHECK_NAMES: Record<CheckKind, string> = { tests: 'testes', review: 'revisão' };
+export const CHECK_NAMES: Record<CheckKind, string> = { tests: 'testes', review: 'revisão', security: 'segurança', design: 'design' };
 
 /** A floor's tests or review as the landing queue shows it. */
 export interface CheckView {
@@ -85,9 +85,11 @@ export interface CheckView {
   detail: string;
 }
 
-/** The floor's checks, against its latest commit (head; unknown: as marked). */
+/** The floor's checks, against its latest commit (head; unknown: as marked).
+ * Tests and review always show; the security and design reviews once marked. */
 export function checkViews(f: Floor, head?: string): CheckView[] {
-  return (['tests', 'review'] as CheckKind[]).map((kind) => {
+  const kinds = (['tests', 'review', 'security', 'design'] as CheckKind[]).filter((k) => k === 'tests' || k === 'review' || f.checks?.[k]);
+  return kinds.map((kind) => {
     const c = f.checks?.[kind];
     const name = CHECK_NAMES[kind];
     if (!c) return { kind, state: 'none', label: `○ ${name}`, detail: 'sem marca' };
