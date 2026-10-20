@@ -82,7 +82,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fios com 3% de folga | `feat/folga-3` | concluído |
 | Fios do nó selecionado em destaque | `feat/fios-do-selecionado` | concluído |
 | Destaque dos fios mais visível | `feat/fios-do-selecionado-forte` | concluído |
-| Workspaces inativos fora da tela | `feat/workspaces-inativos` | concluído (PR) |
+| Workspaces inativos fora da tela | `feat/workspaces-inativos` | concluído |
+| Novos papéis e o fluxo de especificação | `feat/novos-papeis` | em andamento |
 
 ## B0, esqueleto
 
@@ -281,6 +282,28 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 - **Galeria com planos prontos** (F5d; o mockup do quadro 20 mostra "Trio clássico", "Front-end com teste visual", "Duas frentes em paralelo"): a galeria começa vazia. Planos prontos que venham com a Torre precisariam escolher agentes e papéis que existam na máquina.
 - **Terminais em WebGL** (item 4 da análise de fluidez, DEVLOG de 2026-10-19): o desenho do xterm em HTML ainda é a maior parte do trabalho com muitos agentes escrevendo. O WebGL foi descartado na W2 porque mede o próprio canvas errado sob a escala do canvas da Torre; o caminho seria uma camada sem `transform`, por cima dos nós, com a posição de cada terminal. Só se as correções de `feat/fluidez` não bastarem.
 - **Dois voos encaixados** (F5b): hoje um por vez, numa borda. As duas bordas ao mesmo tempo pediriam um desenho para o canvas espremido no meio.
+- **Modelos de NOTAM pela interface** (Novos papéis): o `--template` existe só para os agentes (`torre note create "PRD: X" --template prd` e o parâmetro `template` da ferramenta MCP `note`). Quem cria uma NOTAM pelo canvas começa com ela vazia.
+  - **A ideia:** o formulário de criar NOTAM ofereceria os mesmos modelos (PRD, Spec, ADR, Tarefas, Tarefa, Design, Memória) e preencheria o conteúdo com as seções.
+  - **Onde mexer:** os modelos ficam em `internal/notes/templates.go`. Faltariam uma rota que os liste e um seletor no criar NOTAM.
+- **Retomar a conversa de um voo dispensado** (Novos papéis): hoje o `torre close` remove o nó, e com ele vai o id da conversa (`Terminal.Conversation`).
+  - **Como é hoje:** o arquivo da conversa continua no disco do agente (no Claude, em `~/.claude/projects`; no Devin, no `sessions.db`), mas nada aponta para ele. Chamar de volta cria um voo novo, e o contexto vem das NOTAMs: a passagem de serviço na Memória e o que o voo escreveu.
+  - **A alternativa:** ao dispensar, guardar o nome, o papel e o id da conversa. Um `torre new --resume "Nome"` subiria o agente continuando a conversa; a Torre já retoma conversas ao reabrir (`internal/agents/conversation.go`).
+  - **O custo:** dá mais contexto, mas a conversa inteira volta, o que é mais caro, e ela pode estar desatualizada. Só vale se as NOTAMs não bastarem.
+- **Papéis que não escrevem código, de verdade** (Novos papéis, e já citado quando o Arquiteto entrou): Produto, Especificador, Arquiteto, Designer, Revisor e Segurança dizem nas instruções que não editam o código, mas nada impede. O Depurador só corrige se pedirem.
+  - **Como obrigar:** uma opção por agente na linha de lançamento (`internal/agents`):
+    - no Claude, `--disallowedTools` com as ferramentas de edição. O Bash ainda escreve arquivos, então ali a barreira é parcial;
+    - no Codex, `--sandbox read-only`;
+    - no Devin e no Gemini, conferir com o binário real o que cada um oferece.
+  - **Na interface:** o papel ganharia um campo "somente leitura", com uma chave no editor de papéis.
+  - **Cuidado:** esses papéis escrevem NOTAMs pela CLI e pelo MCP, o que tem de continuar liberado. O Depurador escreve testes.
+- **Modelo de IA por papel** (Novos papéis): hoje cada voo usa o modelo padrão do agente, ou o comando padrão das Configurações.
+  - **A ideia:** um papel escolheria o modelo. Por exemplo, o Arquiteto e o Especificador num modelo mais forte, e o Documentador num mais barato.
+  - **Onde mexer:** um campo no papel, por agente, porque o nome do modelo e a opção mudam de um para outro (`--model` no Claude, `-m` no Codex e no Gemini; no Devin, conferir). Ele seria aplicado na linha de lançamento, em `internal/agents`.
+  - **Para medir:** o Consumo (`internal/usage`) já mostra o gasto de cada voo.
+- **`torre new --connect`** (Novos papéis): hoje, para criar um voo com contexto, o Planejador roda o `torre new` e depois um `torre connect` para cada NOTAM (Memória, Spec, a tarefa).
+  - **A ideia:** um `--connect "Nome"` repetível no `torre new`, e um campo `connect` na ferramenta MCP `new`, ligaria tudo na criação, antes do primeiro pedido.
+  - **O ganho:** menos chamadas e menos chance de o voo começar sem as NOTAMs.
+  - **Onde mexer:** `parseNew` e `create`, em `internal/team/team.go`.
 
 ## Pilha de NOTAMs
 
@@ -493,4 +516,38 @@ Medido antes do plano, no container (4 núcleos): subir 8 Claudes de uma vez nã
   - decolar um plano de voo grande e o `torre new` continuam subindo cada agente na hora, fora da fila;
   - as sessões continuam como antes (trocar de sessão para os agentes da que sai).
 
-**Status:** PR aberto, esperando o merge.
+**Status:** concluído, mesclado na `main` pelo PR #47.
+
+## Novos papéis e o fluxo de especificação
+
+Pedido do usuário em 2026-10-20. Ele escolheu os papéis Produto, Depurador, Segurança, Documentador, Designer e Front-end, e pediu um papel para o desenvolvimento guiado por especificação (PRD, spec técnica, ADRs, tarefas), com a skill compozy como referência. O que dá para aproveitar dela foi analisado antes do plano:
+- as perguntas uma por vez, com opções;
+- as seções do PRD e da spec;
+- as regras das tarefas;
+- "sem evidência, não terminou";
+- os critérios de revisão;
+- a memória compartilhada.
+
+Ficou de fora o que é próprio do programa deles: a pasta `.compozy/`, os campos YAML e os validadores. As decisões do usuário:
+- **o Designer** cuida de UX e UI, antes (uma NOTAM "Design: …") e depois (a revisão pelo portal);
+- **o Front-end** é o especialista que constrói a interface com qualidade;
+- **a divisão** dos papéis de especificação ficou comigo, e ele aprovou;
+- **o Planejador** pode dispensar quem terminou e chamar de volta com contexto, sempre com no máximo 6 voos ao mesmo tempo.
+
+- **Divisão:**
+  - **Produto:** o quê e o porquê; escreve o PRD e faz a aceitação.
+  - **Especificador:** como fazer esta entrega; escreve a spec, as ADRs da entrega e a pilha de tarefas.
+  - **Arquiteto:** o projeto inteiro; mapa do sistema, ADRs que valem para tudo, revisão da spec e do diff.
+- **Papéis:** 7 novos (Produto, Especificador, Designer, Front-end, Depurador, Segurança, Documentador). Os textos do Planejador, do Arquiteto, do Implementador, do Revisor e do Testador mudam.
+- **"Quando chamar":** cada papel ganha essa linha. O `torre roles` a mostra, e é por ela que o Planejador escolhe quem chamar. O texto dele fica só com as regras gerais e cabe nos 4.000 caracteres.
+- **Modelos de NOTAM:** `torre note create "PRD: X" --template prd`, com os modelos `prd`, `spec`, `adr`, `tasks`, `task`, `design` e `memory`.
+- **Pilha criada por agente:** `--stack "Tarefas: X"` põe a NOTAM nova em cima da pilha de uma NOTAM ligada a quem cria.
+- **Dispensar:** o `torre close` passa ao Planejador os fios das NOTAMs que o voo dispensado criou. Antes, elas ficavam soltas.
+- **Marcas no nível:** `security` e `design`, ao lado de testes e revisão. Aparecem só quando alguém marca.
+- **Interface:**
+  - 4 cores novas (céu, ardósia, areia, ouro) e 3 ícones (`flag`, `checklist`, `web`);
+  - o campo "Quando chamar" no editor de papéis;
+  - as marcas novas na fila de pouso, no Sinóptico e no Rádio.
+- **Fora:** os itens "Modelos de NOTAM pela interface", "Retomar a conversa de um voo dispensado", "Papéis que não escrevem código, de verdade", "Modelo de IA por papel" e "`torre new --connect`", no "Para depois" da seção Torre, com o contexto de cada um.
+
+**Status:** em andamento.
