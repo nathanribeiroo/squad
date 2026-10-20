@@ -25,6 +25,12 @@
 .ws-wait { color: var(--stt-wait); }
 .ws-idle { color: var(--text-3); }
 .ws-row-edit { opacity: 0.6; }
+/* Its agents are stopped (internal/hub sleep.go). */
+.ws-row.sleeping .ws-dot { opacity: 0.4; }
+.ws-row.sleeping .ws-row-label { color: var(--text-2); }
+.ws-state-icon { vertical-align: -2px; margin-right: 4px; }
+.ws-pin { display: inline-flex; color: var(--text-2); }
+.ws-row-keep.on { opacity: 1; color: var(--text); }
 .ws-row:hover .ws-row-edit, .ws-row-edit:focus-visible { opacity: 1; }
 .ws-row-remove:hover { color: var(--stt-err); background: var(--stb-err); }
 /* Shows the workspace's sessions beside the list (SessionsMenu.css). */

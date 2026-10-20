@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, hub } from '../api/client';
-import type { AgentInfo, AgentsDetection, LimitsView } from '../api/types';
+import type { AgentInfo, AgentsDetection, LimitsView, WorkspaceSettings } from '../api/types';
 import type { IconName } from '../lib/icons';
 import { noticePrefs, setNoticePrefs, beep, type NoticePrefs } from '../lib/notify';
 import { toast } from '../lib/toast';
@@ -12,6 +12,7 @@ import './SettingsPanel.css';
 const TABS: { id: SettingsTab | 'roles'; label: string; icon: IconName }[] = [
   { id: 'appearance', label: 'Aparência', icon: 'contrast' },
   { id: 'agents', label: 'Agentes', icon: 'smart_toy' },
+  { id: 'workspaces', label: 'Workspaces', icon: 'bedtime' },
   { id: 'limits', label: 'Limites', icon: 'swap_horiz' },
   { id: 'summaries', label: 'Resumos', icon: 'summarize' },
   { id: 'roles', label: 'Papéis…', icon: 'badge' },
@@ -69,6 +70,7 @@ function Panel({ tab }: { tab: SettingsTab }) {
           <section className="st-content">
             {tab === 'appearance' && <Appearance />}
             {tab === 'agents' && <Agents />}
+            {tab === 'workspaces' && <WorkspacesTab />}
             {tab === 'limits' && <LimitsTab />}
             {tab === 'summaries' && (
               <>
@@ -86,16 +88,83 @@ function Panel({ tab }: { tab: SettingsTab }) {
   );
 }
 
-function Choice<T extends string>({ value, options, onChange }: { value: T; options: { id: T; label: string; icon: IconName }[]; onChange: (v: T) => void }) {
+function Choice<T extends string>({
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  value: T;
+  options: { id: T; label: string; icon: IconName }[];
+  onChange: (v: T) => void;
+  disabled?: boolean;
+}) {
   return (
-    <div className="st-choice" role="radiogroup">
+    <div className="st-choice" role="radiogroup" aria-disabled={disabled}>
       {options.map((o) => (
-        <button key={o.id} role="radio" aria-checked={value === o.id} className={value === o.id ? 'on' : ''} onClick={() => onChange(o.id)}>
+        <button key={o.id} role="radio" aria-checked={value === o.id} className={value === o.id ? 'on' : ''} disabled={disabled} onClick={() => onChange(o.id)}>
           <Icon name={o.icon} size={18} />
           {o.label}
         </button>
       ))}
     </div>
+  );
+}
+
+const IDLE_MINUTES = ['1', '5', '15', '30', '60'] as const;
+
+/** When workspaces off screen stop their agents (internal/hub sleep.go). */
+function WorkspacesTab() {
+  const [s, setS] = useState<WorkspaceSettings | null>(null);
+  useEffect(() => {
+    hub.workspaceSettings().then(setS, (err: Error) => toast(err.message, 'err'));
+  }, []);
+  if (!s) return <h2>Workspaces</h2>;
+  const save = (next: WorkspaceSettings) => {
+    const before = s;
+    setS(next);
+    hub.setWorkspaceSettings(next).then(setS, (err: Error) => {
+      setS(before);
+      toast(err.message, 'err');
+    });
+  };
+  const minutes = String(s.idleMinutes);
+  return (
+    <>
+      <h2>Workspaces</h2>
+      <p className="st-lead">
+        Os agentes rodam no workspace que está na tela. Fora da tela e sem nada acontecendo, um workspace para os agentes: cada voo guarda a conversa e a última tela, e
+        volta, continuando de onde estava, quando o workspace aparecer de novo. Os shells e os comandos próprios continuam rodando.
+      </p>
+      <label className="st-check">
+        <input type="checkbox" checked={s.keepAll} onChange={(e) => save({ ...s, keepAll: e.target.checked })} />
+        <span>
+          <b>Manter todos os workspaces ativos</b>
+          <span>
+            Os agentes de todos os workspaces ficam rodando, mesmo fora da tela, e sobem quando a Torre abre. Ligar não sobe agora os que estão inativos: cada um sobe
+            quando você entrar nele.
+          </span>
+        </span>
+      </label>
+      <div className={`st-row${s.keepAll ? ' st-off' : ''}`}>
+        <div className="st-label">
+          <b>Inativar depois de</b>
+          <span>
+            Quanto tempo um workspace fora da tela espera para parar os agentes. A conta começa quando você sai dele, ou quando tudo nele termina: um voo no ar, pedindo
+            você ou esperando outro, e um nível em preparo, seguram o workspace ativo.
+          </span>
+        </div>
+        <Choice
+          value={(IDLE_MINUTES as readonly string[]).includes(minutes) ? minutes : ''}
+          disabled={s.keepAll}
+          onChange={(v) => save({ ...s, idleMinutes: Number(v) })}
+          options={IDLE_MINUTES.map((m) => ({ id: m, label: m === '60' ? '1 h' : `${m} min`, icon: 'bedtime' as IconName }))}
+        />
+      </div>
+      <p className="st-lead">
+        Um workspace também pode ficar sempre ativo sozinho, pelo alfinete no seletor de workspaces, onde "Inativar agora" para os agentes de um que está fora da tela.
+      </p>
+    </>
   );
 }
 

@@ -1,0 +1,7 @@
+/* Carregando o workspace: like Sem enlace (NoLink.css), in the color of
+   flights at work. */
+.wake-card { border-color: var(--st-work); }
+.wake-card > .msi { color: var(--stt-work); }
+.wake-card strong { color: var(--stt-work); }
+.wake-bar { display: block; height: 3px; background: var(--line); overflow: hidden; }
+.wake-bar > span { display: block; height: 100%; background: var(--stt-work); transform-origin: left; transition: transform 200ms; }

@@ -322,7 +322,7 @@ function initialPref(): 'dark' | 'light' | 'system' {
   return stored<'dark' | 'light' | ''>('torre.theme', '') || 'system';
 }
 
-export type SettingsTab = 'appearance' | 'agents' | 'limits' | 'summaries' | 'shortcuts' | 'notices';
+export type SettingsTab = 'appearance' | 'agents' | 'workspaces' | 'limits' | 'summaries' | 'shortcuts' | 'notices';
 
 function stored<T extends string>(key: string, fallback: T): T {
   try {

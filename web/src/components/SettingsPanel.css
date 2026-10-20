@@ -25,6 +25,8 @@
   background: transparent; color: var(--text-2); font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
 }
 .st-choice button.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); position: relative; }
+.st-choice button:disabled { cursor: default; }
+.st-off { opacity: 0.45; }
 .st-table { border-collapse: collapse; width: 100%; max-width: 980px; font-size: 12.5px; }
 .st-table th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); padding: 8px 10px; border-bottom: 1px solid var(--line-3); }
 .st-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
