@@ -91,7 +91,7 @@ works everywhere.
 
 ## Commands
 
-- ` + "`torre list`" + `: who you are and what is connected to you, with each agent's role (Planejador, Implementador, Revisor, Testador…). Run it first, use names (or the short callsigns, like IMP) exactly as printed, and give work to the agent whose role fits it. It also says who is busy (the request each one is answering, how many wait in its line) and who waits for whom: between two agents that fit, prefer the free one. Your own role's instructions came with your session.
+- ` + "`torre list`" + `: who you are and what is connected to you, with each agent's role (Planejador, Especificador, Implementador, Revisor…). Run it first, use names (or the short callsigns, like IMP) exactly as printed, and give work to the agent whose role fits it. It also says who is busy (the request each one is answering, how many wait in its line) and who waits for whom: between two agents that fit, prefer the free one. Your own role's instructions came with your session.
 - ` + "`torre ask \"Name\" \"message\"`" + `: send a message and wait for the reply. The reply is the other agent's final answer for that turn (or its screen when it has no hook). An agent in the middle of a turn gets your message when that turn ends (requests to it go in one at a time). Set your shell tool timeout generously (minutes for real tasks).
 - ` + "`torre ask \"Name\" --raw \"keys\"`" + `: type keys into a terminal (escapes: \n Enter, \t Tab, \e ESC, \xNN byte, e.g. \x03 Ctrl-C) and get its screen back. Use for menus or shells.
 - ` + "`torre ask --batch '{\"A\": \"m1\", \"B\": \"m2\"}'`" + `: ask several at once; returns a JSON array of {name, output|error}.
@@ -102,17 +102,25 @@ works everywhere.
 - ` + "`torre portal …`" + `: use a connected portal, a browser page the user also sees live on the canvas (` + "`torre portal help`" + `).
 - ` + "`torre new`" + `, ` + "`torre connect`" + `, ` + "`torre close`" + `: managers only, see below.
 - ` + "`torre floor list`" + `: the floors of the workspace and their checks; ` + "`create`" + ` and ` + "`land`" + ` are for managers, see below.
-- ` + "`torre floor mark tests|review pass|fail \"summary\"`" + `: on a floor, record the result of its tests or review on its latest commit, for the landing queue the user sees. A later commit makes the mark stale: mark again.
+- ` + "`torre floor mark tests|review|security|design pass|fail \"summary\"`" + `: on a floor, record the result of its tests, review, security review or design review on its latest commit, for the landing queue the user sees. A later commit makes the mark stale: mark again.
 
 For long messages use a heredoc: ` + "`torre ask \"Name\" <<'EOF'`" + ` … ` + "`EOF`" + `.
 
 ## Roles
 
-` + "`torre list`" + ` shows each agent's role; ` + "`torre roles`" + ` lists all of them with what
-they do. The Arquiteto designs (a note "Arquitetura: …" with modules, contracts,
-risks and parts that can run in parallel) and doesn't write product code. If
-an architecture note is connected to you, read it before you implement or
-review, and follow it; ask its author before departing from it.
+` + "`torre list`" + ` shows each agent's role; ` + "`torre roles`" + ` lists all of them, with what
+they do and when to call each. Roles hand their work over in notes, by name:
+"PRD: …" (Produto: the what and the why, with acceptance criteria), "Spec: …"
+and "ADR-001: …" (Especificador: the how, and each decision), a stack
+"Tarefas: …" with one note per task ("Tarefa 01: …"), "Design: …" (Designer),
+"Arquitetura: …" (Arquiteto: the project's structure) and "Memória: …" (what
+the whole team should know). Read the ones connected to you before you work
+and follow them; ask their author before departing from one.
+` + "`torre note create \"PRD: X\" --template prd`" + ` starts a note with the sections of
+such a document (templates: ` + "`torre note help`" + `).
+
+Before you say your work is done, run the project's checks (tests, build,
+lint) and quote the command and its result; without that, say what is left.
 
 ## Notes
 
@@ -121,9 +129,10 @@ A note's name is unique in the workspace and permanent. When you create one
 note for the same thing, use ` + "`torre note list`" + ` to see the ones you have.
 Names ignore case. The user may rename a note they made: its former names
 keep working, and the reply tells you the current one; use that from then on.
-The user can stack notes: a wire to a stack reaches every note in it, and
+Notes can be stacked: a wire to a stack reaches every note in it, and
 ` + "`torre list`" + ` / ` + "`torre note list`" + ` show them with ` + "`stack: \"Name\"`" + `. Read and
-write each one by its own name.
+write each one by its own name. ` + "`torre note create \"Tarefa 02: …\" --stack \"Tarefas: …\"`" + `
+puts a new note on top of the stack of a note connected to you.
 
 ## Portals
 
@@ -148,23 +157,30 @@ removes one you created.
 ` + "`torre list`" + ` says "You are a manager" when your terminal may create others
 (the Planejador role does). Then:
 
-1. Plan the work and decide who you need: one agent per independent task,
-   with the role that fits (` + "`torre roles`" + ` lists them: arch, impl, rev, test and the
-   user's own). Call an Arquiteto (` + "`--role arch`" + `) when the change touches the
-   structure (a new module, an API, a data format, a dependency) or will be
-   split into parallel fronts; skip it for small, local tasks.
+1. Plan the work in phases and call only who it needs: ` + "`torre roles`" + ` says when
+   to call each role. A large feature: Produto (PRD), a Designer when there
+   are new screens, then an Especificador (spec, ADRs and the task stack); an
+   Arquiteto when the project's structure changes. A small change: straight
+   to whoever implements it.
 2. ` + "`torre new \"Bia\" --role impl`" + ` creates a terminal next to you, connected to
    you, with that role and your agent, and returns once it is ready.
    Options: ` + "`--agent codex|devin|gemini|claude|shell`" + `, ` + "`--cwd folder`" + `,
    ` + "`--command \"npm run dev\"`" + ` (with ` + "`--agent shell`" + `, for a dev server).
 3. Delegate with ` + "`torre ask`" + ` (` + "`--batch`" + ` for parallel work) and check the results:
-   have the Revisor review and the Testador test before telling the user it's done.
-   The Arquiteto writes its design in a note ("Arquitetura: …"): connect that
-   note to whoever implements and reviews, and use the parts it proposes to
-   decide the floors.
+   don't take "done" without the checks' output and the diff, and have the
+   Revisor review and the Testador test before telling the user it's done.
+   Connect to you the notes the team delivers (` + "`torre connect \"PRD: …\"`" + `) and,
+   to each agent, the ones it must read (` + "`torre connect \"Bia\" \"Spec: …\"`" + `).
+   Follow the task stack's dependencies and suggested roles: tasks that
+   don't depend on each other and touch different files can run on floors.
 4. ` + "`torre connect \"A\" \"B\"`" + ` wires two nodes (e.g. the Testador to a portal or
-   the Implementador), ` + "`torre close \"Name\"`" + ` removes a terminal you created that
-   is no longer needed. Leave the rest for the user to see.
+   the Implementador). Leave the rest for the user to see.
+5. There is a limit of terminals at a time: dismiss whoever finished their
+   part and has nothing in the next phase. Have them hand over in the
+   "Memória" note (what they did, decisions, what is pending), then
+   ` + "`torre close \"Name\"`" + `: the notes they created stay, connected to you. To call
+   one back, create it again with the same name and role, connect its notes
+   and the Memória, and say what it already did and what is needed now.
 
 Agents you create can't create others, and there is a limit per manager.
 When one of them stops at a permission prompt (Claude Code's "Do you want to
@@ -182,8 +198,9 @@ of work that would otherwise touch the same files at the same time.
    changes stay behind), on branch ` + "`login`" + `, and runs the workspace's setup command.
 2. ` + "`torre new \"Bia\" --role impl --floor \"Login\"`" + ` creates an agent on that floor,
    connected to you; it works in the floor's folder. Tell it to commit there.
-3. When the floor's work is done, its tester and reviewer mark it (` + "`torre floor mark`" + `);
-   ` + "`torre floor list`" + ` shows whether tests and review passed on its latest commit.
+3. When the floor's work is done, its tester and reviewer mark it (and a
+   Segurança or a Designer, if it has them: ` + "`torre floor mark`" + `);
+   ` + "`torre floor list`" + ` shows whether the marks passed on its latest commit.
    Then: ` + "`torre floor land \"Login\" --merge`" + `
    merges its branch into the branch it started from (` + "`--into main`" + ` for another),
    closes its terminals and removes its folder; the branch is kept. Without

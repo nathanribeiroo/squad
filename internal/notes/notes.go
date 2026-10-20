@@ -47,7 +47,13 @@ type Service struct {
 	watcher   *fsnotify.Watcher
 
 	nameMu sync.Mutex // naming: unique names, drafts getting their file
+
+	onStack func(store.StackChange) // announces a stack an agent made (OnStack)
 }
+
+// OnStack sets how a stack made by an agent (torre note create --stack) is
+// announced: the server's, like one made on the canvas.
+func (s *Service) OnStack(fn func(store.StackChange)) { s.onStack = fn }
 
 // New creates the notes directory next to the workspace file.
 func New(st *store.Store, ev *events.Bus, log *slog.Logger) (*Service, error) {
@@ -514,12 +520,27 @@ const noteUsage = `Usage:
   torre note read "Name" [from] [count]   read with line numbers
   torre note write "Name" "content"       replace the content (use - to read stdin)
   torre note edit "Name" "old" "new"      replace text that appears exactly once
-  torre note create "Name" ["content"]    create a note connected to you
+  torre note create "Name" ["content"] [--template T] [--stack "Other"]
+        create a note connected to you. --template starts it with the
+        sections of a document (instead of content); --stack puts it on top
+        of the stack of a note connected to you (or makes a stack of the two).
 
 A wire to a stack of notes reaches every note in it (list shows "stack:").
 A note's name is unique in the workspace and permanent: choose a clear one
 when you create it. Names ignore case, and a note the user renamed still
-answers to its former names.`
+answers to its former names.
+
+Templates:`
+
+// usage is the help of torre note, with the templates.
+func usage() string {
+	var sb strings.Builder
+	sb.WriteString(noteUsage)
+	for _, t := range templateNames {
+		fmt.Fprintf(&sb, "\n  %-7s %s", t, templateHelp[t])
+	}
+	return sb.String()
+}
 
 // Extension handles `torre note …` for the agent bus.
 func (s *Service) Extension(_ context.Context, caller string, args []string) (agentbus.Result, bool) {
@@ -527,7 +548,7 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		return agentbus.Result{}, false
 	}
 	if len(args) < 2 || args[1] == "help" {
-		return agentbus.Result{Code: 200, Body: noteUsage}, true
+		return agentbus.Result{Code: 200, Body: usage()}, true
 	}
 	me, _ := s.store.Node(caller)
 	author := "agent"
@@ -614,27 +635,108 @@ func (s *Service) Extension(_ context.Context, caller string, args []string) (ag
 		}
 		return agentbus.Result{Code: 200, Body: okLine("edited", n, renamed)}, true
 	case "create":
-		if len(args) < 3 || len(args) > 4 {
-			return agentbus.Result{Code: 400, Body: `Usage: torre note create "Name" ["content"]`}, true
-		}
-		content := ""
-		if len(args) == 4 {
-			content = args[3]
-		}
-		n, err := s.Create(caller, args[2], content, author)
-		if err != nil {
-			code := 500
-			switch {
-			case errors.Is(err, store.ErrDuplicate):
-				code = 409
-			case errors.Is(err, store.ErrInvalid):
-				code = 400
-			}
-			return agentbus.Result{Code: code, Body: "torre: " + err.Error()}, true
-		}
-		return agentbus.Result{Code: 200, Body: fmt.Sprintf("Created note %q (file %s), connected to you.", n.Note.Title, n.Note.File)}, true
+		return s.cliCreate(caller, me.Floor, author, args[2:]), true
 	}
-	return agentbus.Result{Code: 400, Body: noteUsage}, true
+	return agentbus.Result{Code: 400, Body: usage()}, true
+}
+
+// cliCreate is torre note create "Name" ["content"] [--template T] [--stack "Other"].
+func (s *Service) cliCreate(caller, floor, author string, args []string) agentbus.Result {
+	const createUsage = `Usage: torre note create "Name" ["content"] [--template T] [--stack "Other"]`
+	var pos []string
+	tmpl, onto := "", ""
+	for i := 0; i < len(args); i++ {
+		key, value, hasValue := strings.Cut(args[i], "=")
+		var dst *string
+		switch key {
+		case "--template":
+			dst = &tmpl
+		case "--stack":
+			dst = &onto
+		default:
+			if strings.HasPrefix(args[i], "--") {
+				return agentbus.Result{Code: 400, Body: "torre: unknown option " + args[i] + "\n" + createUsage}
+			}
+			pos = append(pos, args[i])
+			continue
+		}
+		if !hasValue {
+			if i+1 >= len(args) {
+				return agentbus.Result{Code: 400, Body: "torre: " + key + " needs a value\n" + createUsage}
+			}
+			i++
+			value = args[i]
+		}
+		*dst = value
+	}
+	if len(pos) < 1 || len(pos) > 2 {
+		return agentbus.Result{Code: 400, Body: createUsage}
+	}
+	content := ""
+	if len(pos) == 2 {
+		content = pos[1]
+	}
+	if tmpl != "" {
+		if content != "" {
+			return agentbus.Result{Code: 400, Body: "torre: give the content or a template, not both (create it from the template, then write or edit it)"}
+		}
+		t, ok := template(tmpl, time.Now())
+		if !ok {
+			return agentbus.Result{Code: 400, Body: fmt.Sprintf("torre: no template %q (templates: %s)", tmpl, strings.Join(templateNames, ", "))}
+		}
+		content = t
+	}
+	// The stack is checked before the note exists, so a refused one leaves
+	// nothing behind.
+	var target store.Node
+	if onto != "" {
+		var r agentbus.Result
+		var ok bool
+		if target, _, r, ok = s.find(caller, onto); !ok {
+			return r
+		}
+		if target.Floor != floor {
+			return agentbus.Result{Code: 400, Body: fmt.Sprintf("torre: %q is on another level; a stack keeps its notes on one level", target.Note.Title)}
+		}
+	}
+	n, err := s.Create(caller, pos[0], content, author)
+	if err != nil {
+		code := 500
+		switch {
+		case errors.Is(err, store.ErrDuplicate):
+			code = 409
+		case errors.Is(err, store.ErrInvalid):
+			code = 400
+		}
+		return agentbus.Result{Code: code, Body: "torre: " + err.Error()}
+	}
+	msg := fmt.Sprintf("Created note %q (file %s), connected to you", n.Note.Title, n.Note.File)
+	if onto != "" {
+		ch, err := s.store.Stack(n.ID, target.ID)
+		if err != nil {
+			return agentbus.Result{Code: 500, Body: fmt.Sprintf("torre: created note %q but could not stack it: %v", n.Note.Title, err)}
+		}
+		s.publishStack(ch)
+		msg += fmt.Sprintf(", on top of the stack %q", s.stackName(target))
+	}
+	return agentbus.Result{Code: 200, Body: msg + "."}
+}
+
+// publishStack announces a stack an agent made.
+func (s *Service) publishStack(ch store.StackChange) {
+	if s.onStack != nil {
+		s.onStack(ch)
+		return
+	}
+	for _, e := range ch.Removed {
+		s.events.Publish(events.EdgeRemoved, e)
+	}
+	for _, e := range ch.Added {
+		s.events.Publish(events.EdgeAdded, e)
+	}
+	for _, n := range ch.Nodes {
+		s.events.Publish(events.NodeUpdated, n)
+	}
 }
 
 // okLine confirms a write, with the note's current name when it was reached

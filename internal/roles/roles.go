@@ -28,8 +28,11 @@ type Role struct {
 	// callsigns; made from the name when not given.
 	Abbr   string `json:"abbr,omitempty"`
 	Prompt string `json:"prompt"` // the instruction the agent receives
-	Color  string `json:"color"`  // one of Colors
-	Icon   string `json:"icon"`   // one of Icons
+	// When: one line for managers, on when to call a terminal with this
+	// role (torre roles); optional.
+	When  string `json:"when,omitempty"`
+	Color string `json:"color"` // one of Colors
+	Icon  string `json:"icon"`  // one of Icons
 	// Manager: its terminals may create and connect terminals (torre new),
 	// unless a terminal turns it off.
 	Manager bool `json:"manager,omitempty"`
@@ -37,15 +40,15 @@ type Role struct {
 	Edited  bool `json:"edited,omitempty"` // a built-in role that differs from its default
 }
 
-// Colors a role may take: the four of the built-in roles, then four more
-// (CSS --r-<color> and --rb-<color> in the web UI).
-var Colors = []string{"plan", "impl", "rev", "test", "teal", "indigo", "magenta", "orange"}
+// Colors a role may take: the four of the first built-in roles, then eight
+// more (CSS --r-<color> and --rb-<color> in the web UI).
+var Colors = []string{"plan", "impl", "rev", "test", "teal", "indigo", "magenta", "orange", "sky", "slate", "sand", "gold"}
 
 // Icons a role may take (Material Symbols; the web UI ships only these).
 var Icons = []string{
 	"account_tree", "code", "rate_review", "science", "bug_report", "palette",
 	"description", "shield", "database", "rocket_launch", "psychology", "build",
-	"architecture",
+	"architecture", "flag", "checklist", "web",
 }
 
 // Limits of a role's fields. The prompt limit keeps it within what every
@@ -53,6 +56,7 @@ var Icons = []string{
 const (
 	MaxName   = 40
 	MaxPrompt = 4000
+	MaxWhen   = 200
 )
 
 var (
@@ -101,6 +105,9 @@ func Open(path string) (*Library, error) {
 				if r.Abbr == "" { // edited before roles had abbreviations
 					r.Abbr = l.roles[i].Abbr
 				}
+				if r.When == "" { // edited before roles said when to call them
+					r.When = l.roles[i].When
+				}
 				r.Edited = true
 				l.roles[i] = r
 				continue
@@ -111,7 +118,9 @@ func Open(path string) (*Library, error) {
 			continue
 		}
 		r.Builtin, r.Edited = false, false
-		if r.Abbr == "" { // made before roles had abbreviations
+		// Made before roles had abbreviations, or with one a newer built-in
+		// role took (DSG for a "Designer"): its next flights get another.
+		if r.Abbr == "" || l.abbrOwner(r.Abbr, r.ID) != "" {
 			r.Abbr = l.freeAbbr(ids.Callsign(r.Name), r.ID)
 		}
 		// A built-in role added by a newer Torre may take the name of one the
@@ -200,7 +209,7 @@ func (l *Library) Update(id string, r Role) (Role, error) {
 		}
 		r.ID, r.Builtin, r.Edited = id, l.roles[i].Builtin, false
 		if d, ok := defaultOf(id); ok && r.Builtin {
-			r.Edited = r.Name != d.Name || r.Abbr != d.Abbr || r.Prompt != d.Prompt || r.Color != d.Color || r.Icon != d.Icon || r.Manager != d.Manager
+			r.Edited = r.Name != d.Name || r.Abbr != d.Abbr || r.Prompt != d.Prompt || r.When != d.When || r.Color != d.Color || r.Icon != d.Icon || r.Manager != d.Manager
 		}
 		l.roles[i] = r
 		return r, nil
@@ -291,6 +300,10 @@ func (l *Library) check(r *Role, except string) error {
 	}
 	if utf8.RuneCountInString(r.Prompt) > MaxPrompt {
 		return apierr.With(invalidError(fmt.Sprintf("role instructions have at most %d characters", MaxPrompt)), "role.prompt_too_long", "max", fmt.Sprint(MaxPrompt))
+	}
+	r.When = strings.Join(strings.Fields(r.When), " ")
+	if utf8.RuneCountInString(r.When) > MaxWhen {
+		return apierr.With(invalidError(fmt.Sprintf("when to call a role fits in %d characters", MaxWhen)), "role.when_too_long", "max", fmt.Sprint(MaxWhen))
 	}
 	for _, o := range l.roles {
 		if o.ID != except && strings.EqualFold(o.Name, r.Name) {

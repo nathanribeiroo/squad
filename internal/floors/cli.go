@@ -18,10 +18,11 @@ each with its own canvas, for work in parallel that touches the same files.
         managers: a new floor from the last commit (uncommitted changes stay
         behind), with its own branch (default: the name). Then create its
         agents with torre new "Name" --floor "Floor": they work in its folder.
-  torre floor mark tests|review pass|fail ["note"] [--floor "Name"]
+  torre floor mark tests|review|security|design pass|fail ["note"] [--floor "Name"]
         the floor's agents (and the one that created it): record the result
-        of the floor's tests or review on its latest commit, for the landing
-        queue the user sees. A later commit makes the mark stale: mark again.
+        of the floor's tests, review, security review or design review on its
+        latest commit, for the landing queue the user sees. A later commit
+        makes the mark stale: mark again.
   torre floor land "Name" [--merge | --into BRANCH]
         managers, floors you created: close the floor's terminals and remove
         its folder, keeping its branch. --merge first merges the branch into

@@ -44,7 +44,7 @@ type Item struct {
 	// Outcome: pending, replied, cancelled (a request); delivered (the
 	// user's message); held (a request held back, or a loop); note; turn
 	// (a turn ended); answered (an ask the user answered); check (a flight
-	// marked a floor's tests or review).
+	// marked a floor's tests, review, security or design).
 	Outcome   string `json:"outcome"`
 	ID        string `json:"id,omitempty"` // the request
 	From      string `json:"from,omitempty"`
@@ -70,7 +70,7 @@ type Item struct {
 	HasReply bool `json:"hasReply,omitempty"`
 	// Queued: a pending request waiting for its target's turn to end.
 	Queued bool `json:"queued,omitempty"`
-	// A check: what was marked (tests, review) and the result (pass, fail);
+	// A check: what was marked (tests, review, security, design) and the result (pass, fail);
 	// ToName is the floor, Number its level.
 	Check  string `json:"check,omitempty"`
 	Result string `json:"result,omitempty"`

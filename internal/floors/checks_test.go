@@ -75,8 +75,16 @@ func TestMarkChecks(t *testing.T) {
 	}
 
 	_, list := cli(plan, "list")
-	if !strings.Contains(list, `checks: tests passed (TST: "42 passaram") on the latest commit; review failed (PLN: "falta tratar o erro") on the latest commit`) {
+	if !strings.Contains(list, `checks: tests passed (TST: "42 passaram") on the latest commit; review failed (PLN: "falta tratar o erro") on the latest commit`) ||
+		strings.Contains(list, "security") || strings.Contains(list, "design") {
 		t.Fatalf("list:\n%s", list)
+	}
+	// The security and design reviews show once marked.
+	if code, body := cli(tst, "mark", "security", "pass", "sem entrada externa"); code != 200 {
+		t.Fatalf("security: %d %s", code, body)
+	}
+	if _, list = cli(plan, "list"); !strings.Contains(list, `; security passed (TST: "sem entrada externa") on the latest commit`) || strings.Contains(list, "design") {
+		t.Fatalf("security mark:\n%s", list)
 	}
 	if s := svc.Status(ctx); s.Floors[f.ID].Head != head {
 		t.Fatalf("status head: %+v", s.Floors[f.ID])

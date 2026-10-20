@@ -21,7 +21,7 @@ import (
 const mcpInstructions = `Torre: a canvas where agents and terminals are connected by wires; you can only reach what is connected to you.
 Start with list. ask sends a message to a connected agent and waits for its reply (its final answer; it can take minutes). If it times out while the agent is still working, wait returns the answer when it finishes: don't resend.
 note reads and writes connected notes; portal drives a connected browser page the user watches live.
-Managers (list says so) create their team with new (roles lists the roles: Planejador, Arquiteto, Implementador, Revisor, Testador…) and wire nodes with connect; floors give a team its own copy of the repository (a git worktree on a branch).
+Managers (list says so) create their team with new (roles lists the roles and when to call each) and wire nodes with connect; floors give a team its own copy of the repository (a git worktree on a branch).
 keys, portal_eval and new_shell can run commands, and floor_land merges branches, so they ask the user first.`
 
 const mcpOutside = `Torre: this session is not running inside a Torre terminal, so Torre's tools are not available here.`
@@ -154,13 +154,15 @@ type (
 		Message string `json:"message" jsonschema:"your answer"`
 	}
 	noteInput struct {
-		Action  string `json:"action" jsonschema:"list | read | write | edit | create"`
-		Name    string `json:"name,omitempty" jsonschema:"note name (all but list); ignores case, and a renamed note still answers to its former names. create: a clear, unique name, which is permanent"`
-		Content string `json:"content,omitempty" jsonschema:"write: the whole new content; create: the initial content"`
-		Old     string `json:"old,omitempty" jsonschema:"edit: text that appears exactly once"`
-		New     string `json:"new,omitempty" jsonschema:"edit: its replacement"`
-		From    int    `json:"from,omitempty" jsonschema:"read: first line (1-based)"`
-		Count   int    `json:"count,omitempty" jsonschema:"read: number of lines"`
+		Action   string `json:"action" jsonschema:"list | read | write | edit | create"`
+		Name     string `json:"name,omitempty" jsonschema:"note name (all but list); ignores case, and a renamed note still answers to its former names. create: a clear, unique name, which is permanent"`
+		Content  string `json:"content,omitempty" jsonschema:"write: the whole new content; create: the initial content"`
+		Template string `json:"template,omitempty" jsonschema:"create: start with the sections of a document instead of content: prd, spec, adr, tasks, task, design or memory"`
+		Stack    string `json:"stack,omitempty" jsonschema:"create: put the new note on top of the stack of this note (connected to you), or make a stack of the two"`
+		Old      string `json:"old,omitempty" jsonschema:"edit: text that appears exactly once"`
+		New      string `json:"new,omitempty" jsonschema:"edit: its replacement"`
+		From     int    `json:"from,omitempty" jsonschema:"read: first line (1-based)"`
+		Count    int    `json:"count,omitempty" jsonschema:"read: number of lines"`
 	}
 	portalInput struct {
 		Action    string   `json:"action" jsonschema:"list | snapshot | click | fill | type | key | scroll | goto | back | forward | reload | screenshot | console | create | close"`
@@ -178,7 +180,7 @@ type (
 	}
 	newInput struct {
 		Name  string `json:"name" jsonschema:"the new terminal's name"`
-		Role  string `json:"role,omitempty" jsonschema:"role id or name: plan, arch, impl, rev, test or another role (the roles tool lists them)"`
+		Role  string `json:"role,omitempty" jsonschema:"role id or name (the roles tool lists them and when to call each)"`
 		Agent string `json:"agent,omitempty" jsonschema:"claude, codex, devin or gemini (default: yours)"`
 		Cwd   string `json:"cwd,omitempty" jsonschema:"folder, relative to the workspace (default: yours)"`
 		Floor string `json:"floor,omitempty" jsonschema:"floor name, from floors list (default: yours; ground is the ground floor)"`
@@ -188,7 +190,7 @@ type (
 		Name     string `json:"name,omitempty" jsonschema:"create: the new floor's name; mark: the floor (default: yours)"`
 		Branch   string `json:"branch,omitempty" jsonschema:"create: its branch (default: from the name)"`
 		Existing bool   `json:"existing,omitempty" jsonschema:"create: open an existing branch instead of creating one"`
-		Check    string `json:"check,omitempty" jsonschema:"mark: tests | review"`
+		Check    string `json:"check,omitempty" jsonschema:"mark: tests | review | security | design"`
 		Result   string `json:"result,omitempty" jsonschema:"mark: pass | fail"`
 		Note     string `json:"note,omitempty" jsonschema:"mark: a short summary (what passed, what failed)"`
 	}
@@ -221,7 +223,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 	addTool(s, env, "list", "Who you are and what is connected to you: agents (role, state), notes and portals. Run it first and use names exactly as printed.",
 		false, func(noInput) ([]string, error) { return []string{"list"}, nil })
 
-	addTool(s, env, "roles", "The roles agents can have (id, name, whether it's a manager, what it does): Planejador, Arquiteto, Implementador, Revisor, Testador and the user's own. Managers give one to a new terminal with new.",
+	addTool(s, env, "roles", "The roles agents can have (id, name, whether it's a manager, what it does, when to call it): Planejador, Produto, Especificador, Arquiteto, Designer, Implementador, Front-end, Testador, Revisor, Segurança, Depurador, Documentador and the user's own. Managers give one to a new terminal with new.",
 		false, func(noInput) ([]string, error) { return []string{"roles"}, nil })
 
 	addTool(s, env, "ask", "Send a message to a connected agent and wait for its reply (its final answer for that turn; it can take minutes). An agent in the middle of a turn gets the message when that turn ends. Agents only: for a shell, use keys. If it times out while the agent is still in its turn, don't resend: use wait.",
@@ -271,7 +273,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 			return []string{"reply", id, in.Message}, nil
 		})
 
-	addTool(s, env, "note", "Read and write notes connected to you (Markdown): list, read (with line numbers), write (replace all), edit (replace text that appears once), create (a new note connected to you, with a clear name: names are unique in the workspace and permanent). A wire to a stack of notes reaches every note in it.",
+	addTool(s, env, "note", "Read and write notes connected to you (Markdown): list, read (with line numbers), write (replace all), edit (replace text that appears once), create (a new note connected to you, with a clear name: names are unique in the workspace and permanent; template starts it with the sections of a PRD, spec, ADR, task list, task, design or memory; stack puts it on top of a connected note's stack). A wire to a stack of notes reaches every note in it.",
 		false, func(in noteInput) ([]string, error) {
 			if in.Action == "list" {
 				return []string{"note", "list"}, nil
@@ -295,10 +297,14 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 			case "edit":
 				return []string{"note", "edit", n, in.Old, in.New}, nil
 			case "create":
-				if in.Content == "" {
-					return []string{"note", "create", n}, nil
+				args := []string{"note", "create", n}
+				if in.Content != "" {
+					args = append(args, in.Content)
 				}
-				return []string{"note", "create", n, in.Content}, nil
+				if args, err = optional(args, "--template", "template", in.Template); err != nil {
+					return nil, err
+				}
+				return optional(args, "--stack", "stack", in.Stack)
 			}
 			return nil, fmt.Errorf("unknown action %q", in.Action)
 		})
@@ -334,13 +340,13 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 			return []string{"connect", a, b}, err
 		})
 
-	addTool(s, env, "close", "Managers: stop and remove a terminal (or portal) you created.",
+	addTool(s, env, "close", "Managers: stop and remove a terminal (or portal) you created. The notes it created stay, connected to you.",
 		false, func(in nameInput) ([]string, error) {
 			n, err := name("name", in.Name)
 			return []string{"close", n}, err
 		})
 
-	addTool(s, env, "floors", "Floors: isolated copies of the repository (a git worktree on its own branch), each with its own canvas. list shows them and their checks; create (managers) makes one from the last commit, then put agents on it with new's floor. Its agents work and commit in its folder. mark records the result of the floor's tests or review on its latest commit, for the landing queue the user sees (a floor's agents and the one that created it; a later commit makes it stale).",
+	addTool(s, env, "floors", "Floors: isolated copies of the repository (a git worktree on its own branch), each with its own canvas. list shows them and their checks; create (managers) makes one from the last commit, then put agents on it with new's floor. Its agents work and commit in its folder. mark records the result of the floor's tests, review, security review or design review on its latest commit, for the landing queue the user sees (a floor's agents and the one that created it; a later commit makes it stale).",
 		false, func(in floorsInput) ([]string, error) {
 			switch in.Action {
 			case "list":
@@ -357,7 +363,7 @@ func addMCPTools(s *mcp.Server, env clientEnv) {
 				return args, err
 			case "mark":
 				if in.Check == "" || in.Result == "" {
-					return nil, errors.New("mark needs check (tests or review) and result (pass or fail)")
+					return nil, errors.New("mark needs check (tests, review, security or design) and result (pass or fail)")
 				}
 				args := []string{"floor", "mark", in.Check, in.Result, in.Note}
 				if strings.TrimSpace(in.Name) != "" {

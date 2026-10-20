@@ -118,7 +118,7 @@ func TestMCPTools(t *testing.T) {
 	}
 
 	// The roles, for anyone.
-	if out, bad := call(t, s, "roles", map[string]any{}); bad || !strings.Contains(out, "- arch: Arquiteto") {
+	if out, bad := call(t, s, "roles", map[string]any{}); bad || !strings.Contains(out, "- arch: Arquiteto") || !strings.Contains(out, "call it: Tarefas de interface") {
 		t.Fatalf("roles: %v %s", bad, out)
 	}
 
@@ -131,6 +131,13 @@ func TestMCPTools(t *testing.T) {
 	}
 	if out, bad := call(t, s, "note", map[string]any{"action": "create", "name": "Plano de Testes"}); !bad || !strings.Contains(out, "already a note named") {
 		t.Fatalf("a second note with the same name: %v %s", bad, out)
+	}
+	// A note from a template, stacked on another.
+	if out, bad := call(t, s, "note", map[string]any{"action": "create", "name": "Tarefa 01: CSV", "template": "task", "stack": "Plano de testes"}); bad || !strings.Contains(out, `on top of the stack "Plano de testes"`) {
+		t.Fatalf("note create from a template, stacked: %v %s", bad, out)
+	}
+	if out, bad := call(t, s, "note", map[string]any{"action": "read", "name": "Tarefa 01: CSV"}); bad || !strings.Contains(out, "## Pronto quando") {
+		t.Fatalf("the template: %v %s", bad, out)
 	}
 	if out, bad := call(t, s, "connect", map[string]any{"a": "Bia", "b": "Plano de testes"}); bad {
 		t.Fatalf("connect: %s", out)
