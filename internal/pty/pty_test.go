@@ -6,8 +6,10 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -112,4 +114,56 @@ func TestStopKillsProcessGroup(t *testing.T) {
 		t.Fatalf("expected signal exit, got %d", code)
 	}
 	_ = p.Close()
+}
+
+// A job of an interactive shell (an agent the shell started) has a process
+// group of its own, the terminal's foreground one: stopping the terminal
+// ends it too, even when it ignores the polite signals.
+func TestStopKillsForegroundJob(t *testing.T) {
+	if _, err := os.Stat("/bin/bash"); err != nil {
+		t.Skip("no bash")
+	}
+	pidFile := t.TempDir() + "/job.pid"
+	p, err := Start(Options{Argv: []string{"/bin/bash", "--norc", "--noprofile", "-i"}, Env: os.Environ()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() { _, _ = io.Copy(io.Discard, p) }()
+	time.Sleep(300 * time.Millisecond)
+	// The job ignores SIGHUP and SIGTERM, and writes its pid.
+	if _, err := p.Write([]byte("sh -c 'trap \"\" HUP TERM; echo $$ > " + pidFile + "; exec sleep 60'\r")); err != nil {
+		t.Fatal(err)
+	}
+	var pid int
+	deadline := time.Now().Add(5 * time.Second)
+	for pid == 0 && time.Now().Before(deadline) {
+		if b, err := os.ReadFile(pidFile); err == nil {
+			pid, _ = strconv.Atoi(strings.TrimSpace(string(b)))
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if pid == 0 {
+		t.Fatal("the job didn't start")
+	}
+	p.Stop(500 * time.Millisecond)
+	_ = p.Close()
+	deadline = time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if !running(pid) {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	_ = syscall.Kill(pid, syscall.SIGKILL)
+	t.Fatalf("the job (pid %d) survived the terminal", pid)
+}
+
+// running reports whether a process is alive (a zombie counts as gone).
+func running(pid int) bool {
+	b, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
+	if err != nil {
+		return syscall.Kill(pid, 0) == nil // no /proc (macOS)
+	}
+	f := strings.Fields(string(b))
+	return len(f) > 2 && f[2] != "Z"
 }

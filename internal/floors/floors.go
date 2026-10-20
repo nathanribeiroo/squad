@@ -904,6 +904,14 @@ func (s *Service) SetupLog(id string) (string, error) {
 	return string(b), err
 }
 
+// Preparing returns how many setup commands (of floors, or of the
+// session's copy) are running.
+func (s *Service) Preparing() int {
+	s.smu.Lock()
+	defer s.smu.Unlock()
+	return len(s.setups)
+}
+
 func (s *Service) preparing(id string) bool {
 	s.smu.Lock()
 	defer s.smu.Unlock()

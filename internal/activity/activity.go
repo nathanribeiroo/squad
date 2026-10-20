@@ -179,6 +179,17 @@ func (m *Monitor) Stop() {
 	m.sampler.Wait()
 }
 
+// Reset forgets what was seen of a stopped terminal (its turn, prompt,
+// output), as if it had just appeared stopped: for an agent stopped on
+// purpose, which continues its conversation from scratch later. Waiters for
+// its turn end are dropped.
+func (m *Monitor) Reset(id string) {
+	now := time.Now()
+	m.mu.Lock()
+	m.st[id] = &track{waiters: map[int]func(TurnEnd){}, lastChange: now, since: now, state: Off}
+	m.mu.Unlock()
+}
+
 func (m *Monitor) get(id string) *track {
 	tr := m.st[id]
 	if tr == nil {

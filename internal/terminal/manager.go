@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/nathanribeiroo/squad/internal/ids"
+	"github.com/nathanribeiroo/squad/internal/screen"
 )
 
 // Manager owns the running terminals.
@@ -48,6 +49,45 @@ func (m *Manager) Create(spec Spec) (*Terminal, error) {
 	m.mu.Unlock()
 	go t.writeLoop()
 	return t, t.start(m.cliDir)
+}
+
+// Register adds a terminal that doesn't run: it shows saved (a Render of an
+// earlier screen, "" for a blank one) until something starts it again with
+// the same id (a new terminal replaces it).
+func (m *Manager) Register(spec Spec, saved string) (*Terminal, error) {
+	if spec.ID == "" {
+		return nil, errors.New("terminal id required")
+	}
+	cols, rows := spec.Cols, spec.Rows
+	if cols <= 0 {
+		cols = 80
+	}
+	if rows <= 0 {
+		rows = 24
+	}
+	scr := screen.New(cols, rows, screen.Events{})
+	if saved != "" {
+		scr.Write([]byte(saved))
+	}
+	m.mu.Lock()
+	if _, exists := m.terms[spec.ID]; exists {
+		m.mu.Unlock()
+		_ = scr.Close()
+		return nil, errors.New("terminal id already exists")
+	}
+	t := &Terminal{
+		spec:   spec,
+		emit:   m.listener,
+		scr:    scr,
+		status: StatusStopped,
+		subs:   map[int]*subscriber{},
+		writeQ: make(chan writeJob, 64),
+		quit:   make(chan struct{}),
+	}
+	m.terms[spec.ID] = t
+	m.mu.Unlock()
+	go t.writeLoop()
+	return t, nil
 }
 
 // Restart stops a terminal (if running) and starts it again with its spec.

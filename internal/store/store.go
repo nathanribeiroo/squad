@@ -32,13 +32,16 @@ const SchemaVersion = 1
 
 // Workspace is one canvas.
 type Workspace struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Cwd       string    `json:"cwd"`
-	Color     string    `json:"color,omitempty"` // UI color key: teal, blue, purple…
-	Nodes     []Node    `json:"nodes"`
-	Edges     []Edge    `json:"edges"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Cwd   string `json:"cwd"`
+	Color string `json:"color,omitempty"` // UI color key: teal, blue, purple…
+	// KeepActive: the workspace's agents keep running when it's off screen
+	// (hub), in every session.
+	KeepActive bool      `json:"keepActive,omitempty"`
+	Nodes      []Node    `json:"nodes"`
+	Edges      []Edge    `json:"edges"`
+	CreatedAt  time.Time `json:"createdAt"`
 	// Floors are isolated copies of the repository, each with its own
 	// canvas; FloorConfig seeds new ones (nil: DefaultFloorConfig).
 	Floors      []Floor      `json:"floors,omitempty"`
@@ -265,15 +268,17 @@ func (s *Store) save() error {
 
 // Meta is a workspace without its canvas.
 type Meta struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Cwd       string    `json:"cwd"`
-	Color     string    `json:"color,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Cwd   string `json:"cwd"`
+	Color string `json:"color,omitempty"`
+	// KeepActive: never stops its agents off screen.
+	KeepActive bool      `json:"keepActive,omitempty"`
+	CreatedAt  time.Time `json:"createdAt"`
 }
 
 func (s *Store) metaLocked() Meta {
-	return Meta{ID: s.ws.ID, Name: s.ws.Name, Cwd: s.ws.Cwd, Color: s.ws.Color, CreatedAt: s.ws.CreatedAt}
+	return Meta{ID: s.ws.ID, Name: s.ws.Name, Cwd: s.ws.Cwd, Color: s.ws.Color, KeepActive: s.ws.KeepActive, CreatedAt: s.ws.CreatedAt}
 }
 
 // Meta returns the workspace's id, name, folder and color.
@@ -283,7 +288,7 @@ func (s *Store) Meta() Meta {
 	return s.metaLocked()
 }
 
-// UpdateMeta changes the workspace's name, folder or color (fn edits a copy;
+// UpdateMeta changes the workspace's name, folder, color or KeepActive (fn edits a copy;
 // the id and creation time are kept) and saves.
 func (s *Store) UpdateMeta(fn func(*Meta) error) (Meta, error) {
 	s.mu.Lock()
@@ -293,7 +298,7 @@ func (s *Store) UpdateMeta(fn func(*Meta) error) (Meta, error) {
 		return Meta{}, err
 	}
 	old := s.ws
-	s.ws.Name, s.ws.Cwd, s.ws.Color = m.Name, m.Cwd, m.Color
+	s.ws.Name, s.ws.Cwd, s.ws.Color, s.ws.KeepActive = m.Name, m.Cwd, m.Color, m.KeepActive
 	if err := s.save(); err != nil {
 		s.ws = old
 		return Meta{}, err
@@ -326,6 +331,7 @@ func (s *Store) SetShared(sh Shared) error {
 	defer s.mu.Unlock()
 	old := s.ws
 	s.ws.ID, s.ws.Name, s.ws.Cwd, s.ws.Color, s.ws.CreatedAt = sh.ID, sh.Name, sh.Cwd, sh.Color, sh.CreatedAt
+	s.ws.KeepActive = sh.KeepActive
 	s.ws.FloorConfig, s.ws.SummaryConfig = cloneFloorConfig(sh.FloorConfig), cloneSummaryConfig(sh.SummaryConfig)
 	s.ws.Limits = cloneLimits(sh.Limits)
 	if err := s.save(); err != nil {

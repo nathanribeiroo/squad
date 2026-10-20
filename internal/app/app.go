@@ -390,17 +390,24 @@ func New(o Options) (*App, error) {
 // continues it.
 const continueText = "O seu trabalho foi interrompido (o terminal reiniciou). Continue de onde parou."
 
-// Start begins activity sampling, watches notes and starts the workspace's
-// terminals.
+// Start opens the workspace and starts all of its terminals.
 func (a *App) Start() {
+	a.Open()
+	a.Server.StartTerminals()
+}
+
+// Open begins activity sampling, watches notes and follows the portals and
+// floors: what a workspace needs whether or not its terminals run. They show
+// their last screen, stopped, until something starts them (sleep.go).
+func (a *App) Open() {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancel = cancel
+	a.Server.RestoreTerminals()
 	a.Monitor.Start()
 	_ = a.Notes.Watch(ctx)
 	a.Summary.Watch(ctx)
 	a.Portals.Start()
 	a.Floors.Start()
-	a.Server.StartTerminals()
 	go func() { // what the flights used before Torre (re)started
 		for _, id := range a.Server.Store().TerminalIDs() {
 			a.Usage.Refresh(id)
