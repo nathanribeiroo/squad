@@ -65,8 +65,8 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | Onde | O quê |
 |---|---|
 | `cmd/torre`, `internal/cli` | CLI: `serve` (e a janela de app, `window.go`), comandos de terminal (`list`, `ask`, `note`, `portal`, `new`…), `hook`, `mcp`, `install-skill`. `cmd/squad` é o mesmo comando com o nome antigo |
-| `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/api/agents`, `/api/plans`, `/ws/workspaces`, roteamento de `/cli` e `/hooks`; as sessões de cada workspace, a migração e a troca (`sessions.go`); a primeira abertura (`welcome.go`) |
-| `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe; limites (`limits.go`), salvar e decolar planos de voo (`plans.go`), as rotas da pilha de NOTAMs (`stacks.go`) |
+| `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/api/agents`, `/api/plans`, `/ws/workspaces`, roteamento de `/cli` e `/hooks`; as sessões de cada workspace, a migração e a troca (`sessions.go`); a primeira abertura (`welcome.go`); o workspace fora da tela, que para os agentes e os sobe de volta (`sleep.go`), a fila que sobe poucos por vez (`launch.go`) e `~/.torre/settings.json` (`settings.go`) |
+| `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe; limites (`limits.go`), salvar e decolar planos de voo (`plans.go`), as rotas da pilha de NOTAMs (`stacks.go`); abrir sem os terminais, parar os agentes e o que segura um workspace ativo (`sleep.go`) |
 | `internal/plans` | planos de voo em `~/.torre/plans`: validar, salvar, importar |
 | `internal/attention`, `internal/apierr` | PRIORIDADE: ler o prompt na tela e as teclas de cada resposta (permissões; as opções das perguntas e dos planos, com o campo de texto); erros da API com `code` (traduzidos em `web/src/api/errors.ts`) |
 | `internal/server` | API HTTP e WebSocket, terminais, eventos; `AddNode`, `AddEdge` e `RemoveNode` servem a API e os agentes |

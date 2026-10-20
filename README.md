@@ -86,7 +86,14 @@ A Torre abre numa janela própria, sem abas e sem barra de endereço, com o íco
 **Workspaces:** cada pasta de projeto é um workspace, com o seu canvas, terminais e notas (`~/.torre/workspaces/<id>/`).
 - `torre serve -dir <pasta>` abre o workspace da pasta (`.` se omitida) e o cria na primeira vez.
 - Com o servidor já rodando, o mesmo comando abre ou cria o workspace naquele servidor, em vez de subir outro. Assim, `cd outro-projeto && torre serve` funciona a qualquer momento.
-- Todos os workspaces ficam rodando: trocar de workspace na interface só troca o que a tela mostra, e os agentes dos outros continuam trabalhando.
+- **Só o workspace na tela roda os agentes.** Os outros ficam com tudo carregado (canvas, NOTAMs, sessões), mas com os agentes parados, a menos que estejam trabalhando:
+  - **ao abrir a Torre**, só o workspace que aparece na janela sobe os agentes (e os marcados como sempre ativos);
+  - **ao trocar de workspace**, o que sai continua rodando pelo tempo de **Configurações → Workspaces** (5 minutos, por padrão) e então inativa. Voltar antes disso não reinicia nada;
+  - **trabalhando, não inativa:** um voo no ar, pedindo você (PRIORIDADE) ou esperando a resposta de outro, um pedido na fila e um nível em preparo seguram o workspace ativo. A conta do tempo começa quando tudo termina;
+  - **ao inativar**, cada agente guarda a conversa e a última tela; os shells e os comandos próprios continuam rodando;
+  - **ao voltar**, um cartão "Carregando o workspace" cobre o canvas enquanto os agentes sobem, poucos de cada vez (um por núcleo da máquina, menos um, de 2 a 6), cada um continuando a sua conversa. Os voos que a janela mostra sobem primeiro;
+  - **uma janela fechada** (o `torre serve` continua rodando) conta como ter saído do workspace. Duas janelas em workspaces diferentes deixam os dois ativos;
+  - **para manter tudo rodando**, como antes, ligue "Manter todos os workspaces ativos" em Configurações → Workspaces, ou o alfinete de um workspace no seletor.
 
 ### Shell dos terminais
 
@@ -144,6 +151,9 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 **Configurações** (⚙ no topo; fecha com Esc ou clique fora):
 - **Aparência:** tema da interface (Escuro, Claro ou Sistema, que segue o computador) e dos terminais (Noite ou Papel);
 - **Agentes:** cada agente com a versão que a Torre achou (ou "não achado", com o comando de instalação), o caminho e o **comando padrão**, editável: ele abre o agente nos voos sem comando próprio, em todos os workspaces (fica em `~/.torre/agents.json`; a seta volta ao nome do agente). Também mostra o navegador dos portais. "Procurar de novo" refaz a busca;
+- **Workspaces** (em todos; fica em `~/.torre/settings.json`): quando um workspace fora da tela para os agentes.
+  - **Manter todos os workspaces ativos** (desligado por padrão): nenhum inativa, e todos sobem os agentes quando a Torre abre. Ligar não sobe agora os que estão inativos: cada um sobe quando você entrar nele.
+  - **Inativar depois de** 1, 5 (padrão), 15, 30 min ou 1 h fora da tela, sem nada acontecendo. Desligar a chave começa a contar dali;
 - **Limites** (deste workspace, em todas as sessões; valem na hora): saltos encadeados, pedidos por minuto, voos por líder e portais por voo. O botão "Limites" do Rádio abre aqui;
 - **Resumos:** quem escreve os resumos e os boletins, como antes;
 - **Papéis…** abre o painel de papéis;
@@ -164,6 +174,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 |---|---|
 | `GET /api/agents` (`?refresh=1` procura de novo) | os agentes (`found`, `version`, `path`, `defaultCommand`, `installHint`) e o navegador |
 | `PUT /api/agents/<agente>` `{"defaultCommand"}` | troca o comando padrão (`""` volta ao nome) |
+| `GET/PUT /api/settings/workspaces` `{"keepAll", "idleMinutes"}` | quando os workspaces fora da tela param os agentes (`idleMinutes` de 1 a 1440) |
 | `GET/PUT /w/<id>/api/limits` `{"maxHops", "perMinute", "maxTeam", "portalsPerAgent"}` | os limites do workspace (0 volta ao padrão) |
 | `GET /api/plans` · `GET`/`DELETE /api/plans/<id>` · `POST /api/plans/import` (o arquivo) | os planos de voo, de todos os workspaces |
 | `POST /w/<id>/api/plans` `{"name", "scope": "selection"\|"level"\|"session", "nodes", "floor", "notesContent"}` | salva um plano deste canvas |
@@ -198,7 +209,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 
 **SUA VEZ:** quando termina um turno seu (você escreveu no terminal, usou Transmitir ou Continuar), o voo mostra "EM SOLO · SUA VEZ", e a ficha dele sobe no Sinóptico, logo depois de quem pede você. Não conta o turno que respondeu a outro voo (a resposta volta sozinha para quem pediu), o de um voo com pedido na fila e o que você mesmo encerrou com Negar. A marca some quando o voo volta a trabalhar; vale para o Claude, o Devin, o Codex e o Gemini (shells e comandos próprios não têm turno). O aviso, com a janela atrás, fica em Configurações → Avisos.
 
-**Confirmações:** remover um voo, uma NOTAM, uma sessão, um workspace ou um papel, começar uma conversa nova, trocar o papel de um voo, reiniciar quem usa um papel, descartar um nível e trocar de sessão com voos no ar abrem um diálogo da Torre:
+**Confirmações:** remover um voo, uma NOTAM, uma sessão, um workspace ou um papel, começar uma conversa nova, trocar o papel de um voo, reiniciar quem usa um papel, descartar um nível, trocar de sessão com voos no ar e inativar agora um workspace com voos no ar abrem um diálogo da Torre:
 - o título é a pergunta ("Remover o voo PLN?"), a lista diz o que se perde (✕) e o que fica (✓), e o botão é o verbo ("Remover voo", "Trocar mesmo assim");
 - a borda diz a gravidade: vermelha quando perde trabalho, âmbar quando interrompe, clara quando só reinicia;
 - quando há alterações sem commit a perder, o botão só funciona depois de marcar "Entendo que esse trabalho se perde.";
@@ -301,6 +312,8 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 
 **Workspaces:**
 - o botão no topo, à esquerda, abre o seletor: a cor, o nome com o atalho (`⌥1`…), a pasta e o que está acontecendo ("2 no ar · 1 pendente"). Um ponto no botão indica atividade em outro workspace;
+- **o estado de cada um:** "inativo" (com a lua, os agentes parados), "carregando 3/8" enquanto os agentes sobem, e "1 interrompido" quando um voo parou no meio de um turno (a Torre fechou, ou você inativou com ele trabalhando). Ao entrar, ele aparece em arremetida, com "Continuar";
+- **o alfinete** de cada linha deixa aquele workspace **sempre ativo** (vale em todas as sessões dele; num workspace inativo, vale quando ele subir), e **a lua** inativa agora um workspace que está fora da tela. Com voos trabalhando, a Torre pergunta antes: o turno deles para no meio e os pedidos em andamento são cancelados;
 - `⌥1`–`⌥9` trocam de workspace, e a URL guarda o workspace aberto (`?ws=<id>`), então dá para abrir dois em abas diferentes;
 - "Novo workspace" pede a pasta (com sugestões), um nome opcional e a cor. O lápis de cada linha edita esses campos; mudar a pasta vale para voos novos ou reiniciados;
 - **Remover** (a lixeira de cada linha, ou "Remover workspace" no lápis) encerra os voos dele e move o canvas e as NOTAMs para `~/.torre/trash/`. O último workspace não pode ser removido: a lixeira avisa;
@@ -428,7 +441,8 @@ Cada workspace tem sessões, e cada sessão é um canvas inteiro: voos, NOTAMs, 
   - sem nome, o fim do primeiro turno do orquestrador (o terminal gerente, ou o primeiro agente) dá um título, escrito pelo mesmo tipo de agente (`claude -p`, `devin -p`…);
   - se não houver agente disponível, o título vem do começo do primeiro pedido.
 - **Arquivos:** na pasta do projeto, os arquivos são os mesmos para todas as sessões, e voltar a uma sessão não desfaz o que outra mudou. Para separar, a sessão pode trabalhar numa cópia isolada (abaixo).
-- **No disco:** cada sessão fica em `~/.torre/workspaces/<id>/sessions/<sessão>/`, com o canvas, as notas, os anexos e os cartões. Um workspace de antes das sessões vira a "Sessão 1" na primeira abertura.
+- **No disco:** cada sessão fica em `~/.torre/workspaces/<id>/sessions/<sessão>/`, com o canvas, as notas, os anexos, os cartões e a última tela de cada voo (`screens/`, para mostrar um voo parado). Um workspace de antes das sessões vira a "Sessão 1" na primeira abertura.
+- **Num workspace inativo**, abrir outra sessão a deixa inativa também: os agentes dela sobem quando o workspace voltar à tela.
 
 **Na tela:**
 - **No topo:** depois do workspace aparece a sessão aberta (ex.: "torre › Login novo ▾"). Clicando nela, abre o painel de sessões.
@@ -464,6 +478,9 @@ Cada workspace tem sessões, e cada sessão é um canvas inteiro: voos, NOTAMs, 
 | `POST /api/workspaces/<id>/sessions/<sessão>/open` `{"confirm"}` | abre outra sessão |
 | `PATCH /api/workspaces/<id>/sessions/<sessão>` `{"name"}` | renomeia |
 | `DELETE /api/workspaces/<id>/sessions/<sessão>` | manda a pasta da sessão para a lixeira (a aberta, ou uma com níveis, não pode) e apaga a cópia dela; com alterações sem commit na cópia, 409 com `files`, e `?confirm=true` remove mesmo assim |
+| `PATCH /api/workspaces/<id>` `{"keepActive"}` | sempre ativo (além de `name`, `cwd` e `color`) |
+| `POST /api/workspaces/<id>/sleep` `{"confirm"}` | inativa agora (não o que está na tela); com voos trabalhando, 409 com `working` e `pending`, e `confirm` inativa mesmo assim |
+| `POST /api/workspaces/<id>/wake/order` `{"ids"}` | quais voos sobem primeiro enquanto o workspace carrega |
 | `GET /w/<id>/api/copy/changes`, `POST /w/<id>/api/copy/merge` `{"into"}`, `GET /w/<id>/api/copy/log` | a cópia da sessão aberta: o que ela tem para mesclar, mesclar (a cópia continua) e o log do preparo |
 
 Sem `confirm`, sair de uma sessão com agentes trabalhando ou pedidos esperando resposta é recusado (409, com a lista de quem trabalha). Com `confirm`, eles param no meio do turno e voltam como interrompidos quando a sessão abrir de novo. A tela se atualiza sozinha ao trocar de sessão, também quando a troca vem de outra janela ou da API.
