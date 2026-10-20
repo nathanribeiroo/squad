@@ -83,7 +83,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fios do nó selecionado em destaque | `feat/fios-do-selecionado` | concluído |
 | Destaque dos fios mais visível | `feat/fios-do-selecionado-forte` | concluído |
 | Workspaces inativos fora da tela | `feat/workspaces-inativos` | concluído |
-| Novos papéis e o fluxo de especificação | `feat/novos-papeis` | em andamento |
+| Novos papéis e o fluxo de especificação | `feat/novos-papeis` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -549,5 +549,11 @@ Ficou de fora o que é próprio do programa deles: a pasta `.compozy/`, os campo
   - o campo "Quando chamar" no editor de papéis;
   - as marcas novas na fila de pouso, no Sinóptico e no Rádio.
 - **Fora:** os itens "Modelos de NOTAM pela interface", "Retomar a conversa de um voo dispensado", "Papéis que não escrevem código, de verdade", "Modelo de IA por papel" e "`torre new --connect`", no "Para depois" da seção Torre, com o contexto de cada um.
+- **O teste real com o Claude mudou três coisas** (DEVLOG):
+  - o Planejador não pede ao Produto que decida sem perguntar;
+  - uma pergunta longa, que o Claude mostra num quadro, vira PRIORIDADE;
+  - o cabeçalho dos papéis lembra das ferramentas MCP.
 
-**Status:** em andamento.
+  Junto, a prévia das NOTAMs passou a desenhar tabelas.
+
+**Status:** PR aberto, esperando o merge.
