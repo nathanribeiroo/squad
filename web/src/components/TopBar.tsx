@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { quitTorre } from '../lib/quit';
 import { useNow } from '../lib/useNow';
 import { wsColor } from '../lib/workspaces';
 import { useSquad } from '../state/store';
@@ -131,6 +132,9 @@ export function TopBar() {
       )}
       <button className="icon-btn tb-gear" onClick={() => useSquad.getState().openSettings()} title="Configurações">
         <Icon name="settings" size={18} />
+      </button>
+      <button className="icon-btn tb-quit" onClick={() => void quitTorre()} title="Sair da Torre: salva tudo, para o servidor e fecha a janela (⌥Q)" aria-label="Sair da Torre">
+        <Icon name="power_settings_new" size={18} />
       </button>
       <Clock />
     </header>

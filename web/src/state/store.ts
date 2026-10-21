@@ -177,6 +177,8 @@ interface SquadState {
   cargoChanges: Record<string, Record<string, number>>;
   /** A cargo's files are being dragged: flights and Transmitir show where to drop. */
   cargoDrag: boolean;
+  /** Sair: saving what is pending, the server closing, then closed. */
+  quitting: 'saving' | 'closing' | 'closed' | null;
   /** Times of recent requests, for the per-minute rate in the top bar. */
   sendTimes: number[];
   drawerOpen: boolean;
@@ -282,6 +284,7 @@ interface SquadState {
   requestSelect(id: string | null): void;
   setSelectedIds(ids: string[]): void;
   setCargoDrag(on: boolean): void;
+  setQuitting(q: SquadState['quitting']): void;
   setPlansDialog(d: SquadState['plansDialog']): void;
 }
 
@@ -461,6 +464,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   cargoChanges: {},
   sendTimes: [],
   cargoDrag: false,
+  quitting: null,
   drawerOpen: false,
   composerOpen: false,
   composerTarget: null,
@@ -515,6 +519,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   requestSelect: (selectRequest) => set({ selectRequest }),
   setSelectedIds: (selectedIds) => set({ selectedIds }),
   setCargoDrag: (cargoDrag) => set({ cargoDrag }),
+  setQuitting: (quitting) => set({ quitting }),
   setPlansDialog: (plansDialog) => set({ plansDialog }),
   openRoles: (id = null) => set({ rolesPanel: id }),
   closeRoles: () => set({ rolesPanel: false }),

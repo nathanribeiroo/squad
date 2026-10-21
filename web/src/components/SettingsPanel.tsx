@@ -373,6 +373,7 @@ const SHORTCUTS: [string, string][] = [
   ['V · H', 'Selecionar · Mover'],
   ['T · N · P', 'Novo voo · NOTAM · Portal'],
   ['⌥K', 'Transmitir'],
+  ['⌥Q', 'Sair da Torre'],
   ['⌥A', 'Rádio'],
   ['⌥P', 'Espera geral · Liberar todos'],
   ['⌥⏎', 'Ir ao próximo voo que pede você'],

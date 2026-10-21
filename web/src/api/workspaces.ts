@@ -1,5 +1,6 @@
 // /ws/workspaces with automatic reconnection: the workspace list, the role
 // library and each workspace's sessions, live.
+import { followQuit } from '../lib/quit';
 import { useSquad } from '../state/store';
 import { wsURL } from './client';
 import type { RoleDef, ServerEvent, SessionList, WorkspaceSummary } from './types';
@@ -20,12 +21,13 @@ export function connectWorkspaces(): () => void {
         if (ev.type === 'workspaces') useSquad.getState().setWorkspaces(ev.data as WorkspaceSummary[]);
         if (ev.type === 'roles') useSquad.getState().setRoles(ev.data as RoleDef[]);
         if (ev.type === 'sessions') useSquad.getState().setSessions(ev.data as SessionList);
+        if (ev.type === 'quit') void followQuit();
       } catch {
         /* ignore malformed */
       }
     };
     ws.onclose = () => {
-      if (stopped) return;
+      if (stopped || useSquad.getState().quitting) return; // Sair: the server is gone on purpose
       retry++;
       timer = window.setTimeout(open, Math.min(5000, 300 * retry));
     };

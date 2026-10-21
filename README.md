@@ -78,7 +78,12 @@ A interface usa a metáfora da torre de controle (a lista completa está em [`do
 
 A Torre abre numa janela própria, sem abas e sem barra de endereço, com o ícone dela na barra de tarefas e o nome do workspace no título.
 - **Como:** é o modo app do Chrome, do Edge ou do Brave (o primeiro encontrado; o Edge vem em todo Windows), com um perfil separado em `~/.torre/window`. Ele não carrega as suas extensões e lembra o tamanho da janela.
-- **Fechar a janela não para a Torre:** os agentes continuam trabalhando. Para reabrir, rode `torre serve` de novo (em qualquer pasta). Para encerrar, use Ctrl-C no terminal do `serve`.
+- **Fechar a janela não para a Torre:** os agentes continuam trabalhando. Para reabrir, rode `torre serve` de novo (em qualquer pasta).
+- **Sair** (o botão ⏻ no canto de cima, ao lado de ⚙, ou `⌥Q`): salva tudo, para o `torre serve` e fecha a janela.
+  - Antes, ele pergunta, e avisa se há voos trabalhando (eles param no meio do turno e voltam em arremetida, com Continuar) ou pedidos sem resposta.
+  - O que fica: os canvas, as NOTAMs (também o texto que você estava digitando), os níveis, as sessões, a conversa de cada voo (continua ao abrir de novo) e a última tela de cada um.
+  - A janela de app fecha sozinha. Numa aba do navegador, a página diz "A Torre foi encerrada" e você fecha a aba. Outras janelas abertas mostram o mesmo aviso.
+  - Ctrl-C no terminal do `serve` continua funcionando, do mesmo jeito.
 - **Login:** o token não muda mais a cada reinício (fica em `~/.torre/session-token`), então a janela volta sozinha quando o servidor reinicia. Apagar esse arquivo desconecta todas as janelas e abas no próximo início. Se uma janela abrir sem login, ela pede a URL que o `serve` mostrou.
 - **Outras formas:** `torre serve -open browser` abre uma aba no navegador padrão, como antes; `-open none` (ou `-no-open`) não abre nada. Sem Chrome, Edge nem Brave, abre a aba.
 - **Mac com Safari:** o Safari não tem modo app por comando. No macOS 14 ou mais novo, abra a Torre no Safari e use **Arquivo → Adicionar ao Dock**, mantendo o nome **Torre**. Daí em diante, o `torre serve` abre esse app do Dock (um app que você criou com o nome **Squad**, antes da troca, continua valendo), que mostra o último workspace aberto (os outros ficam no seletor do topo). Com o Chrome ou o Edge instalado no Mac, a janela de app funciona sem esse passo.
@@ -117,7 +122,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 
 **Atalhos:**
 - canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal, `C` carga, `D` desenho, `G` grupo, `Delete` apaga o fio, o desenho ou a moldura selecionados, `Tab`/`⇧Tab` o próximo/anterior nó (na ordem de leitura, trazendo o nó para a tela), `⏎` dá o teclado ao voo selecionado;
-- globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥F` foco, `⌥⇧←`/`⌥⇧→` encaixar, `⌥M` planos de voo, `⌥⇧M` salvar como plano, `⌥1`–`⌥9` workspaces;
+- globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥F` foco, `⌥⇧←`/`⌥⇧→` encaixar, `⌥M` planos de voo, `⌥⇧M` salvar como plano, `⌥1`–`⌥9` workspaces, `⌥Q` sair da Torre;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
 
 **Pôr um item no canvas** (voo `T`, NOTAM `N`, portal `P`, carga `C`, ou o botão na barra da esquerda): o botão fica marcado e o item segue o mouse, tracejado, no tamanho de sempre.
