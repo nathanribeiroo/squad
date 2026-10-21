@@ -2,6 +2,36 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-21, Carga: explorador de arquivos no canvas
+
+- **Pedido:** um nó para navegar nas pastas do computador, como o painel de arquivos do Maestri, e **arrastar** arquivos e pastas para dentro de um voo (direto no terminal) ou para o Transmitir. O agente só precisa ver o caminho. O nome CARGA ficou, e cada carga ganha um nome ("Vídeos parte 2", "Resultados").
+- **Recomeço:** a primeira versão ligava a carga aos voos por fio (MCP, `torre cargo`, `--add-dir` no lançamento). O usuário parou: nada de pastas dentro do projeto nem de fio. A branch recomeçou; a versão com fio ficou guardada fora do repositório, só para referência.
+- **O que mudou:**
+  - **o nó** `cargo` (`internal/store`, `internal/cargo`): nome e pasta, sem fio (`edge.cargo`). A pasta fica relativa ao workspace quando está dentro dele, então segue o nível e vai nos planos de voo; sem nome, leva o da pasta;
+  - **as rotas** do canvas (nunca do `/cli` nem do MCP): listar, buscar, servir um arquivo para a prévia, renomear e trocar a pasta, e as pastas a vigiar;
+  - **ao vivo:** o fsnotify vigia o que a árvore mostra e manda `cargo.changed`;
+  - **o explorador** (`CargoNode.tsx`): árvore com setas e duplo clique, ‹ › ↑ e a casa, o caminho clicável (e editável), busca, prévia (texto, imagem, vídeo, áudio, PDF), seleção com `⌘`/`ctrl` e `⇧`, teclado, menu (Renomear, Fixar esta pasta, Copiar os caminhos, Mostrar ocultos, Atualizar, Remover);
+  - **arrastar e soltar** (`lib/cargo.ts`, `lib/cargoDrop.ts`): num voo (canvas, foco, borda, Sinóptico), os caminhos entram no prompt pelo `term.paste` do xterm, sem Enter; no Transmitir, viram chips que se transformam no caminho ao enviar; uma pasta solta no canvas vazio vira outra carga. Atalho `C` e o botão da caixa na barra;
+  - **o resto da Torre:** sessões e planos contam as cargas, a miniatura do plano as desenha, o grupo recolhido as conta, os fios as contornam e o diálogo de pouso diz que a carga do nível sai junto;
+  - **o @ do Transmitir** listava em "Fora da frequência" qualquer nó, até grupos e desenhos (com o nome "Portal"). Agora só voos, NOTAMs e portais, que são o que um fio alcança.
+- **Decisões sem consulta:**
+  - **nada para os agentes:** sem MCP, CLI ou skill novos, porque o agente recebe o caminho no prompt. Um `torre cargo` para eles ficou no "Para depois";
+  - **aspas:** só quando o caminho precisa; simples no Linux, no Mac, no Git Bash e nos agentes, duplas num shell do Windows (cmd, PowerShell) com caminho do Windows. Depois dos caminhos vai um espaço, e nunca Enter;
+  - **voo parado:** soltar avisa que o voo está parado e não cola nada;
+  - **na barra fechada do Transmitir,** soltar abre o painel para o voo escolhido. Clicar na carga tira a seleção do voo, então, sem voo escolhido, vai para o único voo do nível (com vários, a pessoa escolhe em "+ destino");
+  - **a prévia** lê os primeiros 256 KB de um texto. O servidor nunca entrega HTML ou script como página (vira texto ou download, com `nosniff` e uma CSP `sandbox`);
+  - **no pouso ou no descarte de um nível,** a carga dele sai junto, como o portal. Os arquivos ficam;
+  - **limites:** 500 itens por pasta (o resto, pela busca), contagem de itens em até 100 subpastas, busca com até 200 resultados, 50 mil entradas ou 2 s, e até 64 pastas vigiadas por carga.
+- **Testes:**
+  - `go test ./internal/cargo/ ./internal/app/ ./internal/store/` (listar, ordem natural, busca, rotas, prévia com faixa, vigia, planos), `make check`, `npx tsc -b` e `npm run build`;
+  - **o arraste de verdade** no Chromium, com o arraste nativo do navegador (`Input.setInterceptDrags` e `dispatchDragEvent` do CDP): de uma carga para um shell, para um Claude, para a barra do Transmitir e para o canvas vazio;
+  - **Claude real:** soltei `resumo.md` no prompt dele e escrevi a pergunta; ele leu o arquivo e respondeu a receita certa. Depois, dois arquivos pelo Transmitir (um CSV e um PDF): ele leu os dois e comparou;
+  - **na interface:** prévia de imagem, texto, PDF e vídeo; a busca; entrar e voltar de pasta pelo teclado; um arquivo novo aparecendo sozinho; renomear; a carga com a pasta apagada; os temas claro e escuro.
+- **Não testado:**
+  - **o Devin real, o Codex e o Gemini:** o soltar só cola texto no terminal, igual para todos, mas não vi a tela deles recebendo;
+  - **Windows** (as aspas do cmd e do PowerShell, os drives na navegação, o caminho com `\`) e **Mac**.
+- **Precisa de você:** no Windows, soltar um arquivo com espaço no nome num voo Claude, num Devin e num shell (cmd ou PowerShell e Git Bash), e ver as aspas.
+
 ## 2026-10-21, Fio sem folga, com barriga fixa
 
 - **Pedido:** tirar a folga em porcentagem dos fios. O usuário quer manter a gravidade e o resto do que já foi pedido (contornar os nós, não se enrolar), com uma barriga sutil de alguns pixels. Também relatou que o fio "buga toda hora", fica congelado torto e cresce muito, e que no Windows ficou diferente.
