@@ -15,6 +15,7 @@ import { FloorEmpty } from './components/FloorEmpty';
 import { InterruptedBar } from './components/InterruptedBar';
 import { LoopCard } from './components/LoopCard';
 import { NoLink } from './components/NoLink';
+import { QuitScreen } from './components/QuitScreen';
 import { WakeOverlay } from './components/WakeOverlay';
 import { PlansDialogs } from './components/PlansDialogs';
 import { PriorityBanner } from './components/PriorityBanner';
@@ -28,6 +29,7 @@ import { TopBar } from './components/TopBar';
 import { answerKey, goToNextAsk } from './lib/attention';
 import { callsign } from './lib/model';
 import { togglePlace } from './lib/place';
+import { quitTorre } from './lib/quit';
 import { noticePrefs, remindAsks, remindYourTurns, unlockAudio } from './lib/notify';
 import { dockAt, nextNode, toggleFocus } from './lib/screens';
 import { groupSelection } from './lib/visual';
@@ -126,6 +128,12 @@ function Stage() {
         if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
           e.preventDefault();
           dockAt(e.code === 'ArrowLeft' ? 'left' : 'right');
+          return;
+        }
+        // ⌥Q Sair: saves, stops the server and closes the window (it asks first).
+        if (e.code === 'KeyQ' && !e.shiftKey) {
+          e.preventDefault();
+          void quitTorre();
           return;
         }
         // ⌥M flight plans; ⌥⇧M saves the selection as one.
@@ -252,6 +260,7 @@ function Stage() {
       <SummaryDialogs />
       <WakeOverlay />
       <NoLink />
+      <QuitScreen />
       <ConfirmHost />
       <Toast />
     </main>
