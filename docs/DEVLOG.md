@@ -13,6 +13,7 @@ O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa
   - **o explorador** (`CargoNode.tsx`): árvore com setas e duplo clique, ‹ › ↑ e a casa, o caminho clicável (e editável), busca, prévia (texto, imagem, vídeo, áudio, PDF), seleção com `⌘`/`ctrl` e `⇧`, teclado, menu (Renomear, Fixar esta pasta, Copiar os caminhos, Mostrar ocultos, Atualizar, Remover);
   - **arrastar e soltar** (`lib/cargo.ts`, `lib/cargoDrop.ts`): num voo (canvas, foco, borda, Sinóptico), os caminhos entram no prompt pelo `term.paste` do xterm, sem Enter; no Transmitir, viram chips que se transformam no caminho ao enviar; uma pasta solta no canvas vazio vira outra carga. Atalho `C` e o botão da caixa na barra;
   - **o resto da Torre:** sessões e planos contam as cargas, a miniatura do plano as desenha, o grupo recolhido as conta, os fios as contornam e o diálogo de pouso diz que a carga do nível sai junto;
+  - **as barras do Desenho e do Grupo** descem junto com os botões deles, que desceram uma posição com o da Carga;
   - **o @ do Transmitir** listava em "Fora da frequência" qualquer nó, até grupos e desenhos (com o nome "Portal"). Agora só voos, NOTAMs e portais, que são o que um fio alcança.
 - **Decisões sem consulta:**
   - **nada para os agentes:** sem MCP, CLI ou skill novos, porque o agente recebe o caminho no prompt. Um `torre cargo` para eles ficou no "Para depois";
