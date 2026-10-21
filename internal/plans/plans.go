@@ -36,6 +36,7 @@ type Plan struct {
 	Flights  []Flight    `json:"flights"`
 	Notes    []Note      `json:"notes"`
 	Portals  []Portal    `json:"portals"`
+	Cargo    []Cargo     `json:"cargo,omitempty"`
 	Links    [][2]string `json:"links"` // keys of linked items
 	Levels   []Level     `json:"levels"`
 	// Groups and drawings: the user's own arrangement, for the eyes only.
@@ -83,6 +84,16 @@ type Portal struct {
 	Key   string `json:"key"`
 	Name  string `json:"name"`
 	URL   string `json:"url,omitempty"`
+	Level string `json:"level,omitempty"`
+	Box
+}
+
+// Cargo is a file explorer of the plan; its folder relative to the
+// workspace when inside it.
+type Cargo struct {
+	Key   string `json:"key"`
+	Name  string `json:"name"`
+	Path  string `json:"path"`
 	Level string `json:"level,omitempty"`
 	Box
 }
@@ -159,9 +170,9 @@ func (p *Plan) Check() error {
 		return invalid("a plan needs a name", "plan.name_required")
 	case utf8.RuneCountInString(p.Name) > MaxName:
 		return invalid(fmt.Sprintf("plan names have at most %d characters", MaxName), "plan.name_too_long", "max", fmt.Sprint(MaxName))
-	case len(p.Flights)+len(p.Notes)+len(p.Portals)+len(p.Groups)+len(p.Drawings) == 0:
+	case len(p.Flights)+len(p.Notes)+len(p.Portals)+len(p.Cargo)+len(p.Groups)+len(p.Drawings) == 0:
 		return invalid("the plan is empty", "plan.empty")
-	case len(p.Flights)+len(p.Notes)+len(p.Portals) > MaxItems:
+	case len(p.Flights)+len(p.Notes)+len(p.Portals)+len(p.Cargo) > MaxItems:
 		return invalid(fmt.Sprintf("a plan holds at most %d items", MaxItems), "plan.too_big", "max", fmt.Sprint(MaxItems))
 	case len(p.Levels) > MaxLevels:
 		return invalid(fmt.Sprintf("a plan holds at most %d levels", MaxLevels), "plan.too_many_levels", "max", fmt.Sprint(MaxLevels))
@@ -210,6 +221,14 @@ func (p *Plan) Check() error {
 	for _, o := range p.Portals {
 		if err := item(o.Key, o.Level, o.Name, o.Box); err != nil {
 			return err
+		}
+	}
+	for _, c := range p.Cargo {
+		if err := item(c.Key, c.Level, c.Name, c.Box); err != nil {
+			return err
+		}
+		if strings.TrimSpace(c.Path) == "" {
+			return invalid(fmt.Sprintf("cargo %q needs a folder", c.Name), "plan.bad_item")
 		}
 	}
 	linkable := maps.Clone(keys)
@@ -315,6 +334,9 @@ func (p Plan) normal() Plan {
 	}
 	if p.Portals == nil {
 		p.Portals = []Portal{}
+	}
+	if p.Cargo == nil {
+		p.Cargo = []Cargo{}
 	}
 	if p.Links == nil {
 		p.Links = [][2]string{}

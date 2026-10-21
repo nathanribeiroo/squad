@@ -16,6 +16,7 @@ import (
 	"github.com/nathanribeiroo/squad/internal/agents"
 	"github.com/nathanribeiroo/squad/internal/attention"
 	"github.com/nathanribeiroo/squad/internal/browser"
+	"github.com/nathanribeiroo/squad/internal/cargo"
 	"github.com/nathanribeiroo/squad/internal/events"
 	"github.com/nathanribeiroo/squad/internal/floors"
 	"github.com/nathanribeiroo/squad/internal/notes"
@@ -50,6 +51,7 @@ type App struct {
 	Bus     *agentbus.Bus
 	Notes   *notes.Service
 	Portals *portal.Service
+	Cargo   *cargo.Service
 	Floors  *floors.Service
 	Summary *summary.Service
 	Team    *team.Service
@@ -184,12 +186,17 @@ func New(o Options) (*App, error) {
 	}
 	notesSvc.OnStack(srv.PublishStack)
 	portals := portal.New(srv.Store(), srv.Bus(), o.Browser, o.Server.Port, o.Server.Logger)
+	cargoSvc := cargo.New(srv.Store(), srv.Bus(), srv, o.Server.Logger)
 	srv.SetNodePreparer(func(n *store.Node) error {
 		if err := notesSvc.PrepareNode(n); err != nil {
 			return err
 		}
+		if err := cargoSvc.PrepareNode(n); err != nil {
+			return err
+		}
 		return portals.PrepareNode(n)
 	})
+	cargoSvc.Register(srv.HandleSession)
 	srv.HandleSession("GET /ws/portal/{id}", http.HandlerFunc(portals.HandleWS))
 	portals.SetCanvas(srv)
 	teamSvc := team.New(team.Options{Canvas: srv, Monitor: mon, Roles: o.Roles, MaxTeam: o.Limits.MaxTeam})
@@ -380,7 +387,7 @@ func New(o Options) (*App, error) {
 	srv.HandleSession("GET /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	srv.HandleSession("PUT /api/limits", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.handleLimits(w, r) }))
 	bl := bus.Limits()
-	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Floors: floorsSvc, Summary: summaries, Team: teamSvc, Radio: radioSvc, Usage: tracker, exts: exts, plans: o.Plans, roles: o.Roles,
+	app = &App{Server: srv, Monitor: mon, Bus: bus, Notes: notesSvc, Portals: portals, Cargo: cargoSvc, Floors: floorsSvc, Summary: summaries, Team: teamSvc, Radio: radioSvc, Usage: tracker, exts: exts, plans: o.Plans, roles: o.Roles,
 		defaults: store.Limits{MaxHops: bl.MaxHops, PerMinute: bl.PerMinute, MaxTeam: teamSvc.MaxTeam(), PortalsPerAgent: portal.MaxCreated}}
 	app.applyLimits()
 	app.unsubUse = accounts.Subscribe(func(a usage.Account) { srv.Bus().Publish(events.UsageAccount, a) })
@@ -408,6 +415,7 @@ func (a *App) Open() {
 	_ = a.Notes.Watch(ctx)
 	a.Summary.Watch(ctx)
 	a.Portals.Start()
+	a.Cargo.Start()
 	a.Floors.Start()
 	go func() { // what the flights used before Torre (re)started
 		for _, id := range a.Server.Store().TerminalIDs() {
@@ -427,6 +435,7 @@ func (a *App) Close() {
 	}
 	a.Radio.Close()
 	a.Portals.Close()
+	a.Cargo.Close()
 	a.Floors.Close()
 	a.Server.Shutdown()
 }

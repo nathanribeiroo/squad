@@ -143,7 +143,7 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 			return plans.Plan{}, apierr.With(fmt.Errorf("%w: scope is selection, level or session", plans.ErrInvalid), "plan.bad_scope")
 		}
 	}
-	p := plans.Plan{Name: req.Name, Flights: []plans.Flight{}, Notes: []plans.Note{}, Portals: []plans.Portal{}, Links: [][2]string{}, Levels: []plans.Level{},
+	p := plans.Plan{Name: req.Name, Flights: []plans.Flight{}, Notes: []plans.Note{}, Portals: []plans.Portal{}, Cargo: []plans.Cargo{}, Links: [][2]string{}, Levels: []plans.Level{},
 		Groups: []plans.Group{}, Drawings: []plans.Drawing{}}
 	levelKey := map[string]string{"": ""}
 	origin := map[string][2]float64{}
@@ -199,6 +199,9 @@ func (a *App) buildPlan(req planSave) (plans.Plan, error) {
 			}
 			p.Portals = append(p.Portals, plans.Portal{Key: key, Name: name, URL: n.Portal.URL, Level: lvl, Box: box(n)})
 			keyOf[n.ID] = key
+		case n.Cargo != nil:
+			key := fmt.Sprintf("c%d", len(p.Cargo)+1)
+			p.Cargo = append(p.Cargo, plans.Cargo{Key: key, Name: n.Cargo.Name, Path: n.Cargo.Path, Level: lvl, Box: box(n)})
 		case n.Group != nil:
 			key := fmt.Sprintf("g%d", len(p.Groups)+1)
 			p.Groups = append(p.Groups, plans.Group{Key: key, Name: n.Group.Name, Color: n.Group.Color, Level: lvl, Box: box(n)})
@@ -372,6 +375,15 @@ func (a *App) applyPlan(ctx context.Context, p plans.Plan, floor string) (PlanRe
 			continue
 		}
 		idOf[o.Key] = n.ID
+		res.Nodes = append(res.Nodes, n.ID)
+	}
+	for _, c := range p.Cargo {
+		fl, x, y := place(c.Level, c.Box)
+		n, err := a.Server.AddNode(store.Node{Kind: store.KindCargo, Floor: fl, X: x, Y: y, W: c.W, H: c.H, Cargo: &store.CargoData{Name: c.Name, Path: c.Path}})
+		if err != nil {
+			warn("cargo %s: the folder %s isn't here", c.Name, c.Path)
+			continue
+		}
 		res.Nodes = append(res.Nodes, n.ID)
 	}
 	for _, g := range p.Groups {

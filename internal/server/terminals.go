@@ -123,6 +123,11 @@ func (s *Server) cwdResolver(floor string) func(cwd string) string {
 	}
 }
 
+// ResolvePath resolves a path the way terminal folders resolve on a floor
+// ("" is the ground floor): relative to the folder the floor (or the
+// session) works in, with the project's own folders mapped to that copy.
+func (s *Server) ResolvePath(floor, path string) string { return s.cwdResolver(floor)(path) }
+
 // checkTerminalDir reports a terminal folder that doesn't exist, so the
 // mistake shows in the form instead of as a terminal that fails to start.
 func checkTerminalDir(t *store.TerminalData, resolve func(string) string) error {

@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -156,4 +158,47 @@ func TestPlanLevels(t *testing.T) {
 			_ = e.app.Floors.Discard(context.Background(), f.ID)
 		}
 	})
+}
+
+// A cargo travels in a flight plan with its folder (relative inside the
+// project) and its name; one whose folder isn't there is left out, with a
+// warning.
+func TestPlanKeepsCargo(t *testing.T) {
+	e := newEnv(t, fastLimits)
+	ws := e.app.Server.Store().Meta().Cwd
+	if err := os.MkdirAll(filepath.Join(ws, "out", "videos"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	c, err := e.app.Server.AddNode(store.Node{Kind: store.KindCargo, Cargo: &store.CargoData{Name: "Vídeos parte 2", Path: filepath.Join(ws, "out", "videos")}})
+	if err != nil || c.Cargo.Path != "out/videos" || c.W == 0 {
+		t.Fatalf("cargo: %+v %v", c, err)
+	}
+	if w := e.call("PATCH", "/api/cargo/"+c.ID, map[string]any{"name": "Resultados"}); w.Code != 200 {
+		t.Fatalf("rename: %d %s", w.Code, w.Body)
+	}
+	w := e.call("POST", "/api/plans", map[string]any{"name": "Carga", "scope": "session"})
+	var p plans.Plan
+	if _ = json.Unmarshal(w.Body.Bytes(), &p); w.Code != http.StatusCreated || len(p.Cargo) != 1 || p.Cargo[0].Path != "out/videos" || p.Cargo[0].Name != "Resultados" {
+		t.Fatalf("save: %d %s", w.Code, w.Body)
+	}
+	if w = e.call("POST", "/api/plans/carga/apply", map[string]any{"commands": p.Commands()}); w.Code != 200 {
+		t.Fatalf("apply: %d %s", w.Code, w.Body)
+	}
+	var cargo []store.CargoData
+	for _, n := range e.app.Server.Store().Snapshot().Nodes {
+		if n.Cargo != nil {
+			cargo = append(cargo, *n.Cargo)
+		}
+	}
+	if len(cargo) != 2 || cargo[1] != (store.CargoData{Name: "Resultados", Path: "out/videos"}) {
+		t.Fatalf("cargo after the plan: %+v", cargo)
+	}
+	if err := os.RemoveAll(filepath.Join(ws, "out")); err != nil {
+		t.Fatal(err)
+	}
+	w = e.call("POST", "/api/plans/carga/apply", map[string]any{"commands": p.Commands()})
+	var res PlanResult
+	if _ = json.Unmarshal(w.Body.Bytes(), &res); w.Code != 200 || len(res.Nodes) != 0 || len(res.Warnings) != 1 || !strings.Contains(res.Warnings[0], "out/videos") {
+		t.Fatalf("a missing folder: %d %+v", w.Code, res)
+	}
 }
