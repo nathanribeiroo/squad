@@ -2,6 +2,25 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-21, Pôr um item: o mouse não fica mais preso
+
+- **O problema (relatado):** ao criar um portal, o mouse ficou "preso": o clique não soltava o item.
+- **O que não reproduziu:**
+  - o Chromium aqui, com o mouse do sistema (xdotool, numa janela de app num display virtual): clique, duplo clique, arrastar, soltar fora da janela e arrastar a partir do botão;
+  - o registro dos eventos mostrou que o aperto também começava uma seleção de texto (`selectstart`).
+- **Duas causas possíveis:**
+  - num navegador em que essa seleção vira arraste nativo, o gesto recebe `pointercancel` e o item continua no mouse;
+  - se o `pointerup` se perde, nada termina o gesto.
+- **O que mudou** (`PlaceLayer.tsx`):
+  - o aperto não seleciona texto nem começa arraste nativo (`preventDefault`, `user-select: none`, a seleção anterior é limpa);
+  - um movimento sem o botão apertado, com o gesto aberto, conta como o soltar e põe o item;
+  - a captura do ponteiro, se falhar, não interrompe o gesto.
+- **Testes:**
+  - com o mouse do sistema: clique e arraste puseram o portal, sem `selectstart`;
+  - um soltar perdido (CDP: aperto e movimento sem o botão, sem o evento de soltar) pôs o portal no movimento seguinte;
+  - a NOTAM nasce com o nome para digitar, e o voo abre o formulário com o retângulo marcado.
+- **Precisa de você:** confirmar no Mac (o app do Dock do Safari ou o Chrome) e no Windows, onde foi visto.
+
 ## 2026-10-21, Botão Sair
 
 - **Pedido:** um botão na interface que feche o app e o servidor, salvando tudo antes.
