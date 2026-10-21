@@ -21,6 +21,7 @@ function normal(p: Plan): Plan {
     flights: p.flights ?? [],
     notes: p.notes ?? [],
     portals: p.portals ?? [],
+    cargo: p.cargo ?? [],
     links: p.links ?? [],
     levels: p.levels ?? [],
     groups: p.groups ?? [],
@@ -43,6 +44,7 @@ function composition(p: Plan): string {
   if (p.notes.length) parts.push(plural(p.notes.length, 'NOTAM', 'NOTAMs'));
   if (p.portals.length === 1) parts.push(`portal ${p.portals[0].url?.replace(/^https?:\/\//, '') || p.portals[0].name}`);
   else if (p.portals.length) parts.push(plural(p.portals.length, 'portal', 'portais'));
+  if (p.cargo?.length) parts.push(plural(p.cargo.length, 'carga', 'cargas'));
   if (p.levels.length) parts.push(plural(p.levels.length, 'nível', 'níveis'));
   if (p.links.length) parts.push(plural(p.links.length, 'frequência', 'frequências'));
   if (p.groups.length) parts.push(plural(p.groups.length, 'grupo', 'grupos'));
@@ -254,11 +256,12 @@ function Miniature({ plan }: { plan: Plan }) {
   const roleOf = useRoleLookup();
   const { items, lines, frames, view } = useMemo(() => {
     const levels = ['', ...plan.levels.map((l) => l.key)];
-    type It = { key: string; x: number; y: number; w: number; h: number; kind: 'f' | 'n' | 'p'; label: string; level: string; color?: string };
+    type It = { key: string; x: number; y: number; w: number; h: number; kind: 'f' | 'n' | 'p' | 'c'; label: string; level: string; color?: string };
     const all: It[] = [
       ...plan.flights.map((f) => ({ ...f, kind: 'f' as const, label: f.callsign || f.name, level: f.level ?? '', color: roleColor(roleOf(f.role)) })),
       ...plan.notes.map((n) => ({ ...n, kind: 'n' as const, label: 'NOTAM', level: n.level ?? '' })),
       ...plan.portals.map((o) => ({ ...o, kind: 'p' as const, label: '⊕', level: o.level ?? '' })),
+      ...(plan.cargo ?? []).map((o) => ({ ...o, kind: 'c' as const, label: 'CARGA', level: o.level ?? '' })),
     ].map((it) => ({ ...it, w: it.w || 400, h: it.h || 300 }));
     // Groups and drawings: the frames behind (a drawing as its box).
     type Fr = { key: string; x: number; y: number; w: number; h: number; kind: 'g' | 'd'; level: string; color?: string };

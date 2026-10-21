@@ -14,6 +14,7 @@ import { TurnCard, useCardShown } from './TurnCard';
 import { shortPath, terminalCwd } from '../../lib/paths';
 import { dockAt, toggleFocus, useScreenHidden, useScreenPlace, type ScreenPlace } from '../../lib/screens';
 import { toast } from '../../lib/toast';
+import { pasteIntoFlight, useCargoDrop } from '../../lib/cargoDrop';
 import { useNow } from '../../lib/useNow';
 import { useNodeName, useSquad } from '../../state/store';
 import { termSession } from '../../term/session';
@@ -68,24 +69,29 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
     };
   }, [id, sized, level]);
 
-  const cls = `tnode tnode-${level} st-${state}${focused ? ' focused' : ''}${selected ? ' selected' : ''}${connectClass(target)}`;
+  // A cargo's files dropped on the flight: their paths in its prompt.
+  const ready = useSquad((s) => s.cargoDrag);
+  const drop = useCargoDrop((items) => pasteIntoFlight(id, items));
+  const cls = `tnode tnode-${level} st-${state}${focused ? ' focused' : ''}${selected ? ' selected' : ''}${connectClass(target)}${ready ? ' drop-ready' : ''}${drop.over ? ' drop-over' : ''}`;
+  const dropHint = drop.over && <DropHint />;
 
   if (level === 'card') {
     // Design card is 240 px wide; shrink it when the node is smaller on screen.
     const fit = Math.min(1, ((width ?? data.node.w) * zoom) / 240);
     return (
-      <div className={`${cls} node-drag`}>
+      <div className={`${cls} node-drag`} {...drop.props}>
         <NodeHandles id={id} />
         <ScreenSpace zoom={zoom} fit={fit}>
           <TerminalCard id={id} t={t} rt={rt} state={state} />
         </ScreenSpace>
+        {dropHint}
       </div>
     );
   }
 
   if (level === 'mini') {
     return (
-      <div className={`${cls} node-drag`}>
+      <div className={`${cls} node-drag`} {...drop.props}>
         <NodeHandles id={id} />
         <ScreenSpace zoom={zoom} className="tmini">
           <i className="tn-band" />
@@ -104,6 +110,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
             <MiniSnapshot id={id} />
           )}
         </ScreenSpace>
+        {dropHint}
       </div>
     );
   }
@@ -117,7 +124,7 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
   };
 
   return (
-    <div className={`${cls}${cardShown ? ' has-card' : ''}`}>
+    <div className={`${cls}${cardShown ? ' has-card' : ''}`} {...drop.props}>
       <NodeResizer isVisible={selected && !focused} minWidth={320} minHeight={200} onResizeEnd={onResizeEnd} />
       <NodeHandles id={id} />
       <i className="tn-band" />
@@ -131,6 +138,18 @@ export function TerminalNode({ id, data, selected, width }: NodeProps<TerminalFl
       <LiveFooter id={id} t={t} createdBy={data.node.createdBy} floor={data.node.floor ?? ''} />
       <TurnCard id={id} working={state === 'work'} />
       {state === 'ask' && <RespondBar id={id} rt={rt} focused={focused} />}
+      {dropHint}
+    </div>
+  );
+}
+
+/** Over a flight while a cargo's files are dragged above it. */
+export function DropHint() {
+  return (
+    <div className="drop-hint">
+      <Icon name="inventory_2" size={18} />
+      Soltar para colar o caminho no prompt
+      <span className="drop-sub">sem Enter: você termina a mensagem</span>
     </div>
   );
 }

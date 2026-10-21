@@ -19,6 +19,7 @@ import { api } from '../api/client';
 import type { WNode } from '../api/types';
 import { confirmDialog } from '../components/ConfirmDialog';
 import { MiniMapAndZoom } from '../components/ZoomControls';
+import { cargoItems, hasCargo } from '../lib/cargo';
 import { callsign } from '../lib/model';
 import { hiddenInStack, stackGains, stackOf } from '../lib/stacks';
 import { toast } from '../lib/toast';
@@ -28,6 +29,7 @@ import { pruneSessions } from '../term/session';
 import { DrawLayer } from './DrawLayer';
 import { WireEdge } from './edges/WireEdge';
 import { insertRopePoint } from './geometry';
+import { CargoNode } from './nodes/CargoNode';
 import { DrawingNode } from './nodes/DrawingNode';
 import { GroupNode } from './nodes/GroupNode';
 import { NoteNode } from './nodes/NoteNode';
@@ -37,9 +39,11 @@ import './canvas.css';
 import './nodes/nodes.css';
 
 // A group is a "frame" to React Flow, whose "group" type has styles of its own.
-const nodeTypes = { terminal: TerminalNode, note: NoteNode, portal: PortalNode, frame: GroupNode, drawing: DrawingNode };
+const nodeTypes = { terminal: TerminalNode, note: NoteNode, portal: PortalNode, cargo: CargoNode, frame: GroupNode, drawing: DrawingNode };
 const flowType = (n: WNode) => (n.kind === 'group' ? 'frame' : n.kind);
 const isVisualType = (t?: string) => t === 'frame' || t === 'drawing';
+/** Nodes no wire reaches: frames and drawings, and cargo (its files go by drag and drop). */
+const unwired = (t?: string) => isVisualType(t) || t === 'cargo';
 const edgeTypes = { wire: WireEdge };
 
 // Each session of a workspace (a canvas of its own), and each of its floors,
@@ -296,6 +300,34 @@ export function Canvas() {
     [rf],
   );
 
+  // A cargo's folder dropped on the empty canvas: a cargo of it there.
+  const onPane = (e: React.DragEvent) => (e.target as HTMLElement).classList?.contains('react-flow__pane');
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    if (!hasCargo(e.dataTransfer) || !onPane(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!hasCargo(e.dataTransfer) || !onPane(e)) return;
+      e.preventDefault();
+      useSquad.getState().setCargoDrag(false);
+      const dirs = cargoItems(e.dataTransfer).filter((i) => i.dir);
+      if (!dirs.length) {
+        toast('Solte uma pasta para abrir uma carga dela; arquivos vão para um voo ou para Transmitir.', 'wait');
+        return;
+      }
+      const p = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const floor = useSquad.getState().activeFloor;
+      dirs.slice(0, 6).forEach((d, i) =>
+        api
+          .addNode({ kind: 'cargo', x: Math.round(p.x + i * 30), y: Math.round(p.y + i * 30), floor: floor || undefined, cargo: { name: '', path: d.path } })
+          .catch((err: Error) => toast(err.message, 'err')),
+      );
+    },
+    [rf],
+  );
+
   const pan = tool === 'pan';
 
   return (
@@ -308,11 +340,13 @@ export function Canvas() {
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       isValidConnection={(c) =>
-        c.source !== c.target && !linked(c.source, c.target) && !nodes.some((n) => (n.id === c.source || n.id === c.target) && isVisualType(n.type))
+        c.source !== c.target && !linked(c.source, c.target) && !nodes.some((n) => (n.id === c.source || n.id === c.target) && unwired(n.type))
       }
       onBeforeDelete={onBeforeDelete}
       onEdgesDelete={onEdgesDelete}
       onEdgeDoubleClick={onEdgeDoubleClick}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       zoomOnDoubleClick={false}
       onNodeDragStart={onNodeDragStart}
       onNodeDrag={onNodeDrag}

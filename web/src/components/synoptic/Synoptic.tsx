@@ -7,6 +7,8 @@ import { STATE_META, callsign, clock, elapsed } from '../../lib/model';
 import { useNodeRoleColor } from '../../lib/roles';
 import { useNow } from '../../lib/useNow';
 import { useScreenHidden, useScreenPlace } from '../../lib/screens';
+import { pasteIntoFlight, useCargoDrop } from '../../lib/cargoDrop';
+import { DropHint } from '../../canvas/nodes/TerminalNode';
 import { XTermView } from '../../term/XTermView';
 import { AskOptions } from '../AskOptions';
 import { HiddenScreen } from '../HiddenScreen';
@@ -427,8 +429,9 @@ function SelectedTerminal({ n, floors, rt, pinned }: { n: WNode; floors: Floor[]
   const now = useNow(1000);
   const place = useScreenPlace(n.id);
   const hidden = useScreenHidden(n.id);
+  const drop = useCargoDrop((items) => pasteIntoFlight(n.id, items));
   return (
-    <div className={`syn-term st-${st}`}>
+    <div className={`syn-term st-${st}${drop.over ? ' drop-over' : ''}`} {...drop.props}>
       <header className="syn-term-head">
         <i style={{ background: `var(--r-${roleOf(n.id)})` }} />
         <b className="mono">{callsign(n.terminal!)}</b>
@@ -454,6 +457,7 @@ function SelectedTerminal({ n, floors, rt, pinned }: { n: WNode; floors: Floor[]
       <footer className="syn-term-foot mono">
         {levelOf(n, floors)} · {pinned ? 'fixado' : 'segue a seleção'} · clique para digitar
       </footer>
+      {drop.over && <DropHint />}
     </div>
   );
 }

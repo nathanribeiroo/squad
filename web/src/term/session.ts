@@ -343,6 +343,14 @@ export class TermSession {
     this.term.focus();
   }
 
+  /** Types text as a paste (bracketed when the program asked for it), never
+   * with Enter. false: not connected. */
+  paste(text: string): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
+    this.term.paste(text);
+    return true;
+  }
+
   setTheme() {
     this.term.options.theme = themeOf();
   }

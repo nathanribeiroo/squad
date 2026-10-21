@@ -48,7 +48,7 @@ export function dockAt(side: 'left' | 'right', id = paneTarget()) {
  */
 export function nextNode(back: boolean) {
   const st = useSquad.getState();
-  // Flights, NOTAMs and portals on screen (not drawings, frames or what a collapsed group hides).
+  // Flights, NOTAMs, portals and cargo on screen (not drawings, frames or what a collapsed group hides).
   const hidden = hiddenBy(st.workspace?.nodes ?? []);
   const nodes = (st.workspace?.nodes ?? []).filter((n) => (n.floor ?? '') === st.activeFloor && n.kind !== 'drawing' && !n.group && !hidden.has(n.id) && !hiddenInStack(n));
   if (nodes.length === 0) return;

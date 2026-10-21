@@ -1,7 +1,7 @@
 /* Node frames (docs/torre/TELAS.md, quadros 02, 04, 09, 10). Square, on
    the canvas; the state is a band on the left of a flight, never its whole
    color. */
-.tnode, .nnode, .pnode {
+.tnode, .nnode, .pnode, .cnode {
   width: 100%;
   height: 100%;
   display: flex;
@@ -178,7 +178,7 @@
   --bg: var(--paper);
 }
 .tnode.focused, .pnode.focused { box-shadow: 0 0 0 2px var(--focus), var(--shadow-pop); border-color: var(--focus); }
-.tnode.selected, .nnode.selected, .pnode.selected { border-color: var(--text-3); }
+.tnode.selected, .nnode.selected, .pnode.selected, .cnode.selected { border-color: var(--text-3); }
 .connect-valid { outline: 2px solid var(--text); outline-offset: 2px; }
 .connect-invalid { opacity: 0.4; }
 
@@ -556,3 +556,131 @@
 }
 .d-edit { border: 1px dashed var(--dc); background: transparent; outline: none; resize: none; cursor: text; overflow: hidden; }
 .d-edit::placeholder { color: var(--text-4); }
+
+/* CARGA: a file explorer of a folder of the computer. Header of 36 (tag,
+   name, ‹ › ↑ ⌂), the path as steps with a search field, the tree, and a
+   footer that says what is picked. Its rows are dragged into a flight or
+   into Transmitir. */
+.cnode { container-type: inline-size; }
+.cnode > :not(.react-flow__resize-control):not(.react-flow__handle) { overflow: hidden; }
+.cg-head {
+  height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--line); overflow: visible !important; white-space: nowrap;
+}
+.cg-tag {
+  height: 18px; padding: 0 5px 0 3px; gap: 3px; background: var(--text); color: var(--surface); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; display: inline-flex; align-items: center; flex: none;
+}
+.cg-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 30px; flex: 0 1 auto; cursor: text; }
+.cg-head .pn-name { flex: 0 1 180px; }
+.cg-head .pn-nav .icon-btn { width: 24px; height: 24px; }
+.cg-bar { height: 32px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 8px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.cg-crumbs {
+  flex: 1; min-width: 0; height: 24px; display: flex; align-items: center; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+  white-space: nowrap; cursor: text; font-family: var(--font-mono); font-size: 11px;
+}
+.cg-crumbs::-webkit-scrollbar { display: none; }
+/* The start of a long path fades out (it scrolls to its end). */
+.cg-crumbs.cut { -webkit-mask-image: linear-gradient(to right, transparent, #000 22px); mask-image: linear-gradient(to right, transparent, #000 22px); }
+.cg-crumb-wrap { display: inline-flex; align-items: center; flex: none; }
+.cg-crumb-sep { color: var(--text-4); padding: 0 1px; }
+.cg-crumb { border: 0; background: transparent; color: var(--text-3); font: inherit; padding: 2px 3px; cursor: pointer; }
+.cg-crumb:hover { color: var(--text); background: var(--surface-3); }
+.cg-crumb.last { color: var(--text); font-weight: 700; }
+.cg-path {
+  flex: 1; min-width: 0; height: 24px; border: 1px solid var(--focus); outline: none; background: var(--bg); color: var(--text);
+  font-size: 11px; padding: 0 6px;
+}
+.cg-search {
+  flex: 0 0 96px; height: 24px; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 6px; border: 1px solid var(--line-2);
+  background: var(--bg); color: var(--text-3); transition: flex-basis 0.12s ease-out; cursor: text;
+}
+.cg-search:focus-within, .cg-search.on { flex-basis: 45%; border-color: var(--line-3); color: var(--text-2); }
+.cg-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--text); font-size: 11.5px; padding: 0; }
+.cg-search input::placeholder { color: var(--text-4); }
+.cg-search-x { border: 0; background: transparent; color: var(--text-3); display: inline-flex; padding: 0; cursor: pointer; }
+.cg-main { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+.cg-list { flex: 1; min-height: 0; overflow: auto; padding: 4px 0; outline: none; user-select: none; }
+.cg-list:focus-visible { box-shadow: inset 0 0 0 1px var(--line-3); outline: none; }
+.cg-row {
+  height: 24px; display: flex; align-items: center; gap: 4px; padding-right: 10px; font-size: 12.5px; color: var(--text);
+  cursor: default; white-space: nowrap;
+}
+.cg-row:hover { background: var(--surface-2); }
+.cg-row.sel { background: color-mix(in srgb, var(--focus) 16%, transparent); }
+.cg-list:focus .cg-row.sel { background: color-mix(in srgb, var(--focus) 24%, transparent); }
+.cg-list:focus .cg-row.cur { box-shadow: inset 2px 0 0 var(--focus); }
+.cg-row:active { cursor: grabbing; }
+.cg-twist {
+  width: 18px; height: 18px; flex: none; border: 0; background: transparent; color: var(--text-3); padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; transition: transform 0.1s ease-out;
+}
+.cg-twist:hover { color: var(--text); }
+.cg-twist.open { transform: rotate(90deg); }
+.cg-twist-gap { width: 18px; flex: none; }
+.cg-icon { color: var(--text-3); flex: none; }
+.cg-icon.k-dir { color: var(--text-2); }
+.cg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cg-row.dir .cg-name { font-weight: 600; }
+.cg-rel { color: var(--text-4); font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; }
+.cg-meta { flex: none; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-4); padding-left: 8px; }
+.cg-note { height: 22px; display: flex; align-items: center; font-size: 11px; color: var(--text-4); font-style: italic; }
+.cg-note.err { color: var(--stt-err); }
+.cg-empty { padding: 24px 16px; text-align: center; color: var(--text-3); font-size: 12px; line-height: 1.5; }
+.cg-foot {
+  height: 24px; flex: none; display: flex; align-items: center; padding: 0 10px; border-top: 1px solid var(--line);
+  font-size: 10.5px; color: var(--text-3); white-space: nowrap; overflow: hidden;
+}
+.cg-foot span { overflow: hidden; text-overflow: ellipsis; }
+.cg-foot-sel { color: var(--text); }
+.cg-missing {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px;
+  text-align: center; color: var(--text-3); font-size: 12px;
+}
+.cg-missing b { color: var(--text); font-size: 13px; }
+.cg-missing .mono { font-size: 11px; color: var(--text-2); overflow-wrap: anywhere; }
+/* The preview: over the tree, Esc goes back. */
+.cg-preview { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface); outline: none; z-index: 2; }
+.cg-preview-head { height: 30px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 2px; border-bottom: 1px solid var(--line); }
+.cg-preview-head .icon-btn { width: 24px; height: 24px; }
+.cg-preview-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cg-preview-body { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+.cg-preview-body img, .cg-preview-body video { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.cg-preview-body audio { width: calc(100% - 32px); }
+.cg-preview-body iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+.cg-text {
+  align-self: stretch; flex: 1; margin: 0; padding: 10px 12px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+  color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; cursor: text;
+}
+.cg-cut { color: var(--text-4); font-style: italic; }
+.react-flow__resize-control.handle.cg-grip {
+  width: 16px; height: 16px; background: transparent; transform: translate(-100%, -100%); z-index: 5; opacity: 0;
+}
+.react-flow__resize-control.cg-grip span {
+  position: absolute; inset: 0; display: block;
+  background: linear-gradient(135deg, transparent 52%, var(--text-3) 52% 60%, transparent 60% 70%, var(--text-3) 70% 78%, transparent 78%);
+}
+.cnode:hover .cg-grip { opacity: 0.8; }
+@container (max-width: 320px) {
+  .cg-head { gap: 4px; padding-left: 8px; }
+  .cg-meta { display: none; }
+}
+/* What a drag of a cargo looks like under the pointer. */
+.cg-ghost {
+  position: fixed; top: -100px; left: -1000px; height: 26px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 8px;
+  background: var(--text); color: var(--surface); font-size: 12px; font-weight: 700; white-space: nowrap; max-width: 320px;
+}
+.cg-ghost .msi { font-size: 16px; }
+
+/* Dropping a cargo's files on a flight: while any is dragged, flights show
+   a dashed outline; the one under the pointer, a solid one and what the drop
+   does. */
+.tnode.drop-ready { outline: 1px dashed var(--line-3); outline-offset: 3px; }
+.drop-over { outline: 2px solid var(--focus) !important; outline-offset: 2px; }
+.drop-hint {
+  position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent); color: var(--text); font-size: 13px; font-weight: 700; pointer-events: none;
+  text-align: center; padding: 12px;
+}
+.drop-hint .drop-sub { font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; color: var(--text-3); }
+.drop-hint .msi { font-size: 22px; }

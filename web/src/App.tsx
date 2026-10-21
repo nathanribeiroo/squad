@@ -119,14 +119,16 @@ function Stage() {
   const rf = useReactFlow();
 
   const create = useCallback(
-    (kind: 'note' | 'portal') => {
-      const w = kind === 'note' ? 400 : 560;
-      const h = kind === 'note' ? 350 : 420;
+    (kind: 'note' | 'portal' | 'cargo') => {
+      const w = kind === 'note' ? 400 : kind === 'cargo' ? 340 : 560;
+      const h = kind === 'note' ? 350 : kind === 'cargo' ? 440 : 420;
       const c = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
       const floor = useSquad.getState().activeFloor;
       const body: Partial<WNode> = { kind, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), floor: floor || undefined };
       // A draft: it opens with its name selected; the name the user gives names the file.
       if (kind === 'note') body.note = { title: '', file: '', draft: true };
+      // A cargo opens on the folder the level works in, named after it.
+      if (kind === 'cargo') body.cargo = { name: '', path: '' };
       api.addNode(body).catch((e: Error) => toast(e.message, 'err'));
     },
     [rf],
@@ -221,6 +223,7 @@ function Stage() {
         KeyT: () => st.setNewTerm(!st.newTermOpen),
         KeyN: () => create('note'),
         KeyP: () => create('portal'),
+        KeyC: () => create('cargo'),
         KeyD: () => st.setTool(st.tool === 'draw' ? 'select' : 'draw'),
         KeyG: () => groupSelection(),
       };
@@ -250,7 +253,7 @@ function Stage() {
               <LoopCard />
               <PriorityBanner />
             </div>
-            <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} />
+            <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} onCreateCargo={() => create('cargo')} />
             <ComposerPill />
           </div>
         </div>

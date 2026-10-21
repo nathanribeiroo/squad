@@ -1,6 +1,6 @@
 // Mirrors of the Go server types (internal/store, internal/server, agentbus).
 
-export type NodeKind = 'terminal' | 'note' | 'portal' | 'group' | 'drawing';
+export type NodeKind = 'terminal' | 'note' | 'portal' | 'cargo' | 'group' | 'drawing';
 export type AgentType = 'claude' | 'codex' | 'devin' | 'gemini' | 'shell' | 'custom';
 export type UIState = 'boot' | 'idle' | 'work' | 'wait' | 'ask' | 'done' | 'err' | 'off';
 
@@ -88,6 +88,47 @@ export interface PortalData {
   name?: string;
 }
 
+/** A file explorer of a folder of the computer (CARGA; internal/cargo). */
+export interface CargoData {
+  /** "Resultados", "Vídeos parte 2". */
+  name: string;
+  /** The folder it opens: relative to the workspace folder when inside it, else absolute. */
+  path: string;
+}
+
+/** An entry of a folder (GET /api/cargo/list). */
+export interface CargoEntry {
+  name: string;
+  dir?: boolean;
+  size?: number;
+  mod: string;
+  /** How a file previews: text, image, video, audio, pdf. */
+  kind?: 'text' | 'image' | 'video' | 'audio' | 'pdf';
+  /** A folder: how many entries it holds (-1: not counted). */
+  items?: number;
+}
+
+/** GET /api/cargo/list: a folder and where the explorer can go from it. */
+export interface CargoFolder {
+  path: string;
+  entries: CargoEntry[];
+  /** Entries left out past the limit, and dot entries left out. */
+  more?: number;
+  hidden?: number;
+  parent?: string;
+  home?: string;
+  workspace: string;
+  roots?: string[];
+  sep: string;
+}
+
+/** GET /api/cargo/search: entries under a folder whose names match. */
+export interface CargoSearch {
+  path: string;
+  hits: (CargoEntry & { path: string })[];
+  more: boolean;
+}
+
 /** A frame around nodes, for the user's eyes only (internal/store/visual.go). */
 export interface GroupData {
   name: string;
@@ -121,6 +162,7 @@ export interface WNode {
   terminal?: TerminalData;
   note?: NoteData;
   portal?: PortalData;
+  cargo?: CargoData;
   group?: GroupData;
   drawing?: DrawingData;
   /** The terminal whose agent created this node (torre new, torre portal create). */
@@ -494,6 +536,7 @@ export interface SessionSummary extends Session {
   terminals: number;
   notes: number;
   portals: number;
+  cargo?: number;
   floors: number;
   /** Agent types of its terminals (claude, devin…). */
   agents: string[];
@@ -583,6 +626,12 @@ export interface PlanPortal extends PlanBox {
   url?: string;
   level?: string;
 }
+export interface PlanCargo extends PlanBox {
+  key: string;
+  name: string;
+  path: string;
+  level?: string;
+}
 export interface PlanGroup extends PlanBox {
   key: string;
   name: string;
@@ -602,6 +651,7 @@ export interface Plan {
   flights: PlanFlight[];
   notes: PlanNote[];
   portals: PlanPortal[];
+  cargo?: PlanCargo[];
   links: [string, string][];
   levels: { key: string; name: string; branch?: string }[];
   groups: PlanGroup[];

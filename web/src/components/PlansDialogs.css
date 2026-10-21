@@ -15,6 +15,8 @@
 .pl-mini-wire { stroke: var(--wire); stroke-width: 14; }
 .pl-mini-t { font-family: var(--font-mono); font-size: 120px; font-weight: 700; fill: var(--ink); }
 .pl-mini-t-p { fill: var(--text-2); }
+.pl-mini-c { fill: var(--surface-2); stroke: var(--line-3); stroke-width: 12; stroke-dasharray: 40 24; }
+.pl-mini-t-c { fill: var(--text-2); }
 .pl-name { font-size: 13px; display: flex; align-items: center; gap: 6px; }
 .pl-tag { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0 5px; border: 1px solid var(--st-wait); color: var(--stt-wait); }
 .pl-comp { font-size: 10.5px; color: var(--text-3); line-height: 1.4; }

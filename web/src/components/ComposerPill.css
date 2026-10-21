@@ -32,3 +32,5 @@
   align-items: center;
   justify-content: center;
 }
+.composer-pill.drop-ready { border-style: dashed; }
+.composer-pill.drop-ready .cp-placeholder { color: var(--text); }
