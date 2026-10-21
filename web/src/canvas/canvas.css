@@ -41,7 +41,7 @@
 
 /* The place tool (T, N, P, C): the item follows the pointer; a click puts
    it there, a drag draws its size. */
-.place-layer { position: absolute; inset: 0; z-index: 4; cursor: crosshair; touch-action: none; overflow: hidden; }
+.place-layer { position: absolute; inset: 0; z-index: 4; cursor: crosshair; touch-action: none; overflow: hidden; user-select: none; -webkit-user-select: none; }
 .place-pending { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
 .pl-ghost {
   position: absolute; display: flex; flex-direction: column; pointer-events: none; box-sizing: border-box;

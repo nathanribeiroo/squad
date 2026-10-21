@@ -73,14 +73,26 @@ export function PlaceLayer() {
 
   const down = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // No text selection and no native drag: either would take the press over
+    // (a pointercancel, or a release that never comes), leaving the item on
+    // the pointer.
+    e.preventDefault();
+    window.getSelection()?.removeAllRanges();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Without the capture, a release outside is caught by the next move.
+    }
     const p = at(e);
     setDrag({ from: p, to: p, sx: e.clientX, sy: e.clientY, moved: false });
   };
   const move = (e: React.PointerEvent) => {
     const p = at(e);
     setHover(p);
-    if (drag) setDrag({ ...drag, to: p, moved: drag.moved || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > CLICK_PX });
+    if (!drag) return;
+    // The button is up but no release arrived: it was released.
+    if (!(e.buttons & 1)) return up(e);
+    setDrag({ ...drag, to: p, moved: drag.moved || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > CLICK_PX });
   };
   const up = (e: React.PointerEvent) => {
     if (!drag) return;
