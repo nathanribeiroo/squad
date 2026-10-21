@@ -2,6 +2,26 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-21, Botão Sair
+
+- **Pedido:** um botão na interface que feche o app e o servidor, salvando tudo antes.
+- **Como ficou:**
+  - **o botão ⏻** no topo, ao lado da engrenagem, e `⌥Q`. Uma confirmação diz o que fica (canvas, NOTAMs, níveis, sessões, a conversa e a última tela de cada voo) e avisa se há voos trabalhando ou pedidos sem resposta, somando todos os workspaces;
+  - **salvar o que está aberto:** a janela tira o foco do que está sendo digitado (uma NOTAM em edição grava ao perder o foco, sem esperar os 0,8 s) e espera todas as gravações em andamento responderem (`settled()`, em `api/client.ts`);
+  - **o servidor:** `POST /api/quit` (só com a sessão da interface; os terminais só chegam ao `/cli`, que não tem isso) responde e, 200 ms depois, fecha o `Stopping()` do hub. O `torre serve` espera esse sinal ou o Ctrl-C e segue o mesmo encerramento de antes: salva a tela de cada voo, para os agentes, fecha o navegador dos portais e apaga o `server.json`;
+  - **a janela:** "Encerrando a Torre…" enquanto o servidor ainda responde; quando ele sai, `window.close()`. A janela de app (`--app`) fecha, porque a página só troca a URL com `replaceState`; numa aba, aparece "A Torre foi encerrada. Pode fechar esta janela.";
+  - **outras janelas** recebem o aviso (`quit`, no `/ws/workspaces`) e mostram o mesmo fim, em vez de "Sem enlace". Os sockets param de tentar reconectar.
+- **Decisões sem consulta:**
+  - **o Sair para todos os workspaces,** porque é o `torre serve` inteiro que sai; a confirmação diz quantos são;
+  - **`⌥Q`** como atalho, seguindo os outros globais com `⌥`;
+  - **sem um `torre stop` na CLI:** não foi pedido, e o Ctrl-C continua.
+- **Testes:**
+  - `TestQuit` (hub): sem a sessão é recusado e nada para; `GET` não para; com a sessão responde 202, o `Stopping` fecha e outra janela recebe o `quit`;
+  - **no Chromium:** escrevi numa NOTAM e apertei Sair na hora. A confirmação apareceu, depois "Encerrando…" e "A Torre foi encerrada"; o processo saiu, o texto ficou no arquivo da NOTAM, a tela do voo foi gravada naquele momento e o `server.json` sumiu. Ao subir de novo, voltaram as cargas, a NOTAM com o texto, o voo e o portal;
+  - **janela de app de verdade** (Chromium `--app`, num display virtual): Sair fechou a janela sozinha;
+  - **outra janela:** com a página aberta, o Sair chegou de fora, e ela mostrou "A Torre foi encerrada" em vez de "Sem enlace".
+- **Não testado:** Windows (Edge ou Chrome em `--app`), o app do Dock do Safari no Mac (se não fechar, aparece a tela final) e um voo trabalhando na hora do Sair (o encerramento é o mesmo do Ctrl-C, que já põe o voo em arremetida).
+
 ## 2026-10-21, Pôr itens no canvas com clique ou arraste
 
 - **Pedido:** ao escolher um item para pôr no canvas (voo, NOTAM, portal, carga), em vez de ele aparecer no centro da tela, a ferramenta fica escolhida e você clica onde quer, ou aperta e arrasta para criar do tamanho que quiser. De um jeito simples e fácil de entender.

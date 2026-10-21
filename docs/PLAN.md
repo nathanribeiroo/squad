@@ -88,6 +88,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fio sem folga, com barriga fixa | `feat/fio-sem-folga` | concluído |
 | Carga: explorador de arquivos no canvas | `feat/carga` | concluído (PR) |
 | Pôr itens no canvas com clique ou arraste | `feat/criar-arrastando` | concluído (PR) |
+| Botão Sair | `feat/sair` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -647,3 +648,12 @@ Pedido do usuário em 2026-10-21: em vez de um item novo (voo, NOTAM, portal, ca
 - **Criar** (`lib/place.ts`): o mesmo `POST /api/nodes`, agora com `x`, `y`, `w` e `h`; o item nasce selecionado.
 
 **Status:** PR aberto (depois do PR da Carga), esperando o merge.
+
+## Botão Sair
+
+Pedido do usuário em 2026-10-21: um botão que feche o app e o servidor, salvando tudo antes.
+
+- **Interface:** ⏻ no topo e `⌥Q`, com confirmação (voos trabalhando, pedidos sem resposta); tira o foco do que está sendo digitado, espera as gravações (`settled()`), chama `POST /api/quit`, mostra "Encerrando…" e fecha a janela quando o servidor sai (ou mostra "A Torre foi encerrada" numa aba).
+- **Servidor:** `POST /api/quit` (só da interface) avisa as janelas (`quit` em `/ws/workspaces`) e fecha o `Stopping()` do hub; o `torre serve` encerra como no Ctrl-C (telas salvas, agentes parados, `server.json` apagado).
+
+**Status:** PR aberto (depois dos PRs da Carga e de pôr itens), esperando o merge.
