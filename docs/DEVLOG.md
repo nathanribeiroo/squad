@@ -2,6 +2,25 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-21, Pôr itens no canvas com clique ou arraste
+
+- **Pedido:** ao escolher um item para pôr no canvas (voo, NOTAM, portal, carga), em vez de ele aparecer no centro da tela, a ferramenta fica escolhida e você clica onde quer, ou aperta e arrasta para criar do tamanho que quiser. De um jeito simples e fácil de entender.
+- **Como ficou** (`web/src/canvas/PlaceLayer.tsx`, `web/src/lib/place.ts`):
+  - `T`, `N`, `P` e `C` (e os botões da barra) escolhem a ferramenta, e o botão fica marcado. Uma faixa ao lado do botão explica: "Clique no canvas para pôr, ou arraste para escolher o tamanho";
+  - **o item segue o mouse,** tracejado, no tamanho de sempre, com o nome e o tamanho ("NOTAM 400 × 350") e a dica no meio;
+  - **clique** põe o item centrado no mouse; **arraste** desenha o retângulo, com o tamanho mudando ao vivo, e para no mínimo de cada item (o mesmo das alças: NOTAM 280 × 200, voo e portal 320 de largura, carga 260 × 220);
+  - **o voo** abre o Novo voo depois do retângulo, que fica marcado ("o voo decola aqui") até Decolar, e o voo decola ali;
+  - **o item nasce selecionado** e a ferramenta volta para Selecionar. `⇧` ao soltar mantém a ferramenta (menos no voo, que pergunta antes); `Esc`, o `×` ou a mesma tecla desistem;
+  - **a roda** continua movendo o canvas e `⌘`/`ctrl` + roda dá zoom, para ir até onde o item vai;
+  - os cartões de espaço e de nível vazios somem enquanto a ferramenta está ligada, para não tampar o meio da tela, e os botões deles ("Novo voo") também passam pela ferramenta.
+- **Decisões sem consulta:**
+  - **o clique centra o item no mouse,** e o arraste começa no ponto apertado. É o que o fantasma mostra antes do clique;
+  - **as posições e os tamanhos caem de 10 em 10,** alinhados com os pontos do canvas (de 20 em 20);
+  - **a ferramenta volta para Selecionar** depois de pôr um item. Pôr vários seguidos é com `⇧`, como em editores de desenho;
+  - o Grupo (`G`) e o Desenho (`D`) já eram assim e não mudaram.
+- **Testes:** `npx tsc -b`, `npm run build`, e no Chromium: o fantasma seguindo o mouse; uma NOTAM arrastada (nasce no lugar e no tamanho, selecionada, com o nome para digitar); um voo arrastado, o formulário com o retângulo marcado, e o voo decolando nele; um portal com um clique; duas cargas com `⇧`; `Esc`; a mesma tecla duas vezes; a roda e o zoom com a ferramenta ligada.
+- **Não testado:** num trackpad de verdade (Mac) e no Windows.
+
 ## 2026-10-21, Carga: explorador de arquivos no canvas
 
 - **Pedido:** um nó para navegar nas pastas do computador, como o painel de arquivos do Maestri, e **arrastar** arquivos e pastas para dentro de um voo (direto no terminal) ou para o Transmitir. O agente só precisa ver o caminho. O nome CARGA ficou, e cada carga ganha um nome ("Vídeos parte 2", "Resultados").
