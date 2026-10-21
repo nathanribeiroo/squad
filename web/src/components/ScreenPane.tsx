@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { api } from '../api/client';
 import type { UIState } from '../api/types';
-import { AskStrip, RespondBar } from '../canvas/nodes/TerminalNode';
+import { AskStrip, DropHint, RespondBar } from '../canvas/nodes/TerminalNode';
 import { StatePill } from '../canvas/nodes/StatePill';
+import { pasteIntoFlight, useCargoDrop } from '../lib/cargoDrop';
 import { callsign } from '../lib/model';
 import { roleColor, useRole } from '../lib/roles';
 import { dockAt, toggleFocus, useScreenHidden } from '../lib/screens';
@@ -70,6 +71,7 @@ export function ScreenPane({ id, mode }: { id: string; mode: 'focus' | 'left' | 
   const hidden = useScreenHidden(id);
   const role = useRole(n?.terminal?.role);
   const body = useRef<HTMLDivElement>(null);
+  const drop = useCargoDrop((items) => pasteIntoFlight(id, items));
   useFitPty(id, body);
   // The keyboard follows the flight into the pane.
   useEffect(() => {
@@ -82,7 +84,7 @@ export function ScreenPane({ id, mode }: { id: string; mode: 'focus' | 'left' | 
   const where = mode === 'focus' ? 'foco · ⌥F volta' : mode === 'left' ? 'encaixado à esquerda' : 'encaixado à direita';
   const close = () => (mode === 'focus' ? toggleFocus() : useSquad.getState().setDock(null));
   return (
-    <section className={`sp sp-${mode} st-${state}`} aria-label={`${callsign(t)} · ${where}`}>
+    <section className={`sp sp-${mode} st-${state}${drop.over ? ' drop-over' : ''}`} aria-label={`${callsign(t)} · ${where}`} {...drop.props}>
       <i className="tn-band" />
       <header className="sp-head">
         <span className="tn-sq" style={{ background: `var(--r-${roleColor(role)})` }} />
@@ -107,6 +109,7 @@ export function ScreenPane({ id, mode }: { id: string; mode: 'focus' | 'left' | 
         {hidden && <HiddenScreen id={id} />}
       </div>
       {state === 'ask' && <RespondBar id={id} rt={rt} focused={focused} />}
+      {drop.over && <DropHint />}
     </section>
   );
 }

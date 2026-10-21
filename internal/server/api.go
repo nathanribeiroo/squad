@@ -134,6 +134,8 @@ func defaultSize(kind string) (float64, float64) {
 		return 400, 350
 	case store.KindPortal:
 		return 560, 420
+	case store.KindCargo:
+		return 340, 440
 	case store.KindGroup:
 		return 720, 480
 	case store.KindDrawing:

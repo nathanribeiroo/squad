@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { api, setWorkspace } from '../api/client';
 import { askPhrase } from '../lib/askText';
+import type { CargoItem } from '../lib/cargo';
 import { noticeAsk } from '../lib/notify';
 import { mergeActivity, toActivity } from '../lib/radio';
 import { toast } from '../lib/toast';
@@ -151,6 +152,8 @@ interface SquadState {
   accounts: Record<string, UsageAccount>;
   /** Text the Composer starts with (a suggested next step). */
   composerDraft: string | null;
+  /** A cargo's files dropped on the closed Composer: it opens with them. */
+  composerPaths: CargoItem[] | null;
   workspace: Workspace | null;
   runtime: Record<string, TerminalRuntime>;
   /** Flights asking the user (PRIORIDADE), the oldest first. */
@@ -169,6 +172,10 @@ interface SquadState {
   lastReply: Record<string, LastReply>;
   /** Latest agent action per portal. */
   portalActions: Record<string, PortalAction>;
+  /** Folders of a cargo's tree that changed on disk: cargo id → folder → a count. */
+  cargoChanges: Record<string, Record<string, number>>;
+  /** A cargo's files are being dragged: flights and Transmitir show where to drop. */
+  cargoDrag: boolean;
   /** Times of recent requests, for the per-minute rate in the top bar. */
   sendTimes: number[];
   drawerOpen: boolean;
@@ -231,8 +238,9 @@ interface SquadState {
   setConnection(c: SquadState['connection'], retryAt?: number): void;
   setDrawer(open: boolean): void;
   /** Opens or closes the Composer; draft is text to start with. */
-  setComposer(open: boolean, target?: string | null, draft?: string): void;
+  setComposer(open: boolean, target?: string | null, draft?: string, paths?: CargoItem[]): void;
   takeComposerDraft(): string | null;
+  takeComposerPaths(): CargoItem[] | null;
   /** Reads the cards and the summary settings (on connecting). */
   loadSummaries(): void;
   /** Reads the Rádio's last lines (on connecting). */
@@ -265,6 +273,7 @@ interface SquadState {
   toggleHiddenScreen(id: string): void;
   requestSelect(id: string | null): void;
   setSelectedIds(ids: string[]): void;
+  setCargoDrag(on: boolean): void;
   setPlansDialog(d: SquadState['plansDialog']): void;
 }
 
@@ -308,7 +317,7 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 
 function nameOf(ws: Workspace | null, id?: string): string {
   const n = ws?.nodes.find((x) => x.id === id);
-  return n?.terminal?.name ?? n?.note?.title ?? (n?.portal ? n.portal.name || 'Portal' : (n?.group?.name ?? ''));
+  return n?.terminal?.name ?? n?.note?.title ?? (n?.portal ? n.portal.name || 'Portal' : (n?.cargo?.name ?? n?.group?.name ?? ''));
 }
 
 function prefersDark(): boolean {
@@ -355,6 +364,7 @@ const perWorkspace = {
   noteEdits: {},
   lastReply: {},
   portalActions: {},
+  cargoChanges: {},
   sendTimes: [],
   composerOpen: false,
   composerTarget: null,
@@ -371,6 +381,7 @@ const perWorkspace = {
   summaryDialog: null,
   usage: {},
   composerDraft: null,
+  composerPaths: null,
   dock: null,
   focusPane: null,
   hiddenScreens: [],
@@ -424,6 +435,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   usage: {},
   accounts: {},
   composerDraft: null,
+  composerPaths: null,
   workspace: null,
   runtime: {},
   askingIds: [],
@@ -437,7 +449,9 @@ export const useSquad = create<SquadState>((set, get) => ({
   noteEdits: {},
   lastReply: {},
   portalActions: {},
+  cargoChanges: {},
   sendTimes: [],
+  cargoDrag: false,
   drawerOpen: false,
   composerOpen: false,
   composerTarget: null,
@@ -489,6 +503,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   },
   requestSelect: (selectRequest) => set({ selectRequest }),
   setSelectedIds: (selectedIds) => set({ selectedIds }),
+  setCargoDrag: (cargoDrag) => set({ cargoDrag }),
   setPlansDialog: (plansDialog) => set({ plansDialog }),
   openRoles: (id = null) => set({ rolesPanel: id }),
   closeRoles: () => set({ rolesPanel: false }),
@@ -705,6 +720,11 @@ export const useSquad = create<SquadState>((set, get) => ({
         set({ portalActions: { ...st.portalActions, [d.portal]: { ...(d as PortalAction), at: Date.now(), seq: (prev?.seq ?? 0) + 1 } } });
         return;
       }
+      case 'cargo.changed': {
+        const seen = st.cargoChanges[d.id] ?? {};
+        set({ cargoChanges: { ...st.cargoChanges, [d.id]: { ...seen, [d.dir]: (seen[d.dir] ?? 0) + 1 } } });
+        return;
+      }
       case 'workspace.updated':
         if (ws) set({ workspace: { ...ws, name: d.name, cwd: d.cwd, color: d.color } });
         return;
@@ -749,12 +769,22 @@ export const useSquad = create<SquadState>((set, get) => ({
       retryAt: retryAt ?? s.retryAt,
     })),
   setDrawer: (drawerOpen) => set({ drawerOpen }),
-  setComposer: (composerOpen, target, draft) =>
-    set({ composerOpen, composerTarget: target === undefined ? get().composerTarget : target, composerDraft: draft ?? null }),
+  setComposer: (composerOpen, target, draft, paths) =>
+    set({
+      composerOpen,
+      composerTarget: target === undefined ? get().composerTarget : target,
+      composerDraft: draft ?? null,
+      composerPaths: paths ?? null,
+    }),
   takeComposerDraft: () => {
     const d = get().composerDraft;
     if (d !== null) set({ composerDraft: null });
     return d;
+  },
+  takeComposerPaths: () => {
+    const p = get().composerPaths;
+    if (p !== null) set({ composerPaths: null });
+    return p;
   },
   loadRadio: () => {
     const ws = get().activeWs;

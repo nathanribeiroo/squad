@@ -70,6 +70,7 @@ type SessionSummary struct {
 	Terminals int      `json:"terminals"`
 	Notes     int      `json:"notes"`
 	Portals   int      `json:"portals"`
+	Cargo     int      `json:"cargo,omitempty"`
 	Floors    int      `json:"floors"`
 	Agents    []string `json:"agents"`           // the agent types of its terminals, each once
 	Branch    string   `json:"branch,omitempty"` // a session working in a copy: its branch
@@ -307,6 +308,8 @@ func (h *Hub) sessionList(id string, w *workspace) SessionList {
 				sum.Notes++
 			case n.Portal != nil:
 				sum.Portals++
+			case n.Cargo != nil:
+				sum.Cargo++
 			}
 		}
 		sum.Floors = len(ws.Floors)

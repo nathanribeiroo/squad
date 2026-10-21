@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/nathanribeiroo/squad/internal/apierr"
 	"github.com/nathanribeiroo/squad/internal/config"
@@ -23,6 +25,7 @@ const (
 	KindTerminal = "terminal"
 	KindNote     = "note"
 	KindPortal   = "portal"
+	KindCargo    = "cargo"   // a file explorer on the canvas (CARGA)
 	KindGroup    = "group"   // visual.go
 	KindDrawing  = "drawing" // visual.go
 )
@@ -69,6 +72,7 @@ type Node struct {
 	Terminal *TerminalData `json:"terminal,omitempty"`
 	Note     *NoteData     `json:"note,omitempty"`
 	Portal   *PortalData   `json:"portal,omitempty"`
+	Cargo    *CargoData    `json:"cargo,omitempty"`
 	Group    *GroupData    `json:"group,omitempty"`
 	Drawing  *DrawingData  `json:"drawing,omitempty"`
 	// CreatedBy is the terminal whose agent created this node (torre new,
@@ -90,6 +94,8 @@ func (n Node) Label() string {
 			return n.Portal.Name
 		}
 		return "Portal"
+	case n.Cargo != nil:
+		return n.Cargo.Name
 	case n.Group != nil:
 		return n.Group.Name
 	}
@@ -147,6 +153,34 @@ type NoteData struct {
 type PortalData struct {
 	URL  string `json:"url"`
 	Name string `json:"name,omitempty"` // how agents refer to it: "Portal", "Docs"…
+}
+
+// CargoData configures a cargo node: a file explorer of a folder of the
+// computer, whose files and folders the user drags into flights.
+type CargoData struct {
+	Name string `json:"name"` // "Resultados", "Vídeos parte 2"
+	// Path is the folder it opens: relative to the workspace folder when
+	// inside it (on a floor, or in a session's copy, it is the copy's);
+	// else absolute.
+	Path string `json:"path"`
+}
+
+// MaxCargoName is the longest cargo name, in characters.
+const MaxCargoName = 60
+
+// checkCargo validates and tidies a cargo's data.
+func checkCargo(c *CargoData) error {
+	if c == nil || strings.TrimSpace(c.Path) == "" {
+		return fmt.Errorf("%w: cargo needs a folder", ErrInvalid)
+	}
+	c.Name = strings.TrimSpace(c.Name)
+	if c.Name == "" {
+		return apierr.With(fmt.Errorf("%w: cargo needs a name", ErrInvalid), "cargo.name_required")
+	}
+	if utf8.RuneCountInString(c.Name) > MaxCargoName {
+		return apierr.With(fmt.Errorf("%w: cargo names have at most %d characters", ErrInvalid, MaxCargoName), "cargo.name_long", "max", strconv.Itoa(MaxCargoName))
+	}
+	return nil
 }
 
 // Edge is an undirected connection between two nodes.
@@ -411,6 +445,10 @@ func (s *Store) AddNode(n Node) (Node, error) {
 		if n.Portal == nil {
 			n.Portal = &PortalData{}
 		}
+	case KindCargo:
+		if err := checkCargo(n.Cargo); err != nil {
+			return Node{}, err
+		}
 	case KindGroup, KindDrawing:
 	default:
 		return Node{}, fmt.Errorf("%w: kind %q", ErrInvalid, n.Kind)
@@ -459,6 +497,11 @@ func (s *Store) UpdateNode(id string, fn func(*Node) error) (Node, error) {
 		if n.Note != nil && s.ws.Nodes[i].Note != nil { // stacks change through Stack and Unstack
 			n.Note.Stack, n.Note.StackPos = s.ws.Nodes[i].Note.Stack, s.ws.Nodes[i].Note.StackPos
 		}
+		if n.Cargo != nil {
+			if err := checkCargo(n.Cargo); err != nil {
+				return Node{}, err
+			}
+		}
 		if n.Terminal != nil {
 			for _, other := range s.ws.Nodes {
 				if other.ID != id && other.Terminal != nil && other.Terminal.Name == n.Terminal.Name {
@@ -493,6 +536,10 @@ func cloneNode(n Node) Node {
 	if n.Portal != nil {
 		v := *n.Portal
 		n.Portal = &v
+	}
+	if n.Cargo != nil {
+		v := *n.Cargo
+		n.Cargo = &v
 	}
 	if n.Group != nil {
 		v := *n.Group
@@ -553,6 +600,10 @@ func (s *Store) AddEdge(a, b string, rope [][2]float64) (Edge, error) {
 	}
 	if s.ws.Nodes[s.nodeIndexLocked(a)].Visual() || s.ws.Nodes[s.nodeIndexLocked(b)].Visual() {
 		return Edge{}, apierr.With(fmt.Errorf("%w: groups and drawings take no wires", ErrInvalid), "edge.visual")
+	}
+	// A cargo hands its paths over by drag and drop, not by a wire.
+	if s.ws.Nodes[s.nodeIndexLocked(a)].Kind == KindCargo || s.ws.Nodes[s.nodeIndexLocked(b)].Kind == KindCargo {
+		return Edge{}, apierr.With(fmt.Errorf("%w: cargo takes no wires: drag its files into a flight", ErrInvalid), "edge.cargo")
 	}
 	// A wire to a note of a stack is the stack's: it ends at the base.
 	a, b = s.baseLocked(a), s.baseLocked(b)

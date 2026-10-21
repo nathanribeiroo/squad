@@ -41,6 +41,7 @@ const (
 	RadioCleared        = "radio.cleared"     // the user cleared the Rádio
 	UsageFlight         = "usage.flight"      // what a flight's conversation used (usage.Flight)
 	UsageAccount        = "usage.account"     // an agent account's plan limits (usage.Account)
+	CargoChanged        = "cargo.changed"     // a folder a cargo's tree shows changed ({id, dir})
 )
 
 // Event is one notification.

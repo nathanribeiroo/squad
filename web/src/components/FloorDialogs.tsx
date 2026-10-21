@@ -199,7 +199,7 @@ function RenameFloor({ floor, onClose }: { floor: Floor; onClose: () => void }) 
   );
 }
 
-/** What landing or discarding closes: terminals and portals; notes go down to the ground floor. */
+/** What landing or discarding closes: terminals, portals and cargo (its files stay); notes go down to the ground floor. */
 function useFloorNodes(id: string): { closes: WNode[]; notes: WNode[] } {
   const nodes = useSquad((s) => s.workspace?.nodes);
   return useMemo(() => {
@@ -210,7 +210,7 @@ function useFloorNodes(id: string): { closes: WNode[]; notes: WNode[] } {
 }
 
 function label(n: WNode): string {
-  return n.terminal?.name ?? n.note?.title ?? (n.portal ? `o portal ${n.portal.name || 'Portal'}` : n.id);
+  return n.terminal?.name ?? n.note?.title ?? (n.portal ? `o portal ${n.portal.name || 'Portal'}` : n.cargo ? `a carga ${n.cargo.name}` : n.id);
 }
 
 function list(items: string[]): string {

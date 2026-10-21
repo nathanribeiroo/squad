@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import type { UIState, WNode } from '../api/types';
+import { baseName, quotePath, type CargoItem } from '../lib/cargo';
+import { useCargoDrop } from '../lib/cargoDrop';
 import { flightLevel } from '../lib/floors';
 import { withStacks } from '../lib/stacks';
 import { STATE_META, callsign } from '../lib/model';
@@ -34,7 +36,7 @@ function neighbours(edges: { a: string; b: string }[], id: string): Set<string> 
   return out;
 }
 
-/** Composer text: chips become @Name, line breaks become \n. */
+/** Composer text: chips become @Name (a cargo's file, its quoted path), line breaks become \n. */
 function serialize(root: HTMLElement): { text: string; mentions: string[] } {
   const mentions: string[] = [];
   let text = '';
@@ -47,6 +49,10 @@ function serialize(root: HTMLElement): { text: string; mentions: string[] } {
     if (el.dataset?.mention) {
       mentions.push(el.dataset.mention);
       text += `@${el.dataset.name}`;
+      return;
+    }
+    if (el.dataset?.path) {
+      text += quotePath(el.dataset.path);
       return;
     }
     if (el.tagName === 'BR') {
@@ -77,6 +83,20 @@ function chipIcon(n: WNode): string {
   if (n.note) return 'description';
   if (n.portal) return 'public';
   return '';
+}
+
+/** A cargo's file or folder in the message: its name on screen, its path when sent. */
+function pathChip(it: CargoItem): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = 'mention-chip path-chip';
+  chip.contentEditable = 'false';
+  chip.dataset.path = it.path;
+  chip.title = it.path;
+  const i = document.createElement('span');
+  i.className = 'msi';
+  i.textContent = it.dir ? 'folder' : 'note';
+  chip.append(i, baseName(it.path));
+  return chip;
 }
 
 function readImage(file: File): Promise<Attachment> {
@@ -123,6 +143,12 @@ function ComposerPanel() {
     const el = editor.current;
     if (!el) return;
     el.focus();
+    // Files dropped on the closed Composer: it opens with them.
+    const paths = useSquad.getState().takeComposerPaths();
+    if (paths) {
+      insertPaths(paths);
+      return;
+    }
     // A suggested next step opens the Composer with its text.
     const draft = useSquad.getState().takeComposerDraft();
     if (draft) {
@@ -164,7 +190,8 @@ function ComposerPanel() {
       .filter((id) => !targets.includes(id))
       .map((id) => byId.get(id)!)
       .filter(Boolean);
-    const rest = nodes.filter((n) => !targets.includes(n.id) && !ok.includes(n));
+    // Only what a wire can reach (not cargo, groups or drawings).
+    const rest = nodes.filter((n) => (n.terminal || n.note || n.portal) && !targets.includes(n.id) && !ok.includes(n));
     return { linked: ok, unlinked: rest };
   }, [edges, targets, nodes, byId]);
 
@@ -179,7 +206,7 @@ function ComposerPanel() {
   const refresh = () => {
     const root = editor.current;
     if (!root) return;
-    setEmpty(serialize(root).text.trim() === '' && !root.querySelector('[data-mention]'));
+    setEmpty(serialize(root).text.trim() === '' && !root.querySelector('[data-mention],[data-path]'));
     const mq = mentionQuery();
     setMenu(mq && targets.length > 0 ? { query: mq.query, index: 0 } : null);
   };
@@ -221,6 +248,37 @@ function ComposerPanel() {
     setMenu(null);
     refresh();
   };
+
+  /** A cargo's files as chips: where they were dropped, else at the caret (or the end). */
+  const insertPaths = (items: CargoItem[], at?: { x: number; y: number }) => {
+    const root = editor.current;
+    if (!root || !items.length) return;
+    root.focus();
+    const sel = window.getSelection();
+    let range = at ? document.caretRangeFromPoint?.(at.x, at.y) : null;
+    if (!range || !root.contains(range.startContainer)) {
+      range = sel && sel.rangeCount && root.contains(sel.anchorNode) ? sel.getRangeAt(0) : null;
+    }
+    if (!range) {
+      range = document.createRange();
+      range.selectNodeContents(root);
+      range.collapse(false);
+    }
+    const prev = range.startContainer.textContent?.slice(0, range.startOffset) ?? '';
+    const frag = document.createDocumentFragment();
+    if (prev && !/\s$/.test(prev)) frag.append(document.createTextNode(' '));
+    for (const it of items) frag.append(pathChip(it), document.createTextNode(' '));
+    const last = frag.lastChild!;
+    range.deleteContents();
+    range.insertNode(frag);
+    const after = document.createRange();
+    after.setStartAfter(last);
+    after.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(after);
+    refresh();
+  };
+  const drop = useCargoDrop((items, e) => insertPaths(items, { x: e.clientX, y: e.clientY }));
 
   const send = async () => {
     const root = editor.current;
@@ -313,7 +371,7 @@ function ComposerPanel() {
   const canSend = targets.length > 0 && !busy && (!empty || files.length > 0) && !notice?.blocking;
 
   return (
-    <div className="composer" role="dialog" aria-label="Transmitir">
+    <div className={`composer${drop.over ? ' drop-over' : ''}`} role="dialog" aria-label="Transmitir" {...drop.props}>
       {menu && targets.length > 0 && (
         <div className="mention-menu popover">
           <div className="mm-section">Na frequência de {targets.length === 1 ? nodeName(byId.get(targets[0])!) : 'todos os destinos'}</div>

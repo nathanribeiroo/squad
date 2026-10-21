@@ -27,7 +27,7 @@ function rectOf(n: InternalNode): Rect {
   return { x: p.x, y: p.y, w: n.measured.width ?? n.width ?? 0, h: n.measured.height ?? n.height ?? 0 };
 }
 
-/** The nodes a wire can't pass through: flights, NOTAMs, portals and
+/** The nodes a wire can't pass through: flights, NOTAMs, portals, cargo and
  * collapsed groups (open frames and drawings are only drawn); own: the
  * wire's ends. */
 function solids(lookup: Map<string, InternalNode>, box: Rect, own: string[]): Solid[] {
@@ -35,7 +35,7 @@ function solids(lookup: Map<string, InternalNode>, box: Rect, own: string[]): So
   for (const n of lookup.values()) {
     if (n.hidden) continue;
     const collapsed = n.type === 'frame' && (n.data as { node?: { group?: { collapsed?: boolean } } }).node?.group?.collapsed;
-    if (n.type !== 'terminal' && n.type !== 'note' && n.type !== 'portal' && !collapsed) continue;
+    if (n.type !== 'terminal' && n.type !== 'note' && n.type !== 'portal' && n.type !== 'cargo' && !collapsed) continue;
     const r: Solid = rectOf(n);
     if (r.w === 0 || r.x > box.x + box.w || r.x + r.w < box.x || r.y > box.y + box.h || r.y + r.h < box.y) continue;
     if (own.includes(n.id)) r.own = true;

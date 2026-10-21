@@ -7,7 +7,7 @@ import './Toolbar.css';
 
 type Tool = { icon: IconName; label: string; key: string; action: () => void; active?: boolean; disabled?: boolean };
 
-export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => void; onCreatePortal: () => void }) {
+export function Toolbar({ onCreateNote, onCreatePortal, onCreateCargo }: { onCreateNote: () => void; onCreatePortal: () => void; onCreateCargo: () => void }) {
   const tool = useSquad((s) => s.tool);
   const setTool = useSquad((s) => s.setTool);
   const newTerm = useSquad((s) => s.newTermOpen);
@@ -23,6 +23,7 @@ export function Toolbar({ onCreateNote, onCreatePortal }: { onCreateNote: () => 
     { icon: 'flight_takeoff', label: 'Novo voo', key: 'T', action: () => setNewTerm(!newTerm), active: newTerm },
     { icon: 'sticky_note_2', label: 'NOTAM', key: 'N', action: onCreateNote },
     { icon: 'public', label: 'Portal', key: 'P', action: onCreatePortal },
+    { icon: 'inventory_2', label: 'Carga', key: 'C', action: onCreateCargo },
     { icon: 'gesture', label: 'Desenho', key: 'D', action: () => setTool(tool === 'draw' ? 'select' : 'draw'), active: tool === 'draw' },
     { icon: 'select', label: 'Grupo', key: 'G', action: groupSelection, active: tool === 'frame' },
     { icon: 'flight_class', label: 'Planos de voo', key: '⌥M', action: () => useSquad.getState().setPlansDialog('gallery') },

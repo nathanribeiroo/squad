@@ -111,3 +111,6 @@
 .cmp-send:disabled { opacity: 0.4; cursor: default; }
 .cmp-level { border-bottom: 1px solid var(--line); }
 .cmp-level-n { font-size: 11px; color: var(--text-3); }
+/* A cargo's file or folder: its name here, its quoted path when sent. */
+.path-chip { font-family: var(--font-mono); font-size: 11.5px; }
+.composer.drop-over { outline: 2px solid var(--focus); outline-offset: 2px; }

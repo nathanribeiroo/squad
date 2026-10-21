@@ -75,6 +75,7 @@ Vale para tudo o que a pessoa lê: rótulos, menus, toasts, diálogos, dicas e t
 | Servidor / reconectando | **ENLACE** / **RECONECTANDO…** | |
 | Caixa N (pedidos esperando resposta) | **caixa N** | Fica. |
 | Workspace, Sessão, Portal, Papel, Pedido | iguais | |
+| Explorador de arquivos (nó) | **Carga** | Etiqueta "CARGA", com o nome que a pessoa dá ("Vídeos parte 2"). Arrastar para um voo: "Soltar para colar o caminho no prompt"; toast "Caminho colado em IMP". Não tem frequência (fio). |
 
 ### Estados
 

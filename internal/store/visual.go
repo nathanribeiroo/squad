@@ -64,7 +64,7 @@ func (n Node) Box() (x, y, w, h float64) {
 func checkVisual(n *Node) error {
 	switch n.Kind {
 	case KindGroup:
-		n.Terminal, n.Note, n.Portal, n.Drawing = nil, nil, nil, nil
+		n.Terminal, n.Note, n.Portal, n.Cargo, n.Drawing = nil, nil, nil, nil, nil
 		if n.Group == nil {
 			n.Group = &GroupData{}
 		}
@@ -90,7 +90,7 @@ func checkVisual(n *Node) error {
 			return fmt.Errorf("%w: a group's size", ErrInvalid)
 		}
 	case KindDrawing:
-		n.Terminal, n.Note, n.Portal, n.Group = nil, nil, nil, nil
+		n.Terminal, n.Note, n.Portal, n.Cargo, n.Group = nil, nil, nil, nil, nil
 		d := n.Drawing
 		if d == nil || !slices.Contains(drawingShapes, d.Shape) {
 			return fmt.Errorf("%w: a drawing is one of %s", ErrInvalid, strings.Join(drawingShapes, ", "))

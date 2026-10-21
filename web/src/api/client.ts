@@ -4,6 +4,8 @@
 import type {
   AgentsDetection,
   AttentionChoice,
+  CargoFolder,
+  CargoSearch,
   DirInfo,
   Floor,
   FloorChanges,
@@ -33,6 +35,10 @@ import type {
 import { errorMessage } from './errors';
 
 let base = '';
+
+function cargoQuery(path: string, floor?: string, hidden?: boolean): string {
+  return `path=${encodeURIComponent(path)}${floor ? `&floor=${encodeURIComponent(floor)}` : ''}${hidden ? '&hidden=1' : ''}`;
+}
 
 /** Points the workspace API (api.*, workspace sockets) at workspace id. */
 export function setWorkspace(id: string) {
@@ -128,6 +134,18 @@ export const api = {
   dirs: (path: string, floor?: string) =>
     req<{ suggestions: string[] }>('GET', wsPath(`/api/dirs?path=${encodeURIComponent(path)}${floor ? `&floor=${encodeURIComponent(floor)}` : ''}`)),
   shells: () => req<{ shells: ShellOption[] }>('GET', wsPath('/api/shells')),
+
+  /** A folder for a cargo's explorer (path: absolute, ~, or relative to the floor's folder; "" that folder). */
+  cargoList: (path: string, floor?: string, hidden?: boolean) =>
+    req<CargoFolder>('GET', wsPath(`/api/cargo/list?${cargoQuery(path, floor, hidden)}`)),
+  cargoSearch: (path: string, q: string, floor?: string, hidden?: boolean) =>
+    req<CargoSearch>('GET', wsPath(`/api/cargo/search?${cargoQuery(path, floor, hidden)}&q=${encodeURIComponent(q)}`)),
+  /** The address of a file for the explorer's preview. */
+  cargoFileURL: (path: string, floor?: string) => wsPath(`/api/cargo/file?${cargoQuery(path, floor)}`),
+  /** Renames a cargo, or opens it on another folder. */
+  updateCargo: (id: string, b: { name?: string; path?: string }) => req<WNode>('PATCH', wsPath(`/api/cargo/${id}`), b),
+  /** The folders a cargo's tree shows: the server tells when one changes (cargo.changed). */
+  watchCargo: (id: string, dirs: string[]) => req<void>('PUT', wsPath(`/api/cargo/${id}/watch`), { dirs }),
 
   floorStatus: () => req<FloorStatusResponse>('GET', wsPath('/api/floors/status')),
   branches: () => req<{ branches: string[] }>('GET', wsPath('/api/branches')),

@@ -115,8 +115,10 @@ function summary(inside: WNode[], runtime: Record<string, TerminalRuntime>) {
   }
   const notes = inside.filter((n) => n.note).length;
   const portals = inside.filter((n) => n.portal).length;
+  const cargo = inside.filter((n) => n.cargo).length;
   if (notes) parts.push(plural(notes, 'NOTAM', 'NOTAMs'));
   if (portals) parts.push(plural(portals, 'portal', 'portais'));
+  if (cargo) parts.push(plural(cargo, 'carga', 'cargas'));
   if (!parts.length) parts.push(inside.length ? plural(inside.length, 'desenho', 'desenhos') : 'vazio');
   return { flights, text: parts.join(' · '), ask: flights.some((f) => f.state === 'ask') };
 }

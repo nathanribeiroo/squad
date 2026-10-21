@@ -116,7 +116,7 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 **Ícones:** a fonte Material Symbols é cortada para os ícones listados em `web/src/lib/icons.ts` (cerca de 9 KB em vez de 4 MB). Para usar um ícone novo, acrescente o nome nessa lista e rode `make icons`. O `npm run build` recusa uma fonte desatualizada.
 
 **Atalhos:**
-- canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal, `D` desenho, `G` grupo, `Delete` apaga o fio, o desenho ou a moldura selecionados, `Tab`/`⇧Tab` o próximo/anterior nó (na ordem de leitura, trazendo o nó para a tela), `⏎` dá o teclado ao voo selecionado;
+- canvas: `V` selecionar, `H` mover, `T` novo voo, `N` NOTAM, `P` portal, `C` carga, `D` desenho, `G` grupo, `Delete` apaga o fio, o desenho ou a moldura selecionados, `Tab`/`⇧Tab` o próximo/anterior nó (na ordem de leitura, trazendo o nó para a tela), `⏎` dá o teclado ao voo selecionado;
 - globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥F` foco, `⌥⇧←`/`⌥⇧→` encaixar, `⌥M` planos de voo, `⌥⇧M` salvar como plano, `⌥1`–`⌥9` workspaces;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
 
@@ -330,6 +330,21 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - Cada portal tem um nome ("Portal", "Portal 2"…). Duplo clique no nome (ou ⋯ → Renomear) troca; os agentes usam esse nome para escolher o portal.
 - **Agentes no portal:** um voo na frequência do portal usa a página com `torre portal` (tabela abaixo). Enquanto ele age, o cursor dele aparece na página com o nome e a cor do papel, e o fio mostra "clicando", "preenchendo", "digitando"…
 - **@ ELEMENTOS**, no cabeçalho do portal, mostra o que os voos veem: um contorno tracejado em cada elemento do último `torre portal snapshot`, com a etiqueta ("@e7 botão"), na cor do papel de quem usa a página. Os contornos acompanham a rolagem e não pegam cliques. Sem snapshot (ou depois que a página muda de endereço), aparece "Sem refs". Ligar a camada não tira um snapshot novo, para não trocar as refs que um agente está usando.
+
+**Carga (`C`):** um explorador de arquivos no canvas, de uma pasta do computador ("Vídeos parte 2", "Resultados"). Você navega, escolhe arquivos e pastas e **arrasta para um voo**: o caminho entra no prompt do agente, e ele lê o arquivo. Não tem fio; o agente só recebe o caminho, como texto.
+- **Criar:** `C` (ou o botão da caixa na barra) abre uma carga na pasta do workspace (ou do nível), com o nome da pasta. Soltar uma pasta de uma carga no canvas vazio abre outra carga dela, ali.
+- **Navegar:** a seta de cada pasta a abre ali mesmo, na árvore; duplo clique (ou `⏎`) entra nela. ‹ › voltam e avançam, ↑ (ou `⌫`) sobe uma pasta, e a casa volta à pasta da carga. O caminho no topo é clicável, passo a passo; clicar no fim dele deixa escrever um caminho (`~/Documentos`, `/dados`, `D:\videos`).
+- **Escolher:** clique escolhe um; `⌘`/`ctrl` + clique junta mais; `⇧` + clique pega o intervalo. No teclado: setas, `⇧` + setas, `→`/`←` abrem e fecham a pasta, `⌘A`/`ctrl+A` todos e `⌘C`/`ctrl+C` copiam os caminhos.
+- **Arrastar e soltar:**
+  - **num voo** (no canvas, no foco, na borda ou no Sinóptico): o voo fica contornado ("Soltar para colar o caminho no prompt") e, ao soltar, os caminhos entram no prompt dele entre aspas quando precisam, com um espaço no fim e **sem Enter**: você termina a mensagem. Num shell do Windows (cmd, PowerShell) as aspas são duplas; no Git Bash e nos agentes, simples. O voo precisa estar no ar;
+  - **no Transmitir:** cada arquivo vira um chip com o nome, e ao transmitir o chip vira o caminho. Soltar na barra fechada abre o Transmitir com os chips, para o voo escolhido (ou o único voo do nível);
+  - em outro programa (um editor, uma NOTAM em edição), vai o caminho como texto.
+- **Prévia:** duplo clique (ou espaço) num arquivo mostra texto (os primeiros 256 KB), imagem, vídeo, áudio ou PDF por cima da lista. `Esc` volta; o ícone do canto abre numa aba.
+- **Buscar:** o campo do topo procura pelo nome em toda a pasta mostrada e nas de dentro (sem `node_modules`, `.git` e afins), os mais rasos primeiro.
+- **Ao vivo:** a carga acompanha a pasta. Um arquivo que um agente (ou outro programa) cria, apaga ou renomeia aparece ou some na hora, nas pastas abertas na árvore.
+- **O menu ⋯:** Renomear (ou duplo clique no nome), **Fixar esta pasta** (a carga passa a abrir na pasta em que você está), Copiar os caminhos, Mostrar ocultos (arquivos com ponto), Atualizar e Remover do canvas (os arquivos ficam).
+- A pasta fica relativa ao workspace quando está dentro dele, então acompanha o nível e vai nos planos de voo. Se a pasta sumir, a carga avisa e deixa escrever outra.
+- **Sobre permissões:** o agente lê o arquivo com as permissões dele. Um caminho fora da pasta do voo pode fazer o Claude ou o Devin pedirem autorização (PRIORIDADE).
 
 **Grupo (`G`):** uma moldura com nome e cor em volta de vários nós, para organizar uma equipe grande ("Front-end" com PLN, IMP e o portal). É só visual: os agentes não veem o grupo, e quem conversa com quem continua sendo decidido pelos fios.
 - **Criar:** com nós selecionados, `G` põe a moldura em volta deles ("Grupo 1"); sem seleção, `G` e arraste um retângulo no canvas. `Esc` desiste.

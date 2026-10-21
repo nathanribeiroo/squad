@@ -70,6 +70,7 @@ export function contents(s: SessionSummary): string {
   if (s.terminals) parts.push(count(s.terminals, 'voo', 'voos'));
   if (s.notes) parts.push(count(s.notes, 'NOTAM', 'NOTAMs'));
   if (s.portals) parts.push(count(s.portals, 'portal', 'portais'));
+  if (s.cargo) parts.push(count(s.cargo, 'carga', 'cargas'));
   if (s.floors) parts.push(count(s.floors, 'nível', 'níveis'));
   return parts.length ? parts.join(' · ') : 'vazia';
 }

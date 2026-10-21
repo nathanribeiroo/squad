@@ -85,7 +85,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Workspaces inativos fora da tela | `feat/workspaces-inativos` | concluído |
 | Novos papéis e o fluxo de especificação | `feat/novos-papeis` | concluído |
 | Relatório do consumo (`torre usage-report`) | `feat/relatorio-consumo` | concluído |
-| Fio sem folga, com barriga fixa | `feat/fio-sem-folga` | concluído (PR) |
+| Fio sem folga, com barriga fixa | `feat/fio-sem-folga` | concluído |
+| Carga: explorador de arquivos no canvas | `feat/carga` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -306,6 +307,10 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
   - **A ideia:** um `--connect "Nome"` repetível no `torre new`, e um campo `connect` na ferramenta MCP `new`, ligaria tudo na criação, antes do primeiro pedido.
   - **O ganho:** menos chamadas e menos chance de o voo começar sem as NOTAMs.
   - **Onde mexer:** `parseNew` e `create`, em `internal/team/team.go`.
+- **Arrastar do Finder ou do Explorer para a Torre** (Carga): o navegador entrega o arquivo, mas não o caminho, então hoje só dá para arrastar de uma carga.
+  - **O que daria:** soltar uma imagem (o Transmitir já anexa imagens coladas) ou copiar o arquivo para uma pasta da carga. Isso cria arquivos, e o usuário pediu que a carga não crie nada no projeto.
+  - **Na janela de app** (Chromium), também não há caminho sem uma extensão.
+- **`torre cargo` para os agentes** (Carga): um voo abriria uma carga com a pasta dos resultados dele ("veja em Resultados"), como faz com `torre portal create`. Hoje só a interface cria cargas.
 
 ## Pilha de NOTAMs
 
@@ -607,5 +612,26 @@ Ficou de fora o que é próprio do programa deles: a pasta `.compozy/`, os campo
   - o cabeçalho dos papéis lembra das ferramentas MCP.
 
   Junto, a prévia das NOTAMs passou a desenhar tabelas.
+
+**Status:** concluído, mesclado na `main` pelo PR #48.
+
+## Carga
+
+Pedido do usuário em 2026-10-21, como o painel de arquivos do Maestri: abrir uma árvore de arquivos no canvas, navegar, escolher arquivos e pastas e **arrastar para um voo** (direto no terminal) ou para o Transmitir. O agente recebe o caminho, como texto. O nome CARGA ficou; cada carga tem um nome próprio ("Vídeos parte 2", "Resultados").
+
+A primeira versão ligava a carga aos voos por fio, com MCP, `torre cargo` e `--add-dir` na linha de lançamento. O usuário a parou: não queria pastas criadas dentro do projeto nem fio, só a árvore e o arrastar. A branch recomeçou com esse desenho, que é bem menor: os agentes não mudam (nem MCP, nem CLI, nem skill), porque recebem o caminho no prompt.
+
+- **Servidor (`internal/cargo`):**
+  - **o nó** `cargo` guarda o nome e a pasta (relativa ao workspace quando dentro dele, então segue o nível e vai nos planos de voo); sem nome, leva o da pasta. Não aceita fio;
+  - **as rotas,** só da interface: listar uma pasta (pastas primeiro, ordem natural, "parte 2" antes de "parte 10", com a contagem de itens), buscar pelo nome (até 200 resultados, 50 mil entradas ou 2 s, sem `node_modules`, `.git` e afins), servir um arquivo para a prévia (com faixas, para o vídeo; HTML e scripts nunca como página) e renomear ou trocar a pasta;
+  - **ao vivo:** o fsnotify vigia as pastas que a árvore mostra (até 64 por carga) e avisa a interface (`cargo.changed`), 250 ms depois da última mudança;
+  - **sessões e planos:** contam e levam as cargas. Num nível, a carga sai com ele no pouso ou no descarte, como o portal (os arquivos ficam).
+- **Interface (`CargoNode.tsx`, `lib/cargo.ts`, `lib/cargoDrop.ts`):**
+  - a árvore com setas, duplo clique para entrar, ‹ › ↑ e a casa, o caminho clicável e editável, a busca, a prévia (texto, imagem, vídeo, áudio, PDF), mostrar ocultos, fixar a pasta, renomear, o teclado e a seleção com `⌘`/`ctrl` e `⇧`;
+  - **arrastar:** um tipo próprio (`application/x-torre-paths`) e os caminhos como texto para fora da Torre;
+  - **soltar num voo** (canvas, foco, borda, Sinóptico): `term.paste` do xterm, com os caminhos entre aspas quando precisam (duplas no cmd e no PowerShell, simples no resto) e um espaço, nunca Enter;
+  - **soltar no Transmitir:** chips com o nome, que viram o caminho ao enviar; na barra fechada, abre o Transmitir com eles;
+  - **soltar uma pasta no canvas vazio:** uma carga nova ali. Atalho `C`.
+- **Fora (no "Para depois" da seção Torre):** arrastar do Finder ou do Explorer para a Torre, e um `torre cargo` para os agentes abrirem uma carga.
 
 **Status:** PR aberto, esperando o merge.
