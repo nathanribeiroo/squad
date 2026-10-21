@@ -8,7 +8,7 @@ import { toast } from '../../lib/toast';
 import { useNow } from '../../lib/useNow';
 import { useNodeName, useSquad, type Flight } from '../../state/store';
 import { anchors, type Pt, type Rect, type Wire } from '../geometry';
-import { Chain, STILL, lowest, smoothPath, type Solid } from '../rope';
+import { Chain, STEP_MS, STILL, middle, smoothPath, type Solid } from '../rope';
 import { actionVerb, usePortalAction } from '../nodes/portalAction';
 import './wire.css';
 
@@ -54,8 +54,10 @@ function reach(xs: number[], ys: number[]): Rect {
 }
 
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-/** A chain swings for at most this long after something moves. */
+/** A chain swings for at most this long after something moves; then it is put at rest. */
 const SWING_MS = 6000;
+/** Steps a frame may catch up on (a slow frame): past that, the chain just runs slower. */
+const MAX_STEPS = 4;
 /** Young chains (the canvas opening, nodes being measured) settle at once. */
 const QUIET_START_MS = 1500;
 /** While it swings with labels on it, React redraws them every few frames. */
@@ -63,10 +65,12 @@ const LABEL_FRAMES = 4;
 
 /**
  * The wire as a hanging chain through its pins (the ends, then the bend
- * points): it settles at once when it first appears, and swings when an end
- * or a node near it moves, until it is still again. While it swings, draw
- * gets each frame's points (the path is written straight to the DOM; React
- * renders again only every few frames, when labels need to follow).
+ * points): it appears at rest, and swings when an end or a node near it
+ * moves, until it is back at rest. It runs STEP_MS steps by the clock, so it
+ * swings the same on a 60 Hz screen, a 144 Hz one or a slow computer. While
+ * it swings, draw gets each frame's points (the path is written straight to
+ * the DOM; React renders again only every few frames, when labels need to
+ * follow).
  */
 function useChain(pins: Pt[] | null, a: string, b: string, draw: (pts: Pt[]) => void, labels: boolean): Pt[] | null {
   const store = useStoreApi();
@@ -88,9 +92,9 @@ function useChain(pins: Pt[] | null, a: string, b: string, draw: (pts: Pt[]) => 
     if (!c) return;
     const young = performance.now() - born.current < QUIET_START_MS;
     if (young || reducedMotion()) {
-      // While the canvas opens (nodes get their sizes), it starts over and falls onto what is in its way.
+      // While the canvas opens (nodes get their sizes), it starts over at rest.
       if (young) c.reset(obstacles());
-      c.settle(obstacles());
+      else c.snap(obstacles());
       setFrame((f) => f + 1);
       return;
     }
@@ -100,10 +104,9 @@ function useChain(pins: Pt[] | null, a: string, b: string, draw: (pts: Pt[]) => 
   }, [obstacles]);
 
   if (pins && !chain.current) {
-    const first = new Chain(pins, solids(store.getState().nodeLookup, reach(pins.map((p) => p.x), pins.map((p) => p.y)), [a, b]));
-    chain.current = first;
+    // It appears at rest.
+    chain.current = new Chain(pins, solids(store.getState().nodeLookup, reach(pins.map((p) => p.x), pins.map((p) => p.y)), [a, b]));
     born.current = performance.now();
-    first.settle(obstacles());
   }
   const key = pins ? pins.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(' ') : '';
   useEffect(() => {
@@ -133,14 +136,27 @@ function useChain(pins: Pt[] | null, a: string, b: string, draw: (pts: Pt[]) => 
     if (!awake) return;
     let raf = 0;
     let frames = 0;
-    const tick = () => {
+    let last = performance.now();
+    let due = 0;
+    const tick = (now: number) => {
       const c = chain.current;
       if (!c) return;
-      c.quiet = c.step(obstacles()) < STILL ? c.quiet + 1 : 0;
-      // Still, and not taking back chain it paid out: asleep (React draws the last pose).
-      if ((c.quiet > 30 && !c.retracting) || performance.now() > until.current) return setAwake(false);
-      drawRef.current(c.points());
-      if (labelsRef.current && ++frames % LABEL_FRAMES === 0) setFrame((f) => f + 1);
+      // The steps the clock says are due since the last frame.
+      due += Math.min(now - last, 250);
+      last = now;
+      const obs = obstacles();
+      let steps = 0;
+      for (; due >= STEP_MS && steps < MAX_STEPS; steps++, due -= STEP_MS) c.quiet = c.step(obs) < STILL ? c.quiet + 1 : 0;
+      if (steps === MAX_STEPS) due = 0;
+      // Back at rest, or swinging too long: put at rest and asleep (React draws that pose).
+      if ((c.quiet > 30 && c.settled) || now > until.current) {
+        c.snap(obs);
+        return setAwake(false);
+      }
+      if (steps > 0) {
+        drawRef.current(c.points());
+        if (labelsRef.current && ++frames % LABEL_FRAMES === 0) setFrame((f) => f + 1);
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -212,7 +228,7 @@ export function WireEdge({ id, source: drawnFrom, target: drawnTo, selected, dat
   const pts = useChain(ends ? [ends[0], ...rope.map(([x, y]) => ({ x, y })), ends[1]] : null, drawnFrom, drawnTo, draw, labels);
   if (!a || !b || !ends || !pts) return null;
 
-  const w: Wire = { path: smoothPath(pts), s: ends[0], t: ends[1], low: lowest(pts) };
+  const w: Wire = { path: smoothPath(pts), s: ends[0], t: ends[1], low: middle(pts) };
   // The same chain oriented from a flight's origin, for the travelling light.
   const oriented = (from: string): Wire => (from === source ? w : { ...w, path: smoothPath([...pts].reverse()), s: ends[1], t: ends[0] });
 

@@ -21,7 +21,7 @@ export interface Wire {
   path: string;
   s: Anchor;
   t: Anchor;
-  /** Lowest point of the curve, where pills sit. */
+  /** Where the pills sit (the middle of a chain wire). */
   low: Pt;
 }
 
