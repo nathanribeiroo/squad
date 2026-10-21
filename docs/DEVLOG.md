@@ -2,6 +2,46 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-21, Relatório do consumo (`torre usage-report`)
+
+- **Pedido:** no Consumo de contas de empresa (PLAN, "Consumo em contas de empresa"), o usuário quer o consumo do mês contra o limite sem abrir `/usage`. O caminho mais automático no Devin é o cache da conta que ele guarda em disco, mas o formato não é documentado e o arquivo tem o e-mail e a equipe. Combinamos um comando que mostra só os números, para o usuário rodar no trabalho e mandar sem dados pessoais.
+- **As decisões do usuário** (registradas no PLAN):
+  - o botão mostra o gasto do workspace aberto numa conta de empresa, e a janela de 5 h no Claude pessoal, com uma opção nas Configurações;
+  - o limite fica nas Configurações;
+  - o ciclo renova todo dia 1;
+  - os ACUs do "Billing cycle" são só dele.
+- **O comando** (`internal/usage/report.go`, `internal/cli/usage.go`): `torre usage-report` imprime em inglês, como o resto da CLI. Os caminhos começam em `~`. Mostra:
+  - **Devin:**
+    - as sessões do `sessions.db` e os ACUs delas, no total e das ativas neste mês;
+    - quantas respostas guardam o próprio custo (`committed_acu_cost`), contadas uma vez por pedido, e a soma das feitas neste mês;
+    - os caches `.bin` da pasta do Devin. Os `user_status.*` são abertos campo a campo.
+  - **Claude Code:**
+    - as conversas que mudaram neste mês e quantas têm linhas `cost-state`;
+    - as versões;
+    - o custo estimado das execuções que começaram neste mês, contando uma vez a cópia de um nível;
+    - se ele vai pelo Bedrock, pelo Vertex ou por um gateway, olhando o ambiente, o `settings.json` e as configurações da empresa (`managed-settings.json`), sem os endereços.
+- **O cache da conta do Devin, visto de verdade:** o login da conta gratuita do usuário, de 2026-10-18, deixou os arquivos no container.
+  - **Onde e o nome:** `~/.cache/devin/cli/user_status.<digest>.bin`, um por identidade, e não `user_status.bin`.
+  - **O formato:** é JSON (`version`, `identity_digest`, `fetched_at_secs`, `payload`), e o `payload` é o protobuf da resposta do servidor em base64. Os vizinhos (`team_settings`, `model_configs_v6`, `managed_plugins`, `unleash_definitions`) têm o mesmo envelope.
+  - **O mapa:** o campo 13 é o status do plano. `13.14` (96) e `13.15` (98) são o quanto resta das cotas diária e semanal, e `13.17` e `13.18` as renovações. O `/usage` daquele dia mostrou "4% used" e "2% used · resets Oct 25, 8:00 AM (UTC)", e as quatro coincidem. Isso já daria as janelas do Devin pessoal sem `/usage`; os ACUs da empresa ficam para o relatório do usuário.
+- **Como o relatório lê um binário:**
+  - **protobuf:** com ou sem um cabeçalho de até 16 bytes. Mostra o número de cada campo e o valor, com o double e o inteiro de 64 bits lado a lado, e as datas Unix (segundos ou milissegundos, de 2020 a 2040) por extenso. O texto aparece só pelo tamanho, salvo quando é só um número ou uma data. De uma lista mostra o primeiro item e quantos seguem, e uma mensagem interna tem até 150 linhas;
+  - **outro formato:** mostra os doubles que parecem custo e os inteiros que parecem data, com a posição.
+- **Decisões sem consulta:**
+  - **o nome `usage-report`:** é um comando do usuário, não dos agentes, e fica fora do MCP;
+  - **"este mês" começa no dia 1**, na hora local;
+  - **onde procurar os caches:** a pasta do `sessions.db`, `~/.cache/devin`, `~/.config/devin`, `~/.local/share/devin`, `%APPDATA%\devin`, `%LOCALAPPDATA%\devin` e as pastas de cache e configuração do sistema (no Mac, `~/Library/Caches` e `~/Library/Application Support`), até dois níveis abaixo.
+- **Testes:**
+  - `TestReportDevinCache`: o envelope e o protobuf, as datas, a lista resumida, e nenhum texto (e-mail, plano, modelo, o digest);
+  - `TestReportBinaryNumbers`: o formato desconhecido;
+  - `TestReportDevinDB`: as sessões do mês, as respostas repetidas e as sem custo, sem o texto das mensagens;
+  - `TestReportClaude`: a cópia de um nível contada uma vez, a execução do mês anterior fora, as versões, e o Bedrock no `settings.json`, o gateway no ambiente e o das configurações da empresa sem o endereço;
+  - `TestUsageReport`: o comando na CLI.
+- **Rodado no container:** 367 linhas, com os dois caches da conta gratuita e as 109 conversas do Claude (105 com `cost-state`, versões 2.1.300 a 2.1.304).
+- **Precisa de você:**
+  - **o relatório do trabalho:** abra `/usage` num Devin, rode `torre usage-report > relatorio.txt` logo depois e me mande o arquivo com a captura do `/usage`. Antes de mandar, dá para conferir que nenhum texto seu aparece;
+  - **no Windows:** o caminho do cache do Devin não foi visto; o relatório procura nas pastas acima e lista o que achar.
+
 ## 2026-10-20, Novos papéis e o fluxo de especificação
 
 - **Pedido:** o usuário escolheu os papéis Produto, Depurador, Segurança, Documentador, Designer (UX e UI, antes e depois) e Front-end. Pediu também um papel para o desenvolvimento guiado por especificação (PRD, spec técnica, ADRs, tarefas), com a skill compozy como referência. O Planejador deve poder dispensar quem terminou e chamar de volta com contexto, sem passar de 6 voos ao mesmo tempo. A análise da skill, a divisão dos papéis e o plano foram aprovados antes (PLAN, "Novos papéis e o fluxo de especificação").

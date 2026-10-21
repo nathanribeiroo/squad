@@ -64,7 +64,7 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 
 | Onde | O quê |
 |---|---|
-| `cmd/torre`, `internal/cli` | CLI: `serve` (e a janela de app, `window.go`), comandos de terminal (`list`, `ask`, `note`, `portal`, `new`…), `hook`, `mcp`, `install-skill`. `cmd/squad` é o mesmo comando com o nome antigo |
+| `cmd/torre`, `internal/cli` | CLI: `serve` (e a janela de app, `window.go`), comandos de terminal (`list`, `ask`, `note`, `portal`, `new`…), `hook`, `mcp`, `install-skill`, `usage-report`. `cmd/squad` é o mesmo comando com o nome antigo |
 | `internal/hub` | vários workspaces, `/api/workspaces`, `/api/roles`, `/api/agents`, `/api/plans`, `/ws/workspaces`, roteamento de `/cli` e `/hooks`; as sessões de cada workspace, a migração e a troca (`sessions.go`); a primeira abertura (`welcome.go`); o workspace fora da tela, que para os agentes e os sobe de volta (`sleep.go`), a fila que sobe poucos por vez (`launch.go`) e `~/.torre/settings.json` (`settings.go`) |
 | `internal/app` | monta um workspace: servidor, barramento, monitor de atividade, notas, portais, equipe; limites (`limits.go`), salvar e decolar planos de voo (`plans.go`), as rotas da pilha de NOTAMs (`stacks.go`); abrir sem os terminais, parar os agentes e o que segura um workspace ativo (`sleep.go`) |
 | `internal/plans` | planos de voo em `~/.torre/plans`: validar, salvar, importar |
@@ -77,7 +77,7 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 | `internal/portal`, `internal/browser` | portais (CDP com chromedp): transmissão, `torre portal` |
 | `internal/summary` | cartões de fim de turno e resumos (`claude -p`, `devin -p`, `codex exec`, `gemini -p`) |
 | `internal/radio` | o Rádio de cada sessão: as linhas montadas dos eventos, em `radio.jsonl` na pasta da sessão, com o texto dos pedidos e das respostas |
-| `internal/usage` | Consumo: o que cada voo gastou e os limites da conta de cada agente, lidos dos arquivos dos agentes; a status line do Claude (`claude.go`, e `internal/cli/statusline.go`, que roda a do usuário), o `sessions.db` e a tela do `/usage` do Devin (`devin.go`), o Codex e o Gemini; as contas, as mesmas em todos os workspaces (`usage.go`) |
+| `internal/usage` | Consumo: o que cada voo gastou e os limites da conta de cada agente, lidos dos arquivos dos agentes; a status line do Claude (`claude.go`, e `internal/cli/statusline.go`, que roda a do usuário), o `sessions.db` e a tela do `/usage` do Devin (`devin.go`), o Codex e o Gemini; as contas, as mesmas em todos os workspaces (`usage.go`); o `torre usage-report`, só com números, e o cache da conta do Devin, um protobuf em base64 (`report.go`) |
 | `internal/floors` | andares: git worktree, cópia e preparo, aterrissar (merge), descartar, `torre floor`, `/api/floors`; a cópia em que uma sessão trabalha, e mesclar sem fechar (`copy.go`); as permissões do SEMPRE do Claude e do Devin que seguem os níveis e voltam no pouso (`permissions.go`); as marcas de testes e revisão dos voos, `torre floor mark` (`checks.go`) |
 | `internal/terminal`, `pty`, `screen`, `activity`, `notes` | terminais, PTY e ConPTY, emulador, estados, notas (os modelos do `--template` em `templates.go`; o `--stack` no `create`) |
 | `web/` | React + Vite + React Flow; estado em `src/state/store.ts`, canvas em `src/canvas` (o Desenho em `DrawLayer.tsx`; grupos e desenhos em `src/lib/visual.ts`; os fios, uma corrente com gravidade, em `rope.ts`), sessões em `src/components/SessionsMenu.tsx`, o Consumo em `src/components/UsageMenu.tsx`; os terminais (xterm, o zoom e a fila que os reajusta um por quadro) em `src/term/session.ts` |
@@ -92,5 +92,5 @@ A Torre (antes chamada Squad) é um canvas (Go + React) onde agentes de código 
 ## Pendências
 
 - **Validação no Windows real:** veja os "Precisa de você" no DEVLOG.
-- **Consumo em contas de empresa:** a análise e o que falta estão no PLAN, na seção "Consumo em contas de empresa (para discutir)". O usuário vai trazer a tela do `/usage` do Devin da empresa e o tipo de conta do Claude antes do plano.
+- **Consumo em contas de empresa:** a análise, as decisões e o que falta estão no PLAN, na seção "Consumo em contas de empresa". O usuário vai rodar o `torre usage-report` no trabalho, logo depois de um `/usage` no Devin, e mandar a saída com a captura. Com isso sai o plano detalhado.
 - **Próximo passo:** a Torre (F0–F5d, no PLAN) terminou. O que ficou de fora está em "Para depois", na seção Torre do PLAN; o que vem agora é decisão do usuário.

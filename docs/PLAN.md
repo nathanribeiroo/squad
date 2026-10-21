@@ -72,7 +72,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Perguntas e planos pela Torre, e SUA VEZ | `feat/perguntas-e-sua-vez` | concluído |
 | Desenho e Grupo | `feat/desenho-grupo` | concluído |
 | Consumo | `feat/consumo` | concluído |
-| Consumo em contas de empresa | — | para discutir |
+| Consumo em contas de empresa | — | decidido em parte; esperando o relatório do trabalho |
 | Ajustes da interface (telas largas, remover, nova sessão) | `feat/ajustes-interface` | concluído |
 | NOTAM: cabeçalho com nome longo e tamanho | `feat/notam-cabecalho` | concluído |
 | Fios como corrente | `feat/fios-corrente` | concluído |
@@ -83,7 +83,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Fios do nó selecionado em destaque | `feat/fios-do-selecionado` | concluído |
 | Destaque dos fios mais visível | `feat/fios-do-selecionado-forte` | concluído |
 | Workspaces inativos fora da tela | `feat/workspaces-inativos` | concluído |
-| Novos papéis e o fluxo de especificação | `feat/novos-papeis` | concluído (PR) |
+| Novos papéis e o fluxo de especificação | `feat/novos-papeis` | concluído |
+| Relatório do consumo (`torre usage-report`) | `feat/relatorio-consumo` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -260,7 +261,7 @@ Pedido do usuário em 2026-10-17: trocar o nome para **Torre** e redesenhar a in
 
 **Para depois (fora destas fases), com a referência no handoff:**
 
-- **Consumo em contas de empresa:** dólares e ACUs no lugar das janelas, totais que não somem com o `/clear` e o gateway do Claude. Veja a seção "Consumo em contas de empresa (para discutir)", mais abaixo.
+- **Consumo em contas de empresa:** dólares e ACUs no lugar das janelas, totais que não somem com o `/clear` e o gateway do Claude. Veja a seção "Consumo em contas de empresa", mais abaixo.
 - **Grupo com sentido para os agentes** (depois de Desenho e Grupo, que são só visuais). Mexe nas regras de conversa e merece uma etapa própria. Roteiro para quando vier:
   1. **Decidir a regra:** o grupo só informa (o `torre list` diz "você está no grupo Front-end, com IMP e REV") ou também autoriza (falar com quem está no grupo sem fio)? Recomendo só informar: os fios continuam sendo a única autorização.
   2. **Quem está no grupo:** `store.Inside` (em `internal/store/visual.go`) já diz o que está dentro de uma moldura, aberta ou recolhida. Usar a mesma conta no servidor, sem lista fixa.
@@ -454,7 +455,7 @@ Pedido do usuário em 2026-10-18: ver quanto os agentes estão gastando, sem ocu
 
 **Status:** mesclado na `main` pelo PR #36.
 
-## Consumo em contas de empresa (para discutir)
+## Consumo em contas de empresa
 
 Pergunta do usuário em 2026-10-19, depois do merge do Consumo. Nas contas do trabalho, nem o Claude nem o Devin mostram a sessão de 5 h ou a semana: o Devin mostra só ACUs, e no Claude o gasto só aparece pelo valor em dólar. Nesse caso, a ideia é mostrar o valor gasto (dólar no Claude, ACU no Devin, ou dólar se ele mostrar), somado do que cada resposta devolve durante a sessão, e pôr o total de dólares e de ACUs na seção de cada agente, no topo da caixa do Consumo (e no botão). O usuário vai conferir como o Devin da empresa se comporta antes de decidirmos o plano.
 
@@ -487,7 +488,57 @@ Pergunta do usuário em 2026-10-19, depois do merge do Consumo. Nas contas do tr
   - **como o Claude do trabalho entra:** login do claude.ai (Team/Enterprise), chave de API, Bedrock/Vertex ou gateway da empresa. O `/status` dentro do Claude mostra isso;
   - **a tela do `/usage` do Devin da empresa:** o usuário vai trazer o texto, sem o e-mail, para confirmar o formato dos ACUs e dos dólares.
 
-**Status:** para discutir; o usuário vai conferir o Devin e o Claude da empresa.
+### O que o usuário trouxe (2026-10-20)
+
+- **Claude do trabalho:** Claude Code 2.1.236 pelo Amazon Bedrock, com um endereço próprio da empresa, região us-east-1, proxy e certificado da empresa. Sem janelas e sem `spend_limit` (versão antiga e Bedrock). O limite é de US$ 180 por mês, controlado pela empresa.
+- **Devin Enterprise:**
+  - o `/status` diz "Cognition Platform (Enterprise)", "Devin Enterprise";
+  - o `/usage` mostra "Billing cycle 599.41 ACUs consumed" e, de uma sessão, "ACUs 38.4671", os turnos, as ferramentas, os tokens e o modelo. Numa sessão nova: "No ACUs consumed yet in this session.". Nenhum limite aparece;
+  - os ACUs do ciclo são só do usuário (não da equipe).
+- **A caixa do Consumo hoje, com o Devin Enterprise:** os ACUs de cada voo e o contexto já funcionam (0,07 ACU, 2%). A seção do Devin fica em "A cota aparece quando você abre /usage num voo do Devin" mesmo depois do `/usage`: o leitor procura "Fetching account usage", que a tela da empresa não tem. O botão mostra os tokens (25,5K).
+
+### O que ficou decidido
+
+- **O botão:**
+  - numa conta de empresa, o gasto **do workspace aberto**: ACUs no Devin, US$ no Claude. O geral (o mês contra o limite, os agentes e os voos) fica na caixa;
+  - no Claude pessoal (Pro e Max), a porcentagem da **janela de 5 h** (hoje é a mais cheia, por isso aparecia a semanal);
+  - uma opção nas Configurações para escolher o que o botão mostra: o gasto do workspace, a janela de 5 h, a semanal ou a mais cheia;
+  - com Claude e Devin juntos no workspace, os dois lado a lado ("0,8 ACU · US$ 3,40"), a confirmar no plano.
+- **A seção de cada agente, numa conta de empresa:** o consumo do mês contra o limite, com a barra e a porcentagem. Os voos continuam como hoje.
+- **O limite:** configurado nas Configurações, uma vez para todos os workspaces (a conta é a mesma em todos):
+  - **Devin:** em ACUs por mês, ou em US$ por mês com o preço de um ACU (a Torre converte);
+  - **Claude:** em US$ por mês.
+- **O ciclo** renova todo dia 1.
+- **Qual vale:** o limite configurado vale quando existe. Sem ele, as janelas do plano, quando a conta tem.
+- **A Torre nunca digita `/usage` num voo** (a regra de nunca digitar num terminal sozinha). O `/usage` que o usuário abrir continua sendo lido.
+
+### De onde vêm os números (sem `/usage`)
+
+- **Devin, o cache da conta:**
+  - **onde:** o Devin 3000.11.92 guarda a resposta do `GetUserStatus` em `~/.cache/devin/cli/user_status.<digest>.bin` (no Windows, provavelmente em `%LOCALAPPDATA%\devin`). Há um arquivo por identidade (`identity_digest`); vale o buscado por último;
+  - **o formato:** JSON com `version`, `identity_digest`, `fetched_at_secs` e `payload`, o protobuf da resposta em base64;
+  - **mapeado com a conta gratuita do usuário** (o login de 2026-10-18 no container), conferido com o `/usage` daquele dia ("Daily 4% used", "Weekly 2% used · resets Oct 25, 8:00 AM (UTC)"). O campo 13 é o status do plano: `13.14` é o quanto resta da cota diária (96), `13.15` da semanal (98), e `13.17` e `13.18` são as renovações (Unix). Isso já daria as janelas do Devin pessoal sem `/usage`;
+  - **a conferir:** pela ordem dos nomes no binário (`overage_balance_micros`, as renovações, `acu_consumed`, `acu_limit`, `dollars_limit`), os ACUs devem vir logo depois, no mesmo campo 13. Falta ver o arquivo de uma conta de empresa, e também quando o Devin atualiza o arquivo (ao abrir, em segundo plano, pelo texto do binário);
+  - **cuidados:** o formato não é documentado e pode mudar numa versão nova. Se a leitura falhar, vale o próximo caminho. O arquivo tem o e-mail e a equipe, e a Torre só lê os números.
+- **Devin, o `sessions.db`:** cada resposta deve guardar o próprio custo (`committed_acu_cost`) e a hora. Somar as respostas do mês dá o que este computador gastou, dentro e fora da Torre. Não vê outros computadores nem o Devin na nuvem. Serve de reserva, ou para somar ao último número lido do cache ou do `/usage`.
+- **Claude, o custo do mês:**
+  - os voos da Torre: a status line, guardada por conversa num registro, para o total sobreviver ao `/clear`, ao voo fechado e ao reinício;
+  - fora da Torre, neste computador: as linhas `cost-state` das conversas (`~/.claude/projects`). Vistas nas versões 2.1.300 a 2.1.304; falta saber se a 2.1.236 grava;
+  - é a estimativa do Claude a preço de tabela, e a conta do Bedrock pode diferir (desconto da empresa, preço por região);
+  - quando o Claude do trabalho passar da 2.1.284 e o gateway informar o `spend_limit`, ele ganha (é o número da empresa).
+
+### O relatório (`torre usage-report`)
+
+Feito para mapear o que falta sem o usuário mandar arquivos com dados pessoais. Ele mostra só números: os campos do cache da conta do Devin (um por linha, o texto só pelo tamanho, as datas por extenso), as somas do `sessions.db`, as conversas do Claude com `cost-state`, as versões e o provedor (Bedrock, Vertex ou gateway, sem os endereços).
+
+**O que falta do usuário:** no trabalho, abrir `/usage` num Devin, rodar `torre usage-report > relatorio.txt` logo depois e mandar o arquivo com a captura do `/usage`. Com o relatório, o plano detalhado:
+1. ler o cache da conta do Devin (as janelas, e os ACUs na empresa) e consertar a leitura do `/usage` da empresa;
+2. o limite e o ciclo nas Configurações, e a seção de cada agente com o mês contra o limite;
+3. o registro do custo do Claude por conversa e o total do mês (status line e `cost-state`);
+4. o botão, com a opção nas Configurações;
+5. o `spend_limit` do Claude atrás de um gateway.
+
+**Status:** decidido em parte; esperando o relatório do trabalho.
 
 ## Workspaces inativos fora da tela
 

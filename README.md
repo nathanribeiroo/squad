@@ -309,6 +309,9 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 
 - **A sua status line continua:** a Torre roda a do seu `settings.json` (do projeto ou o seu) e mostra o que ela imprimir.
 - **Rota** (só da interface): `GET /w/<id>/api/usage` dá os voos e as contas. As contas ficam em `~/.torre/usage-accounts.json`, para aparecerem depois de reiniciar.
+- **Quando os números não batem:** `torre usage-report > relatorio.txt` mostra o que a Torre consegue ler neste computador. A saída traz só números, nunca o texto dos arquivos (nem e-mail, nem equipe, nem conversa), e os caminhos começam em `~`:
+  - **Devin:** as sessões do `sessions.db` e os ACUs delas, e quantas respostas guardam o próprio custo; os caches da conta (`user_status.<…>.bin`, em `~/.cache/devin/cli`; no Windows, procurado também em `%LOCALAPPDATA%\devin` e `%APPDATA%\devin`), com quando foram buscados e os números de dentro, campo a campo;
+  - **Claude Code:** quantas conversas mudaram neste mês, quantas guardam o custo (`cost-state`), as versões, o custo estimado do mês e se ele vai pelo Bedrock, pelo Vertex ou por um gateway (sem os endereços).
 
 **Workspaces:**
 - o botão no topo, à esquerda, abre o seletor: a cor, o nome com o atalho (`⌥1`…), a pasta e o que está acontecendo ("2 no ar · 1 pendente"). Um ponto no botão indica atividade em outro workspace;
@@ -609,7 +612,7 @@ go test -tags e2e -run TestRealClaude -v ./internal/app/     # usa o Claude Code
 
 | Pasta | Conteúdo |
 |---|---|
-| `cmd/torre`, `internal/cli` | o binário único: servidor (`serve`), a CLI usada pelos agentes, `hook`, `install-skill` (`cmd/squad` é o mesmo, com o nome antigo) |
+| `cmd/torre`, `internal/cli` | o binário único: servidor (`serve`), a CLI usada pelos agentes, `hook`, `install-skill`, `usage-report` (`cmd/squad` é o mesmo, com o nome antigo) |
 | `internal/` | `terminal`, `pty`, `screen` (emulador), `activity` (monitor), `agentbus` (conversa), `agents` (hooks), `notes`, `floors` (níveis de voo), `store`, `server`, `app` |
 | `web/` | interface React (React Flow, xterm.js); o build vai para `internal/webui/dist` |
 | `tools/shot` | captura de tela via Chrome headless (módulo Go próprio), usada para comparar a UI com o design |
