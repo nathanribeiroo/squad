@@ -120,6 +120,13 @@ cd web && TORRE_TOKEN=<token> npm run dev     # Vite com proxy para o servidor e
 - globais: `⌥S` Sinóptico ↔ Espaço, `⌥A` Rádio, `⌥P` espera geral, `⌥K` Transmitir, `⌥⏎` o próximo voo que pede você, `⌥F` foco, `⌥⇧←`/`⌥⇧→` encaixar, `⌥M` planos de voo, `⌥⇧M` salvar como plano, `⌥1`–`⌥9` workspaces;
 - com um voo que pede você selecionado: `1` autorizar, `2` sempre, `3` negar.
 
+**Pôr um item no canvas** (voo `T`, NOTAM `N`, portal `P`, carga `C`, ou o botão na barra da esquerda): o botão fica marcado e o item segue o mouse, tracejado, no tamanho de sempre.
+- **Clique** põe o item ali, centrado no mouse. **Arraste** desenha o retângulo do tamanho que você quer: o tamanho aparece no canto ("380 × 320"), e um arraste pequeno demais para no tamanho mínimo do item.
+- **O voo:** depois do retângulo abre o Novo voo, e o retângulo fica marcado ("o voo decola aqui") até Decolar ou Cancelar.
+- O item nasce selecionado, e a ferramenta volta para Selecionar. Com `⇧` ao soltar, ela continua para pôr outro igual (menos o voo).
+- `Esc`, o `×` da faixa ou a mesma tecla de novo desistem. A roda continua movendo o canvas, e `⌘`/`ctrl` + roda dá zoom.
+- As posições e os tamanhos caem de 10 em 10, alinhados com os pontos do canvas.
+
 **Foco, encaixe e ocultar** (também no menu ⋯ do voo):
 - **Foco (`⌥F`):** o voo selecionado (ou o que tem o teclado) ocupa a área inteira, abaixo da barra do topo; `⌥F` ou Esc voltam ao canvas no mesmo zoom;
 - **Encaixar (`⌥⇧←`/`⌥⇧→`):** o voo fica numa borda, com um divisor, e o canvas continua ao lado. As mesmas teclas desencaixam; a seta no cabeçalho troca de borda. O encaixe fica guardado por workspace, neste navegador;
@@ -242,7 +249,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - os **níveis de voo** são numerados por sessão: FL1, FL2… O número não volta a ser usado depois que o nível pousa ou é descartado. A pista é o branch da sessão.
 
 **Voos:**
-- **Novo voo** (`T`): o agente em blocos (Claude Code, Codex, Devin, Gemini, Shell, Comando), com "✓ instalado" ou "✕ não achado" para cada CLI; **Nome** e **Indicativo**; **Papel** (com "editar papéis…"); **Pasta** (opcional). Em **Avançado**: o comando, o shell e "Líder". **Decolar** cria o voo no nível aberto;
+- **Novo voo** (`T`, depois clique ou arraste no canvas onde ele vai): o agente em blocos (Claude Code, Codex, Devin, Gemini, Shell, Comando), com "✓ instalado" ou "✕ não achado" para cada CLI; **Nome** e **Indicativo**; **Papel** (com "editar papéis…"); **Pasta** (opcional). Em **Avançado**: o comando, o shell e "Líder". **Decolar** cria o voo no nível aberto, no retângulo desenhado;
 - **Pasta** aceita um caminho absoluto, `~/…` ou relativo à pasta do workspace, com sugestões enquanto você digita (↑/↓, Enter, Tab completa). **Shell** lista os shells instalados; "Padrão" segue a ordem descrita em "Shell dos terminais";
 - **Configurar…**, no menu `⋯` do voo, edita esses campos; mudar o que o inicia (agente, comando, pasta ou shell) mostra o aviso e o botão vira **Salvar e reiniciar**;
 - **o voo na tela:** a faixa à esquerda tem a cor do estado (No ar, Aguarda, Em solo…); o quadradinho antes do indicativo tem a cor do papel. O rodapé mostra o nível, o branch, a pasta e quem criou o voo. Parado, o voo mostra "Hangar" ou "Pane" com o botão **Iniciar**;
@@ -332,7 +339,7 @@ O hook só avisa: a Torre nunca decide uma permissão pelo agente. A resposta pe
 - **@ ELEMENTOS**, no cabeçalho do portal, mostra o que os voos veem: um contorno tracejado em cada elemento do último `torre portal snapshot`, com a etiqueta ("@e7 botão"), na cor do papel de quem usa a página. Os contornos acompanham a rolagem e não pegam cliques. Sem snapshot (ou depois que a página muda de endereço), aparece "Sem refs". Ligar a camada não tira um snapshot novo, para não trocar as refs que um agente está usando.
 
 **Carga (`C`):** um explorador de arquivos no canvas, de uma pasta do computador ("Vídeos parte 2", "Resultados"). Você navega, escolhe arquivos e pastas e **arrasta para um voo**: o caminho entra no prompt do agente, e ele lê o arquivo. Não tem fio; o agente só recebe o caminho, como texto.
-- **Criar:** `C` (ou o botão da caixa na barra) abre uma carga na pasta do workspace (ou do nível), com o nome da pasta. Soltar uma pasta de uma carga no canvas vazio abre outra carga dela, ali.
+- **Criar:** `C` (ou o botão da caixa na barra), e clique ou arraste no canvas onde ela vai. A carga abre na pasta do workspace (ou do nível), com o nome da pasta. Soltar uma pasta de uma carga no canvas vazio abre outra carga dela, ali.
 - **Navegar:** a seta de cada pasta a abre ali mesmo, na árvore; duplo clique (ou `⏎`) entra nela. ‹ › voltam e avançam, ↑ (ou `⌫`) sobe uma pasta, e a casa volta à pasta da carga. O caminho no topo é clicável, passo a passo; clicar no fim dele deixa escrever um caminho (`~/Documentos`, `/dados`, `D:\videos`).
 - **Escolher:** clique escolhe um; `⌘`/`ctrl` + clique junta mais; `⇧` + clique pega o intervalo. No teclado: setas, `⇧` + setas, `→`/`←` abrem e fecham a pasta, `⌘A`/`ctrl+A` todos e `⌘C`/`ctrl+C` copiam os caminhos.
 - **Arrastar e soltar:**

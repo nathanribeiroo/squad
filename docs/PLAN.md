@@ -87,6 +87,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Relatório do consumo (`torre usage-report`) | `feat/relatorio-consumo` | concluído |
 | Fio sem folga, com barriga fixa | `feat/fio-sem-folga` | concluído |
 | Carga: explorador de arquivos no canvas | `feat/carga` | concluído (PR) |
+| Pôr itens no canvas com clique ou arraste | `feat/criar-arrastando` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -635,3 +636,14 @@ A primeira versão ligava a carga aos voos por fio, com MCP, `torre cargo` e `--
 - **Fora (no "Para depois" da seção Torre):** arrastar do Finder ou do Explorer para a Torre, e um `torre cargo` para os agentes abrirem uma carga.
 
 **Status:** PR aberto, esperando o merge.
+
+## Pôr itens no canvas com clique ou arraste
+
+Pedido do usuário em 2026-10-21: em vez de um item novo (voo, NOTAM, portal, carga) aparecer no centro da tela, a ferramenta fica escolhida e ele clica onde quer, ou arrasta para escolher o tamanho.
+
+- **A ferramenta** (`tool: 'place'`, `placeKind`, no `store.ts`): `T`, `N`, `P`, `C` e os botões a ligam; a mesma tecla, `Esc` ou o `×` desligam.
+- **A camada** (`PlaceLayer.tsx`): o fantasma no tamanho padrão segue o mouse; clique põe centrado, arraste desenha (com o mínimo de cada item e passos de 10); `⇧` mantém a ferramenta; a roda move e dá zoom.
+- **O voo:** o retângulo vai para o Novo voo (`newTermBox`) e fica marcado até decolar.
+- **Criar** (`lib/place.ts`): o mesmo `POST /api/nodes`, agora com `x`, `y`, `w` e `h`; o item nasce selecionado.
+
+**Status:** PR aberto (depois do PR da Carga), esperando o merge.

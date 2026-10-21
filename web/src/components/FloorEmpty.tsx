@@ -1,5 +1,6 @@
 import { flightLevel, useActiveFloor, useBranch } from '../lib/floors';
 import { shortPath } from '../lib/paths';
+import { togglePlace } from '../lib/place';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
 import './FloorDialogs.css';
@@ -13,7 +14,9 @@ export function FloorEmpty() {
   const empty = useSquad((s) => !!floor && !s.workspace?.nodes.some((n) => n.floor === floor.id));
   const setup = useSquad((s) => s.workspace?.floorConfig?.setup);
   const branch = useBranch(floor?.id ?? '');
-  if (!floor || !empty) return null;
+  // Out of the way while an item is being placed on the canvas.
+  const placing = useSquad((s) => s.tool === 'place');
+  if (!floor || !empty || placing) return null;
   const open = (kind: 'log') => useSquad.getState().setFloorDialog({ kind, id: floor.id });
   return (
     <div className="fl-empty">
@@ -52,7 +55,7 @@ export function FloorEmpty() {
           Ponha voos aqui com <span className="kbd">T</span>, ou peça a um líder:
         </p>
         <code className="fl-empty-cmd mono">torre new "Bia" --role impl --floor "{floor.name}"</code>
-        <button className="btn filled fl-empty-btn" onClick={() => useSquad.getState().setNewTerm(true)}>
+        <button className="btn filled fl-empty-btn" onClick={() => togglePlace('terminal')}>
           <Icon name="flight_takeoff" />
           Novo voo neste nível
         </button>

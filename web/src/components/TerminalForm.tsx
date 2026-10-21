@@ -131,14 +131,16 @@ export function TerminalForm({ node, onClose }: { node?: WNode; onClose: () => v
         await api.updateNode(node.id, { terminal: { ...t, ...fields, name: name.trim() || t.name, callsign: cs || t.callsign } });
         if (relaunch) await api.nodeAction(node.id, 'restart');
       } else {
+        // Where its tool drew it; else the middle of the screen.
         const center = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-        await api.addNode({
+        const box = useSquad.getState().newTermBox ?? { x: Math.round(center.x - 280), y: Math.round(center.y - 220) };
+        const n = await api.addNode({
           kind: 'terminal',
-          x: Math.round(center.x - 280),
-          y: Math.round(center.y - 220),
+          ...box,
           terminal: { ...fields, name: shownName, callsign: cs || undefined },
           floor: floor || undefined,
         });
+        useSquad.getState().requestSelect(n.id);
       }
       onClose();
     } catch (err) {
