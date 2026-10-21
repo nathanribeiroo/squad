@@ -84,7 +84,8 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Destaque dos fios mais visível | `feat/fios-do-selecionado-forte` | concluído |
 | Workspaces inativos fora da tela | `feat/workspaces-inativos` | concluído |
 | Novos papéis e o fluxo de especificação | `feat/novos-papeis` | concluído |
-| Relatório do consumo (`torre usage-report`) | `feat/relatorio-consumo` | concluído (PR) |
+| Relatório do consumo (`torre usage-report`) | `feat/relatorio-consumo` | concluído |
+| Fio sem folga, com barriga fixa | `feat/fio-sem-folga` | concluído (PR) |
 
 ## B0, esqueleto
 

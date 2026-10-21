@@ -2,6 +2,50 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-21, Fio sem folga, com barriga fixa
+
+- **Pedido:** tirar a folga em porcentagem dos fios. O usuário quer manter a gravidade e o resto do que já foi pedido (contornar os nós, não se enrolar), com uma barriga sutil de alguns pixels. Também relatou que o fio "buga toda hora", fica congelado torto e cresce muito, e que no Windows ficou diferente.
+- **As causas, achadas no código e medidas num roteiro em Node:**
+  - **a simulação dava um passo por quadro de tela.** Numa tela de 144 Hz o fio balançava mais que o dobro de rápido, e num computador carregado ia em câmera lenta;
+  - **o balanço tinha um limite de 6 s,** e o fio parava onde estivesse. Um fio de 300 px cuja ponta sobe 120 px leva 285 passos para parar: 4,8 s a 60 quadros/s, mas 9,5 s a 30 e 14,3 s a 20. No Windows carregado, ele congelava torto. No roteiro, o fio da `main` a 30 quadros/s congelou nesse caso;
+  - **a regra de soltar corrente quando o fio encosta num nó, e recolher depois,** com 3% de folga disparava muito, e o fio crescia;
+  - **a folga em porcentagem** fazia um fio de 1.000 px pender uns 100 px e um de 150 px quase nada.
+- **O modelo novo (`web/src/canvas/rope.ts`):**
+  - **o repouso é calculado, não simulado:**
+    - o caminho mais curto entre as pontas (e os pontos de curva), por um grafo de visibilidade das quinas dos nós no caminho, com a mesma margem de 6 px. Ele já escolhe o lado mais curto, então o fio não se enrola e a regra de "passar para o outro lado" saiu;
+    - cada trecho reto ganha uma barriga de 8 px no meio quando está na horizontal, menos quando inclinado (8 × a parte horizontal), e nada onde afundaria num nó (o trecho que passa sobre o topo de uma NOTAM fica reto). Um fio vertical fica reto;
+  - **em movimento, continua a corrente com gravidade:**
+    - quando as pontas se aproximam, sobra corrente (no máximo 12 px mais 10% do trecho). Ela cai e balança com a gravidade e é recolhida aos poucos (6% por passo);
+    - sem sobra, cada ponto é puxado para o seu lugar no repouso, como uma mola amortecida: um pequeno balanço e para;
+    - quando as pontas se afastam, o fio acompanha na hora e nunca fica mais curto que o repouso, então não estica;
+    - perto do repouso, ele pode atravessar um nó para chegar ao lado mais curto. Pendurado livre, os nós continuam sendo chão e parede.
+  - **saíram:** a folga em porcentagem (`SLACK`), a compensação do esticamento (`STRETCH`), a corrente que se soltava e recolhia (`extra`, `TAUT_STEPS`, `MAX_EXTRA`) e o desenrolar (`shortWay`, `winding`).
+- **No fio (`WireEdge.tsx`):**
+  - **o tempo pelo relógio:** 60 passos por segundo, seja a tela de 60 ou 144 Hz. Um quadro lento recupera até 4 passos; além disso, o fio só anda mais devagar;
+  - **ao fim dos 6 s,** o fio vai para o repouso, em vez de congelar onde estava;
+  - **ao aparecer** e com "reduzir movimento", o fio já nasce no repouso, sem simular;
+  - **as pílulas** (pedido, "clicando", espera geral) ficam no meio do fio, pelo comprimento. Com o fio quase reto, o "ponto mais baixo" de antes as jogaria para a ponta de baixo.
+- **Decisões sem consulta:**
+  - **8 px de barriga:** é o "alguns pixels" do pedido. É uma constante só (`SAG`);
+  - **a sobra limitada:** quando as pontas se aproximam rápido, cai no máximo uns 50 px e volta em cerca de 1 s. Sem limite, caía 100 px e levava 3 s, e pareceria o fio crescendo.
+- **Medido (roteiro em Node com o `rope.ts`):**
+  - **repouso:** a barriga é de 8 px em fios de 120, 300, 1.000 e 1.500 px, 5,6 px a 45° e zero na vertical;
+  - **um arraste** (a ponta de 300 para 150 px em 0,3 s), a 20, 30, 60 e 144 quadros/s: parado em 1,95 a 2,1 s em todos, com o ponto mais baixo em 52 a 55 px durante a queda. Visualmente para em uns 1,3 s; o resto é movimento abaixo de 0,1 px. O último ajuste ao repouso é de 0,02 px;
+  - **a ponta subindo 120 px:** parado em 1,8 s a 30, 60 e 144 quadros/s. Na `main`: congelou a 30 quadros/s e levou 5 s a 60;
+  - **30 arrastes de ida e volta:** termina com o comprimento do repouso, sem crescer;
+  - **um nó no caminho:** o fio passa por cima quando é o lado mais curto (40 px para cima contra 80 para baixo), e por baixo de um nó alto. Nenhum ponto dentro de um nó;
+  - **um nó arrastado através do fio e de volta:** parado 1,4 s depois, nenhum ponto dentro do nó;
+  - **o custo por passo,** com 6 nós em volta: 34 µs num fio de 300 px (28 na `main`), 56 µs num de 1.500 px (128 na `main`). Com um nó se movendo, o repouso é recalculado (47 e 77 µs).
+- **Testes:**
+  - `npx tsc -b`, `npm run build` e `go build ./...`;
+  - o roteiro em Node acima, com a `main` e a branch nas mesmas cenas;
+  - **no Chromium, com o `torre serve` e NOTAMs criadas pela API:**
+    - o repouso nos dois temas: o fio inclinado com a barriga, o que contorna a NOTAM por cima e o vertical reto;
+    - uma NOTAM arrastada com o mouse para perto da outra, em quadros de 90 ms: a sobra cai, balança e o fio volta ao repouso;
+    - com a página presa a 27 quadros/s, outro arraste: o fio estava no repouso, com barriga de 7 px, 0,3 s depois de soltar.
+- **Agentes:** só interface; nada muda para nenhum agente.
+- **Precisa de você:** no Windows, arrastar voos e NOTAMs com agentes trabalhando, e ver se o fio ainda fica torto ou cresce.
+
 ## 2026-10-21, Relatório do consumo (`torre usage-report`)
 
 - **Pedido:** no Consumo de contas de empresa (PLAN, "Consumo em contas de empresa"), o usuário quer o consumo do mês contra o limite sem abrir `/usage`. O caminho mais automático no Devin é o cache da conta que ele guarda em disco, mas o formato não é documentado e o arquivo tem o e-mail e a equipe. Combinamos um comando que mostra só os números, para o usuário rodar no trabalho e mandar sem dados pessoais.
