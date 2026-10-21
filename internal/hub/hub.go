@@ -45,6 +45,9 @@ const EventWorkspaces = "workspaces"
 // EventRoles carries the whole role library ([]roles.Role) after a change.
 const EventRoles = "roles"
 
+// EventQuit tells every window that the server is stopping (Sair).
+const EventQuit = "quit"
+
 // summaryDelay coalesces bursts of workspace events into one list update.
 const summaryDelay = 300 * time.Millisecond
 
@@ -124,6 +127,9 @@ type Hub struct {
 	events *events.Bus // EventWorkspaces, EventRoles
 	dirty  chan struct{}
 	quit   chan struct{}
+	// stop is closed when the interface asks the server to stop (Sair).
+	stop     chan struct{}
+	stopOnce sync.Once
 
 	mu      sync.RWMutex
 	ws      map[string]*workspace
@@ -175,7 +181,7 @@ func New(opts Options) (*Hub, error) {
 	}
 	h := &Hub{
 		opts: opts, log: opts.Logger, roles: opts.Roles, events: events.NewBus(),
-		dirty: make(chan struct{}, 1), quit: make(chan struct{}),
+		dirty: make(chan struct{}, 1), quit: make(chan struct{}), stop: make(chan struct{}),
 		ws: map[string]*workspace{}, pres: map[string]*presence{}, settings: settings,
 	}
 	h.launches = newLauncher(opts.Sleep, h.markDirty)
@@ -306,6 +312,13 @@ func (h *Hub) Close() {
 		w.app.Close()
 	}
 }
+
+// Quit asks the process to stop, as Ctrl-C does: torre serve waits on
+// Stopping and then closes everything (Close saves each terminal's screen).
+func (h *Hub) Quit() { h.stopOnce.Do(func() { close(h.stop) }) }
+
+// Stopping is closed once Quit is called.
+func (h *Hub) Stopping() <-chan struct{} { return h.stop }
 
 func (h *Hub) allLocked() []*workspace {
 	out := make([]*workspace, 0, len(h.ws))
