@@ -157,3 +157,25 @@ func TestInstallSkillFindsTheAgents(t *testing.T) {
 		t.Fatalf("-dir with two agents: %d", code)
 	}
 }
+
+// torre usage-report reads this computer's files and prints numbers only.
+func TestUsageReport(t *testing.T) {
+	home := t.TempDir()
+	for _, k := range []string{"HOME", "USERPROFILE"} {
+		t.Setenv(k, home)
+	}
+	for _, k := range []string{"XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "APPDATA", "LOCALAPPDATA", "DEVIN_SESSIONS_DIR", "CLAUDE_CONFIG_DIR"} {
+		t.Setenv(k, "")
+	}
+	var out, errb bytes.Buffer
+	if code := run([]string{"usage-report"}, &out, &errb); code != 0 || !strings.HasPrefix(out.String(), "torre ") || !strings.Contains(out.String(), "\nDevin\n") || !strings.Contains(out.String(), "\nClaude Code\n") {
+		t.Fatalf("usage-report: code=%d out=%q err=%q", code, out.String(), errb.String())
+	}
+	out.Reset()
+	if code := run([]string{"usage-report", "--help"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "Numbers only") {
+		t.Fatalf("usage-report --help: code=%d out=%q", code, out.String())
+	}
+	if code := run([]string{"usage-report", "x"}, &out, &errb); code != 2 {
+		t.Fatalf("usage-report x: code=%d", code)
+	}
+}

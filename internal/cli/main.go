@@ -35,6 +35,7 @@ func commands() []command {
 		{"mcp", "serve the commands above as MCP tools over stdio (agents start it)", runMCP},
 		{"hook", "receive an agent hook (used by agent configs)", runHook},
 		{"install-skill", "install the Torre skill for Claude Code and Devin (and Devin's MCP server)", runInstallSkill},
+		{"usage-report", "print what Torre reads about agent usage on this computer (numbers only)", runUsageReport},
 		{"version", "print the version", runVersion},
 	}
 }
