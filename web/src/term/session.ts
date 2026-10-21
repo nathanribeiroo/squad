@@ -147,7 +147,7 @@ export class TermSession {
     ws.onclose = () => {
       if (this.ws !== ws) return;
       this.ws = null;
-      if (this.disposed) return;
+      if (this.disposed || useSquad.getState().quitting) return;
       this.retry++;
       this.timer = window.setTimeout(() => this.connect(), Math.min(5000, 250 * this.retry));
     };

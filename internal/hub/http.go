@@ -29,6 +29,7 @@ import (
 //	/api/roles…                     the role library, shared by every workspace
 //	/api/agents…                    the agents found on this computer, and the command that starts each
 //	/ws/workspaces                  the list and the roles, live
+//	POST /api/quit                  stop the server (Sair, in the interface only)
 //	POST /cli, POST /hooks/{agent}  calls from terminals, routed by terminal id
 //	/                               the web UI
 func (h *Hub) Handler() http.Handler {
@@ -63,6 +64,7 @@ func (h *Hub) Handler() http.Handler {
 	mux.Handle("DELETE /api/plans/{id}", sess(h.handlePlanDelete))
 	mux.Handle("POST /api/plans/import", sess(h.handlePlanImport))
 	mux.Handle("GET /ws/workspaces", sess(h.handleWorkspacesWS))
+	mux.Handle("POST /api/quit", sess(h.handleQuit))
 	mux.Handle("/api/", sess(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not found (a workspace's API is under /w/<id>/api/…)")
 	}))
@@ -102,6 +104,19 @@ func (h *Hub) handleTerminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ws.term.ServeHTTP(w, r)
+}
+
+// handleQuit stops the server: the answer leaves first, then torre serve
+// shuts down (Stopping). Only the interface reaches it, with the session's
+// token or cookie; terminals have /cli, which has no such command.
+func (h *Hub) handleQuit(w http.ResponseWriter, _ *http.Request) {
+	// Other windows too: they show the end instead of "Sem enlace".
+	h.events.Publish(EventQuit, nil)
+	writeJSON(w, http.StatusAccepted, map[string]bool{"ok": true})
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+	time.AfterFunc(200*time.Millisecond, h.Quit)
 }
 
 func (h *Hub) handleList(w http.ResponseWriter, _ *http.Request) {

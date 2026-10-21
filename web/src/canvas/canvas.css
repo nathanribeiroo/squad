@@ -38,3 +38,21 @@
 .draw-bar-hint { font-size: 12px; color: var(--text-2); padding: 0 8px; }
 .draw-swatch { width: 18px; height: 18px; margin: 0 2px; padding: 0; border: 1px solid var(--line-2); cursor: pointer; flex: none; }
 .draw-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* The place tool (T, N, P, C): the item follows the pointer; a click puts
+   it there, a drag draws its size. */
+.place-layer { position: absolute; inset: 0; z-index: 4; cursor: crosshair; touch-action: none; overflow: hidden; user-select: none; -webkit-user-select: none; }
+.place-pending { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.pl-ghost {
+  position: absolute; display: flex; flex-direction: column; pointer-events: none; box-sizing: border-box;
+  border: 1.5px dashed var(--text-3); background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+.pl-ghost.sizing, .pl-ghost.pending { border-style: solid; border-color: var(--focus); background: color-mix(in srgb, var(--surface) 80%, transparent); }
+.pl-ghost-head {
+  height: 22px; flex: none; display: flex; align-items: center; gap: 5px; padding: 0 7px; overflow: hidden; white-space: nowrap;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2);
+  border-bottom: 1px dashed var(--line-3);
+}
+.pl-ghost-size { margin-left: auto; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
+.pl-ghost-tip { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px 12px; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+.place-hint-more { color: var(--text-3); }

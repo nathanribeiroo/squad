@@ -30,7 +30,7 @@ export function connectEvents(): () => void {
       }
     };
     ws.onclose = () => {
-      if (stopped) return;
+      if (stopped || useSquad.getState().quitting) return; // Sair: the server is gone on purpose
       retry++;
       const delay = Math.min(5000, 300 * retry);
       useSquad.getState().setConnection('reconnecting', Date.now() + delay);

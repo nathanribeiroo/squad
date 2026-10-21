@@ -27,6 +27,7 @@ import { hiddenBy, insideGroup, removeVisuals, reveal, shownAs } from '../lib/vi
 import { useSquad } from '../state/store';
 import { pruneSessions } from '../term/session';
 import { DrawLayer } from './DrawLayer';
+import { PendingFlight, PlaceLayer } from './PlaceLayer';
 import { WireEdge } from './edges/WireEdge';
 import { insertRopePoint } from './geometry';
 import { CargoNode } from './nodes/CargoNode';
@@ -274,6 +275,8 @@ export function Canvas() {
   const selectRequest = useSquad((s) => s.selectRequest);
   useEffect(() => {
     if (!selectRequest) return;
+    // A node just created may arrive after the request: wait for it.
+    if (!nodes.some((n) => n.id === selectRequest)) return;
     useSquad.getState().requestSelect(null);
     setNodes((ns) => ns.map((n) => (n.selected === (n.id === selectRequest) ? n : { ...n, selected: n.id === selectRequest })));
     useSquad.getState().setSelectedNode(selectRequest);
@@ -285,7 +288,7 @@ export function Canvas() {
     if (a.x >= pane.left && a.y >= pane.top && b.x <= pane.right && b.y <= pane.bottom) return;
     const z = rf.getZoom();
     void rf.fitView({ nodes: [{ id: selectRequest }], duration: 250, minZoom: z, maxZoom: z });
-  }, [selectRequest, rf]);
+  }, [selectRequest, rf, nodes]);
   // Double-clicking a wire adds a bend point there.
   const onEdgeDoubleClick = useCallback(
     (e: React.MouseEvent, edge: Edge) => {
@@ -381,6 +384,8 @@ export function Canvas() {
       <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--grid)" />
       <MiniMapAndZoom />
       <DrawLayer />
+      <PlaceLayer />
+      <PendingFlight />
     </ReactFlow>
   );
 }

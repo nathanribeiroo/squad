@@ -1,4 +1,5 @@
 import type { IconName } from '../lib/icons';
+import { togglePlace } from '../lib/place';
 import { groupSelection } from '../lib/visual';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
@@ -7,9 +8,10 @@ import './Toolbar.css';
 
 type Tool = { icon: IconName; label: string; key: string; action: () => void; active?: boolean; disabled?: boolean };
 
-export function Toolbar({ onCreateNote, onCreatePortal, onCreateCargo }: { onCreateNote: () => void; onCreatePortal: () => void; onCreateCargo: () => void }) {
+export function Toolbar() {
   const tool = useSquad((s) => s.tool);
   const setTool = useSquad((s) => s.setTool);
+  const placing = useSquad((s) => (s.tool === 'place' ? s.placeKind : null));
   const newTerm = useSquad((s) => s.newTermOpen);
   const setNewTerm = useSquad((s) => s.setNewTerm);
   const setEditTerm = useSquad((s) => s.setEditTerm);
@@ -20,10 +22,11 @@ export function Toolbar({ onCreateNote, onCreatePortal, onCreateCargo }: { onCre
     { icon: 'pan_tool', label: 'Mover', key: 'H', action: () => setTool('pan'), active: tool === 'pan' },
   ];
   const create: Tool[] = [
-    { icon: 'flight_takeoff', label: 'Novo voo', key: 'T', action: () => setNewTerm(!newTerm), active: newTerm },
-    { icon: 'sticky_note_2', label: 'NOTAM', key: 'N', action: onCreateNote },
-    { icon: 'public', label: 'Portal', key: 'P', action: onCreatePortal },
-    { icon: 'inventory_2', label: 'Carga', key: 'C', action: onCreateCargo },
+    // Each item: pick it, then click or drag on the canvas where it goes.
+    { icon: 'flight_takeoff', label: 'Novo voo', key: 'T', action: () => (newTerm ? setNewTerm(false) : togglePlace('terminal')), active: newTerm || placing === 'terminal' },
+    { icon: 'sticky_note_2', label: 'NOTAM', key: 'N', action: () => togglePlace('note'), active: placing === 'note' },
+    { icon: 'public', label: 'Portal', key: 'P', action: () => togglePlace('portal'), active: placing === 'portal' },
+    { icon: 'inventory_2', label: 'Carga', key: 'C', action: () => togglePlace('cargo'), active: placing === 'cargo' },
     { icon: 'gesture', label: 'Desenho', key: 'D', action: () => setTool(tool === 'draw' ? 'select' : 'draw'), active: tool === 'draw' },
     { icon: 'select', label: 'Grupo', key: 'G', action: groupSelection, active: tool === 'frame' },
     { icon: 'flight_class', label: 'Planos de voo', key: '⌥M', action: () => useSquad.getState().setPlansDialog('gallery') },

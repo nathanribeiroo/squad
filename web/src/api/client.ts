@@ -62,7 +62,24 @@ export class ApiError extends Error {
   }
 }
 
-async function req<T>(method: string, path: string, body?: unknown, keepalive?: boolean): Promise<T> {
+/** Changes on their way to the server (Sair waits for them). */
+const inflight = new Set<Promise<unknown>>();
+
+/** Resolves once every change sent so far got its answer. */
+export async function settled(): Promise<void> {
+  await Promise.allSettled([...inflight]);
+}
+
+function req<T>(method: string, path: string, body?: unknown, keepalive?: boolean): Promise<T> {
+  const p = send<T>(method, path, body, keepalive);
+  if (method !== 'GET') {
+    inflight.add(p);
+    void p.finally(() => inflight.delete(p)).catch(() => {});
+  }
+  return p;
+}
+
+async function send<T>(method: string, path: string, body?: unknown, keepalive?: boolean): Promise<T> {
   const res = await fetch(path, {
     method,
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
@@ -178,6 +195,8 @@ export const api = {
 /** The workspace list (not tied to the workspace on screen). */
 export const hub = {
   welcome: () => req<{ firstRun: boolean }>('GET', '/api/welcome'),
+  /** Stops the server (Sair): it saves and closes everything, then exits. */
+  quit: () => req<{ ok: boolean }>('POST', '/api/quit'),
   plans: () => req<Plan[]>('GET', '/api/plans'),
   plan: (id: string) => req<Plan>('GET', `/api/plans/${encodeURIComponent(id)}`),
   removePlan: (id: string) => req<void>('DELETE', `/api/plans/${encodeURIComponent(id)}`),

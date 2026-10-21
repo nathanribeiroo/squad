@@ -96,6 +96,7 @@ export const ICONS = [
   'picture_as_pdf',
   'play_arrow',
   'play_circle',
+  'power_settings_new',
   'progress_activity',
   'psychology',
   'public',

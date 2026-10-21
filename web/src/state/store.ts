@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { api, setWorkspace } from '../api/client';
 import { askPhrase } from '../lib/askText';
 import type { CargoItem } from '../lib/cargo';
+import type { Box, PlaceKind } from '../lib/place';
 import { noticeAsk } from '../lib/notify';
 import { mergeActivity, toActivity } from '../lib/radio';
 import { toast } from '../lib/toast';
@@ -176,18 +177,25 @@ interface SquadState {
   cargoChanges: Record<string, Record<string, number>>;
   /** A cargo's files are being dragged: flights and Transmitir show where to drop. */
   cargoDrag: boolean;
+  /** Sair: saving what is pending, the server closing, then closed. */
+  quitting: 'saving' | 'closing' | 'closed' | null;
   /** Times of recent requests, for the per-minute rate in the top bar. */
   sendTimes: number[];
   drawerOpen: boolean;
   composerOpen: boolean;
   composerTarget: string | null;
   newTermOpen: boolean;
+  /** Where the new flight takes off: the box drawn with its tool. */
+  newTermBox: Box | null;
   /** Terminal whose settings form ("Configurar…") is open. */
   editTermId: string | null;
   focusedTerminal: string | null;
   selectedNode: string | null;
-  /** The canvas tool: select, pan, draw (Desenho, D) or frame (drag a new group, G). */
-  tool: 'select' | 'pan' | 'draw' | 'frame';
+  /** The canvas tool: select, pan, draw (Desenho, D), frame (drag a new
+   * group, G) or place (click or drag where a new item goes: T, N, P, C). */
+  tool: 'select' | 'pan' | 'draw' | 'frame' | 'place';
+  /** The item the place tool puts on the canvas. */
+  placeKind: PlaceKind | null;
   /** What the Desenho tool draws, and in which color. */
   drawShape: DrawingShape;
   drawColor: string;
@@ -252,7 +260,9 @@ interface SquadState {
   hideCard(terminal: string, at: string): void;
   setSummaryDialog(d: SquadState['summaryDialog']): void;
   setSummarySettings(s: SummarySettings): void;
-  setNewTerm(open: boolean): void;
+  setNewTerm(open: boolean, box?: Box | null): void;
+  /** Picks the tool that puts a new item on the canvas. */
+  startPlace(kind: PlaceKind): void;
   setEditTerm(id: string | null): void;
   setFocusedTerminal(id: string | null): void;
   setSelectedNode(id: string | null): void;
@@ -274,6 +284,7 @@ interface SquadState {
   requestSelect(id: string | null): void;
   setSelectedIds(ids: string[]): void;
   setCargoDrag(on: boolean): void;
+  setQuitting(q: SquadState['quitting']): void;
   setPlansDialog(d: SquadState['plansDialog']): void;
 }
 
@@ -369,6 +380,7 @@ const perWorkspace = {
   composerOpen: false,
   composerTarget: null,
   newTermOpen: false,
+  newTermBox: null,
   editTermId: null,
   focusedTerminal: null,
   selectedNode: null,
@@ -452,14 +464,17 @@ export const useSquad = create<SquadState>((set, get) => ({
   cargoChanges: {},
   sendTimes: [],
   cargoDrag: false,
+  quitting: null,
   drawerOpen: false,
   composerOpen: false,
   composerTarget: null,
   newTermOpen: false,
+  newTermBox: null,
   editTermId: null,
   focusedTerminal: null,
   selectedNode: null,
   tool: 'select',
+  placeKind: null,
   drawShape: 'pen',
   drawColor: 'none',
   editText: null,
@@ -504,6 +519,7 @@ export const useSquad = create<SquadState>((set, get) => ({
   requestSelect: (selectRequest) => set({ selectRequest }),
   setSelectedIds: (selectedIds) => set({ selectedIds }),
   setCargoDrag: (cargoDrag) => set({ cargoDrag }),
+  setQuitting: (quitting) => set({ quitting }),
   setPlansDialog: (plansDialog) => set({ plansDialog }),
   openRoles: (id = null) => set({ rolesPanel: id }),
   closeRoles: () => set({ rolesPanel: false }),
@@ -846,11 +862,12 @@ export const useSquad = create<SquadState>((set, get) => ({
   setSummaryDialog: (summaryDialog) => set({ summaryDialog }),
   setSummarySettings: (summarySettings) => set({ summarySettings }),
   // One terminal form at a time: new or settings.
-  setNewTerm: (newTermOpen) => set(newTermOpen ? { newTermOpen, editTermId: null } : { newTermOpen }),
+  setNewTerm: (newTermOpen, box) => set(newTermOpen ? { newTermOpen, newTermBox: box ?? null, editTermId: null } : { newTermOpen, newTermBox: null }),
+  startPlace: (placeKind) => set({ tool: 'place', placeKind, newTermOpen: false, newTermBox: null }),
   setEditTerm: (editTermId) => set(editTermId ? { editTermId, newTermOpen: false } : { editTermId }),
   setFocusedTerminal: (focusedTerminal) => set({ focusedTerminal }),
   setSelectedNode: (selectedNode) => set({ selectedNode }),
-  setTool: (tool) => set({ tool }),
+  setTool: (tool) => set(tool === 'place' ? { tool } : { tool, placeKind: null }),
   setDraw: (d) => set((st) => ({ drawShape: d.shape ?? st.drawShape, drawColor: d.color ?? st.drawColor })),
   setEditText: (editText) => set({ editText }),
   setZoom: (z, settled) => {
