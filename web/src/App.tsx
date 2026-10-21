@@ -1,9 +1,8 @@
-import { useCallback, useEffect } from 'react';
-import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { useEffect } from 'react';
+import { ReactFlowProvider } from '@xyflow/react';
 import { api } from './api/client';
 import { connectEvents } from './api/events';
 import { connectWorkspaces } from './api/workspaces';
-import type { WNode } from './api/types';
 import { Canvas } from './canvas/Canvas';
 import { ActivityDrawer } from './components/ActivityDrawer';
 import { AirspaceEmpty } from './components/AirspaceEmpty';
@@ -28,6 +27,7 @@ import { Toolbar } from './components/Toolbar';
 import { TopBar } from './components/TopBar';
 import { answerKey, goToNextAsk } from './lib/attention';
 import { callsign } from './lib/model';
+import { togglePlace } from './lib/place';
 import { noticePrefs, remindAsks, remindYourTurns, unlockAudio } from './lib/notify';
 import { dockAt, nextNode, toggleFocus } from './lib/screens';
 import { groupSelection } from './lib/visual';
@@ -116,23 +116,6 @@ function Stage() {
   // The docked flight (unless it is in the Foco, which has its screen).
   const dock = useSquad((s) => (s.dock && s.dock.id !== s.focusPane && s.workspace?.nodes.some((n) => n.id === s.dock!.id) ? s.dock : null));
   const focusPane = useSquad((s) => s.focusPane);
-  const rf = useReactFlow();
-
-  const create = useCallback(
-    (kind: 'note' | 'portal' | 'cargo') => {
-      const w = kind === 'note' ? 400 : kind === 'cargo' ? 340 : 560;
-      const h = kind === 'note' ? 350 : kind === 'cargo' ? 440 : 420;
-      const c = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-      const floor = useSquad.getState().activeFloor;
-      const body: Partial<WNode> = { kind, x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2), floor: floor || undefined };
-      // A draft: it opens with its name selected; the name the user gives names the file.
-      if (kind === 'note') body.note = { title: '', file: '', draft: true };
-      // A cargo opens on the folder the level works in, named after it.
-      if (kind === 'cargo') body.cargo = { name: '', path: '' };
-      api.addNode(body).catch((e: Error) => toast(e.message, 'err'));
-    },
-    [rf],
-  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -178,7 +161,7 @@ function Stage() {
         return;
       }
       if (e.key === 'Escape') {
-        if ((st.tool === 'draw' || st.tool === 'frame') && !typing(e.target)) st.setTool('select');
+        if ((st.tool === 'draw' || st.tool === 'frame' || st.tool === 'place') && !typing(e.target)) st.setTool('select');
         else if (st.focusPane && !typing(e.target)) st.setFocusPane(null);
         else if (st.newTermOpen) st.setNewTerm(false);
         else if (st.editTermId) st.setEditTerm(null);
@@ -220,10 +203,11 @@ function Stage() {
       const plain: Record<string, () => void> = {
         KeyV: () => st.setTool('select'),
         KeyH: () => st.setTool('pan'),
-        KeyT: () => st.setNewTerm(!st.newTermOpen),
-        KeyN: () => create('note'),
-        KeyP: () => create('portal'),
-        KeyC: () => create('cargo'),
+        // The item's tool: click or drag on the canvas where it goes.
+        KeyT: () => (st.newTermOpen ? st.setNewTerm(false) : togglePlace('terminal')),
+        KeyN: () => togglePlace('note'),
+        KeyP: () => togglePlace('portal'),
+        KeyC: () => togglePlace('cargo'),
         KeyD: () => st.setTool(st.tool === 'draw' ? 'select' : 'draw'),
         KeyG: () => groupSelection(),
       };
@@ -235,7 +219,7 @@ function Stage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [create]);
+  }, []);
 
   return (
     <main className="stage">
@@ -247,13 +231,13 @@ function Stage() {
           <div className="space-main">
             <Canvas />
             <FloorEmpty />
-            <AirspaceEmpty onNote={() => create('note')} />
+            <AirspaceEmpty onNote={() => togglePlace('note')} />
             <div className="bands">
               <InterruptedBar />
               <LoopCard />
               <PriorityBanner />
             </div>
-            <Toolbar onCreateNote={() => create('note')} onCreatePortal={() => create('portal')} onCreateCargo={() => create('cargo')} />
+            <Toolbar />
             <ComposerPill />
           </div>
         </div>

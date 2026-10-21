@@ -1,3 +1,4 @@
+import { togglePlace } from '../lib/place';
 import { useSquad } from '../state/store';
 import { Icon } from './Icon';
 import './AirspaceEmpty.css';
@@ -9,7 +10,9 @@ import './AirspaceEmpty.css';
 export function AirspaceEmpty({ onNote }: { onNote: () => void }) {
   const empty = useSquad((s) => !!s.workspace && !s.activeFloor && !s.workspace.nodes.some((n) => !n.floor));
   const name = useSquad((s) => s.workspace?.name ?? '');
-  if (!empty) return null;
+  // Out of the way while an item is being placed on the canvas.
+  const placing = useSquad((s) => s.tool === 'place');
+  if (!empty || placing) return null;
   return (
     <div className="ae">
       <div className="ae-card">
@@ -21,7 +24,7 @@ export function AirspaceEmpty({ onNote }: { onNote: () => void }) {
             <span>Usar um plano de voo</span>
             <span className="kbd">⌥M</span>
           </button>
-          <button className="ae-btn primary" onClick={() => useSquad.getState().setNewTerm(true)}>
+          <button className="ae-btn primary" onClick={() => togglePlace('terminal')}>
             <Icon name="flight_takeoff" size={20} />
             <span>Novo voo</span>
             <span className="kbd">T</span>
