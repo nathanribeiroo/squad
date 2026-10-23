@@ -9,6 +9,7 @@ import { AirspaceEmpty } from './components/AirspaceEmpty';
 import { Composer } from './components/Composer';
 import { ComposerPill } from './components/ComposerPill';
 import { ConfirmHost } from './components/ConfirmDialog';
+import { CrashGuard } from './components/CrashGuard';
 import { FloorDialogs } from './components/FloorDialogs';
 import { FirstRun } from './components/FirstRun';
 import { FloorEmpty } from './components/FloorEmpty';
@@ -100,7 +101,9 @@ export function App() {
     <ReactFlowProvider>
       <div className="app">
         <TopBar />
-        <Stage />
+        <CrashGuard reset={`${activeWs}:${activeSession}`}>
+          <Stage />
+        </CrashGuard>
         <FirstRun />
       </div>
     </ReactFlowProvider>

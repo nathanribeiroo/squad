@@ -11,7 +11,10 @@ export function hiddenInStack(n: WNode): boolean {
 /** The notes of the stack based on base, in order (just the base when it isn't a stack). */
 export function stackOf(nodes: WNode[], base: WNode): WNode[] {
   if (base.note?.stack !== base.id) return [base];
-  return nodes.filter((n) => n.note?.stack === base.id).sort((a, b) => (a.note?.stackPos ?? 0) - (b.note?.stackPos ?? 0));
+  const notes = nodes.filter((n) => n.note?.stack === base.id).sort((a, b) => (a.note?.stackPos ?? 0) - (b.note?.stackPos ?? 0));
+  // The canvas still draws the last workspace's nodes for a moment after a
+  // switch (of workspace or session), when the store has none: the base.
+  return notes.length ? notes : [base];
 }
 
 /** ids plus the notes stacked on the ones that are stack bases. */
