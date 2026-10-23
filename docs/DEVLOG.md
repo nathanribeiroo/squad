@@ -2,6 +2,23 @@
 
 O que foi feito em cada etapa, as decisões tomadas sem consulta e o que precisa de você. Entradas mais novas no topo.
 
+## 2026-10-23, Troca de workspace: tela em branco
+
+- **O problema (relatado):** ao trocar de workspace, a janela ficava só com a cor de fundo, sem nem a barra do topo, até um `⌘R`.
+- **A causa:** uma pilha de NOTAMs na tela.
+  - a troca (de workspace ou de sessão) zera o workspace no store na hora, mas o canvas ainda desenha os nós antigos até o efeito que os troca rodar;
+  - nesse desenho, a base da pilha procura as NOTAMs dela no store, acha nenhuma, e `stackOf` devolvia uma lista vazia: `members[0].note` lançava `TypeError`;
+  - sem nada que pegasse o erro, o React desmontava a página inteira.
+- **O que mudou:**
+  - **`stackOf`** (`lib/stacks.ts`) devolve ao menos a base quando o store não tem as NOTAMs da pilha;
+  - **uma rede de segurança** (`CrashGuard`, em volta de tudo abaixo da barra do topo): um erro ao desenhar mostra "A tela parou", com a mensagem do erro e Recarregar, e a barra do topo continua. Trocar de workspace ou de sessão desenha de novo; um erro no meio da troca já se resolve assim, sem o aviso aparecer.
+- **Decisão sem consulta:** a rede de segurança, para que outro erro de desenho não volte a deixar a janela vazia e sem pista. É só a interface; tirar é desfazer duas linhas do `App.tsx`.
+- **Testes** (Chromium, servidor isolado, dois workspaces com voos shell e Claude, fios, NOTAM, portal, carga, grupo e desenho):
+  - **antes:** com uma pilha de duas NOTAMs no workspace, `⌥2` deu `TypeError: Cannot read properties of undefined (reading 'note')` e a tela ficou igual à captura do relato;
+  - **depois:** trocas com `⌥1`/`⌥2`, também em sequência rápida, e a troca de sessão pelo servidor (sessão nova e volta à antiga) mostram a pilha e os voos, sem erro;
+  - **a rede de segurança** (num build temporário, desfeito): com o bug de volta, a troca registrou o erro e terminou no outro workspace normalmente; com um erro forçado em toda NOTAM, apareceu "A tela parou" com a barra do topo, e Recarregar voltou ao canvas.
+- **Não testado:** Safari (o app do Dock) e o Windows; a causa não depende do navegador.
+
 ## 2026-10-21, Pôr um item: o mouse não fica mais preso
 
 - **O problema (relatado):** ao criar um portal, o mouse ficou "preso": o clique não soltava o item.
