@@ -89,6 +89,7 @@ Referências: `05-proposta-arquitetura-go.md` (arquitetura), `03-spec-agentes-co
 | Carga: explorador de arquivos no canvas | `feat/carga` | concluído (PR) |
 | Pôr itens no canvas com clique ou arraste | `feat/criar-arrastando` | concluído (PR) |
 | Botão Sair | `feat/sair` | concluído (PR) |
+| Troca de workspace: tela em branco | `feat/troca-workspace` | concluído (PR) |
 
 ## B0, esqueleto
 
@@ -657,3 +658,12 @@ Pedido do usuário em 2026-10-21: um botão que feche o app e o servidor, salvan
 - **Servidor:** `POST /api/quit` (só da interface) avisa as janelas (`quit` em `/ws/workspaces`) e fecha o `Stopping()` do hub; o `torre serve` encerra como no Ctrl-C (telas salvas, agentes parados, `server.json` apagado).
 
 **Status:** PR aberto (depois dos PRs da Carga e de pôr itens), esperando o merge.
+
+## Troca de workspace: tela em branco
+
+Relato do usuário em 2026-10-23: ao trocar de workspace, a janela ficava vazia até recarregar.
+
+- **Causa:** a base de uma pilha de NOTAMs, desenhada por um instante depois da troca com o store já vazio, quebrava o React (`stackOf` devolvia uma lista vazia).
+- **Correção:** `stackOf` devolve ao menos a base; e o `CrashGuard` mostra "A tela parou" (com o erro e Recarregar) em vez da página vazia, e desenha de novo ao trocar de workspace ou de sessão.
+
+**Status:** PR aberto, esperando o merge.
